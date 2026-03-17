@@ -76,6 +76,10 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 .date-chip.active { border-color:var(--accent); background:rgba(240,165,0,0.1); color:var(--accent); }
 .date-chip .dc-date { font-family:'DM Mono',monospace; font-size:13px; font-weight:700; }
 .date-chip .dc-day { font-size:10px; margin-top:1px; }
+.date-chip.shitei { border-color:rgba(240,165,0,0.45); }
+.date-chip.shitei.active { border-color:var(--accent); }
+.dc-shitei { font-size:9px; font-weight:700; color:var(--accent); background:rgba(240,165,0,0.15); border-radius:4px; padding:1px 5px; margin-top:3px; display:inline-block; letter-spacing:0.04em; }
+.date-chip.active .dc-shitei { background:rgba(255,255,255,0.22); color:#fff; }
 
 /* ── 全員閲覧 ── */
 .view-tabs { display:flex; gap:6px; margin-bottom:14px; }
@@ -282,6 +286,7 @@ let memo = '';
 
 // 全員閲覧状態
 let allViewMode = 'date'; // 'date' | 'staff'
+let homeShiteikyuDates = new Set(); // 過去5日の指定休日付キャッシュ
 let allViewDate = '';
 let allViewStaff = '';
 
@@ -381,6 +386,7 @@ async function renderHome() {
   el.innerHTML = `<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">${selectedDate}の記録を確認中…</div></div>`;
 
   try {
+    // 選択日の打刻レコードを取得
     const res = await notionAPI('POST', `/databases/${KINTAI_DB}/query`, {
       filter: {
         and: [
@@ -392,6 +398,25 @@ async function renderHome() {
     });
     selectedDateRecord = res.results?.length > 0 ? res.results[0] : null;
     if (selectedDate === todayStr()) todayRecord = selectedDateRecord;
+
+    // 過去5日分の指定休を取得（初回のみ or 日付が変わった場合）
+    const days5 = getLast5Days();
+    const from5 = days5[days5.length - 1].iso;
+    const shiteiRes = await notionAPI('POST', `/databases/${KINTAI_DB}/query`, {
+      filter: {
+        and: [
+          { property: '社員名', select: { equals: USER.name } },
+          { property: '指定休', checkbox: { equals: true } },
+          { property: '日付', date: { on_or_after: from5 } },
+          { property: '日付', date: { on_or_before: todayStr() } }
+        ]
+      }, page_size: 20
+    });
+    homeShiteikyuDates = new Set(
+      (shiteiRes.results || [])
+        .map(r => r.properties?.['日付']?.date?.start?.slice(0, 10))
+        .filter(Boolean)
+    );
   } catch(e) { selectedDateRecord = null; }
 
   const syukkin = selectedDateRecord?.properties?.['出勤']?.number;
@@ -408,12 +433,15 @@ async function renderHome() {
   const diffDays = Math.round((todayD - selD) / 86400000);
   const isOld = diffDays > 5;
 
-  const dateChips = days.map(d =>
-    `<div class="date-chip${selectedDate===d.iso?' active':''}" onclick="selectKintaiDate('${d.iso}')">
+  const dateChips = days.map(d => {
+    const isShitei = homeShiteikyuDates.has(d.iso);
+    const isActive = selectedDate === d.iso;
+    return `<div class="date-chip${isActive?' active':''}${isShitei?' shitei':''}" onclick="selectKintaiDate('${d.iso}')">
       <div class="dc-date">${d.d}</div>
       <div class="dc-day">${d.label}（${d.day}）</div>
-    </div>`
-  ).join('');
+      ${isShitei ? '<div class="dc-shitei">指定休</div>' : ''}
+    </div>`;
+  }).join('');
 
   el.innerHTML = `
     <div class="content">
@@ -1315,16 +1343,17 @@ function goIrai(dateStr, syukkin, taikin) {
     </div>`;
 }
 
-async function submitIrai(dateStr, syukkin, taikin) {
+function submitIrai(dateStr, syukkin, taikin) {
   const text = document.getElementById('irai-text')?.value.trim();
   const errEl = document.getElementById('irai-error');
-  if (!text) { errEl.innerHTML = '<div class="error-box">修正内容を入力してください</div>'; return; }
+  if (!text) {
+    errEl.innerHTML = '<div class="error-box">修正内容を入力してください</div>';
+    return;
+  }
 
-  const btn = document.getElementById('irai-send-btn');
-  btn.disabled = true; btn.textContent = '送信中…';
-
-  const subject = `【打刻修正依頼】${USER.name} / ${dateStr}`;
-  const body = `打刻修正依頼が届きました。
+  const subject = encodeURIComponent(`【打刻修正依頼】${USER.name} / ${dateStr}`);
+  const bodyText =
+    `打刻修正依頼が届きました。
 
 ` +
     `■ 依頼者: ${USER.name}
@@ -1342,32 +1371,16 @@ async function submitIrai(dateStr, syukkin, taikin) {
 ${text}
 
 ` +
+    `─────────────────────
+` +
     `※ Notionの勤怠管理DBを直接修正してください。
 ` +
     `https://www.notion.so/200a695f8e8880b181d8c77b7dde51b5`;
+  const body = encodeURIComponent(bodyText);
 
-  try {
-    // Anthropic API経由でGmail下書きを作成
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 300,
-        messages: [{
-          role: 'user',
-          content: `次の内容でGmailの下書きを作成してください。作成後「完了」とだけ返してください。\n送信先: ${ADMIN_EMAIL}\n件名: ${subject}\n本文: ${body}`
-        }],
-        mcp_servers: [{ type: 'url', url: 'https://gmail.mcp.claude.com/mcp', name: 'gmail-mcp' }]
-      })
-    });
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error.message);
-    showDone('修正依頼を送信しました', `向畑（社長）のGmailに下書きが届きました · ${formatDate(dateStr)}`);
-  } catch(e) {
-    errEl.innerHTML = `<div class="error-box">送信に失敗しました。直接社長（向畑）に連絡してください。<br><small>${e.message}</small></div>`;
-    btn.disabled = false; btn.textContent = '修正依頼を送信する';
-  }
+  // mailtoでスマホのメールアプリを起動（宛先・件名・本文が自動入力）
+  const mailto = `mailto:${ADMIN_EMAIL}?subject=${subject}&body=${body}`;
+  window.location.href = mailto;
 }
 
 // ─── 全員の勤怠表示 ───────────────────────────────────────────────────────

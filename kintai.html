@@ -833,9 +833,9 @@ function renderTaikin() {
         props['有給使用時間'] = { number: parseFloat(checks.yukyuTime) || 0 };
       }
 
-      if (selectedRecord) {
+      if (selectedDateRecord) {
         // 既存レコードを更新
-        await notionAPI('PATCH', `/pages/${selectedRecord.id}`, { properties: props });
+        await notionAPI('PATCH', `/pages/${selectedDateRecord.id}`, { properties: props });
       } else {
         // 出勤も一緒に新規作成
         const s2num = parseInt(syukkin2Digits.join(''));
@@ -957,7 +957,7 @@ async function submitSyukkin() {
     };
     if (checks.yukyu && checks.yukyuTime) props['有給使用時間'] = { number: parseFloat(checks.yukyuTime)||0 };
     const res = await notionAPI('POST', '/pages', { parent: { database_id: KINTAI_DB }, properties: props });
-    selectedRecord = res;
+    selectedDateRecord = res;
     showDone('出勤を記録しました', `${USER.name} · ${formatDate(selectedDate)}`);
   } catch(e) {
     errEl.innerHTML=`<div class="error-box">送信に失敗しました。<br><small>${e.message}</small></div>`;
@@ -1428,7 +1428,7 @@ function showDone(title, sub) {
 // ─── 日付チップ選択 ──────────────────────────────────────────────────────
 async function selectDateChip(iso) {
   selectedDate = iso;
-  selectedRecord = null;
+  selectedDateRecord = null;
   await renderHome();
 }
 

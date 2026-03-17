@@ -403,6 +403,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   <button class="tab-btn active" onclick="switchTab('apply')">申請</button>
   <button class="tab-btn" onclick="switchTab('list')">一覧</button>
   <button class="tab-btn" onclick="switchTab('aggregate')">集計</button>
+  <button class="tab-btn" onclick="switchTab('report')">報告書</button>
 </div>
 
 <!-- ══════════════ 申請タブ ══════════════ -->
@@ -529,6 +530,84 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
   </div>
 </div>
 
+<!-- ══════════════ 報告書タブ ══════════════ -->
+<div id="tab-report" class="tab-content">
+
+  <div class="notice">
+    3か月ごと（<strong>3月・6月・9月・12月</strong>締め）に提出。記録がないと経費計上できません。
+  </div>
+
+  <!-- 提出状況一覧 -->
+  <div class="card" id="report-status-card">
+    <div class="card-label">今期の提出状況</div>
+    <div id="report-status-list">
+      <div class="loading-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    </div>
+  </div>
+
+  <!-- 新規報告書フォーム -->
+  <div class="card" id="report-form-card">
+    <div class="card-label">報告書を提出する</div>
+
+    <div class="form-row">
+      <div class="form-label">社員名 <span class="req">必須</span></div>
+      <select class="form-control" id="rep-staff" onchange="onRepStaffChange()">
+        <option value="">選択してください</option>
+        <option>矢島 明和</option>
+        <option>大田 健</option>
+        <option>中川 颯</option>
+        <option>平野 春之</option>
+        <option>山根 祐司</option>
+        <option>村田 良典</option>
+        <option>岡崎 由美</option>
+        <option>藤井 真理亜</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <div class="form-label">対象期 <span class="req">必須</span></div>
+      <select class="form-control" id="rep-period">
+        <option value="">選択してください</option>
+        <option>１期（1～3月）</option>
+        <option>２期（4～6月）</option>
+        <option>３期（7～9月）</option>
+        <option>４期（10～12月）</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <div class="form-label">評価 <span class="req">必須</span></div>
+      <select class="form-control" id="rep-rating">
+        <option value="">選択してください</option>
+        <option>非常に良かった</option>
+        <option>ちょっと良かった</option>
+        <option>普通</option>
+        <option>微妙</option>
+        <option>全然良くなかった</option>
+        <option>あまり使えなかった</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <div class="form-label">コメント・感想</div>
+      <textarea class="form-control" id="rep-comment" rows="4"
+        placeholder="例：肩こりが軽減して仕事に集中できました&#10;整骨院も対象にしてほしいです"
+        style="height:auto; padding: 10px 12px; resize: none; line-height:1.6;"></textarea>
+    </div>
+
+    <!-- 今期の利用サマリー（自動表示） -->
+    <div id="rep-summary-box" style="display:none; margin-bottom:14px;">
+      <div class="card-label" style="margin-bottom:8px;">今期の利用履歴（自動集計）</div>
+      <div id="rep-summary-content"></div>
+    </div>
+
+    <button class="btn-primary" id="rep-submit-btn" onclick="submitReport()">
+      <svg viewBox="0 0 20 20" fill="#fff" width="20" height="20"><path d="M16.7 5.3a1 1 0 00-1.4 0L8 12.6 4.7 9.3a1 1 0 00-1.4 1.4l4 4a1 1 0 001.4 0l8-8a1 1 0 000-1.4z"/></svg>
+      報告書を提出する
+    </button>
+  </div>
+</div>
+
 <!-- ─── TOAST ─── -->
 <div id="toast"><span class="toast-icon" id="toast-icon">✓</span><span id="toast-msg"></span></div>
 
@@ -547,10 +626,18 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 
 <script>
 const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
-const DB_ID  = '1d0a695f8e8880a6a0f6e1ea80c7a74f';
+const DB_ID       = '1d0a695f8e8880a6a0f6e1ea80c7a74f';
+const REPORT_DB_ID = '1d0a695f8e88802bb1e8ebab1c75c5c8';
 const BUDGET_MAX_MONTHLY = 7700;
 const QUARTER_MONTHS = 3;
 const BUDGET_MAX_QUARTERLY = BUDGET_MAX_MONTHLY * QUARTER_MONTHS;
+
+// 報告書DB：社員名は姓のみのため変換マップ
+const STAFF_TO_LAST = {
+  '矢島 明和': '矢島', '大田 健': '大田', '中川 颯': '中川',
+  '平野 春之': '平野', '山根 祐司': '山根', '村田 良典': '村田',
+  '岡崎 由美': '岡崎', '藤井 真理亜': '藤井'
+};
 
 const CONTENT_ICON = {
   'スポーツジム': '🏋️', 'マッサージ': '💆',
@@ -669,8 +756,9 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
   document.getElementById(`tab-${tab}`).classList.add('active');
-  document.querySelectorAll('.tab-btn')[['apply','list','aggregate'].indexOf(tab)].classList.add('active');
+  document.querySelectorAll('.tab-btn')[['apply','list','aggregate','report'].indexOf(tab)].classList.add('active');
   if (tab === 'list' || tab === 'aggregate') loadAll();
+  if (tab === 'report') initReportTab();
 }
 
 // ─── 社員選択 → 予算表示 ───
@@ -968,6 +1056,174 @@ function renderAggregate() {
       if (m) renderAggregatePeriod(parseInt(m[1]), parseInt(m[2]));
     }
   });
+}
+
+// ─── 報告書 ───
+let reportRecords = [];
+
+async function initReportTab() {
+  // セッションから社員名を自動セット
+  try {
+    const raw = localStorage.getItem('foo_portal_session');
+    if (raw) {
+      const session = JSON.parse(raw);
+      if (session.name && new Date(session.expires) > new Date()) {
+        const sel = document.getElementById('rep-staff');
+        for (let opt of sel.options) {
+          if (opt.value === session.name) { sel.value = session.name; break; }
+        }
+        onRepStaffChange();
+      }
+    }
+  } catch(e) {}
+
+  // 対象期を現在の期に自動セット
+  const now = new Date();
+  const q = getQuarter(now);
+  const periodMap = { 1: '１期（1～3月）', 2: '２期（4～6月）', 3: '３期（7～9月）', 4: '４期（10～12月）' };
+  document.getElementById('rep-period').value = periodMap[q.q] || '';
+
+  await loadReportRecords();
+  renderReportStatus();
+}
+
+async function loadReportRecords() {
+  try {
+    const data = await notionAPI(`databases/${REPORT_DB_ID}/query`, 'POST', {
+      page_size: 100,
+      sorts: [{ property: '提出日', direction: 'descending' }]
+    });
+    reportRecords = data.results.map(p => {
+      const props = p.properties;
+      return {
+        id: p.id,
+        staff: props['社員名']?.select?.name || '',
+        period: props['対象期']?.select?.name || '',
+        rating: props['評価']?.select?.name || '',
+        comment: props['コメント・感想']?.rich_text?.[0]?.plain_text || '',
+        submitDate: props['提出日']?.date?.start || '',
+        submitted: props['提出済チェック']?.checkbox || false,
+      };
+    });
+  } catch(e) {
+    console.error('報告書DB取得エラー:', e);
+  }
+}
+
+function renderReportStatus() {
+  const staffList = ['矢島 明和','大田 健','中川 颯','平野 春之','山根 祐司','村田 良典','岡崎 由美','藤井 真理亜'];
+  const now = new Date();
+  const q = getQuarter(now);
+  const periodMap = { 1: '１期（1～3月）', 2: '２期（4～6月）', 3: '３期（7～9月）', 4: '４期（10～12月）' };
+  const currentPeriod = periodMap[q.q];
+
+  const container = document.getElementById('report-status-list');
+  const rows = staffList.map(fullName => {
+    const lastName = STAFF_TO_LAST[fullName] || fullName;
+    const submitted = reportRecords.find(r =>
+      (r.staff === lastName || r.staff === fullName) && r.period === currentPeriod && r.submitted
+    );
+    return `
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-bottom:0.5px solid var(--border);">
+        <span style="font-size:13px; font-weight:500; color:var(--text);">${fullName}</span>
+        <span class="badge ${submitted ? 'badge-done' : 'badge-pending'}">
+          ${submitted ? '✓ 提出済' : '未提出'}
+        </span>
+      </div>`;
+  });
+  container.innerHTML = rows.join('') +
+    `<div style="font-size:11px; color:var(--text3); margin-top:8px;">対象期：${q.year}年 ${currentPeriod}</div>`;
+}
+
+function onRepStaffChange() {
+  const staff = document.getElementById('rep-staff').value;
+  if (!staff) {
+    document.getElementById('rep-summary-box').style.display = 'none';
+    return;
+  }
+  // 今期の利用サマリーを表示
+  const now = new Date();
+  const q = getQuarter(now);
+  const { start, end } = getPeriodRange(q.year, q.q);
+  const recs = allRecords.filter(r => r.staff === staff && r.date >= start && r.date <= end);
+  const total = recs.reduce((s, r) => s + r.amount, 0);
+
+  const box = document.getElementById('rep-summary-box');
+  const content = document.getElementById('rep-summary-content');
+  if (recs.length === 0) {
+    box.style.display = 'none';
+    return;
+  }
+  box.style.display = 'block';
+  const byContent = {};
+  recs.forEach(r => { byContent[r.content] = (byContent[r.content] || 0) + r.amount; });
+  content.innerHTML = `
+    <div style="background:var(--surface2); border-radius:var(--radius-sm); padding:12px;">
+      ${Object.entries(byContent).map(([k,v]) => `
+        <div style="display:flex; justify-content:space-between; font-size:13px; padding:3px 0;">
+          <span style="color:var(--text2);">${CONTENT_ICON[k]||''} ${k}</span>
+          <span style="font-weight:500; color:var(--text);">¥${v.toLocaleString()}</span>
+        </div>`).join('')}
+      <div style="border-top:0.5px solid var(--border); margin-top:8px; padding-top:8px; display:flex; justify-content:space-between; font-size:13px; font-weight:600;">
+        <span style="color:var(--text2);">合計</span>
+        <span style="color:var(--amber);">¥${total.toLocaleString()}</span>
+      </div>
+    </div>`;
+}
+
+async function submitReport() {
+  const staff   = document.getElementById('rep-staff').value;
+  const period  = document.getElementById('rep-period').value;
+  const rating  = document.getElementById('rep-rating').value;
+  const comment = document.getElementById('rep-comment').value.trim();
+
+  if (!staff || !period || !rating) {
+    showToast('社員名・対象期・評価は必須です', '⚠️'); return;
+  }
+
+  // 既に提出済みかチェック
+  const lastName = STAFF_TO_LAST[staff] || staff;
+  const already = reportRecords.find(r =>
+    (r.staff === lastName || r.staff === staff) && r.period === period && r.submitted
+  );
+  if (already) {
+    showToast('この期はすでに提出済みです', '⚠️'); return;
+  }
+
+  const btn = document.getElementById('rep-submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span>提出中...</span>';
+
+  const today = new Date().toISOString().slice(0,10);
+  const title = `${lastName}｜${period}｜${today}`;
+
+  try {
+    await notionAPI(`pages`, 'POST', {
+      parent: { database_id: REPORT_DB_ID },
+      properties: {
+        '名前':       { title: [{ text: { content: title } }] },
+        '社員名':     { select: { name: lastName } },
+        '対象期':     { select: { name: period } },
+        '評価':       { select: { name: rating } },
+        'コメント・感想': { rich_text: [{ text: { content: comment } }] },
+        '提出日':     { date: { start: today } },
+        '提出済チェック': { checkbox: true },
+      }
+    });
+    showToast('報告書を提出しました！', '✓');
+    // フォームをリセット
+    document.getElementById('rep-rating').value = '';
+    document.getElementById('rep-comment').value = '';
+    // 一覧を更新
+    await loadReportRecords();
+    renderReportStatus();
+  } catch(e) {
+    showToast('提出に失敗しました', '✕');
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg viewBox="0 0 20 20" fill="#fff" width="20" height="20"><path d="M16.7 5.3a1 1 0 00-1.4 0L8 12.6 4.7 9.3a1 1 0 00-1.4 1.4l4 4a1 1 0 001.4 0l8-8a1 1 0 000-1.4z"/></svg>報告書を提出する`;
+  }
 }
 
 // ─── TOAST ───

@@ -123,6 +123,8 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 .action-card:active { transform:scale(0.97); }
 .action-card.available { border-color:var(--accent); background:rgba(240,165,0,0.08); }
 .action-card.disabled { opacity:0.4; cursor:default; pointer-events:none; }
+.action-card.recorded { border-color:var(--green); background:rgba(34,197,94,0.06); cursor:pointer; }
+.action-card.recorded:active { transform:scale(0.97); }
 .action-icon { margin:0 auto 8px; }
 .action-icon svg { width:24px; height:24px; }
 .action-name { font-size:13px; font-weight:700; color:var(--text); }
@@ -472,8 +474,6 @@ async function renderHome() {
         </div>
       </div>
 
-      ${!isToday&&!isOld ? `<div class="info-box">⚠️ ${formatDate(selectedDate)}の打刻を修正・追記します</div>` : ''}
-
       ${isOld ? `
       <div class="request-old">
         <strong>⛔ 6日以上前の打刻は直接入力できません</strong><br>
@@ -495,23 +495,23 @@ async function renderHome() {
       </div>` : `
       <div class="screen-label">打刻</div>
       <div class="action-grid">
-        <div class="action-card ${!syukkinDisp?'available':''}" onclick="${!syukkinDisp?'goSyukkin()':''}">
+        <div class="action-card ${!syukkinDisp?'available':'recorded'}" onclick="${syukkinDisp?'goModify(\'syukkin\',\''+syukkinDisp+'\')':'goSyukkin()'}">
           <div class="action-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="${!syukkinDisp?'var(--accent)':'var(--muted)'}" stroke-width="1.6" stroke-linecap="round">
+            <svg viewBox="0 0 24 24" fill="none" stroke="${!syukkinDisp?'var(--accent)':'var(--green)'}" stroke-width="1.6" stroke-linecap="round">
               <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
             </svg>
           </div>
-          <div class="action-name ${!syukkinDisp?'accent':''}">${syukkinDisp?'出勤済み':'出勤打刻'}</div>
-          <div class="action-sub">${syukkinDisp?syukkinDisp+' 記録済み':'タップして入力'}</div>
+          <div class="action-name ${!syukkinDisp?'accent':''}" style="${syukkinDisp?'color:var(--green)':''}">${syukkinDisp?'出勤済み':'出勤打刻'}</div>
+          <div class="action-sub">${syukkinDisp?syukkinDisp+' ✎ タップで修正':'タップして入力'}</div>
         </div>
-        <div class="action-card ${!taikinDisp?'available':''}" onclick="${!taikinDisp?'goTaikin()':''}">
+        <div class="action-card ${!taikinDisp?'available':'recorded'}" onclick="${taikinDisp?'goModify(\'taikin\',\''+taikinDisp+'\')':'goTaikin()'}">
           <div class="action-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="${!taikinDisp?'var(--accent)':'var(--muted)'}" stroke-width="1.6" stroke-linecap="round">
+            <svg viewBox="0 0 24 24" fill="none" stroke="${!taikinDisp?'var(--accent)':'var(--green)'}" stroke-width="1.6" stroke-linecap="round">
               <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 8 14"/>
             </svg>
           </div>
-          <div class="action-name ${!taikinDisp?'accent':''}">${taikinDisp?'退勤済み':'退勤打刻'}</div>
-          <div class="action-sub">${taikinDisp?taikinDisp+' 記録済み':'タップして入力'}</div>
+          <div class="action-name ${!taikinDisp?'accent':''}" style="${taikinDisp?'color:var(--green)':''}">${taikinDisp?'退勤済み':'退勤打刻'}</div>
+          <div class="action-sub">${taikinDisp?taikinDisp+' ✎ タップで修正':'タップして入力'}</div>
         </div>
       </div>
       ${!syukkinDisp&&!taikinDisp&&isToday ? `
@@ -559,6 +559,107 @@ function selectKintaiDate(iso) {
   selectedDate = iso;
   renderHome();
 }
+// ─── 時刻修正画面 ─────────────────────────────────────────────────────────
+function goModify(type, currentTime) {
+  // 現在の時刻をテンキーにセット（例：09:00 → ['0','9','0','0']）
+  const clean = currentTime.replace(':', '');
+  timeDigits = clean.split('').slice(0, 4);
+  checks = { yukyu:false, yukyuTime:'', kekkin:false, rousai:false };
+  memo = '';
+  renderModify(type, currentTime);
+}
+
+function renderModify(type, currentTime) {
+  const label = type === 'syukkin' ? '出勤' : '退勤';
+  showPage('syukkin'); // 出勤ページを流用
+  const el = document.getElementById('syukkin-content');
+
+  // テンキー初期表示
+  const initS = timeDigits.join('').padEnd(4, '_');
+  const initDisp = `${initS.slice(0,2)}:${initS.slice(2,4)}`;
+
+  el.innerHTML = `
+    <div class="content">
+      <div class="screen-label">${label}時刻を修正</div>
+      <div class="screen-title">${label}<span style="color:var(--accent);">時刻を変更</span></div>
+      <div class="info-box" style="margin-bottom:12px;">
+        現在の記録：<strong style="color:var(--accent2);font-family:'DM Mono',monospace;">${currentTime}</strong>
+        → 新しい時刻を入力してください
+      </div>
+      <div class="time-disp focus" id="modify-disp">
+        <div class="time-val" id="modify-val">${initDisp}</div>
+        <div class="time-unit">4桁で入力（例：${type==='syukkin'?'0830':'1730'}）</div>
+      </div>
+      <div class="numpad" id="numpad-modify">${buildNumpadHTML()}</div>
+      <div id="modify-error"></div>
+      <button class="btn-primary" id="modify-submit-btn" onclick="submitModify('${type}')" ${timeDigits.length===4?'':'disabled'}>
+        ${label}時刻を更新する
+      </button>
+      <button class="btn-secondary" onclick="renderHome()">← キャンセル</button>
+    </div>`;
+
+  // テンキーバインド
+  document.getElementById('numpad-modify').querySelectorAll('.np-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const v = btn.dataset.val;
+      if (v === 'del') { timeDigits.pop(); }
+      else if (v && timeDigits.length < 4) { timeDigits.push(v); }
+      const s = timeDigits.join('').padEnd(4, '_');
+      const dv = document.getElementById('modify-val');
+      if (dv) {
+        dv.className = timeDigits.length === 0 ? 'time-val empty' : 'time-val';
+        dv.textContent = `${s.slice(0,2)}:${s.slice(2,4)}`;
+      }
+      const submitBtn = document.getElementById('modify-submit-btn');
+      if (submitBtn) submitBtn.disabled = timeDigits.length < 4;
+    });
+  });
+}
+
+async function submitModify(type) {
+  if (timeDigits.length < 4) return;
+  const num = parseInt(timeDigits.join(''));
+  const h = Math.floor(num / 100), m = num % 100;
+  const errEl = document.getElementById('modify-error');
+
+  if (h > 23 || m > 59) {
+    errEl.innerHTML = '<div class="error-box">時刻が正しくありません（例：0830）</div>';
+    return;
+  }
+
+  const btn = document.getElementById('modify-submit-btn');
+  btn.disabled = true;
+  btn.textContent = '更新中…';
+
+  try {
+    const field = type === 'syukkin' ? '出勤' : '退勤';
+    const props = {};
+    props[field] = { number: num };
+
+    if (selectedDateRecord) {
+      // 既存レコードを上書き更新
+      await notionAPI('PATCH', `/pages/${selectedDateRecord.id}`, { properties: props });
+    } else {
+      // レコードがない場合は新規作成（退勤のみ先に入力するケース）
+      props['タイトル'] = { title: [{ text: { content: `${selectedDate} - ${USER.name}` } }] };
+      props['社員名'] = { select: { name: USER.name } };
+      props['日付'] = { date: { start: selectedDate } };
+      const res = await notionAPI('POST', '/pages', {
+        parent: { database_id: KINTAI_DB }, properties: props
+      });
+      selectedDateRecord = res;
+    }
+
+    const label = type === 'syukkin' ? '出勤' : '退勤';
+    const timeStr = `${String(Math.floor(num/100)).padStart(2,'0')}:${String(num%100).padStart(2,'0')}`;
+    showDone(`${label}時刻を ${timeStr} に更新しました`, `${USER.name} · ${formatDate(selectedDate)}`);
+  } catch(e) {
+    errEl.innerHTML = `<div class="error-box">更新に失敗しました。<br><small>${e.message}</small></div>`;
+    btn.disabled = false;
+    btn.textContent = '時刻を更新する';
+  }
+}
+
 // ─── 出勤打刻画面 ──────────────────────────────────────────────────────────
 function goSyukkin() {
   timeDigits = []; checks = { yukyu:false, yukyuTime:'', kekkin:false, rousai:false }; memo = '';

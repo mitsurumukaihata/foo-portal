@@ -749,7 +749,8 @@ async function loadAll() {
     renderList();
     renderAggregate();
   } catch(e) {
-    console.error('loadAll error:', e); showToast('取得失敗: ' + e.message.slice(0,40), '✕');
+    console.error(e);
+    showToast('データ取得に失敗しました', '✕');
   }
 }
 

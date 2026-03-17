@@ -63,8 +63,38 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 .loading-wrap { text-align:center; padding:48px 20px; }
 .loading-text { font-size:13px; color:var(--muted); }
 
-/* ── 認証エラー ── */
-#auth-error { min-height:100vh; display:flex; flex-direction:column; justify-content:center; padding:32px 24px; }
+/* ── ナビタブ ── */
+.nav { display:flex; background:var(--s1); border-bottom:0.5px solid var(--border); }
+.nav-btn { flex:1; padding:10px 6px 8px; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--muted); font-size:12px; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; }
+.nav-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+/* ── 日付選択 ── */
+.date-selector { display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:16px; scrollbar-width:none; }
+.date-selector::-webkit-scrollbar { display:none; }
+.date-chip { flex-shrink:0; background:var(--s2); border:1.5px solid var(--border); border-radius:20px; padding:7px 14px; font-size:12px; font-weight:500; color:var(--muted); cursor:pointer; transition:all 0.15s; text-align:center; }
+.date-chip:active { transform:scale(0.97); }
+.date-chip.active { border-color:var(--accent); background:rgba(240,165,0,0.1); color:var(--accent); }
+.date-chip .dc-date { font-family:'DM Mono',monospace; font-size:13px; font-weight:700; }
+.date-chip .dc-day { font-size:10px; margin-top:1px; }
+
+/* ── 全員閲覧 ── */
+.view-tabs { display:flex; gap:6px; margin-bottom:14px; }
+.view-tab { flex:1; padding:9px; background:var(--s2); border:1.5px solid var(--border); border-radius:8px; font-size:12px; font-weight:700; color:var(--muted); cursor:pointer; text-align:center; transition:all 0.12s; }
+.view-tab.active { border-color:var(--accent); background:rgba(240,165,0,0.1); color:var(--accent); }
+
+.kintai-row { display:flex; align-items:center; padding:10px 0; border-bottom:0.5px solid var(--border); gap:10px; }
+.kintai-row:last-child { border-bottom:none; }
+.kr-avatar { width:28px; height:28px; border-radius:50%; background:var(--accent); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; flex-shrink:0; }
+.kr-name { font-size:13px; font-weight:700; color:var(--text); flex:1; }
+.kr-time { font-family:'DM Mono',monospace; font-size:13px; color:var(--text); text-align:right; }
+.kr-badge { font-size:10px; font-weight:700; padding:2px 8px; border-radius:20px; }
+.badge-ok { background:rgba(34,197,94,0.15); color:var(--green); }
+.badge-mid { background:rgba(240,165,0,0.12); color:var(--accent2); }
+.badge-none { background:var(--s3); color:var(--muted); }
+.badge-shiteikyu { background:rgba(59,130,246,0.12); color:var(--blue); }
+
+/* ── 修正依頼 ── */
+.request-old { background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); border-radius:10px; padding:14px; margin-bottom:16px; font-size:12px; color:var(--red); line-height:1.8; }
 
 /* ── ホーム画面 ── */
 .user-row { display:flex; align-items:center; gap:10px; margin-bottom:16px; padding-bottom:16px; border-bottom:0.5px solid var(--border); }
@@ -190,6 +220,10 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
     </div>
     <div class="header-title">勤怠<span>打刻</span></div>
   </div>
+  <div class="nav">
+    <button class="nav-btn active" onclick="switchKintaiTab('home')">打刻</button>
+    <button class="nav-btn" onclick="switchKintaiTab('all')">全員確認</button>
+  </div>
 
   <!-- ホーム -->
   <div class="page active" id="page-home">
@@ -211,6 +245,16 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
     <div id="shiteikyu-content"></div>
   </div>
 
+  <!-- 全員の勤怠閲覧 -->
+  <div class="page" id="page-all">
+    <div id="all-content"></div>
+  </div>
+
+  <!-- 修正依頼 -->
+  <div class="page" id="page-request">
+    <div id="request-content"></div>
+  </div>
+
   <!-- 完了 -->
   <div class="page" id="page-done">
     <div id="done-content"></div>
@@ -225,19 +269,27 @@ const SESSION_KEY  = 'foo_portal_session';
 const SESSION_DAYS = 30;
 
 // ─── 状態 ──────────────────────────────────────────────────────────────────
+const ADMIN_EMAIL = '333226666mm@gmail.com';
 let USER = null;
-let todayRecord = null; // 今日のレコード（出勤済みなら存在）
+let todayRecord = null;
+let selectedDate = ''; // 打刻対象日付（デフォルト今日）
+let selectedDateRecord = null; // 選択日のレコード
 
 // 打刻入力状態
 let timeDigits = [];
 let checks = { yukyu: false, yukyuTime: '', kekkin: false, rousai: false };
 let memo = '';
 
+// 全員閲覧状態
+let allViewMode = 'date'; // 'date' | 'staff'
+let allViewDate = '';
+let allViewStaff = '';
+
 // カレンダー状態
 let calYear = 0, calMonth = 0;
-let calSelectedDates = new Set();   // 今回新規選択（新規登録予定）
-let calToDeleteDates = new Set();   // 登録済み→クリックで削除予定
-let calRegisteredDates = new Set(); // Notionから取得済みの指定休日
+let calSelectedDates = new Set();
+let calToDeleteDates = new Set();
+let calRegisteredDates = new Set();
 
 // ─── セッション ────────────────────────────────────────────────────────────
 function loadSession() {
@@ -300,35 +352,68 @@ function showPage(id) {
   window.scrollTo(0,0);
 }
 
+// ─── タブ切替 ────────────────────────────────────────────────────────────
+function switchKintaiTab(tab) {
+  document.querySelectorAll('.nav-btn').forEach((b,i) => {
+    b.classList.toggle('active', ['home','all'][i] === tab);
+  });
+  if (tab === 'home') { selectedDate = todayStr(); renderHome(); }
+  else { renderAll(); }
+}
+
+// ─── 過去5日の日付リスト ───────────────────────────────────────────────────
+function getLast5Days() {
+  const days = []; const today = new Date(); today.setHours(0,0,0,0);
+  const dayNames = ['日','月','火','水','木','金','土'];
+  for (let i=0; i<6; i++) {
+    const d = new Date(today); d.setDate(today.getDate() - i);
+    const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    days.push({ iso, label: i===0?'今日':i===1?'昨日':`${i}日前`, day: dayNames[d.getDay()], d: `${d.getMonth()+1}/${d.getDate()}` });
+  }
+  return days;
+}
+
 // ─── ホーム画面 ───────────────────────────────────────────────────────────
 async function renderHome() {
+  if (!selectedDate) selectedDate = todayStr();
   showPage('home');
   const el = document.getElementById('home-content');
-  el.innerHTML = `<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">今日の記録を確認中…</div></div>`;
+  el.innerHTML = `<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">${selectedDate}の記録を確認中…</div></div>`;
 
   try {
-    // 今日のレコードを検索
     const res = await notionAPI('POST', `/databases/${KINTAI_DB}/query`, {
       filter: {
         and: [
           { property: '社員名', select: { equals: USER.name } },
-          { property: '日付', date: { equals: todayStr() } },
+          { property: '日付', date: { equals: selectedDate } },
           { property: '指定休', checkbox: { equals: false } }
         ]
-      },
-      page_size: 1
+      }, page_size: 1
     });
-    todayRecord = res.results && res.results.length > 0 ? res.results[0] : null;
-  } catch(e) {
-    todayRecord = null;
-  }
+    selectedDateRecord = res.results?.length > 0 ? res.results[0] : null;
+    if (selectedDate === todayStr()) todayRecord = selectedDateRecord;
+  } catch(e) { selectedDateRecord = null; }
 
-  const syukkin = todayRecord?.properties?.['出勤']?.number;
-  const taikin  = todayRecord?.properties?.['退勤']?.number;
+  const syukkin = selectedDateRecord?.properties?.['出勤']?.number;
+  const taikin  = selectedDateRecord?.properties?.['退勤']?.number;
   const syukkinDisp = timeToDisp(syukkin);
   const taikinDisp  = timeToDisp(taikin);
-
   const initial = USER.name.replace(/\s/g,'').slice(-1);
+  const days = getLast5Days();
+  const isToday = selectedDate === todayStr();
+
+  // 6日以上前かチェック
+  const selD = new Date(selectedDate); selD.setHours(0,0,0,0);
+  const todayD = new Date(todayStr()); todayD.setHours(0,0,0,0);
+  const diffDays = Math.round((todayD - selD) / 86400000);
+  const isOld = diffDays > 5;
+
+  const dateChips = days.map(d =>
+    `<div class="date-chip${selectedDate===d.iso?' active':''}" onclick="selectKintaiDate('${d.iso}')">
+      <div class="dc-date">${d.d}</div>
+      <div class="dc-day">${d.label}（${d.day}）</div>
+    </div>`
+  ).join('');
 
   el.innerHTML = `
     <div class="content">
@@ -336,59 +421,80 @@ async function renderHome() {
         <div class="avatar">${initial}</div>
         <div>
           <div class="user-name-text">${USER.name}</div>
-          <div class="user-date-text">${formatDate(todayStr())}</div>
+          <div class="user-date-text">${formatDate(selectedDate)}</div>
         </div>
       </div>
+
+      <div class="screen-label">日付を選択（過去5日まで入力可）</div>
+      <div class="date-selector">${dateChips}</div>
 
       <div class="today-card">
         <div class="today-row">
           <div class="today-item">
             <div class="today-label">出勤</div>
-            <div class="today-time ${syukkinDisp ? 'done' : 'empty'}">${syukkinDisp || '未打刻'}</div>
-            <div class="today-status ${syukkinDisp ? 'status-done' : 'status-empty'}">${syukkinDisp ? '記録済み' : '—'}</div>
+            <div class="today-time ${syukkinDisp?'done':'empty'}">${syukkinDisp||'未打刻'}</div>
+            <div class="today-status ${syukkinDisp?'status-done':'status-empty'}">${syukkinDisp?'記録済み':'—'}</div>
           </div>
           <div class="today-div"></div>
           <div class="today-item">
             <div class="today-label">退勤</div>
-            <div class="today-time ${taikinDisp ? 'done' : 'empty'}">${taikinDisp || '未打刻'}</div>
-            <div class="today-status ${taikinDisp ? 'status-done' : 'status-empty'}">${taikinDisp ? '記録済み' : '—'}</div>
+            <div class="today-time ${taikinDisp?'done':'empty'}">${taikinDisp||'未打刻'}</div>
+            <div class="today-status ${taikinDisp?'status-done':'status-empty'}">${taikinDisp?'記録済み':'—'}</div>
           </div>
         </div>
       </div>
 
+      ${!isToday&&!isOld ? `<div class="info-box">⚠️ ${formatDate(selectedDate)}の打刻を修正・追記します</div>` : ''}
+
+      ${isOld ? `
+      <div class="request-old">
+        <strong>⛔ 6日以上前の打刻は直接入力できません</strong><br>
+        修正が必要な場合は社長（向畑）に修正依頼を送ってください。<br>
+        過去の打刻を管理するのは労基法上も大切なことです。
+      </div>
+      <div class="shiteikyu-btn" onclick="goRequest('${selectedDate}','${syukkinDisp||''}','${taikinDisp||''}')">
+        <div class="shiteikyu-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+          </svg>
+        </div>
+        <div class="shiteikyu-text">
+          <div class="shiteikyu-name">修正依頼を送る</div>
+          <div class="shiteikyu-sub">Gmailで社長に通知が届きます</div>
+        </div>
+        <div style="color:var(--muted);font-size:18px;">›</div>
+      </div>` : `
       <div class="screen-label">打刻</div>
       <div class="action-grid">
-        <div class="action-card ${!syukkinDisp ? 'available' : 'disabled'}" onclick="${!syukkinDisp ? 'goSyukkin()' : ''}">
+        <div class="action-card ${!syukkinDisp?'available':''}" onclick="${!syukkinDisp?'goSyukkin()':''}">
           <div class="action-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="${!syukkinDisp ? 'var(--accent)' : 'var(--muted)'}" stroke-width="1.6" stroke-linecap="round">
-              <circle cx="12" cy="12" r="10"/>
-              <polyline points="12 6 12 12 16 14"/>
+            <svg viewBox="0 0 24 24" fill="none" stroke="${!syukkinDisp?'var(--accent)':'var(--muted)'}" stroke-width="1.6" stroke-linecap="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
             </svg>
           </div>
-          <div class="action-name ${!syukkinDisp ? 'accent' : ''}">${syukkinDisp ? '出勤済み' : '出勤打刻'}</div>
-          <div class="action-sub">${syukkinDisp ? syukkinDisp + ' 記録済み' : 'タップして入力'}</div>
+          <div class="action-name ${!syukkinDisp?'accent':''}">${syukkinDisp?'出勤済み':'出勤打刻'}</div>
+          <div class="action-sub">${syukkinDisp?syukkinDisp+' 記録済み':'タップして入力'}</div>
         </div>
-        <div class="action-card ${syukkinDisp && !taikinDisp ? 'available' : taikinDisp ? 'disabled' : ''}" onclick="${syukkinDisp && !taikinDisp ? 'goTaikin()' : !syukkinDisp ? 'goTaikin()' : ''}">
+        <div class="action-card ${!taikinDisp?'available':''}" onclick="${!taikinDisp?'goTaikin()':''}">
           <div class="action-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="${taikinDisp ? 'var(--muted)' : 'var(--accent)'}" stroke-width="1.6" stroke-linecap="round">
-              <circle cx="12" cy="12" r="10"/>
-              <polyline points="12 6 12 12 8 14"/>
+            <svg viewBox="0 0 24 24" fill="none" stroke="${!taikinDisp?'var(--accent)':'var(--muted)'}" stroke-width="1.6" stroke-linecap="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 8 14"/>
             </svg>
           </div>
-          <div class="action-name ${!taikinDisp ? 'accent' : ''}">${taikinDisp ? '退勤済み' : '退勤打刻'}</div>
-          <div class="action-sub">${taikinDisp ? taikinDisp + ' 記録済み' : 'タップして入力'}</div>
+          <div class="action-name ${!taikinDisp?'accent':''}">${taikinDisp?'退勤済み':'退勤打刻'}</div>
+          <div class="action-sub">${taikinDisp?taikinDisp+' 記録済み':'タップして入力'}</div>
         </div>
       </div>
-
-      ${!syukkinDisp && !taikinDisp ? `
+      ${!syukkinDisp&&!taikinDisp&&isToday ? `
       <div class="kyukei-note">
         <strong style="color:var(--accent2);">休憩時間について</strong><br>
         休憩1時間未満の場合は退勤時刻をずらして入力してください<br>
         例）実働9:30〜15:00（休憩30分）→ <strong>打刻は15:30</strong><br>
         備考欄に実際の休憩時間を記入
-      </div>` : ''}
+      </div>` : ''}`}
 
-      <div class="screen-label" style="margin-top:4px;">指定休</div>
+      <div class="screen-label" style="margin-top:8px;">その他</div>
       <div class="shiteikyu-btn" onclick="goShiteikyu()">
         <div class="shiteikyu-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -405,9 +511,26 @@ async function renderHome() {
         </div>
         <div style="color:var(--muted);font-size:18px;">›</div>
       </div>
+      <div class="shiteikyu-btn" onclick="goRequest('','','')">
+        <div class="shiteikyu-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+          </svg>
+        </div>
+        <div class="shiteikyu-text">
+          <div class="shiteikyu-name">6日以上前の修正依頼</div>
+          <div class="shiteikyu-sub">社長にGmailで連絡を送る</div>
+        </div>
+        <div style="color:var(--muted);font-size:18px;">›</div>
+      </div>
     </div>`;
 }
 
+function selectKintaiDate(iso) {
+  selectedDate = iso;
+  renderHome();
+}
 // ─── 出勤打刻画面 ──────────────────────────────────────────────────────────
 function goSyukkin() {
   timeDigits = []; checks = { yukyu:false, yukyuTime:'', kekkin:false, rousai:false }; memo = '';
@@ -429,7 +552,7 @@ function goTaikin() {
 
 function renderTaikin() {
   showPage('taikin');
-  const syukkin = todayRecord?.properties?.['出勤']?.number;
+  const syukkin = selectedDateRecord?.properties?.['出勤']?.number;
   const hasSyukkin = syukkin !== undefined && syukkin !== null;
   const el = document.getElementById('taikin-content');
 
@@ -569,20 +692,20 @@ function renderTaikin() {
         props['有給使用時間'] = { number: parseFloat(checks.yukyuTime) || 0 };
       }
 
-      if (todayRecord) {
+      if (selectedRecord) {
         // 既存レコードを更新
-        await notionAPI('PATCH', `/pages/${todayRecord.id}`, { properties: props });
+        await notionAPI('PATCH', `/pages/${selectedRecord.id}`, { properties: props });
       } else {
         // 出勤も一緒に新規作成
         const s2num = parseInt(syukkin2Digits.join(''));
         props['社員名'] = { select: { name: USER.name } };
-        props['日付'] = { date: { start: todayStr() } };
+        props['日付'] = { date: { start: selectedDate } };
         props['出勤'] = { number: s2num };
-        props['タイトル'] = { title: [{ text: { content: `${todayStr()} - ${USER.name}` } }] };
+        props['タイトル'] = { title: [{ text: { content: `${selectedDate} - ${USER.name}` } }] };
         await notionAPI('POST', '/pages', { parent: { database_id: KINTAI_DB }, properties: props });
       }
 
-      showDone('退勤を記録しました', `${USER.name} · ${formatDate(todayStr())}`);
+      showDone('退勤を記録しました', `${USER.name} · ${formatDate(selectedDate)}`);
     } catch(e) {
       errEl.innerHTML = `<div class="error-box">送信に失敗しました。<br><small>${e.message}</small></div>`;
       btn.disabled = false; btn.textContent = '退勤を記録する';
@@ -682,9 +805,9 @@ async function submitSyukkin() {
   btn.disabled = true; btn.textContent='送信中…';
   try {
     const props = {
-      'タイトル': { title: [{ text: { content: `${todayStr()} - ${USER.name}` } }] },
+      'タイトル': { title: [{ text: { content: `${selectedDate} - ${USER.name}` } }] },
       '社員名': { select: { name: USER.name } },
-      '日付': { date: { start: todayStr() } },
+      '日付': { date: { start: selectedDate } },
       '出勤': { number: num },
       '有給使用': { checkbox: checks.yukyu },
       '欠勤': { checkbox: checks.kekkin },
@@ -693,8 +816,8 @@ async function submitSyukkin() {
     };
     if (checks.yukyu && checks.yukyuTime) props['有給使用時間'] = { number: parseFloat(checks.yukyuTime)||0 };
     const res = await notionAPI('POST', '/pages', { parent: { database_id: KINTAI_DB }, properties: props });
-    todayRecord = res;
-    showDone('出勤を記録しました', `${USER.name} · ${formatDate(todayStr())}`);
+    selectedRecord = res;
+    showDone('出勤を記録しました', `${USER.name} · ${formatDate(selectedDate)}`);
   } catch(e) {
     errEl.innerHTML=`<div class="error-box">送信に失敗しました。<br><small>${e.message}</small></div>`;
     btn.disabled=false; btn.textContent='出勤を記録する';
@@ -907,6 +1030,243 @@ async function submitShiteikyu() {
   }
 }
 
+// ─── 全員閲覧タブ ────────────────────────────────────────────────────────
+const ALL_STAFF = ['矢島 明和','大田 健','中川 颯','平野 春之','山根 祐司','村田 良典','岡崎 由美','藤井 真理亜'];
+
+async function renderAll() {
+  showPage('all');
+  if (!allViewDate) allViewDate = todayStr();
+  if (!allViewStaff) allViewStaff = ALL_STAFF[0];
+  const el = document.getElementById('all-content');
+  el.innerHTML = `<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">取得中…</div></div>`;
+
+  try {
+    let filter, title;
+    if (allViewMode === 'date') {
+      filter = { property: '日付', date: { equals: allViewDate } };
+      title = formatDate(allViewDate);
+    } else {
+      // 直近7日の社員別
+      const past7 = new Date(); past7.setDate(past7.getDate()-6);
+      const past7str = `${past7.getFullYear()}-${String(past7.getMonth()+1).padStart(2,'0')}-${String(past7.getDate()).padStart(2,'0')}`;
+      filter = { and: [
+        { property: '社員名', select: { equals: allViewStaff } },
+        { property: '日付', date: { on_or_after: past7str } }
+      ]};
+      title = allViewStaff + '（直近7日）';
+    }
+
+    const res = await notionAPI('POST', `/databases/${KINTAI_DB}/query`, {
+      filter, sorts:[{ property:'日付', direction:'descending' }], page_size:30
+    });
+
+    const records = res.results || [];
+
+    // 日付別: 当日の全社員を表示
+    // 社員別: 直近7日を表示
+
+    const dayNames = ['日','月','火','水','木','金','土'];
+
+    let rows = '';
+    if (allViewMode === 'date') {
+      // 全社員分を表示（記録なしも含む）
+      const recordMap = {};
+      records.forEach(r => {
+        const name = r.properties?.['社員名']?.select?.name;
+        if (name) recordMap[name] = r;
+      });
+      rows = ALL_STAFF.map(name => {
+        const r = recordMap[name];
+        const s = r ? timeToDisp(r.properties?.['出勤']?.number) : null;
+        const t = r ? timeToDisp(r.properties?.['退勤']?.number) : null;
+        const isShiteikyu = r?.properties?.['指定休']?.checkbox;
+        const ini = name.replace(/\s/g,'').slice(-1);
+        let badge = '';
+        if (isShiteikyu) badge = `<span class="kr-badge badge-shiteikyu">指定休</span>`;
+        else if (s && t) badge = `<span class="kr-badge badge-ok">退勤済</span>`;
+        else if (s) badge = `<span class="kr-badge badge-mid">出勤中</span>`;
+        else badge = `<span class="kr-badge badge-none">未打刻</span>`;
+        return `<div class="kintai-row">
+          <div class="kr-avatar">${ini}</div>
+          <div class="kr-name">${name}</div>
+          <div class="kr-time">${s?s:'—'} ${t?'→'+t:''}</div>
+          ${badge}
+        </div>`;
+      }).join('');
+    } else {
+      if (records.length === 0) {
+        rows = `<div style="text-align:center;padding:32px;color:var(--muted);font-size:13px;">記録がありません</div>`;
+      } else {
+        rows = records.map(r => {
+          const dateStr = r.properties?.['日付']?.date?.start?.slice(0,10) || '';
+          const s = timeToDisp(r.properties?.['出勤']?.number);
+          const t = timeToDisp(r.properties?.['退勤']?.number);
+          const isShiteikyu = r.properties?.['指定休']?.checkbox;
+          const d = new Date(dateStr);
+          const dayLabel = dateStr ? `${d.getMonth()+1}/${d.getDate()}（${dayNames[d.getDay()]}）` : '';
+          let badge = '';
+          if (isShiteikyu) badge = `<span class="kr-badge badge-shiteikyu">指定休</span>`;
+          else if (s && t) badge = `<span class="kr-badge badge-ok">退勤済</span>`;
+          else if (s) badge = `<span class="kr-badge badge-mid">出勤中</span>`;
+          else badge = `<span class="kr-badge badge-none">未打刻</span>`;
+          return `<div class="kintai-row">
+            <div style="font-family:var(--font-mono,monospace);font-size:12px;color:var(--muted);min-width:70px;">${dayLabel}</div>
+            <div class="kr-time" style="flex:1;">${s?s:'—'} ${t?'→'+t:''}</div>
+            ${badge}
+          </div>`;
+        }).join('');
+      }
+    }
+
+    // 日付選択ボタン（日付別モード用）
+    const days = getLast5Days();
+    const dateChips = days.map(d =>
+      `<div class="date-chip${allViewDate===d.iso?' active':''}" onclick="allSelectDate('${d.iso}')" style="font-size:11px;">
+        <div class="dc-date">${d.d}</div>
+        <div class="dc-day">${d.label}</div>
+      </div>`
+    ).join('');
+
+    // 社員選択ボタン（社員別モード用）
+    const staffBtns = ALL_STAFF.map(name =>
+      `<div class="date-chip${allViewStaff===name?' active':''}" onclick="allSelectStaff('${name}')" style="font-size:11px;padding:5px 10px;">
+        ${name.split(' ')[0]}
+      </div>`
+    ).join('');
+
+    el.innerHTML = `
+      <div class="content">
+        <div class="screen-label">勤怠状況</div>
+        <div class="view-tabs">
+          <div class="view-tab${allViewMode==='date'?' active':''}" onclick="allSwitchMode('date')">日付別</div>
+          <div class="view-tab${allViewMode==='staff'?' active':''}" onclick="allSwitchMode('staff')">社員別</div>
+        </div>
+        ${allViewMode==='date' ? `
+          <div class="date-selector" style="margin-bottom:12px;">${dateChips}</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;">${title}</div>
+        ` : `
+          <div class="date-selector" style="margin-bottom:12px;">${staffBtns}</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;">${title}</div>
+        `}
+        <div>${rows}</div>
+      </div>`;
+  } catch(e) {
+    el.innerHTML = `<div class="content"><div class="error-box">取得に失敗しました。<br><small>${e.message}</small></div></div>`;
+  }
+}
+
+function allSwitchMode(mode) { allViewMode=mode; renderAll(); }
+function allSelectDate(iso) { allViewDate=iso; renderAll(); }
+function allSelectStaff(name) { allViewStaff=name; renderAll(); }
+
+// ─── 修正依頼（Gmail送信）────────────────────────────────────────────────
+function goRequest(date, syukkin, taikin) {
+  showPage('request');
+  const defaultDate = date || '';
+  const el = document.getElementById('request-content');
+  el.innerHTML = `
+    <div class="content">
+      <div class="screen-label">修正依頼</div>
+      <div class="screen-title">社長に<span style="color:var(--accent);">修正依頼</span>を送る</div>
+      <div class="info-box">
+        6日以上前の打刻修正は直接できません。<br>
+        内容を入力して社長（向畑）に通知を送ってください。<br>
+        確認後に修正対応します。
+      </div>
+      <div class="screen-label">対象日付</div>
+      <input type="date" id="req-date" value="${defaultDate}"
+        style="width:100%;background:var(--s2);border:1.5px solid var(--border);border-radius:8px;padding:12px 14px;font-size:14px;color:var(--text);outline:none;margin-bottom:14px;font-family:'DM Mono',monospace;"
+        max="${todayStr()}">
+      <div class="screen-label">修正内容</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">出勤時刻（現在: ${syukkin||'未打刻'}）</div>
+          <input type="text" id="req-syukkin" placeholder="例：0830" maxlength="4"
+            inputmode="numeric"
+            style="width:100%;background:var(--s2);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:16px;font-family:'DM Mono',monospace;color:var(--text);outline:none;">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">退勤時刻（現在: ${taikin||'未打刻'}）</div>
+          <input type="text" id="req-taikin" placeholder="例：1730" maxlength="4"
+            inputmode="numeric"
+            style="width:100%;background:var(--s2);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:16px;font-family:'DM Mono',monospace;color:var(--text);outline:none;">
+        </div>
+      </div>
+      <div class="screen-label">修正理由（必須）</div>
+      <textarea id="req-reason" placeholder="例）打刻を忘れてしまいました。実際の出勤時刻は8:30です。"
+        class="memo-input" style="min-height:80px;"></textarea>
+      <div id="req-error" style="margin-top:8px;"></div>
+      <button class="btn-primary" onclick="submitRequest()" style="margin-top:12px;">
+        <span>社長に修正依頼を送る</span>
+      </button>
+      <button class="btn-secondary" onclick="renderHome()">← 戻る</button>
+    </div>`;
+}
+
+async function submitRequest() {
+  const date   = document.getElementById('req-date')?.value;
+  const syukkin = document.getElementById('req-syukkin')?.value.trim();
+  const taikin  = document.getElementById('req-taikin')?.value.trim();
+  const reason  = document.getElementById('req-reason')?.value.trim();
+  const errEl   = document.getElementById('req-error');
+
+  if (!date) { errEl.innerHTML=`<div class="error-box">対象日付を選択してください</div>`; return; }
+  if (!reason) { errEl.innerHTML=`<div class="error-box">修正理由を入力してください</div>`; return; }
+  if (!syukkin && !taikin) { errEl.innerHTML=`<div class="error-box">出勤または退勤時刻を入力してください</div>`; return; }
+
+  const btn = document.querySelector('#page-request .btn-primary');
+  btn.disabled=true; btn.textContent='送信中…';
+
+  // GmailのAPIでメール送信
+  try {
+    const dayNames = ['日','月','火','水','木','金','土'];
+    const d = new Date(date);
+    const dateLabel = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${dayNames[d.getDay()]}）`;
+    const subject = `【打刻修正依頼】${USER.name} - ${dateLabel}`;
+    const body = [
+      `【打刻修正依頼】`,
+      ``,
+      `社員名：${USER.name}`,
+      `対象日：${dateLabel}`,
+      ``,
+      `【修正内容】`,
+      `出勤時刻：${syukkin ? syukkin.slice(0,2)+':'+syukkin.slice(2,4) : '変更なし'}`,
+      `退勤時刻：${taikin ? taikin.slice(0,2)+':'+taikin.slice(2,4) : '変更なし'}`,
+      ``,
+      `【修正理由】`,
+      reason,
+      ``,
+      `---`,
+      `f.o.o 出勤簿アプリより自動送信`,
+    ].join('\n');
+
+    // Gmail API経由でメール送信（mailto形式でフォールバック）
+    const mailtoUrl = `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+    // fetch で Cloudflare Worker にGmail送信リクエスト
+    const res = await fetch(WORKER_URL + '/send-email', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ to: ADMIN_EMAIL, subject, body })
+    }).catch(() => null);
+
+    // Worker対応していない場合はmailtoにフォールバック
+    if (!res || !res.ok) {
+      // mailtoで開く（ネイティブメールアプリ）
+      window.location.href = mailtoUrl;
+      setTimeout(() => {
+        showDone('修正依頼を送信しました', `${USER.name} → 向畑 充 宛にメールを送りました`);
+      }, 1000);
+      return;
+    }
+
+    showDone('修正依頼を送信しました', `${USER.name} → 向畑 充 宛にGmailを送りました`);
+  } catch(e) {
+    errEl.innerHTML=`<div class="error-box">送信に失敗しました。<br><small>${e.message}</small></div>`;
+    btn.disabled=false; btn.textContent='社長に修正依頼を送る';
+  }
+}
+
 // ─── 完了画面 ─────────────────────────────────────────────────────────────
 function showDone(title, sub) {
   showPage('done');
@@ -923,6 +1283,205 @@ function showDone(title, sub) {
       <button class="btn-secondary" style="margin-top:24px;" onclick="renderHome()">ホームに戻る</button>
     </div>`;
 }
+
+// ─── 日付チップ選択 ──────────────────────────────────────────────────────
+async function selectDateChip(iso) {
+  selectedDate = iso;
+  selectedRecord = null;
+  await renderHome();
+}
+
+// ─── 修正依頼画面 ─────────────────────────────────────────────────────────
+function goIrai(dateStr, syukkin, taikin) {
+  showPage('irai');
+  const el = document.getElementById('irai-content');
+  el.innerHTML = `
+    <div class="content">
+      <div class="screen-label">修正依頼</div>
+      <div class="screen-title">打刻<span style="color:var(--accent);">修正依頼</span></div>
+      <div class="irai-box">
+        <div class="irai-title">対象日: ${formatDate(dateStr)}</div>
+        <div class="irai-sub">
+          現在の記録：出勤 ${syukkin||'未打刻'} ／ 退勤 ${taikin||'未打刻'}<br>
+          修正内容と理由を入力してください。向畑（社長）にメールで通知されます。
+        </div>
+        <textarea class="irai-inp" id="irai-text" placeholder="例）出勤時刻を0830に修正してください。打刻を忘れていました。"></textarea>
+      </div>
+      <div id="irai-error"></div>
+      <button class="btn-irai" id="irai-send-btn" onclick="submitIrai('${dateStr}','${syukkin}','${taikin}')">
+        修正依頼を送信する
+      </button>
+      <button class="btn-secondary" onclick="renderHome()">← 戻る</button>
+    </div>`;
+}
+
+async function submitIrai(dateStr, syukkin, taikin) {
+  const text = document.getElementById('irai-text')?.value.trim();
+  const errEl = document.getElementById('irai-error');
+  if (!text) { errEl.innerHTML = '<div class="error-box">修正内容を入力してください</div>'; return; }
+
+  const btn = document.getElementById('irai-send-btn');
+  btn.disabled = true; btn.textContent = '送信中…';
+
+  const subject = `【打刻修正依頼】${USER.name} / ${dateStr}`;
+  const body = `打刻修正依頼が届きました。
+
+` +
+    `■ 依頼者: ${USER.name}
+` +
+    `■ 対象日: ${formatDate(dateStr)}
+` +
+    `■ 現在の記録
+` +
+    `  出勤: ${syukkin || '未打刻'}
+` +
+    `  退勤: ${taikin || '未打刻'}
+` +
+    `
+■ 修正内容・理由
+${text}
+
+` +
+    `※ Notionの勤怠管理DBを直接修正してください。
+` +
+    `https://www.notion.so/200a695f8e8880b181d8c77b7dde51b5`;
+
+  try {
+    // Anthropic API経由でGmail下書きを作成
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 300,
+        messages: [{
+          role: 'user',
+          content: `次の内容でGmailの下書きを作成してください。作成後「完了」とだけ返してください。\n送信先: ${ADMIN_EMAIL}\n件名: ${subject}\n本文: ${body}`
+        }],
+        mcp_servers: [{ type: 'url', url: 'https://gmail.mcp.claude.com/mcp', name: 'gmail-mcp' }]
+      })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error.message);
+    showDone('修正依頼を送信しました', `向畑（社長）のGmailに下書きが届きました · ${formatDate(dateStr)}`);
+  } catch(e) {
+    errEl.innerHTML = `<div class="error-box">送信に失敗しました。直接社長（向畑）に連絡してください。<br><small>${e.message}</small></div>`;
+    btn.disabled = false; btn.textContent = '修正依頼を送信する';
+  }
+}
+
+// ─── 全員の勤怠表示 ───────────────────────────────────────────────────────
+async function renderAllView() {
+  showPage('all');
+  if (!allViewDate) allViewDate = todayStr();
+  if (!allViewStaff) allViewStaff = STAFF_NAMES[0];
+  const el = document.getElementById('all-content');
+  el.innerHTML = `<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">勤怠データを取得中…</div></div>`;
+
+  try {
+    // 当日の全員分を取得（日付別表示）or 直近7日の1名分（社員別）
+    let filter, records = [];
+    if (allViewMode === 'date') {
+      filter = {
+        and: [
+          { property: '日付', date: { equals: allViewDate } },
+          { property: '指定休', checkbox: { equals: false } }
+        ]
+      };
+    } else {
+      const from = new Date(); from.setDate(from.getDate() - 6);
+      const fromStr = `${from.getFullYear()}-${String(from.getMonth()+1).padStart(2,'0')}-${String(from.getDate()).padStart(2,'0')}`;
+      filter = {
+        and: [
+          { property: '社員名', select: { equals: allViewStaff } },
+          { property: '日付', date: { on_or_after: fromStr } },
+          { property: '日付', date: { on_or_before: todayStr() } }
+        ]
+      };
+    }
+    const res = await notionAPI('POST', `/databases/${KINTAI_DB}/query`, {
+      filter,
+      sorts: [{ property: '日付', direction: 'ascending' }],
+      page_size: 100
+    });
+    records = res.results || [];
+
+    // 日付別タブの日付チップ（過去7日）
+    const recentDates = [];
+    for (let i = 0; i <= 6; i++) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const m = d.getMonth()+1, dd = d.getDate();
+      const dow = ['日','月','火','水','木','金','土'][d.getDay()];
+      recentDates.push({ iso, disp: `${m}/${dd}(${dow})`, label: i===0?'今日':i===1?'昨日':'' });
+    }
+
+    const dateTabs = recentDates.map(d =>
+      `<div class="filter-chip${allViewDate===d.iso&&allViewMode==='date'?' active':''}" onclick="allSetDate('${d.iso}')">${d.disp}</div>`
+    ).join('');
+
+    const staffTabs = STAFF_NAMES.map(n =>
+      `<div class="filter-chip${allViewStaff===n&&allViewMode==='staff'?' active':''}" onclick="allSetStaff('${n}')">${n.split(' ')[0]}</div>`
+    ).join('');
+
+    // レコード描画
+    let rowsHtml = '';
+    if (records.length === 0) {
+      rowsHtml = `<div style="text-align:center;padding:32px;color:var(--muted);font-size:13px;">該当するデータがありません</div>`;
+    } else {
+      rowsHtml = records.map(r => {
+        const p = r.properties;
+        const name    = p['社員名']?.select?.name || '—';
+        const dateVal = p['日付']?.date?.start?.slice(0,10) || '';
+        const syuk    = timeToDisp(p['出勤']?.number);
+        const taik    = timeToDisp(p['退勤']?.number);
+        const isYukyu   = p['有給使用']?.checkbox;
+        const isKekkin  = p['欠勤']?.checkbox;
+        const isShitei  = p['指定休']?.checkbox;
+        return `
+          <div class="kintai-row">
+            <div class="kr-top">
+              <div class="kr-name">${allViewMode==='date' ? name : formatDate(dateVal)}</div>
+              <div style="display:flex;gap:4px;align-items:center;">
+                ${isYukyu  ? '<span class="kr-badge yukyu">有給</span>' : ''}
+                ${isKekkin ? '<span class="kr-badge kekkin">欠勤</span>' : ''}
+                ${isShitei ? '<span class="kr-badge shiteikyu">指定休</span>' : ''}
+              </div>
+            </div>
+            <div class="kr-times">
+              <span class="kr-time-label">出勤</span>
+              <span class="kr-time-val ${syuk?'done':'empty'}">${syuk||'—'}</span>
+              <span style="color:var(--border2);margin:0 4px;">|</span>
+              <span class="kr-time-label">退勤</span>
+              <span class="kr-time-val ${taik?'done':'empty'}">${taik||'—'}</span>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    el.innerHTML = `
+      <div class="content">
+        <div class="screen-label">表示モード</div>
+        <div class="filter-row" style="margin-bottom:8px;">
+          <div class="filter-chip${allViewMode==='date'?' active':''}" onclick="allSetMode('date')">日付別</div>
+          <div class="filter-chip${allViewMode==='staff'?' active':''}" onclick="allSetMode('staff')">社員別</div>
+        </div>
+        ${allViewMode === 'date' ? `
+        <div class="screen-label">日付を選択</div>
+        <div class="filter-row" style="overflow-x:auto;flex-wrap:nowrap;">${dateTabs}</div>` : `
+        <div class="screen-label">社員を選択</div>
+        <div class="filter-row">${staffTabs}</div>`}
+        <div class="screen-label" style="margin-top:4px;">${allViewMode==='date' ? formatDate(allViewDate) : allViewStaff + '（直近7日）'} · ${records.length}件</div>
+        ${rowsHtml}
+      </div>`;
+  } catch(e) {
+    el.innerHTML = `<div class="content"><div class="error-box">取得に失敗しました。<br><small>${e.message}</small></div></div>`;
+  }
+}
+
+function allSetMode(mode) { allViewMode = mode; renderAllView(); }
+function allSetDate(iso) { allViewDate = iso; allViewMode = 'date'; renderAllView(); }
+function allSetStaff(name) { allViewStaff = name; allViewMode = 'staff'; renderAllView(); }
 
 // ─── 初期化 ───────────────────────────────────────────────────────────────
 window.onload = () => {

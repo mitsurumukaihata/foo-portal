@@ -673,8 +673,11 @@ function getPeriodRange(year, q) {
 async function notionAPI(path, method='GET', body=null) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
   if (body) opts.body = JSON.stringify(body);
-  const r = await fetch(`${WORKER}/notion/${path}`, opts);
-  if (!r.ok) throw new Error(`API error: ${r.status}`);
+  const r = await fetch(`${WORKER}/${path}`, opts);
+  if (!r.ok) {
+    const errText = await r.text().catch(() => '');
+    throw new Error(`API error: ${r.status} ${errText}`);
+  }
   return r.json();
 }
 

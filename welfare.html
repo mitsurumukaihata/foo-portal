@@ -626,8 +626,8 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 
 <script>
 const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
-const DB_ID       = '1d0a695f8e8880a6a0f6e1ea80c7a74f';
-const REPORT_DB_ID = '1d0a695f8e88802bb1e8ebab1c75c5c8';
+const DB_ID        = '1d0a695f8e88800cbf9d000b34639045';
+const REPORT_DB_ID = '1d0a695f8e8880a89e39000bf5587d3c';
 const BUDGET_MAX_MONTHLY = 7700;
 const QUARTER_MONTHS = 3;
 const BUDGET_MAX_QUARTERLY = BUDGET_MAX_MONTHLY * QUARTER_MONTHS;
@@ -819,7 +819,7 @@ async function submitApply() {
   try {
     const title = `${staff}｜${content}｜${date}`;
     await notionAPI(`pages`, 'POST', {
-      parent: { database_id: DB_ID },
+      parent: { database_id: '1d0a695f8e8880a6a0f6e1ea80c7a74f' },
       properties: {
         '名前': { title: [{ text: { content: title } }] },
         '社員名': { select: { name: staff } },
@@ -1202,7 +1202,7 @@ async function submitReport() {
 
   try {
     await notionAPI(`pages`, 'POST', {
-      parent: { database_id: REPORT_DB_ID },
+      parent: { database_id: '1d0a695f8e88802bb1e8ebab1c75c5c8' },
       properties: {
         '名前':       { title: [{ text: { content: title } }] },
         '社員名':     { select: { name: lastName } },

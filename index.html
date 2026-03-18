@@ -1307,13 +1307,12 @@ body {
     <div class="cf-field">
       <div class="cf-label">タイヤメーカー</div>
       <div class="cf-multi-wrap" id="cf-maker-wrap">
-        <button class="cf-multi-btn" onclick="toggleMaker(this,'TOYO')">TOYO</button>
-        <button class="cf-multi-btn" onclick="toggleMaker(this,'BS')">BS</button>
-        <button class="cf-multi-btn" onclick="toggleMaker(this,'ダンロップ')">ダンロップ</button>
-        <button class="cf-multi-btn" onclick="toggleMaker(this,'ミシュラン')">ミシュラン</button>
-        <button class="cf-multi-btn" onclick="toggleMaker(this,'ヨコハマ')">ヨコハマ</button>
-        <button class="cf-multi-btn" onclick="toggleMaker(this,'住友')">住友</button>
-        <button class="cf-multi-btn" onclick="toggleMaker(this,'その他')">その他</button>
+        <button class="cf-multi-btn" data-val="TOYO"        onclick="toggleMaker(this)">TOYO</button>
+        <button class="cf-multi-btn" data-val="BRIDGESTONE"  onclick="toggleMaker(this)">BS</button>
+        <button class="cf-multi-btn" data-val="DUNLOP"       onclick="toggleMaker(this)">ダンロップ</button>
+        <button class="cf-multi-btn" data-val="Michelin"     onclick="toggleMaker(this)">ミシュラン</button>
+        <button class="cf-multi-btn" data-val="YOKOHAMA"     onclick="toggleMaker(this)">ヨコハマ</button>
+        <button class="cf-multi-btn" data-val="その他"        onclick="toggleMaker(this)">その他</button>
       </div>
     </div>
     <div style="display:flex;gap:8px;">
@@ -1681,7 +1680,7 @@ function parseCustomer(page) {
     role2:       getProp(p, '役職②', 'select'),
     tel2:        getProp(p, '連絡先②', 'text'),
     telCompany:  getProp(p, '会社連絡先', 'text'),
-    makers:      getProp(p, 'タイヤメーカー', 'multi'),
+    makers:      getProp(p, '取り付けタイヤメーカー', 'multi'),
     studless:    getProp(p, 'スタッドレス', 'select'),
     haki:        getProp(p, '履きつぶし', 'select'),
     pressure:    getProp(p, '空気圧', 'text'),
@@ -2241,7 +2240,7 @@ function removeMapField(type, num) {
   }
 }
 
-function toggleMaker(btn, name) {
+function toggleMaker(btn) {
   btn.classList.toggle('on');
 }
 
@@ -2302,8 +2301,8 @@ function openCustForm(custData) {
 
   // タイヤメーカー
   document.querySelectorAll('.cf-multi-btn').forEach(btn => {
-    const name = btn.textContent.trim();
-    btn.classList.toggle('on', !!(custData?.makers?.includes(name)));
+    const val = btn.dataset.val || btn.textContent.trim();
+    btn.classList.toggle('on', !!(custData?.makers?.includes(val)));
   });
 
   // Mapフィールドリセット
@@ -2351,7 +2350,7 @@ async function saveCustomer() {
   btn.disabled = true;
   btn.textContent = '保存中…';
 
-  const selectedMakers = Array.from(document.querySelectorAll('.cf-multi-btn.on')).map(b => b.textContent.trim());
+  const selectedMakers = Array.from(document.querySelectorAll('.cf-multi-btn.on')).map(b => b.dataset.val || b.textContent.trim());
   const getWorkMap = (n, key) => document.getElementById(`cf-work${n}-${key}`)?.value.trim() || null;
   const storageName = document.getElementById('cf-storage-name')?.value.trim() || null;
   const storageUrl  = document.getElementById('cf-storage-url')?.value.trim()  || null;
@@ -2383,7 +2382,7 @@ async function saveCustomer() {
     '担当者②':     person2el?.value.trim() || null,
     '役職②':       getRole(1),
     '連絡先②':     tel2el?.value.trim() || null,
-    'タイヤメーカー': selectedMakers,
+    '取り付けタイヤメーカー': selectedMakers,
     'スタッドレス': document.getElementById('cf-studless').value || null,
     '履きつぶし':   document.getElementById('cf-hakitsubu').value || null,
     '空気圧':       (() => {
@@ -2410,7 +2409,7 @@ async function saveCustomer() {
     if (val === null || val === undefined) continue;
     if (key === '会社名') {
       notionProps[key] = { title: [{ text: { content: val } }] };
-    } else if (key === 'タイヤメーカー') {
+    } else if (key === '取り付けタイヤメーカー') {
       notionProps[key] = { multi_select: val.map(n => ({ name: n })) };
     } else if (['行','中間管理会社','スタッドレス','履きつぶし','役職①','役職②'].includes(key)) {
       if (val) notionProps[key] = { select: { name: val } };

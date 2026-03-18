@@ -465,6 +465,11 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       </select>
     </div>
 
+    <div class="form-row">
+      <div class="form-label">メモ</div>
+      <input type="text" class="form-control" id="inp-memo" placeholder="任意：補足や備考など" maxlength="200" />
+    </div>
+
     <div class="form-grid">
       <div class="form-row">
         <div class="form-label">利用日 <span class="req">必須</span></div>
@@ -671,24 +676,14 @@ function getPeriodRange(year, q) {
 
 // ─── API ───
 async function notionAPI(path, method='GET', body=null) {
-  const fullUrl = `${WORKER}/${path}`;
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
   if (body) opts.body = JSON.stringify(body);
-  try {
-    const r = await fetch(fullUrl, opts);
-    if (!r.ok) {
-      const errText = await r.text().catch(() => '');
-      // デバッグ：エラー詳細をalertで表示
-      alert(`DEBUG\\nURL: ${fullUrl}\\nStatus: ${r.status}\\nError: ${errText.slice(0,300)}`);
-      throw new Error(`API error: ${r.status} ${errText}`);
-    }
-    return r.json();
-  } catch(e) {
-    if (!e.message.startsWith('API error:')) {
-      alert(`DEBUG Network Error\\nURL: ${fullUrl}\\nError: ${e.message}`);
-    }
-    throw e;
+  const r = await fetch(`${WORKER}/${path}`, opts);
+  if (!r.ok) {
+    const errText = await r.text().catch(() => '');
+    throw new Error(`API error: ${r.status} ${errText}`);
   }
+  return r.json();
 }
 
 async function fetchRecords() {
@@ -711,6 +706,7 @@ function parseRecord(p) {
     name: getTitle('名前'),
     staff: getSelect('社員名'),
     content: getSelect('内容'),
+    memo: props['メモ']?.rich_text?.[0]?.plain_text || '',
     date: getDate('利用日'),
     amount: getNum('金額（税込み）'),
     status: getSelect('状況選択'),
@@ -814,6 +810,7 @@ async function submitApply() {
   const amount  = parseInt(document.getElementById('inp-amount').value);
   const contact = document.getElementById('inp-contact').value;
   const receipt = document.getElementById('chk-receipt').checked;
+  const memo    = document.getElementById('inp-memo').value.trim();
 
   if (!staff || !content || !date || !amount) {
     showToast('必須項目を入力してください', '⚠️'); return;
@@ -839,6 +836,7 @@ async function submitApply() {
         '状況選択': { select: { name: '依頼中' } },
         '承認者への連絡方法': { select: { name: contact } },
         '領収書の有無': { checkbox: receipt },
+        ...(memo ? { 'メモ': { rich_text: [{ text: { content: memo } }] } } : {}),
       }
     });
     showToast('申請を送信しました！', '✓');
@@ -857,6 +855,7 @@ async function submitApply() {
 function resetForm() {
   document.getElementById('inp-staff').value = '';
   document.getElementById('inp-content').value = '';
+  document.getElementById('inp-memo').value = '';
   const now = new Date();
   document.getElementById('inp-date').value = now.toISOString().slice(0,10);
   document.getElementById('inp-amount').value = '';
@@ -896,6 +895,7 @@ function renderList() {
       <div class="record-body">
         <div class="record-name">${r.staff}</div>
         <div class="record-sub">${r.content}　${r.date ? r.date.replace(/-/g,'/') : ''}</div>
+        ${r.memo ? `<div class="record-sub" style="margin-top:2px;color:var(--text2);font-size:12px;">📝 ${r.memo}</div>` : ''}
         ${r.receipt ? `<div class="record-sub" style="margin-top:2px;color:var(--amber);">🧾 領収書あり</div>` : ''}
       </div>
       <div class="record-right">
@@ -926,6 +926,10 @@ function openModal(id) {
       <span class="modal-detail-label">金額（税込）</span>
       <span class="modal-detail-value">¥${r.amount.toLocaleString()}</span>
     </div>
+    ${r.memo ? `<div class="modal-detail-row">
+      <span class="modal-detail-label">メモ</span>
+      <span class="modal-detail-value">${r.memo}</span>
+    </div>` : ''}
     <div class="modal-detail-row">
       <span class="modal-detail-label">連絡方法</span>
       <span class="modal-detail-value">${r.contact || '—'}</span>

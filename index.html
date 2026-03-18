@@ -808,6 +808,12 @@ function launchPortal(user) {
   document.getElementById('portal-avatar').textContent = initials;
   document.getElementById('portal-name').textContent   = user.name;
   document.getElementById('portal-role').textContent   = user.role;
+
+  // 各アプリリンクにユーザー名をURLパラメータとして付与
+  const encodedUser = encodeURIComponent(user.name);
+  document.querySelectorAll('a[href*="auction.html"]').forEach(a => {
+    a.href = 'https://mitsurumukaihata.github.io/foo-portal/auction.html?user=' + encodedUser;
+  });
 }
 
 // ─── 初期化 ──────────────────────────────────────────────────────────────────

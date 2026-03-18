@@ -1169,6 +1169,7 @@ body {
   <div class="ca-header">
     <button class="ca-back-btn" onclick="closeCustApp()">‹</button>
     <div class="ca-title">👤 顧客情報</div>
+    <span id="ca-count-badge" style="font-size:11px;background:rgba(240,165,0,0.15);color:var(--accent);border:1px solid rgba(240,165,0,0.3);border-radius:12px;padding:2px 8px;font-weight:700;display:none;"></span>
     <button class="ca-new-btn" onclick="openCustForm(null)">+ 新規</button>
   </div>
 
@@ -1260,12 +1261,12 @@ body {
         <option>ふそう東</option><option>ふそう西</option>
       </select>
     </div>
-    <!-- 中間担当者ドロップダウン -->
-    <div class="cf-field" id="cf-mgmt-person-wrap" style="display:none;">
-      <div class="cf-label">中間担当者</div>
-      <select class="cf-select" id="cf-mgmt-person">
-        <option value="">選択してください</option>
-      </select>
+    <!-- 中間担当者（参照表示のみ・保存対象外） -->
+    <div id="cf-mgmt-person-wrap" style="display:none;margin-bottom:10px;">
+      <div class="cf-label" style="margin-bottom:6px;">中間担当者（参照）</div>
+      <div id="cf-mgmt-person-list" style="background:var(--s3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--muted);">
+        担当者を読み込み中...
+      </div>
     </div>
     <div class="cf-field">
       <div class="cf-label">会社連絡先（代表）</div>
@@ -1727,6 +1728,17 @@ function clearChips() {
 // ─── 一覧レンダリング ─────────────────────────────────────────────────────────
 function renderList(data) {
   const listEl = document.getElementById('ca-list');
+  // 件数バッジ更新
+  const badge = document.getElementById('ca-count-badge');
+  if (badge) {
+    const total = custAllData.length;
+    if (total > 0) {
+      badge.style.display = '';
+      badge.textContent = data.length < total
+        ? `${data.length} / ${total}社`
+        : `${total}社`;
+    }
+  }
   if (!data.length) {
     listEl.innerHTML = '<div class="ca-empty">該当する顧客が見つかりません</div>';
     return;
@@ -2155,21 +2167,20 @@ function onPressureChange() {
 function onKanriChange() {
   const kanri = document.getElementById('cf-kanri').value || 'F.o.o';
   const wrap  = document.getElementById('cf-mgmt-person-wrap');
-  const sel   = document.getElementById('cf-mgmt-person');
+  const listEl = document.getElementById('cf-mgmt-person-list');
   const persons = mgmtPersonsCache[kanri] || [];
-  if (!persons.length || kanri === 'F.o.o' || kanri === '') {
+
+  if (kanri === '' || kanri === 'F.o.o' || !persons.length) {
     wrap.style.display = 'none';
     return;
   }
   wrap.style.display = '';
-  sel.innerHTML = '<option value="">選択してください</option>';
-  persons.forEach(mp => {
-    const label = mp.role ? `${mp.name}（${mp.role}）` : mp.name;
-    const opt = document.createElement('option');
-    opt.value = mp.id;
-    opt.textContent = label;
-    sel.appendChild(opt);
-  });
+  // 担当者を情報カードとして表示（保存対象外・参照のみ）
+  listEl.innerHTML = persons.map(mp => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:0.5px solid var(--border);">
+      <span style="color:var(--text);font-weight:500;">${esc(mp.name)}${mp.role ? `<span style="color:var(--muted);font-weight:400;">（${esc(mp.role)}）</span>` : ''}</span>
+      ${mp.tel ? `<a href="tel:${mp.tel.replace(/[-\s]/g,'')}" style="color:var(--accent);text-decoration:none;font-size:11px;">${esc(mp.tel)}</a>` : ''}
+    </div>`).join('').replace(/<div[^>]*>\s*<\/div>/g, '') || '<span style="color:var(--muted);">担当者未登録</span>';
 }
 
 // MapURLフィールドの追加
@@ -2296,8 +2307,12 @@ function openCustForm(custData) {
     if (custData.role2) selRole(1, custData.role2);
   }
 
-  // 中間担当者ドロップダウン更新
+  // 中間担当者ドロップダウン更新（キャッシュがあれば即時、なければ非表示）
   onKanriChange();
+  // キャッシュがまだ空なら非同期で再読み込み後に更新
+  if (Object.keys(mgmtPersonsCache).length === 0) {
+    fetchMgmtPersons().then(() => onKanriChange());
+  }
 
   // タイヤメーカー
   document.querySelectorAll('.cf-multi-btn').forEach(btn => {

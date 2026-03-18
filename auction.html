@@ -543,7 +543,7 @@ function switchTab(name) {
 async function notionQuery(payload) {
   const res = await fetch(`${WORKER}/databases/${DB_ID}/query`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Notion-Version': NOTION_VERSION },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
@@ -553,7 +553,7 @@ async function notionQuery(payload) {
 async function notionPatch(pageId, props) {
   const res = await fetch(`${WORKER}/pages/${pageId}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', 'Notion-Version': NOTION_VERSION },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ properties: props })
   });
   if (!res.ok) throw new Error(`PATCH error: ${res.status}`);
@@ -563,7 +563,7 @@ async function notionPatch(pageId, props) {
 async function notionCreate(props) {
   const res = await fetch(`${WORKER}/pages`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Notion-Version': NOTION_VERSION },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       parent: { database_id: DB_ID },
       properties: props

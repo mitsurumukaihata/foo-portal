@@ -1656,12 +1656,17 @@ async function fetchMgmtPersons() {
       const p = page.properties;
       const company = getProp(p, '選択', 'select') || 'F.o.o';
       const name    = getProp(p, '名前', 'title');
-      const tel     = (getProp(p, '電話番号', 'text') || '').replace('tel:', '');
+      const tel     = (p['電話番号']?.phone_number || '').replace('tel:', '');
       const role    = getProp(p, '役職', 'select');
       const companyName = getProp(p, '会社名', 'text');
       if (!name) return;
+      const person = { id: page.id, name, tel, role, companyName };
+      // 会社別キャッシュ（フォーム参照用）
       if (!mgmtPersonsCache[company]) mgmtPersonsCache[company] = [];
-      mgmtPersonsCache[company].push({ id: page.id, name, tel, role, companyName });
+      mgmtPersonsCache[company].push(person);
+      // IDキャッシュ（詳細画面のリレーション参照用）
+      mgmtPersonsCache['_byId'] = mgmtPersonsCache['_byId'] || {};
+      mgmtPersonsCache['_byId'][page.id] = person;
     });
   } catch(e) { console.warn('中間担当者取得失敗', e); }
 }
@@ -1674,6 +1679,7 @@ function parseCustomer(page) {
     yomi:        getProp(p, 'フリガナ', 'text'),
     row:         getProp(p, '行', 'select'),
     kanri:       getProp(p, '中間管理会社', 'select'),
+    mgmtRelIds:  (p['中間担当者']?.relation || []).map(r => r.id),  // リレーション先のID
     person1:     getProp(p, '担当者①', 'text'),
     role1:       getProp(p, '役職①', 'select'),
     tel1:        getProp(p, '連絡先①', 'text'),
@@ -1980,22 +1986,14 @@ function openCustDetail(id) {
 
   // 中間管理会社セクション
   const kanriLabel = c.kanri || 'F.o.o';
-  // 顧客の担当者として登録済みの人と一致する中間担当者だけ表示
-  // （顧客の担当者①②の名前がDBの中間担当者と一致するものを抽出）
-  const allMgmt = mgmtPersonsCache[kanriLabel] || [];
-  // 顧客側に担当者名が登録されていれば名前で絞り込み、なければ全員表示しない
-  const custPersonNames = [c.person1, c.person2].filter(Boolean).map(s => s.replace(/（.*?）/g,'').trim());
+  // ★ リレーション列のIDで正確に担当者を特定
+  const byId = mgmtPersonsCache['_byId'] || {};
   let mgmtList = [];
-  if (custPersonNames.length && kanriLabel !== 'F.o.o') {
-    // 顧客に登録された担当者名で絞り込み（部分一致）
-    mgmtList = allMgmt.filter(mp =>
-      custPersonNames.some(name => name.includes(mp.name) || mp.name.includes(name.replace(/さん|様/g,'')))
-    );
-    // 一致なければ会社単位で全員表示
-    if (!mgmtList.length) mgmtList = allMgmt;
-  } else if (kanriLabel !== 'F.o.o') {
-    mgmtList = allMgmt;
+  if (c.mgmtRelIds && c.mgmtRelIds.length) {
+    // リレーション設定済み → IDで引く
+    mgmtList = c.mgmtRelIds.map(id => byId[id]).filter(Boolean);
   }
+  // リレーション未設定の場合は何も表示しない（全員表示はしない）
   html += `<div class="cd-section">
     <div class="cd-section-label">🏢 中間管理会社</div>
     <div class="cd-mgmt-card">
@@ -2012,8 +2010,10 @@ function openCustDetail(id) {
     });
   } else if (kanriLabel === 'F.o.o') {
     html += `<tr><td colspan="2" style="padding:8px 12px;color:var(--muted);font-size:12px;">自社管理</td></tr>`;
+  } else if (!c.mgmtRelIds || !c.mgmtRelIds.length) {
+    html += `<tr><td colspan="2" style="padding:8px 12px;color:var(--muted);font-size:12px;">中間担当者未設定（Notionで設定できます）</td></tr>`;
   } else {
-    html += `<tr><td colspan="2" style="padding:8px 12px;color:var(--muted);font-size:12px;">担当者未登録</td></tr>`;
+    html += `<tr><td colspan="2" style="padding:8px 12px;color:var(--muted);font-size:12px;">担当者情報を読み込めませんでした</td></tr>`;
   }
   html += `</table></div></div>`;
 

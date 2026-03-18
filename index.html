@@ -27,7 +27,7 @@
 }
 
 @media (prefers-color-scheme: light) {
-  :root {
+  :root:not([data-theme]) {
     --bg: #fdf6ee;
     --s1: #ffffff;
     --s2: #fdf0e4;
@@ -42,6 +42,40 @@
     --red: #dc2626;
     --blue: #2563eb;
   }
+}
+
+/* 手動ダークモード */
+[data-theme="dark"] {
+  --bg: #18181f;
+  --s1: #101015;
+  --s2: #1e1e26;
+  --s3: #26262f;
+  --border: #2c2c38;
+  --border2: #3c3c4a;
+  --text: #f0f0f2;
+  --muted: #68687a;
+  --accent: #f0a500;
+  --accent2: #f5be40;
+  --green: #22c55e;
+  --red: #ef4444;
+  --blue: #3b82f6;
+}
+
+/* 手動ライトモード */
+[data-theme="light"] {
+  --bg: #fdf6ee;
+  --s1: #ffffff;
+  --s2: #fdf0e4;
+  --s3: #f5e6d4;
+  --border: #e8d8c4;
+  --border2: #d8c4a8;
+  --text: #1a1208;
+  --muted: #a08060;
+  --accent: #e07000;
+  --accent2: #c05800;
+  --green: #1a9e4a;
+  --red: #dc2626;
+  --blue: #2563eb;
 }
 
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -895,7 +929,46 @@ body {
   color: var(--red);
   display: block;
 }
+/* スワイプアニメ */
+.swipe-transitioning { transition: transform 0.22s ease !important; }
+
+/* テーマ切り替えボタン */
+.theme-toggle {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 20px;
+  padding: 4px 10px;
+  color: rgba(255,255,255,0.7);
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+  font-family: inherit;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.theme-toggle:hover {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+[data-theme="light"] .theme-toggle,
+:root:not([data-theme]) .theme-toggle-light {
+  border-color: rgba(0,0,0,0.15);
+  color: rgba(0,0,0,0.5);
+}
+[data-theme="light"] .theme-toggle:hover {
+  background: rgba(0,0,0,0.05);
+  color: rgba(0,0,0,0.8);
+}
 </style>
+<script>
+// テーマを最速で適用（フラッシュ防止）
+(function(){
+  const t = localStorage.getItem('foo_portal_theme') || 'auto';
+  if (t !== 'auto') document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
 </head>
 <body>
 
@@ -955,7 +1028,10 @@ body {
 <!-- ── ポータル画面 ── -->
 <div id="portal-screen">
   <div class="portal-header">
-    <div class="portal-brand">Tire Manager · f.o.o</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <div class="portal-brand">Tire Manager · f.o.o</div>
+      <button class="theme-toggle" id="theme-toggle-btn" onclick="cycleTheme()" title="テーマ切り替え">🌙</button>
+    </div>
     <div class="portal-title">社内<span>ポータル</span></div>
     <div class="user-badge">
       <div class="user-avatar" id="portal-avatar"></div>
@@ -1116,6 +1192,7 @@ body {
     <button class="ca-kana-tab" onclick="selectKana('ヤ・ラ・ワ行')">ヤ行</button>
   </div>
 
+  <div class="kana-sub-row" id="ca-kana-sub" style="display:none;padding:4px 14px 6px;background:var(--s1);border-bottom:0.5px solid var(--border);overflow-x:auto;scrollbar-width:none;flex-shrink:0;"></div>
   <div class="ca-filter-row" id="ca-filter-row">
     <div class="ca-chip" id="chip-foo"  onclick="toggleChip('foo')">F.o.o</div>
     <div class="ca-chip" id="chip-toyo" onclick="toggleChip('toyo')">TOYO</div>
@@ -1256,7 +1333,12 @@ body {
     </div>
     <div class="cf-field">
       <div class="cf-label">空気圧</div>
-      <input class="cf-input" id="cf-pressure" type="text" placeholder="規定通り など">
+      <select class="cf-select" id="cf-pressure-sel" onchange="onPressureChange()">
+        <option value="">—</option>
+        <option value="規定通り">規定通り</option>
+        <option value="その他">その他</option>
+      </select>
+      <input class="cf-input" id="cf-pressure" type="text" placeholder="空気圧の詳細を入力..." style="display:none;margin-top:6px;">
     </div>
     <div class="cf-field">
       <div class="cf-label">オプション</div>
@@ -1333,6 +1415,37 @@ let mgmtPersonsCache = {};
 let workMapCount    = 0;
 let storageMapCount = 0;
 let personBlockCount = 1;
+
+// ─── テーマ管理 ───────────────────────────────────────────────────────────────
+const THEME_KEY = 'foo_portal_theme';
+
+function applyTheme(theme) {
+  const root = document.documentElement;
+  if (theme === 'auto') {
+    root.removeAttribute('data-theme');
+  } else {
+    root.setAttribute('data-theme', theme);
+  }
+  // ボタンのアイコン更新
+  const btn = document.getElementById('theme-toggle-btn');
+  if (!btn) return;
+  if (theme === 'dark')  { btn.textContent = '☀️'; btn.title = 'ライトモードへ'; }
+  else if (theme === 'light') { btn.textContent = '🌙'; btn.title = 'ダークモードへ'; }
+  else { btn.textContent = '🌓'; btn.title = 'テーマ切り替え'; }
+}
+
+function cycleTheme() {
+  const current = localStorage.getItem(THEME_KEY) || 'auto';
+  // auto → dark → light → auto の順で切り替え
+  const next = current === 'auto' ? 'dark' : current === 'dark' ? 'light' : 'auto';
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+}
+
+function initTheme() {
+  const saved = localStorage.getItem(THEME_KEY) || 'auto';
+  applyTheme(saved);
+}
 
 // ─── セッション管理 ────────────────────────────────────────────────────────────
 function saveSession(user) {
@@ -1669,6 +1782,15 @@ function applyFilter() {
   if (currentKana && currentKana !== 'すべて') {
     data = data.filter(c => c.row === currentKana);
   }
+  if (currentKanaSub) {
+    // フリガナの頭文字でフィルタリング
+    data = data.filter(c => {
+      const yomi = (c.yomi || '').trim();
+      if (yomi) return yomi.startsWith(currentKanaSub) || h2k(yomi).startsWith(currentKanaSub);
+      // フリガナなしは行レベルのみ（サブでは除外しない）
+      return true;
+    });
+  }
   if (currentSearch) {
     const raw = currentSearch.toLowerCase();
     const q   = h2k(currentSearch);
@@ -1691,10 +1813,54 @@ function applyFilter() {
   renderList(data);
 }
 
+// カナ行 → サブ文字マップ
+const KANA_ROW_MAP = {
+  'ア行': ['ア','イ','ウ','エ','オ'],
+  'カ行': ['カ','キ','ク','ケ','コ'],
+  'サ行': ['サ','シ','ス','セ','ソ'],
+  'タ行': ['タ','チ','ツ','テ','ト'],
+  'ナ行': ['ナ','ニ','ヌ','ネ','ノ'],
+  'ハ行': ['ハ','ヒ','フ','ヘ','ホ'],
+  'マ行': ['マ','ミ','ム','メ','モ'],
+  'ヤ・ラ・ワ行': ['ヤ','ラ','ワ'],
+};
+// カナ単文字 → 行マッピング
+const KANA_TO_ROW = {};
+Object.entries(KANA_ROW_MAP).forEach(([row, kanas]) => kanas.forEach(k => { KANA_TO_ROW[k] = row; }));
+
+let currentKanaSub = null; // 選択中のサブ文字（ア・イ等）
+
 function selectKana(kana) {
   currentKana = kana;
+  currentKanaSub = null;
   document.querySelectorAll('.ca-kana-tab').forEach(t => t.classList.remove('active'));
   event.target.classList.add('active');
+
+  // サブ行の表示
+  const subRow = document.getElementById('ca-kana-sub');
+  if (kana !== 'すべて' && KANA_ROW_MAP[kana]) {
+    const subs = KANA_ROW_MAP[kana];
+    subRow.innerHTML = subs.map(k =>
+      `<button class="ca-kana-tab" style="padding:6px 12px;font-size:11px;" onclick="selectKanaSub('${k}',this)">${k}</button>`
+    ).join('');
+    subRow.style.display = '';
+  } else {
+    subRow.innerHTML = '';
+    subRow.style.display = 'none';
+  }
+  applyFilter();
+}
+
+function selectKanaSub(k, btn) {
+  if (currentKanaSub === k) {
+    // もう一度押したら解除
+    currentKanaSub = null;
+    document.querySelectorAll('#ca-kana-sub .ca-kana-tab').forEach(t => t.classList.remove('active'));
+  } else {
+    currentKanaSub = k;
+    document.querySelectorAll('#ca-kana-sub .ca-kana-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+  }
   applyFilter();
 }
 
@@ -1715,11 +1881,54 @@ function clearSearch() {
   applyFilter();
 }
 
+// ─── スワイプで戻る ──────────────────────────────────────────────────────────────
+function setupSwipeBack(elId, closeFn) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  let startX = 0, startY = 0, dragging = false;
+  el.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    dragging = false;
+  }, { passive: true });
+  el.addEventListener('touchmove', e => {
+    const dx = e.touches[0].clientX - startX;
+    const dy = Math.abs(e.touches[0].clientY - startY);
+    if (!dragging && dx > 10 && dy < 50) dragging = true;
+    if (dragging && dx > 0) {
+      el.style.transform = `translateX(${dx}px)`;
+    }
+  }, { passive: true });
+  el.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    if (dragging && dx > 80) {
+      el.classList.add('swipe-transitioning');
+      el.style.transform = 'translateX(100%)';
+      setTimeout(() => {
+        closeFn();
+        el.style.transform = '';
+        el.classList.remove('swipe-transitioning');
+      }, 220);
+    } else {
+      el.classList.add('swipe-transitioning');
+      el.style.transform = '';
+      setTimeout(() => el.classList.remove('swipe-transitioning'), 220);
+    }
+    dragging = false;
+  }, { passive: true });
+}
+
 // ─── アプリ開閉 ────────────────────────────────────────────────────────────────
 async function openCustApp() {
   document.getElementById('cust-app').classList.add('open');
   await fetchMgmtPersons();
   if (!custAllData.length) await loadCustomers();
+  // スワイプで戻るを設定（初回のみ）
+  if (!document.getElementById('cust-detail')._swipeReady) {
+    setupSwipeBack('cust-detail', closeCustDetail);
+    setupSwipeBack('cust-form', closeCustForm);
+    document.getElementById('cust-detail')._swipeReady = true;
+  }
 }
 
 async function loadCustomers() {
@@ -1760,8 +1969,22 @@ function openCustDetail(id) {
 
   // 中間管理会社セクション
   const kanriLabel = c.kanri || 'F.o.o';
-  const mgmtList   = mgmtPersonsCache[kanriLabel] || [];
-  const tc = tagClass(kanriLabel);
+  // 顧客の担当者として登録済みの人と一致する中間担当者だけ表示
+  // （顧客の担当者①②の名前がDBの中間担当者と一致するものを抽出）
+  const allMgmt = mgmtPersonsCache[kanriLabel] || [];
+  // 顧客側に担当者名が登録されていれば名前で絞り込み、なければ全員表示しない
+  const custPersonNames = [c.person1, c.person2].filter(Boolean).map(s => s.replace(/（.*?）/g,'').trim());
+  let mgmtList = [];
+  if (custPersonNames.length && kanriLabel !== 'F.o.o') {
+    // 顧客に登録された担当者名で絞り込み（部分一致）
+    mgmtList = allMgmt.filter(mp =>
+      custPersonNames.some(name => name.includes(mp.name) || mp.name.includes(name.replace(/さん|様/g,'')))
+    );
+    // 一致なければ会社単位で全員表示
+    if (!mgmtList.length) mgmtList = allMgmt;
+  } else if (kanriLabel !== 'F.o.o') {
+    mgmtList = allMgmt;
+  }
   html += `<div class="cd-section">
     <div class="cd-section-label">🏢 中間管理会社</div>
     <div class="cd-mgmt-card">
@@ -1776,6 +1999,8 @@ function openCustDetail(id) {
       else         html += `<tr><td style="padding:5px 12px;">担当</td><td style="padding:5px 12px;">${esc(mp.name)}</td></tr>`;
       if (mp.tel)  html += `<tr><td style="padding:2px 12px 6px;color:var(--muted);font-size:11px;"></td><td style="padding:2px 12px 6px;"><a class="cd-tel-link" href="tel:${mp.tel.replace(/[-\s]/g,'')}">${esc(mp.tel)}</a></td></tr>`;
     });
+  } else if (kanriLabel === 'F.o.o') {
+    html += `<tr><td colspan="2" style="padding:8px 12px;color:var(--muted);font-size:12px;">自社管理</td></tr>`;
   } else {
     html += `<tr><td colspan="2" style="padding:8px 12px;color:var(--muted);font-size:12px;">担当者未登録</td></tr>`;
   }
@@ -1914,6 +2139,19 @@ function removePersonBlock(idx) {
   document.getElementById('cf-add-person-btn').style.display = '';
 }
 
+// 空気圧ドロップダウン切り替え
+function onPressureChange() {
+  const sel = document.getElementById('cf-pressure-sel').value;
+  const inp = document.getElementById('cf-pressure');
+  if (sel === 'その他') {
+    inp.style.display = '';
+    inp.focus();
+  } else {
+    inp.style.display = 'none';
+    inp.value = sel === '規定通り' ? '規定通り' : '';
+  }
+}
+
 // 中間管理会社変更時：担当者ドロップダウンを更新
 function onKanriChange() {
   const kanri = document.getElementById('cf-kanri').value || 'F.o.o';
@@ -2021,7 +2259,19 @@ function openCustForm(custData) {
   document.getElementById('cf-tel1').value        = custData?.tel1 || '';
   document.getElementById('cf-studless').value    = custData?.studless || '';
   document.getElementById('cf-hakitsubu').value   = custData?.haki || '';
-  document.getElementById('cf-pressure').value    = custData?.pressure || '';
+  // 空気圧の復元
+  const pressureVal = custData?.pressure || '';
+  const pressureSel = document.getElementById('cf-pressure-sel');
+  const pressureInp = document.getElementById('cf-pressure');
+  if (!pressureVal || pressureVal === '規定通り') {
+    pressureSel.value = pressureVal || '';
+    pressureInp.style.display = 'none';
+    pressureInp.value = '';
+  } else {
+    pressureSel.value = 'その他';
+    pressureInp.style.display = '';
+    pressureInp.value = pressureVal;
+  }
   document.getElementById('cf-sensor').checked    = custData?.sensor || false;
   document.getElementById('cf-checklink').checked = custData?.checklink || false;
   document.getElementById('cf-notice').value      = custData?.notice || '';
@@ -2136,7 +2386,11 @@ async function saveCustomer() {
     'タイヤメーカー': selectedMakers,
     'スタッドレス': document.getElementById('cf-studless').value || null,
     '履きつぶし':   document.getElementById('cf-hakitsubu').value || null,
-    '空気圧':       document.getElementById('cf-pressure').value.trim() || null,
+    '空気圧':       (() => {
+      const sel = document.getElementById('cf-pressure-sel').value;
+      if (sel === 'その他') return document.getElementById('cf-pressure').value.trim() || null;
+      return sel || null;
+    })(),
     '空気圧センサー': document.getElementById('cf-sensor').checked,
     'チェックリンク': document.getElementById('cf-checklink').checked,
     '注意事項':     document.getElementById('cf-notice').value.trim() || null,

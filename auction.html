@@ -56,9 +56,11 @@ html,body{height:100%;font-family:'Noto Sans JP','Hiragino Sans',sans-serif;font
 
 /* ===== SEARCH & FILTER ===== */
 .search-wrap{position:relative;margin-bottom:8px;flex-shrink:0;}
-.search-input{width:100%;padding:8px 12px;border-radius:8px;font-size:13px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);outline:none;}
+.search-input{width:100%;padding:8px 34px 8px 12px;border-radius:8px;font-size:13px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);outline:none;}
 .search-input:focus{border-color:var(--amber);}
 .search-input::placeholder{color:var(--text4);}
+.search-clear{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:20px;height:20px;border-radius:50%;background:var(--text4);border:none;color:#fff;font-size:12px;cursor:pointer;display:none;align-items:center;justify-content:center;line-height:1;padding:0;}
+.search-clear.visible{display:flex;}
 .ac-list{position:absolute;top:100%;left:0;right:0;z-index:100;border-radius:0 0 8px 8px;border:1px solid var(--border2);border-top:none;background:var(--bg3);max-height:200px;overflow-y:auto;}
 .ac-item{padding:8px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;color:var(--text2);}
 .ac-item:hover{background:var(--bg4);}
@@ -76,6 +78,14 @@ select.fi:focus{border-color:var(--amber);}
 .list-table td{padding:7px 8px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:middle;white-space:nowrap;}
 .list-table tr:hover td{background:var(--bg2);}
 .mgmt{font-weight:600;color:var(--amber) !important;}
+/* 管理番号列固定 */
+.th-fixed{position:sticky;left:0;z-index:11;background:var(--bg2);}
+.td-fixed{position:sticky;left:0;z-index:5;background:var(--bg);border-right:1.5px solid var(--amber2) !important;}
+.list-table tr:hover .td-fixed{background:var(--bg2);}
+/* サイズセル */
+.size-text{display:inline-block;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;cursor:pointer;}
+.size-text.expanded{max-width:none;white-space:normal;overflow:visible;}
+.size-expand-btn{font-size:10px;color:var(--amber);cursor:pointer;margin-left:3px;vertical-align:middle;}
 
 .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500;}
 .b-unposted{background:var(--bg3);color:var(--text3);}
@@ -138,29 +148,42 @@ select.fi:focus{border-color:var(--amber);}
 /* ===== PRESENT SHEET MODAL ===== */
 .sheet-modal{max-width:360px;}
 .psheet{background:#fff;border-radius:0;}
-.ps-banner{padding:9px 12px;display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid #f0e0b0;}
-.ps-brand{font-size:15px;font-weight:600;color:#1a1a1a;}
-.ps-brand-sub{font-size:10px;color:#bbb;margin-top:1px;}
-.ps-badges{display:flex;gap:4px;}
-.ps-badge{background:#f0a500;color:#fff;font-size:10px;font-weight:600;padding:3px 7px;border-radius:6px;text-align:center;line-height:1.4;}
-.ps-badge small{font-size:8px;display:block;font-weight:400;}
-.ps-photo{position:relative;height:190px;overflow:hidden;background:#222;}
+/* 新バナー */
+.ps-banner{padding:12px 14px;display:flex;align-items:flex-start;justify-content:space-between;background:#1a1a1a;}
+.ps-brand{font-size:16px;font-weight:600;color:#f0a500;}
+.ps-brand-sub{font-size:11px;color:#aaa;margin-top:3px;}
+.ps-company{text-align:right;}
+.ps-company-sub{font-size:10px;color:#888;margin-bottom:2px;}
+.ps-company-main{font-size:13px;font-weight:500;color:#f0c060;line-height:1.4;}
+/* 写真エリア */
+.ps-photo{position:relative;height:260px;overflow:hidden;background:#2a2a2a;}
 .ps-photo img{width:100%;height:100%;object-fit:cover;display:block;}
-.ps-photo-empty{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#111;}
-.ps-mgmt{position:absolute;bottom:9px;right:11px;font-size:14px;font-weight:600;color:#f0a500;letter-spacing:1px;text-shadow:0 1px 6px rgba(0,0,0,.95);}
-.ps-pricebar{padding:9px 12px;display:flex;align-items:center;justify-content:space-between;background:#fff8e0;border-top:1px solid #ffe080;border-bottom:1px solid #ffe080;}
-.ps-price-lbl{font-size:11px;color:#b08000;}
-.ps-price-sub{font-size:9px;color:#ccc;margin-top:1px;}
-.ps-price-val{font-size:20px;font-weight:600;color:#e07000;}
+.ps-photo-empty{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#1a1a1a;}
+/* 価格バー */
+.ps-pricebar{padding:9px 14px;display:flex;align-items:center;justify-content:space-between;background:#f0a500;}
+.ps-price-lbl{font-size:10px;color:#7a4a00;}
+.ps-price-sub{font-size:9px;color:rgba(255,255,255,.7);margin-top:1px;}
+.ps-price-val{font-size:22px;font-weight:600;color:#fff;}
+.ps-shipping-lbl{font-size:10px;color:#7a4a00;}
+.ps-shipping-val{font-size:13px;font-weight:500;color:#fff;margin-top:2px;}
+/* 注意書き */
 .ps-caution{padding:7px 12px;display:flex;gap:7px;align-items:flex-start;background:#fff5f5;border-top:1px solid #ffc0b0;}
 .ps-caution-icon{font-size:11px;color:#cc3333;font-weight:700;flex-shrink:0;margin-top:1px;}
 .ps-caution-txt{font-size:10px;color:#aa4444;line-height:1.6;}
-.ps-footer{padding:9px 12px;display:flex;align-items:center;justify-content:space-between;background:#fff;border-top:1px solid #f0e0b0;}
-.ps-size-pill{background:#f0a500;color:#fff;font-size:13px;font-weight:600;padding:5px 13px;border-radius:18px;}
-.ps-size-pill small{font-size:9px;display:block;font-weight:400;color:rgba(255,255,255,.8);}
-.ps-logo-area{text-align:right;}
-.ps-logo-line{font-size:12px;font-weight:500;color:#1a1a1a;display:flex;align-items:center;gap:4px;justify-content:flex-end;}
-.ps-logo-sub{font-size:9px;color:#bbb;margin-top:2px;}
+/* スペックグリッド */
+.ps-spec-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:10px 12px 4px;}
+.ps-spec-item{background:#f8f4ec;border-radius:6px;padding:7px 9px;}
+.ps-spec-lbl{font-size:10px;color:#888;margin-bottom:2px;}
+.ps-spec-val{font-size:13px;font-weight:600;color:#e07000;}
+/* 明細行 */
+.ps-rows{padding:0 12px 10px;}
+.ps-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:.5px solid #f0ead8;font-size:12px;}
+.ps-row:last-child{border-bottom:none;}
+.ps-row-key{color:#888;}
+.ps-row-val{color:#333;font-weight:500;}
+/* フッター */
+.ps-footer{padding:8px 14px;background:#1a1a1a;}
+.ps-size-pill{font-size:13px;font-weight:600;color:#f0c060;}
 .sheet-close-btn{width:100%;padding:10px;background:var(--bg3);color:var(--text2);border:none;font-size:13px;cursor:pointer;}
 
 /* ===== FORM TAB ===== */
@@ -239,6 +262,7 @@ select.fg-sel{appearance:none;-webkit-appearance:none;background-image:url("data
       <input class="search-input" id="search-input" type="search" inputmode="search" lang="en"
         placeholder="管理番号・メーカー・サイズ・パターンで検索…"
         oninput="onSearch(this.value)" onblur="hideAc()" autocomplete="off">
+      <button class="search-clear" id="search-clear-btn" onclick="clearSearch()" title="クリア">×</button>
       <div class="ac-list" id="ac-list" style="display:none;"></div>
     </div>
 
@@ -265,7 +289,7 @@ select.fg-sel{appearance:none;-webkit-appearance:none;background-image:url("data
       <table class="list-table">
         <thead>
           <tr>
-            <th>管理番号</th>
+            <th class="th-fixed">管理番号</th>
             <th>メーカー</th>
             <th>サイズ</th>
             <th>パターン</th>
@@ -648,11 +672,20 @@ function filterStatus(el) {
   applyFilters();
 }
 
+// サイズ正規化：スペース区切りやRなしを統一して比較
+function normalizeSize(s) {
+  return s.toLowerCase()
+    .replace(/\s+/g, 'r')   // スペース → r
+    .replace(/\/(\d+)\s(\d)/g, '/$1r$2')  // 245/80 17.5 → 245/80r17.5
+    .replace(/r+/g, 'r');   // 重複r除去
+}
+
 function applyFilters() {
   prefixFilter = document.getElementById('f-prefix').value;
   const maker  = document.getElementById('f-maker').value;
   const cat    = document.getElementById('f-cat').value;
   const q      = searchQuery.toLowerCase();
+  const qNorm  = normalizeSize(q);
 
   filteredRecords = allRecords.filter(r => {
     const mgmt    = p(r, '管理番号');
@@ -668,9 +701,23 @@ function applyFilters() {
     if (cat && rCat !== cat) return false;
     if (q) {
       const haystack = [mgmt, rMaker, size, pattern].join(' ').toLowerCase();
-      if (!haystack.includes(q)) return false;
+      const haystackNorm = normalizeSize(haystack);
+      if (!haystack.includes(q) && !haystackNorm.includes(qNorm)) return false;
     }
     return true;
+  });
+
+  // 管理番号順ソート（例：T1→T2→T10→T11）
+  filteredRecords.sort((a, b) => {
+    const ma = p(a, '管理番号') || '';
+    const mb = p(b, '管理番号') || '';
+    const pa = ma.match(/^([A-Za-z]+)(\d+)$/);
+    const pb = mb.match(/^([A-Za-z]+)(\d+)$/);
+    if (pa && pb) {
+      if (pa[1] !== pb[1]) return pa[1].localeCompare(pb[1]);
+      return parseInt(pa[2]) - parseInt(pb[2]);
+    }
+    return ma.localeCompare(mb);
   });
 
   renderTable();
@@ -699,9 +746,11 @@ function renderTable() {
     const badge = statusBadge(status);
 
     return `<tr>
-      <td class="mgmt">${esc(mgmt)}</td>
+      <td class="td-fixed mgmt">${esc(mgmt)}</td>
       <td>${esc(maker)}</td>
-      <td>${esc(size)}</td>
+      <td style="max-width:110px;">
+        <span class="size-text" id="size-${id}" onclick="toggleSize('${id}')" title="${esc(size)}">${esc(size)}</span><span class="size-expand-btn" onclick="toggleSize('${id}')">…</span>
+      </td>
       <td>${esc(pattern)}</td>
       <td>${esc(num)}</td>
       <td>${esc(storage)}</td>
@@ -734,6 +783,14 @@ function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+function toggleSize(id) {
+  const el = document.getElementById('size-' + id);
+  if (!el) return;
+  el.classList.toggle('expanded');
+  const btn = el.nextElementSibling;
+  if (btn) btn.textContent = el.classList.contains('expanded') ? '▲' : '…';
+}
+
 // ===== AUTOCOMPLETE =====
 function buildAcData() {
   const sets = { size: new Set(), maker: new Set(), pattern: new Set(), mgmt: new Set() };
@@ -757,10 +814,16 @@ function buildAcData() {
 
 function onSearch(q) {
   searchQuery = q;
+  const clearBtn = document.getElementById('search-clear-btn');
+  if (clearBtn) clearBtn.classList.toggle('visible', q.length > 0);
   const list = document.getElementById('ac-list');
   if (!q || q.length < 1) { list.style.display = 'none'; applyFilters(); return; }
 
-  const hits = acData.filter(d => d.text.toLowerCase().includes(q.toLowerCase())).slice(0, 7);
+  const qNorm = normalizeSize(q.toLowerCase());
+  const hits = acData.filter(d => {
+    const t = d.text.toLowerCase();
+    return t.includes(q.toLowerCase()) || normalizeSize(t).includes(qNorm);
+  }).slice(0, 7);
   if (!hits.length) { list.style.display = 'none'; applyFilters(); return; }
 
   const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
@@ -771,6 +834,16 @@ function onSearch(q) {
     </div>`
   ).join('');
   list.style.display = 'block';
+  applyFilters();
+}
+
+function clearSearch() {
+  const inp = document.getElementById('search-input');
+  inp.value = '';
+  searchQuery = '';
+  const clearBtn = document.getElementById('search-clear-btn');
+  if (clearBtn) clearBtn.classList.remove('visible');
+  document.getElementById('ac-list').style.display = 'none';
   applyFilters();
 }
 
@@ -789,11 +862,10 @@ function buildPrefixFilter() {
     const mg = p(r, '管理番号');
     return mg ? mg[0] : null;
   }).filter(Boolean))].sort();
-  const labels = { T: 'タイヤ', K: '小物', S: 'その他' };
   prefixes.forEach(pr => {
     const opt = document.createElement('option');
     opt.value = pr;
-    opt.textContent = labels[pr] ? `${pr} — ${labels[pr]}` : pr;
+    opt.textContent = pr;
     sel.appendChild(opt);
   });
 }
@@ -926,57 +998,74 @@ function openSheet() {
   const mgmt    = p(rec, '管理番号') || '—';
   const maker   = p(rec, 'メーカー') || '—';
   const size    = p(rec, 'サイズ（正式）') || p(rec, '名前') || '—';
-  const pattern = p(rec, 'パターン') || '';
-  const num     = p(rec, '本数') || '';
-  const tread   = p(rec, '残溝') || '';
-  const serial  = p(rec, 'セリアル') || '';
-  const cat     = p(rec, 'カテゴリ') || '';
-  const truck   = p(rec, 'トラック？') || '';
-  const newcar  = p(rec, '新車外し？') || '';
-  const cond    = p(rec, '状態タイヤ（選択）') || '';
+  const pattern = p(rec, 'パターン') || '—';
+  const num     = p(rec, '本数') || '—';
+  const tread   = p(rec, '残溝') || '—';
+  const serial  = p(rec, 'セリアル') || '—';
+  const cat     = p(rec, 'カテゴリ') || '—';
+  const storage = p(rec, '保管場所') || '—';
+  const storDet = p(rec, '保管場所詳細') || '';
+  const wheel   = p(rec, 'ホイール付き？');
   const price   = p(rec, '値段');
   const thumbUrl = getThumbUrl(rec);
 
-  // バッジ（製造年週から年だけ取得）
-  const year = serial.length >= 4 ? '20' + serial.slice(2, 4) + '年製' : (serial || '');
-  const badges = [year, cat, newcar].filter(Boolean);
-
-  // ライン情報
-  const subLine = [num ? num + '本' : '', cat, truck].filter(Boolean).join('　｜　');
-  const logoSub = [tread ? '残溝 ' + tread + 'mm' : '', num ? num + '本' : ''].filter(Boolean).join('　｜　');
+  const wheelStr = wheel === true ? 'あり' : 'なし';
+  const storageStr = storDet ? `${storage} ${storDet}` : storage;
 
   const photoHtml = thumbUrl
     ? `<img src="${thumbUrl}" alt="タイヤ" onerror="this.parentElement.classList.add('ps-photo-empty');this.remove()">`
-    : `<div style="opacity:.15"><svg width="72" height="72" viewBox="0 0 72 72" fill="none"><circle cx="36" cy="36" r="30" stroke="#f0a500" stroke-width="3"/><circle cx="36" cy="36" r="14" stroke="#f0a500" stroke-width="3"/><circle cx="36" cy="36" r="4" fill="#f0a500"/></svg></div>`;
+    : `<div class="ps-photo-empty"><div style="opacity:.2"><svg width="72" height="72" viewBox="0 0 72 72" fill="none"><circle cx="36" cy="36" r="30" stroke="#f0a500" stroke-width="3"/><circle cx="36" cy="36" r="14" stroke="#f0a500" stroke-width="3"/><circle cx="36" cy="36" r="4" fill="#f0a500"/></svg></div></div>`;
 
   document.getElementById('sheet-content').innerHTML = `
     <div class="ps-banner">
       <div>
         <div class="ps-brand">${esc(maker)}</div>
-        <div class="ps-brand-sub">${esc(pattern)}</div>
+        <div class="ps-brand-sub">トラック用タイヤ</div>
       </div>
-      <div class="ps-badges">
-        ${badges.map(b => `<div class="ps-badge">${esc(b)}</div>`).join('')}
+      <div class="ps-company">
+        <div class="ps-company-sub">Co., Ltd.</div>
+        <div class="ps-company-main">TireManager f.o.o</div>
       </div>
     </div>
-    <div class="ps-photo">${photoHtml}<div class="ps-mgmt">${esc(mgmt)}</div></div>
+    <div class="ps-photo">${photoHtml}</div>
     <div class="ps-pricebar">
       <div>
-        <div class="ps-price-lbl">ご提示価格</div>
+        <div class="ps-price-lbl">出品価格</div>
+        <div class="ps-price-val">${price ? '¥' + Number(price).toLocaleString() : '—'}</div>
         <div class="ps-price-sub">税込・送料別</div>
       </div>
-      <div class="ps-price-val">${price ? '¥' + Number(price).toLocaleString() : '—'}</div>
     </div>
     <div class="ps-caution">
       <div class="ps-caution-icon">!</div>
       <div class="ps-caution-txt">現在ヤフオクにも出品中のため先着順となります。ご検討中にオークションで売れてしまう場合がありますので、お早めにお申し付けください。</div>
     </div>
-    <div class="ps-footer">
-      <div class="ps-size-pill"><small>サイズ</small>${esc(size)}</div>
-      <div class="ps-logo-area">
-        <div class="ps-logo-line">🚛 Tire Manager f.o.o</div>
-        <div class="ps-logo-sub">${esc(logoSub)}</div>
+    <div class="ps-spec-grid">
+      <div class="ps-spec-item">
+        <div class="ps-spec-lbl">サイズ</div>
+        <div class="ps-spec-val">${esc(size)}</div>
       </div>
+      <div class="ps-spec-item">
+        <div class="ps-spec-lbl">パターン</div>
+        <div class="ps-spec-val">${esc(pattern)}</div>
+      </div>
+      <div class="ps-spec-item">
+        <div class="ps-spec-lbl">本数</div>
+        <div class="ps-spec-val">${esc(num)}${num !== '—' ? '本' : ''}</div>
+      </div>
+      <div class="ps-spec-item">
+        <div class="ps-spec-lbl">残溝</div>
+        <div class="ps-spec-val">${esc(tread)}${tread !== '—' ? 'mm' : ''}</div>
+      </div>
+    </div>
+    <div class="ps-rows">
+      <div class="ps-row"><span class="ps-row-key">セリアル</span><span class="ps-row-val">${esc(serial)}</span></div>
+      <div class="ps-row"><span class="ps-row-key">カテゴリ</span><span class="ps-row-val">${esc(cat)}</span></div>
+      <div class="ps-row"><span class="ps-row-key">保管場所</span><span class="ps-row-val">${esc(storageStr)}</span></div>
+      <div class="ps-row"><span class="ps-row-key">ホイール</span><span class="ps-row-val">${wheelStr}</span></div>
+      <div class="ps-row"><span class="ps-row-key">管理番号</span><span class="ps-row-val">${esc(mgmt)}</span></div>
+    </div>
+    <div class="ps-footer">
+      <div class="ps-size-pill">${esc(size)} × ${num !== '—' ? esc(num) + '本' : '—'}</div>
     </div>`;
 
   closeModal('modal-detail');

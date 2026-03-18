@@ -298,6 +298,7 @@ select.fg-sel{appearance:none;-webkit-appearance:none;background-image:url("data
             <th>サイズ</th>
             <th>パターン</th>
             <th>本数</th>
+            <th>価格</th>
             <th>保管場所</th>
             <th>保管場所詳細</th>
             <th>進捗</th>
@@ -305,7 +306,7 @@ select.fg-sel{appearance:none;-webkit-appearance:none;background-image:url("data
           </tr>
         </thead>
         <tbody id="list-body">
-          <tr><td colspan="9" class="loading"><div class="spinner"></div><br>読み込み中…</td></tr>
+          <tr><td colspan="10" class="loading"><div class="spinner"></div><br>読み込み中…</td></tr>
         </tbody>
       </table>
     </div>
@@ -628,7 +629,7 @@ async function loadAllRecords() {
     updateStats();
   } catch(e) {
     document.getElementById('list-body').innerHTML =
-      `<tr><td colspan="9" style="text-align:center;color:var(--red);padding:30px;">読み込みエラー: ${e.message}</td></tr>`;
+      `<tr><td colspan="10" style="text-align:center;color:var(--red);padding:30px;">読み込みエラー: ${e.message}</td></tr>`;
   }
 }
 
@@ -732,7 +733,7 @@ function applyFilters() {
 function renderTable() {
   const tbody = document.getElementById('list-body');
   if (!filteredRecords.length) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:30px;">データがありません</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:30px;">データがありません</td></tr>`;
     document.getElementById('foot-note').textContent = '';
     return;
   }
@@ -744,6 +745,8 @@ function renderTable() {
     const size    = p(r, 'サイズ（正式）') || p(r, '名前') || '—';
     const pattern = p(r, 'パターン') || '—';
     const num     = p(r, '本数') || '—';
+    const price   = p(r, '値段');
+    const priceStr = price ? '¥' + Number(price).toLocaleString() : '—';
     const storage = p(r, '保管場所') || '—';
     const storDet = p(r, '保管場所詳細') || '—';
     const status  = p(r, '進捗') || '—';
@@ -754,10 +757,11 @@ function renderTable() {
       <td class="td-fixed mgmt">${esc(mgmt)}</td>
       <td>${esc(maker)}</td>
       <td style="max-width:110px;">
-        <span class="size-text" id="size-${id}" onclick="toggleSize('${id}')" title="${esc(size)}">${esc(size)}</span><span class="size-expand-btn" onclick="toggleSize('${id}')">…</span>
+        <span class="size-text" id="size-${id}" onclick="toggleSize('${id}')" title="${esc(size)}">${esc(size)}</span><span class="size-expand-btn" id="size-btn-${id}" onclick="toggleSize('${id}')" style="display:none;">…</span>
       </td>
       <td>${esc(pattern)}</td>
       <td>${esc(num)}</td>
+      <td style="white-space:nowrap;">${esc(priceStr)}</td>
       <td>${esc(storage)}</td>
       <td>${esc(storDet)}</td>
       <td>${badge}</td>
@@ -771,6 +775,18 @@ function renderTable() {
   tbody.innerHTML = rows;
   document.getElementById('foot-note').textContent =
     `${filteredRecords.length}件表示（全${allRecords.length}件）`;
+
+  // ①サイズが実際にはみ出している場合だけ…ボタンを表示
+  requestAnimationFrame(() => {
+    filteredRecords.forEach(r => {
+      const id = r.id;
+      const el = document.getElementById('size-' + id);
+      const btn = document.getElementById('size-btn-' + id);
+      if (el && btn) {
+        btn.style.display = el.scrollWidth > el.clientWidth ? 'inline' : 'none';
+      }
+    });
+  });
 }
 
 function statusBadge(s) {

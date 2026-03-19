@@ -653,10 +653,11 @@ function propStr(page, key) {
 async function loadOrders() {
   try {
     const data = await notionQuery(ORDER_DB, null, [{timestamp:'created_time',direction:'descending'}]);
-    orders = data.results;
+    orders = data.results || [];
   } catch(e) {
     orders = [];
-    console.error(e);
+    console.error('loadOrders error:', e);
+    return e.message; // エラーメッセージを返す
   }
 }
 
@@ -664,7 +665,11 @@ async function loadOrders() {
 function renderList() {
   const el = document.getElementById('list-container');
   el.innerHTML = '<div class="loading-state">読み込み中...</div>';
-  loadOrders().then(() => {
+  loadOrders().then((err) => {
+    if(err) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div>読み込みエラー<br><span style="font-size:11px;word-break:break-all;">${err}</span></div>`;
+      return;
+    }
     let filtered = orders.filter(o => {
       if(selMaker === 'ALL') return true;
       return propStr(o,'仕入先') === selMaker;
@@ -694,7 +699,11 @@ function renderList() {
 function renderPending() {
   const el = document.getElementById('pending-container');
   el.innerHTML = '<div class="loading-state">読み込み中...</div>';
-  loadOrders().then(() => {
+  loadOrders().then((err) => {
+    if(err) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div>読み込みエラー<br><span style="font-size:11px;word-break:break-all;">${err}</span></div>`;
+      return;
+    }
     const pending = orders.filter(o => {
       const s = propStr(o,'ステータス');
       return s === '新規発注' || s === '発注済';
@@ -1069,6 +1078,9 @@ async function submitOrder() {
     if(supplier)  orderProps['仕入先']       = {select:{name: supplier}};
     if(ostaff)    orderProps['注文担当']      = {select:{name: ostaff}};
     if(selSize)   orderProps['サイズコード']  = {rich_text:[{text:{content: selSize}}]};
+    // サイズ・パターンselectは選択肢に存在する値のみ送る（不一致でAPIエラー回避）
+    try { if(selSize)  orderProps['サイズ']   = {select:{name: selSize}}; } catch(e){}
+    try { if(pattern)  orderProps['パターン'] = {select:{name: pattern}}; } catch(e){}
     if(location)  orderProps['納入予定場所']  = {select:{name: location}};
     if(orderdate) orderProps['発注日']        = {date:{start: orderdate}};
     if(duedate)   orderProps['納期予定日']    = {date:{start: duedate}};

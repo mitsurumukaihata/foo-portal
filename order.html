@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>発注管理 | f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a;
+  --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40;
+  --green: #22c55e; --red: #ef4444; --blue: #3b82f6; --purple: #a855f7;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg:#fdf6ee;--s1:#ffffff;--s2:#fdf0e4;--s3:#f5e6d4;
+    --border:#e8d8c4;--border2:#d8c4a8;
+    --text:#1a1208;--muted:#a08060;
+    --accent:#e07000;--accent2:#c05800;
+    --green:#1a9e4a;--red:#dc2626;--blue:#2563eb;--purple:#9333ea;
+  }
+}
+[data-theme="dark"]{
+  --bg:#18181f;--s1:#101015;--s2:#1e1e26;--s3:#26262f;
+  --border:#2c2c38;--border2:#3c3c4a;
+  --text:#f0f0f2;--muted:#68687a;
+  --accent:#f0a500;--accent2:#f5be40;
+  --green:#22c55e;--red:#ef4444;--blue:#3b82f6;--purple:#a855f7;
+}
+[data-theme="light"]{
+  --bg:#fdf6ee;--s1:#ffffff;--s2:#fdf0e4;--s3:#f5e6d4;
+  --border:#e8d8c4;--border2:#d8c4a8;
+  --text:#1a1208;--muted:#a08060;
+  --accent:#e07000;--accent2:#c05800;
+  --green:#1a9e4a;--red:#dc2626;--blue:#2563eb;--purple:#9333ea;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html{background:var(--s1);}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Noto Sans JP',sans-serif;
+  min-height:100vh;max-width:480px;margin:0 auto;
+}
+
+/* ── ヘッダー ── */
+.header{
+  background:var(--s1);padding:14px 16px 10px;
+  border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:100;
+}
+.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;}
+.back-btn{
+  display:flex;align-items:center;gap:4px;
+  color:var(--accent);font-size:14px;font-weight:700;
+  text-decoration:none;background:none;border:none;cursor:pointer;padding:4px 0;font-family:inherit;
+}
+.header-title{font-size:15px;font-weight:700;color:var(--text);}
+.theme-btn{
+  background:transparent;border:1px solid var(--border2);
+  border-radius:20px;padding:4px 10px;color:var(--muted);
+  font-size:13px;cursor:pointer;font-family:inherit;
+}
+
+/* ── タブ ── */
+.tabs{
+  display:flex;background:var(--s1);
+  border-bottom:1px solid var(--border);
+}
+.tab-btn{
+  flex:1;padding:10px 0;font-size:12px;font-weight:700;
+  color:var(--muted);background:none;border:none;
+  border-bottom:2px solid transparent;cursor:pointer;
+  font-family:inherit;transition:all .15s;
+}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* ── ボディ ── */
+.body{padding:12px 14px;min-height:calc(100vh - 100px);}
+
+/* ── フィルターチップ ── */
+.filter-row{
+  display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;
+  scrollbar-width:none;margin-bottom:12px;
+}
+.filter-row::-webkit-scrollbar{display:none;}
+.chip{
+  flex-shrink:0;padding:5px 12px;border-radius:14px;
+  border:1px solid var(--border2);background:var(--s2);
+  color:var(--muted);font-size:11px;font-weight:700;
+  cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;
+}
+.chip.on{border-color:var(--accent);color:var(--accent);background:rgba(240,165,0,.1);}
+
+/* ── 発注カード ── */
+.order-card{
+  background:var(--s2);border:0.5px solid var(--border);
+  border-radius:12px;padding:12px 14px;margin-bottom:8px;
+  cursor:pointer;transition:border-color .15s;
+}
+.order-card:active{border-color:var(--accent);}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;}
+.card-num{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;}
+.badge{
+  font-size:9px;font-weight:700;padding:3px 9px;
+  border-radius:8px;white-space:nowrap;flex-shrink:0;
+}
+.badge-new   {background:rgba(240,165,0,.15); color:var(--accent);}
+.badge-sent  {background:rgba(59,130,246,.15);color:var(--blue);}
+.badge-done  {background:rgba(34,197,94,.15); color:var(--green);}
+.badge-cancel{background:rgba(239,68,68,.1);  color:var(--red);}
+.card-main{display:flex;align-items:baseline;gap:8px;margin-bottom:5px;}
+.card-maker{font-size:14px;font-weight:700;color:var(--text);}
+.card-size {font-size:11px;color:var(--muted);}
+.card-meta{display:flex;flex-wrap:wrap;gap:8px;}
+.meta-item{font-size:10px;color:var(--muted);}
+.meta-val{color:var(--text);font-weight:500;}
+
+/* ── 空表示 ── */
+.empty-state{
+  text-align:center;padding:48px 20px;
+  color:var(--muted);font-size:13px;line-height:1.8;
+}
+.empty-icon{font-size:36px;margin-bottom:8px;}
+.loading-state{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
+
+/* ── セクションラベル ── */
+.sec-label{
+  font-size:10px;font-weight:700;color:var(--muted);
+  letter-spacing:.8px;margin:16px 0 8px;
+  text-transform:uppercase;
+}
+.sec-label:first-child{margin-top:0;}
+
+/* ── 新規発注フォーム ── */
+.form-section{margin-bottom:14px;}
+.form-section-title{
+  font-size:11px;font-weight:700;color:var(--accent);
+  letter-spacing:.5px;margin-bottom:8px;
+  border-bottom:1px solid var(--border);padding-bottom:6px;
+}
+.field{margin-bottom:10px;}
+.field-label{font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:500;}
+.field-label span{color:var(--red);}
+.finput,.fselect,.ftextarea{
+  width:100%;background:var(--s2);border:1px solid var(--border2);
+  border-radius:8px;color:var(--text);font-size:14px;
+  font-family:'Noto Sans JP',sans-serif;padding:10px 12px;
+  outline:none;transition:border-color .15s;
+}
+.fselect{
+  appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2368687a' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;
+}
+.finput:focus,.fselect:focus,.ftextarea:focus{border-color:var(--accent);}
+.ftextarea{resize:vertical;min-height:72px;line-height:1.6;}
+.row2{display:flex;gap:8px;}
+.row2 .field{flex:1;}
+
+/* 数量カウンター */
+.qty-wrap{
+  display:flex;align-items:center;gap:10px;
+  background:var(--s2);border:1px solid var(--border2);
+  border-radius:8px;padding:6px 10px;width:fit-content;
+}
+.qty-btn{
+  width:32px;height:32px;border-radius:50%;
+  border:1px solid var(--border2);background:var(--s3);
+  color:var(--accent);font-size:18px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-family:inherit;line-height:1;
+  transition:background .15s;user-select:none;
+}
+.qty-btn:active{background:var(--accent);color:var(--s1);}
+.qty-val{font-size:20px;font-weight:900;color:var(--text);min-width:32px;text-align:center;}
+.qty-unit{font-size:12px;color:var(--muted);}
+
+/* DB選択（チェックボックス風） */
+.db-grid{display:flex;flex-direction:column;gap:6px;}
+.db-item{
+  display:flex;align-items:center;gap:10px;
+  background:var(--s2);border:1px solid var(--border);
+  border-radius:8px;padding:8px 12px;cursor:pointer;
+  transition:border-color .15s;
+}
+.db-item.on{border-color:var(--accent);background:rgba(240,165,0,.05);}
+.db-check{
+  width:18px;height:18px;border-radius:4px;flex-shrink:0;
+  border:1.5px solid var(--border2);background:var(--s3);
+  display:flex;align-items:center;justify-content:center;
+  transition:all .15s;
+}
+.db-item.on .db-check{background:var(--accent);border-color:var(--accent);}
+.db-check svg{opacity:0;transition:opacity .15s;}
+.db-item.on .db-check svg{opacity:1;}
+.db-icon{font-size:16px;}
+.db-name{font-size:13px;font-weight:700;color:var(--text);}
+.db-sub{font-size:10px;color:var(--muted);}
+
+/* サマリーボックス */
+.summary-box{
+  background:var(--s3);border:1px solid var(--border);
+  border-radius:10px;padding:12px 14px;margin:14px 0;
+}
+.summary-row{
+  display:flex;justify-content:space-between;align-items:flex-start;
+  padding:4px 0;border-bottom:0.5px solid var(--border);
+  font-size:12px;
+}
+.summary-row:last-child{border:none;}
+.summary-key{color:var(--muted);}
+.summary-val{color:var(--text);font-weight:500;text-align:right;max-width:65%;word-break:break-all;}
+
+/* ボタン */
+.btn-submit{
+  width:100%;background:var(--accent);color:var(--s1);
+  font-weight:900;font-size:15px;padding:14px;
+  border-radius:12px;border:none;cursor:pointer;
+  font-family:inherit;margin-top:6px;
+  transition:opacity .15s;
+}
+.btn-submit:disabled{opacity:.5;cursor:not-allowed;}
+.btn-submit:active:not(:disabled){opacity:.85;}
+
+.feedback{
+  margin-top:12px;padding:12px;border-radius:8px;
+  font-size:13px;text-align:center;display:none;
+}
+.feedback.success{
+  display:block;background:rgba(34,197,94,.1);
+  border:1px solid rgba(34,197,94,.3);color:var(--green);
+}
+.feedback.error{
+  display:block;background:rgba(239,68,68,.1);
+  border:1px solid rgba(239,68,68,.3);color:var(--red);
+}
+
+/* ── 詳細モーダル ── */
+#detail-modal{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.6);z-index:200;
+  align-items:flex-end;justify-content:center;
+}
+#detail-modal.open{display:flex;}
+.modal-sheet{
+  background:var(--bg);border-radius:20px 20px 0 0;
+  width:100%;max-width:480px;padding:0 0 40px;
+  max-height:85vh;overflow-y:auto;
+}
+.modal-handle{
+  width:40px;height:4px;border-radius:2px;background:var(--border2);
+  margin:12px auto 16px;
+}
+.modal-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px 12px;border-bottom:1px solid var(--border);
+}
+.modal-title{font-size:15px;font-weight:700;}
+.modal-close{
+  background:none;border:none;color:var(--muted);
+  font-size:22px;cursor:pointer;padding:0 4px;line-height:1;
+}
+.modal-body{padding:14px 16px;}
+.detail-row{
+  display:flex;justify-content:space-between;align-items:flex-start;
+  padding:8px 0;border-bottom:0.5px solid var(--border);font-size:13px;
+}
+.detail-row:last-child{border:none;}
+.detail-key{color:var(--muted);flex-shrink:0;margin-right:12px;}
+.detail-val{color:var(--text);font-weight:500;text-align:right;word-break:break-all;}
+.status-row{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0;}
+.status-btn{
+  flex:1;min-width:70px;padding:9px 6px;border-radius:8px;
+  border:1.5px solid var(--border2);background:var(--s2);
+  color:var(--muted);font-size:11px;font-weight:700;
+  cursor:pointer;font-family:inherit;text-align:center;
+  transition:all .15s;
+}
+.status-btn.active-new  {border-color:var(--accent);color:var(--accent);background:rgba(240,165,0,.1);}
+.status-btn.active-sent {border-color:var(--blue);color:var(--blue);background:rgba(59,130,246,.1);}
+.status-btn.active-done {border-color:var(--green);color:var(--green);background:rgba(34,197,94,.1);}
+.status-btn.active-cancel{border-color:var(--red);color:var(--red);background:rgba(239,68,68,.1);}
+.update-btn{
+  width:100%;background:var(--accent);color:var(--s1);
+  font-weight:700;font-size:13px;padding:11px;
+  border-radius:10px;border:none;cursor:pointer;
+  font-family:inherit;margin-top:4px;
+}
+
+/* スクロールバー非表示 */
+.body{scrollbar-width:none;}
+.body::-webkit-scrollbar{display:none;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <a class="back-btn" href="index.html">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+      ポータル
+    </a>
+    <div class="header-title">発注管理</div>
+    <button class="theme-btn" id="theme-btn" onclick="cycleTheme()">🌙</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" id="tab-list"   onclick="switchTab('list')">一覧</button>
+  <button class="tab-btn"        id="tab-pending" onclick="switchTab('pending')">未入荷</button>
+  <button class="tab-btn"        id="tab-new"     onclick="switchTab('new')">＋ 新規発注</button>
+</div>
+
+<!-- ══ 一覧タブ ══ -->
+<div class="body" id="pane-list">
+  <div class="filter-row" id="filter-row">
+    <button class="chip on" data-maker="ALL" onclick="filterMaker(this)">すべて</button>
+    <button class="chip" data-maker="TOYO"        onclick="filterMaker(this)">TOYO</button>
+    <button class="chip" data-maker="BRIDGESTONE"  onclick="filterMaker(this)">BS</button>
+    <button class="chip" data-maker="ネット購入"   onclick="filterMaker(this)">ネット</button>
+  </div>
+  <div id="list-container">
+    <div class="loading-state">読み込み中...</div>
+  </div>
+</div>
+
+<!-- ══ 未入荷タブ ══ -->
+<div class="body" id="pane-pending" style="display:none;">
+  <div id="pending-container">
+    <div class="loading-state">読み込み中...</div>
+  </div>
+</div>
+
+<!-- ══ 新規発注タブ ══ -->
+<div class="body" id="pane-new" style="display:none;">
+
+  <div class="form-section">
+    <div class="form-section-title">📦 発注情報</div>
+
+    <div class="row2">
+      <div class="field">
+        <div class="field-label">仕入先 <span>*</span></div>
+        <select class="fselect" id="f-supplier">
+          <option value="">選択</option>
+          <option>TOYO</option>
+          <option>BRIDGESTONE</option>
+          <option>ネット購入</option>
+        </select>
+      </div>
+      <div class="field">
+        <div class="field-label">種別</div>
+        <select class="fselect" id="f-type">
+          <option>タイヤ</option>
+          <option>ホイール</option>
+          <option>その他</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">タイヤサイズ <span>*</span></div>
+      <input class="finput" id="f-size" type="text" placeholder="例: 295/80R22.5" autocomplete="off">
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <div class="field-label">パターン名</div>
+        <input class="finput" id="f-pattern" type="text" placeholder="例: M966">
+      </div>
+      <div class="field">
+        <div class="field-label">サイズコード</div>
+        <input class="finput" id="f-sizecode" type="text" placeholder="例: 295/80R22.5">
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">数量 <span>*</span></div>
+      <div class="qty-wrap">
+        <button class="qty-btn" onclick="changeQty(-1)">−</button>
+        <div class="qty-val" id="qty-display">4</div>
+        <button class="qty-btn" onclick="changeQty(1)">＋</button>
+        <div class="qty-unit">本</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-section-title">🏭 納入情報</div>
+
+    <div class="row2">
+      <div class="field">
+        <div class="field-label">納入予定場所</div>
+        <select class="fselect" id="f-location">
+          <option value="">未定</option>
+          <option>志和</option>
+          <option>五日市</option>
+        </select>
+      </div>
+      <div class="field">
+        <div class="field-label">注文担当</div>
+        <select class="fselect" id="f-orderstaff">
+          <option>向畑</option>
+          <option>岡崎</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <div class="field-label">発注日</div>
+        <input class="finput" id="f-orderdate" type="date">
+      </div>
+      <div class="field">
+        <div class="field-label">納期予定日</div>
+        <input class="finput" id="f-duedate" type="date">
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">担当者（現場）</div>
+      <select class="fselect" id="f-staff">
+        <option value="">未設定</option>
+        <option>向畑　充</option>
+        <option>矢島　明和</option>
+        <option>大田　健</option>
+        <option>中川　颯</option>
+        <option>平野　春之</option>
+        <option>山根　祐司</option>
+        <option>村田　良典</option>
+        <option>岡崎　由美</option>
+        <option>藤井　真理亜</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-section-title">📋 連携先 入出庫DB（「発注中」レコードを自動作成）</div>
+    <div class="db-grid" id="db-grid"></div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-section-title">📝 備考</div>
+    <textarea class="ftextarea" id="f-memo" placeholder="急ぎ・顧客向け・特記事項など..."></textarea>
+  </div>
+
+  <!-- サマリー -->
+  <div class="summary-box" id="form-summary" style="display:none;">
+    <div class="summary-row"><span class="summary-key">仕入先</span><span class="summary-val" id="sv-supplier">—</span></div>
+    <div class="summary-row"><span class="summary-key">サイズ</span><span class="summary-val" id="sv-size">—</span></div>
+    <div class="summary-row"><span class="summary-key">数量</span><span class="summary-val" id="sv-qty">—</span></div>
+    <div class="summary-row"><span class="summary-key">連携DB</span><span class="summary-val" id="sv-dbs">—</span></div>
+    <div class="summary-row"><span class="summary-key">注文担当</span><span class="summary-val" id="sv-orderstaff">—</span></div>
+  </div>
+
+  <button class="btn-submit" id="btn-submit" onclick="submitOrder()">発注を登録する</button>
+  <div class="feedback" id="form-feedback"></div>
+  <div style="height:32px;"></div>
+</div>
+
+<!-- ══ 詳細モーダル ══ -->
+<div id="detail-modal" onclick="closeModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">発注詳細</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+// ─── 定数 ────────────────────────────────────────────────────────────────────
+const WORKER  = 'https://notion-proxy.33322666666mm.workers.dev';
+const ORDER_DB = '202a695f8e8880aa92f6f38d9b47b537';
+
+const DB_MAP = {
+  ltl_normal:   {id:'200a695f8e888018b5f5eac83fdad412', name:'LTL TB ノーマル', icon:'🚛', warehouseField:'倉庫'},
+  ltl_studless: {id:'201a695f8e888171abb8e349ad4d055a', name:'LTL TB スタッドレス', icon:'❄️', warehouseField:'倉庫'},
+  lts_normal:   {id:'201a695f8e8881adb144cd3a1639132d', name:'LTS ノーマル', icon:'🚐', warehouseField:'倉庫'},
+  lts_studless: {id:'201a695f8e8881a299e8fb57bad707f6', name:'LTS スタッドレス', icon:'🌨️', warehouseField:'倉庫'},
+  rt:           {id:'201a695f8e888104bb47c7103d5909dc', name:'RT 再生', icon:'♻️', warehouseField:'倉庫'},
+  pirelli:      {id:'201a695f8e8881de8106d2248fe8b25f', name:'PIRELLI', icon:'🇮🇹', warehouseField:'倉庫'},
+  tt:           {id:'201a695f8e8881a6930fcf2bd752e676', name:'T/T チューブタイプ', icon:'🔧', warehouseField:'倉庫'},
+  van:          {id:'201a695f8e8881f3a958cead42156e07', name:'バン', icon:'🚌', warehouseField:'出庫倉庫'},
+  lift:         {id:'201a695f8e8881c5b2c3d9e9ce2ffd21', name:'リフト', icon:'🏗️', warehouseField:'出庫倉庫'},
+  bihon:        {id:'201a695f8e8881089d0dd9b19129e3d7', name:'備品', icon:'📦', warehouseField:'倉庫'},
+};
+
+const STATUS_LABEL = {'新規発注':'新規発注','発注済':'発注済','納入済':'納入済','キャンセル':'キャンセル'};
+const STATUS_BADGE  = {'新規発注':'badge-new','発注済':'badge-sent','納入済':'badge-done','キャンセル':'badge-cancel'};
+const STATUS_BTN   = {'新規発注':'active-new','発注済':'active-sent','納入済':'active-done','キャンセル':'active-cancel'};
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let orders    = [];
+let curTab    = 'list';
+let selMaker  = 'ALL';
+let qty       = 4;
+let selDBs    = new Set(Object.keys(DB_MAP));
+let curOrder  = null;
+let curStatus = null;
+
+// ─── テーマ ───────────────────────────────────────────────────────────────────
+const THEMES = ['auto','dark','light'];
+const ICONS  = {auto:'🌙',dark:'🌙',light:'☀️'};
+let themeIdx = 0;
+function cycleTheme(){
+  themeIdx = (themeIdx + 1) % 3;
+  const t = THEMES[themeIdx];
+  document.documentElement.setAttribute('data-theme', t === 'auto' ? '' : t);
+  document.getElementById('theme-btn').textContent = ICONS[t];
+  localStorage.setItem('order_theme', t);
+}
+(function(){
+  const saved = localStorage.getItem('order_theme') || 'auto';
+  themeIdx = THEMES.indexOf(saved);
+  if(saved !== 'auto') document.documentElement.setAttribute('data-theme', saved);
+  const btn = document.getElementById('theme-btn');
+  if(btn) btn.textContent = ICONS[saved];
+})();
+
+// ─── タブ切り替え ──────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  curTab = tab;
+  ['list','pending','new'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+    document.getElementById('pane-'+t).style.display = t===tab ? 'block' : 'none';
+  });
+  if(tab === 'list') renderList();
+  if(tab === 'pending') renderPending();
+  if(tab === 'new') initForm();
+}
+
+// ─── API ──────────────────────────────────────────────────────────────────────
+async function notionQuery(dbId, filter=null, sorts=null) {
+  const body = {page_size:100};
+  if(filter) body.filter = filter;
+  if(sorts)  body.sorts  = sorts;
+  const r = await fetch(`${WORKER}/databases/${dbId}/query`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','Notion-Version':'2022-06-28'},
+    body: JSON.stringify(body)
+  });
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function notionCreate(dbId, props) {
+  const r = await fetch(`${WORKER}/pages`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','Notion-Version':'2022-06-28'},
+    body: JSON.stringify({
+      parent:{database_id: dbId},
+      properties: props
+    })
+  });
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function notionPatch(pageId, props) {
+  const r = await fetch(`${WORKER}/pages/${pageId}`, {
+    method:'PATCH',
+    headers:{'Content-Type':'application/json','Notion-Version':'2022-06-28'},
+    body: JSON.stringify({properties: props})
+  });
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+function propStr(page, key) {
+  const p = page.properties[key];
+  if(!p) return '';
+  if(p.type==='title')     return p.title.map(t=>t.plain_text).join('');
+  if(p.type==='rich_text') return p.rich_text.map(t=>t.plain_text).join('');
+  if(p.type==='select')    return p.select?.name || '';
+  if(p.type==='number')    return p.number ?? '';
+  if(p.type==='date')      return p.date?.start || '';
+  return '';
+}
+
+// ─── 発注一覧取得 ─────────────────────────────────────────────────────────────
+async function loadOrders() {
+  try {
+    const data = await notionQuery(ORDER_DB, null, [{property:'発注日',direction:'descending'}]);
+    orders = data.results;
+  } catch(e) {
+    orders = [];
+    console.error(e);
+  }
+}
+
+// ─── 一覧レンダリング ─────────────────────────────────────────────────────────
+function renderList() {
+  const el = document.getElementById('list-container');
+  el.innerHTML = '<div class="loading-state">読み込み中...</div>';
+  loadOrders().then(() => {
+    let filtered = orders.filter(o => {
+      if(selMaker === 'ALL') return true;
+      return propStr(o,'仕入先') === selMaker;
+    });
+    if(!filtered.length) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div>発注データがありません</div>';
+      return;
+    }
+    // 月別グループ
+    const groups = {};
+    filtered.forEach(o => {
+      const d = propStr(o,'発注日') || o.created_time?.slice(0,7) || '不明';
+      const ym = d.slice(0,7);
+      if(!groups[ym]) groups[ym] = [];
+      groups[ym].push(o);
+    });
+    let html = '';
+    Object.keys(groups).sort().reverse().forEach(ym => {
+      const label = ym === new Date().toISOString().slice(0,7) ? '今月' : ym.replace('-','年')+'月';
+      html += `<div class="sec-label">${label}</div>`;
+      groups[ym].forEach(o => { html += orderCardHTML(o); });
+    });
+    el.innerHTML = html;
+  });
+}
+
+function renderPending() {
+  const el = document.getElementById('pending-container');
+  el.innerHTML = '<div class="loading-state">読み込み中...</div>';
+  loadOrders().then(() => {
+    const pending = orders.filter(o => {
+      const s = propStr(o,'ステータス');
+      return s === '新規発注' || s === '発注済';
+    });
+    if(!pending.length) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div>未入荷の発注はありません</div>';
+      return;
+    }
+    el.innerHTML = '<div class="sec-label">未入荷（'+pending.length+'件）</div>' + pending.map(orderCardHTML).join('');
+  });
+}
+
+function orderCardHTML(o) {
+  const st   = propStr(o,'ステータス') || '新規発注';
+  const size = propStr(o,'タイヤサイズ');
+  const sup  = propStr(o,'仕入先');
+  const qty  = propStr(o,'数量');
+  const memo = propStr(o,'備考欄');
+  const date = propStr(o,'発注日');
+  const num  = o.id.slice(-8).toUpperCase();
+  const badgeCls = STATUS_BADGE[st] || 'badge-new';
+  return `<div class="order-card" onclick="openDetail('${o.id}')">
+    <div class="card-top">
+      <div class="card-num">PO-${num}</div>
+      <div class="badge ${badgeCls}">${st}</div>
+    </div>
+    <div class="card-main">
+      <div class="card-maker">${sup || '—'}</div>
+      <div class="card-size">${size || '—'}</div>
+    </div>
+    <div class="card-meta">
+      ${qty ? `<div class="meta-item">数量 <span class="meta-val">${qty}本</span></div>` : ''}
+      ${memo ? `<div class="meta-item"><span class="meta-val">${memo.slice(0,20)}</span></div>` : ''}
+      ${date ? `<div class="meta-item">${date}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+// ─── フィルター ───────────────────────────────────────────────────────────────
+function filterMaker(btn) {
+  document.querySelectorAll('#filter-row .chip').forEach(c => c.classList.remove('on'));
+  btn.classList.add('on');
+  selMaker = btn.dataset.maker;
+  renderList();
+}
+
+// ─── 詳細モーダル ─────────────────────────────────────────────────────────────
+function openDetail(id) {
+  const o = orders.find(x => x.id === id);
+  if(!o) return;
+  curOrder  = o;
+  curStatus = propStr(o,'ステータス') || '新規発注';
+
+  const rows = [
+    ['仕入先',   propStr(o,'仕入先')],
+    ['タイヤサイズ', propStr(o,'タイヤサイズ')],
+    ['パターン', propStr(o,'サイズコード')],
+    ['数量',     propStr(o,'数量') ? propStr(o,'数量')+'本' : '—'],
+    ['種別',     propStr(o,'種別')],
+    ['発注日',   propStr(o,'発注日')],
+    ['納期予定', propStr(o,'納期予定日')],
+    ['納品日',   propStr(o,'納品日')],
+    ['納入場所', propStr(o,'納入予定場所')],
+    ['注文担当', propStr(o,'注文担当')],
+    ['備考',     propStr(o,'備考欄')],
+  ].filter(r => r[1]);
+
+  const statuses = ['新規発注','発注済','納入済','キャンセル'];
+  let html = `<div style="margin-bottom:12px;">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:700;">ステータスを変更</div>
+    <div class="status-row">
+      ${statuses.map(s => `<button class="status-btn${s===curStatus?' '+STATUS_BTN[s]:''}" onclick="selectStatus('${s}',this)">${s}</button>`).join('')}
+    </div>
+    <button class="update-btn" onclick="updateStatus()">更新する</button>
+  </div>
+  <div style="border-top:1px solid var(--border);padding-top:12px;">
+    ${rows.map(r=>`<div class="detail-row"><span class="detail-key">${r[0]}</span><span class="detail-val">${r[1]}</span></div>`).join('')}
+  </div>`;
+
+  document.getElementById('modal-title').textContent = 'PO-' + o.id.slice(-8).toUpperCase();
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('detail-modal').classList.add('open');
+}
+
+function selectStatus(s, btn) {
+  curStatus = s;
+  document.querySelectorAll('.status-btn').forEach(b => {
+    b.className = 'status-btn';
+  });
+  btn.className = 'status-btn ' + STATUS_BTN[s];
+}
+
+async function updateStatus() {
+  if(!curOrder || !curStatus) return;
+  const btn = document.querySelector('.update-btn');
+  btn.disabled = true;
+  btn.textContent = '更新中...';
+  try {
+    await notionPatch(curOrder.id, {
+      'ステータス': {select:{name: curStatus}}
+    });
+    // ローカルも更新
+    const idx = orders.findIndex(o => o.id === curOrder.id);
+    if(idx >= 0) orders[idx].properties['ステータス'].select = {name: curStatus};
+    closeModal();
+    if(curTab==='list') renderList();
+    if(curTab==='pending') renderPending();
+  } catch(e) {
+    btn.textContent = '失敗しました';
+    setTimeout(()=>{ btn.textContent='更新する'; btn.disabled=false; }, 2000);
+  }
+}
+
+function closeModal(e) {
+  if(e && e.target !== document.getElementById('detail-modal')) return;
+  document.getElementById('detail-modal').classList.remove('open');
+}
+
+// ─── 新規発注フォーム ─────────────────────────────────────────────────────────
+function initForm() {
+  // 今日の日付をセット
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('f-orderdate').value = today;
+  // DB選択グリッド
+  const grid = document.getElementById('db-grid');
+  if(!grid.children.length) {
+    grid.innerHTML = Object.entries(DB_MAP).map(([key,db]) =>
+      `<div class="db-item on" data-key="${key}" onclick="toggleDB(this)">
+        <div class="db-check">
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="var(--s1)" stroke-width="2.5" stroke-linecap="round">
+            <polyline points="2,6 5,9 10,3"/>
+          </svg>
+        </div>
+        <div class="db-icon">${db.icon}</div>
+        <div><div class="db-name">${db.name}</div></div>
+      </div>`
+    ).join('');
+  }
+  updateSummary();
+  // リスナー
+  ['f-supplier','f-size','f-pattern','f-sizecode','f-orderstaff'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el && !el._listenerAdded) {
+      el.addEventListener('input', updateSummary);
+      el._listenerAdded = true;
+    }
+  });
+}
+
+function toggleDB(el) {
+  const key = el.dataset.key;
+  if(selDBs.has(key)) {
+    selDBs.delete(key);
+    el.classList.remove('on');
+  } else {
+    selDBs.add(key);
+    el.classList.add('on');
+  }
+  updateSummary();
+}
+
+function changeQty(d) {
+  qty = Math.max(1, qty + d);
+  document.getElementById('qty-display').textContent = qty;
+  updateSummary();
+}
+
+function updateSummary() {
+  const supplier = document.getElementById('f-supplier').value;
+  const size     = document.getElementById('f-size').value.trim();
+  const pattern  = document.getElementById('f-pattern').value.trim();
+  const ostaff   = document.getElementById('f-orderstaff').value;
+  const box      = document.getElementById('form-summary');
+
+  if(supplier && size) {
+    box.style.display = 'block';
+    document.getElementById('sv-supplier').textContent  = supplier;
+    document.getElementById('sv-size').textContent      = size + (pattern ? ' ' + pattern : '');
+    document.getElementById('sv-qty').textContent       = qty + '本';
+    document.getElementById('sv-dbs').textContent       = selDBs.size + 'DB';
+    document.getElementById('sv-orderstaff').textContent = ostaff;
+  } else {
+    box.style.display = 'none';
+  }
+}
+
+// ─── 発注登録 ─────────────────────────────────────────────────────────────────
+async function submitOrder() {
+  const supplier  = document.getElementById('f-supplier').value;
+  const size      = document.getElementById('f-size').value.trim();
+  const pattern   = document.getElementById('f-pattern').value.trim();
+  const sizecode  = document.getElementById('f-sizecode').value.trim();
+  const type      = document.getElementById('f-type').value;
+  const location  = document.getElementById('f-location').value;
+  const ostaff    = document.getElementById('f-orderstaff').value;
+  const staff     = document.getElementById('f-staff').value;
+  const orderdate = document.getElementById('f-orderdate').value;
+  const duedate   = document.getElementById('f-duedate').value;
+  const memo      = document.getElementById('f-memo').value.trim();
+
+  if(!supplier)  { showFeedback('error','仕入先を選択してください'); return; }
+  if(!size)      { showFeedback('error','タイヤサイズを入力してください'); return; }
+  if(selDBs.size === 0) { showFeedback('error','連携するDBを1つ以上選択してください'); return; }
+
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = true;
+  btn.textContent = '登録中...';
+  hideFeedback();
+
+  try {
+    // 1) 発注管理表 に登録
+    const orderProps = {
+      'タイヤサイズ': {title:[{text:{content: size + (pattern ? ' '+pattern : '')}}]},
+      'ステータス':   {select:{name:'新規発注'}},
+      '仕入先':       {select:{name: supplier}},
+      '数量':         {number: qty},
+      '種別':         {select:{name: type}},
+      '注文担当':     {select:{name: ostaff}},
+    };
+    if(sizecode)  orderProps['サイズコード'] = {rich_text:[{text:{content: sizecode}}]};
+    if(location)  orderProps['納入予定場所'] = {select:{name: location}};
+    if(orderdate) orderProps['発注日']       = {date:{start: orderdate}};
+    if(duedate)   orderProps['納期予定日']   = {date:{start: duedate}};
+    if(memo)      orderProps['備考欄']       = {rich_text:[{text:{content: memo}}]};
+
+    const created = await notionCreate(ORDER_DB, orderProps);
+
+    // 2) 選択した入出庫DB に「発注中」レコードを並列作成
+    const now = new Date();
+    const ym  = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}`;
+    const titleText = size + (pattern ? ' '+pattern : '');
+
+    const dbTasks = Array.from(selDBs).map(key => {
+      const db = DB_MAP[key];
+      const props = {
+        'タイトル': {title:[{text:{content: titleText}}]},
+        '区分':     {select:{name:'発注中'}},
+        '数量':     {number: qty},
+        '年月':     {rich_text:[{text:{content: ym}}]},
+      };
+      if(pattern)   props['パターン名'] = {select:{name: pattern}};
+      if(sizecode)  props['サイズコード'] = {select:{name: sizecode}};
+      if(staff)     props['作成者'] = {select:{name: staff}};
+      if(memo)      props['メモ'] = {rich_text:[{text:{content: memo}}]};
+      return notionCreate(db.id, props).catch(e => ({error:e.message, db: db.name}));
+    });
+
+    const results = await Promise.all(dbTasks);
+    const failed  = results.filter(r => r?.error);
+
+    if(failed.length) {
+      const names = failed.map(f => f.db).join('、');
+      showFeedback('success', `発注管理表に登録しました ✓\n入出庫DB（${names}）への書き込みに一部失敗しました`);
+    } else {
+      showFeedback('success', `登録完了 ✓\n発注管理表 ＋ ${selDBs.size}DB に「発注中」を記録しました`);
+    }
+
+    // フォームリセット
+    resetForm();
+    // 一覧を更新（バックグラウンドで）
+    loadOrders();
+
+  } catch(e) {
+    showFeedback('error', '登録に失敗しました: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '発注を登録する';
+  }
+}
+
+function resetForm() {
+  document.getElementById('f-supplier').value = '';
+  document.getElementById('f-size').value     = '';
+  document.getElementById('f-pattern').value  = '';
+  document.getElementById('f-sizecode').value = '';
+  document.getElementById('f-memo').value     = '';
+  document.getElementById('f-location').value = '';
+  document.getElementById('f-duedate').value  = '';
+  qty = 4;
+  document.getElementById('qty-display').textContent = '4';
+  document.getElementById('form-summary').style.display = 'none';
+  // 全DB再選択
+  selDBs = new Set(Object.keys(DB_MAP));
+  document.querySelectorAll('.db-item').forEach(el => el.classList.add('on'));
+}
+
+function showFeedback(type, msg) {
+  const el = document.getElementById('form-feedback');
+  el.className = 'feedback ' + type;
+  el.textContent = msg;
+  el.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+function hideFeedback() {
+  const el = document.getElementById('form-feedback');
+  el.className = 'feedback';
+}
+
+// ─── 初期ロード ───────────────────────────────────────────────────────────────
+renderList();
+</script>
+</body>
+</html>

@@ -235,6 +235,68 @@ select.fg-sel{appearance:none;-webkit-appearance:none;background-image:url("data
 .form-msg{font-size:12px;text-align:center;margin-top:8px;min-height:18px;color:var(--green);}
 .form-msg.err{color:var(--red);}
 
+/* ===== 出品手続きタブ ===== */
+.ship-list { display: flex; flex-direction: column; gap: 8px; padding-bottom: 16px; }
+.ship-card {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px 14px; display: flex; align-items: center; gap: 10px; cursor: pointer;
+  transition: border-color .15s;
+}
+.ship-card:hover { border-color: var(--amber); }
+.ship-card-info { flex: 1; min-width: 0; }
+.ship-card-mgmt { font-size: 13px; font-weight: 700; color: var(--amber); margin-bottom: 3px; }
+.ship-card-sub { font-size: 11px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ship-card-arrow { color: var(--amber); font-size: 18px; flex-shrink: 0; }
+.ship-empty { text-align: center; color: var(--text3); padding: 40px 20px; font-size: 13px; }
+
+/* 出品詳細モーダル */
+.ship-detail-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.8); z-index: 300;
+  display: none; flex-direction: column;
+}
+.ship-detail-overlay.open { display: flex; }
+.ship-detail-inner {
+  background: var(--bg2); flex: 1; display: flex; flex-direction: column;
+  max-width: 640px; margin: 0 auto; width: 100%; overflow: hidden;
+}
+.ship-detail-header {
+  background: var(--bg); border-bottom: 1px solid var(--amber);
+  padding: 12px 16px; display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+}
+.ship-detail-back { background: transparent; border: none; color: var(--amber); font-size: 20px; cursor: pointer; padding: 0 4px; line-height: 1; }
+.ship-detail-title { font-size: 14px; font-weight: 600; color: var(--amber); flex: 1; }
+.ship-detail-body { flex: 1; overflow-y: auto; padding: 14px 16px; }
+.ship-section-lbl {
+  font-size: 10px; font-weight: 700; letter-spacing: .08em; color: var(--amber);
+  text-transform: uppercase; margin: 14px 0 6px; border-bottom: 1px solid var(--border); padding-bottom: 4px;
+}
+.ship-info-grid { display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; font-size: 12px; margin-bottom: 10px; }
+.ship-info-key { color: var(--text3); white-space: nowrap; }
+.ship-info-val { color: var(--text); font-weight: 500; }
+.ship-html-box {
+  background: var(--bg); border: 1px solid var(--border2); border-radius: 8px;
+  padding: 10px 12px; font-size: 10px; font-family: monospace; color: var(--text3);
+  white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow-y: auto;
+  line-height: 1.5;
+}
+.ship-copy-btn {
+  width: 100%; padding: 12px; background: var(--amber); color: #1a1a1a;
+  border: none; border-radius: 8px; font-size: 14px; font-weight: 700;
+  cursor: pointer; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.ship-copy-btn.copied { background: var(--green); color: #fff; }
+.ship-warn {
+  background: rgba(240,165,0,.08); border: 1px solid rgba(240,165,0,.3);
+  border-radius: 8px; padding: 8px 12px; font-size: 11px; color: var(--amber); margin-bottom: 10px;
+  line-height: 1.6;
+}
+.ship-status-btn {
+  width: 100%; padding: 10px; background: transparent; color: var(--text3);
+  border: 1px solid var(--border2); border-radius: 8px; font-size: 13px;
+  cursor: pointer; margin-top: 8px;
+}
+.ship-status-btn:hover { border-color: var(--amber); color: var(--amber); }
+
 /* ===== LOADING & TOAST ===== */
 .loading{text-align:center;padding:40px;color:var(--text3);}
 .spinner{display:inline-block;width:24px;height:24px;border:2px solid var(--border2);border-top-color:var(--amber);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:8px;}
@@ -266,6 +328,7 @@ select.fg-sel{appearance:none;-webkit-appearance:none;background-image:url("data
   <div class="tab-bar">
     <button class="tab-btn active" onclick="switchTab('list')">一覧・進捗</button>
     <button class="tab-btn" onclick="switchTab('form')">新規登録</button>
+    <button class="tab-btn" onclick="switchTab('ship')">出品手続き</button>
   </div>
 
   <!-- 一覧タブ -->
@@ -339,6 +402,24 @@ select.fg-sel{appearance:none;-webkit-appearance:none;background-image:url("data
       </table>
     </div>
     <div class="foot-note" id="foot-note"></div>
+  </div>
+
+  <!-- 出品手続きタブ -->
+  <div id="tab-ship" class="tab-content">
+    <div id="ship-list-wrap">
+      <div class="loading"><div class="spinner"></div><br>読み込み中…</div>
+    </div>
+  </div>
+
+  <!-- 出品詳細オーバーレイ -->
+  <div class="ship-detail-overlay" id="ship-detail-overlay">
+    <div class="ship-detail-inner">
+      <div class="ship-detail-header">
+        <button class="ship-detail-back" onclick="closeShipDetail()">←</button>
+        <div class="ship-detail-title" id="ship-detail-title">出品手続き</div>
+      </div>
+      <div class="ship-detail-body" id="ship-detail-body"></div>
+    </div>
   </div>
 
   <!-- 新規登録タブ -->
@@ -591,8 +672,10 @@ function switchTab(name) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
-  document.querySelectorAll('.tab-btn')[name === 'list' ? 0 : 1].classList.add('active');
+  const idx = { list: 0, form: 1, ship: 2 }[name] ?? 0;
+  document.querySelectorAll('.tab-btn')[idx].classList.add('active');
   if (name === 'form') suggestNextMgmt();
+  if (name === 'ship') renderShipList();
 }
 
 // ===== API =====
@@ -1208,6 +1291,184 @@ async function submitForm() {
   btn.textContent = '登録中…';
   showFormMsg('');
 
+  // ── 固定文：管理番号の頭文字で自動判定 ──────────────────
+  const FIXED_T = `<!-- 固定文（テンプレ本文）: 720幅を強制的に中央寄せ + セクション間に余白行 -->
+
+<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td align="center">
+
+<!-- ★ ご確認ください（重要）【1〜8】 ※確定版（崩さない） -->
+
+<table width="720" border="1" cellpadding="15" cellspacing="0" bordercolor="#cccccc" bgcolor="#FFFEF5" style="border-collapse:collapse;">
+<tr><td bgcolor="#F7F9FC" style="padding:10px;"><b>★ ご確認ください（重要）【1〜8】</b></td></tr>
+<tr><td><b>① 適合（最重要）</b><br>
+・適合（サイズ・負荷能力・リム等）は落札者様にてご確認ください。<br>
+・適合違いによる返品はお受けできません。<br>
+
+<br>
+<b>② 状態の見方</b><br>
+・状態表現は主観を含みます。最終判断は写真優先でお願いいたします。<br>
+・中古品のため、小傷・汚れ等がある場合があります。<br>
+
+<br>
+<b>③ 残溝（目安）</b><br>
+・残溝は目安です（測定位置により差が出ます）。<br>
+・写真も併せてご確認ください。<br>
+
+<br>
+<b>④ 返品・返金（対応範囲）</b><br>
+・当方の記載ミス（サイズ・製造年・本数等）があった場合は、返品/返金対応します。<br>
+・落札者様都合（適合違い・イメージ違い等）は返品不可です。<br>
+
+<br>
+<b>⑤ 配送（西濃運輸）</b><br>
+・個人宅への配送はできません。<br>
+・個人の方でも 支店・ターミナル止め は対応可能です。<br>
+
+<br>
+<b>⑥ 発送の目安</b><br>
+・ご入金確認後、通常 1〜3営業日以内 に発送します。<br>
+・繁忙期は前後する場合があります。<br>
+
+<br>
+<b>⑦ 到着後の確認</b><br>
+・到着後はお早めに状態をご確認ください。<br>
+・万一問題がある場合は、受取後 2〜3日以内を目安 にご連絡ください。<br>
+
+<br>
+<b>⑧ マーキング（クレヨン/チョーク）</b><br>
+・管理番号を クレヨン（チョーク） で記入しているため、書き込み跡・汚れがある場合があります。<br>
+・あらかじめご了承ください。</td></tr>
+</table>
+
+<table width="720" border="0" cellspacing="0" cellpadding="0"><tr><td height="14"></td></tr></table>
+
+<!-- ★ 事務連絡 -->
+
+<table width="720" border="1" bordercolor="#cccccc" cellpadding="10" cellspacing="0" style="background-color:#FFFFFF; border-collapse:collapse;">
+<tr><td bgcolor="#F2F2F2"><b>★ 事務連絡（スムーズなお取引のために）</b></td></tr>
+<tr><td>
+・ご連絡は <b>取引ナビ（取引メッセージ）</b> でお願いいたします（記録が残るためスムーズです）。<br>
+
+・支店・ターミナル止めをご希望の場合、<b>支店名は正式名称</b>でお知らせください（こちらでも復唱確認いたします）。<br>
+
+・領収書をご希望の方は、<b>宛名・但し書き</b>を落札後にお知らせください（発行後の修正は難しいため）。</td></tr>
+</table>
+
+<table width="720" border="0" cellspacing="0" cellpadding="0"><tr><td height="14"></td></tr></table>
+
+<!-- ★ 発送詳細 -->
+
+<table width="720" border="1" bordercolor="#cccccc" cellpadding="10" cellspacing="0" style="background-color:#FFFFFF; border-collapse:collapse;">
+<tr><td bgcolor="#E9FFF2"><b>★ 発送詳細</b></td></tr>
+<tr><td>
+<b>【配送会社】西濃運輸</b><br>
+
+・北海道・離島への発送はできません。ご了承ください。<br>
+
+・<b>個人宅への配送はお断りしております。</b><br>
+
+・個人の方でも <b>西濃運輸の支店・ターミナル止め</b> であれば対応可能です。<br>
+
+・タイヤ交換業者様／会社など 法人宛 の場合は会社への発送が可能です。<br>
+
+<br>
+<br>
+<b>【直接引取り】</b><br>
+
+・直接引取り対応可能です。<br>
+
+・引取り場所：広島県東広島市志和町<br>
+
+・日時は事前に「取引メッセージ」でご相談ください（当日対応は難しい場合があります）。<br>
+
+・落札後7日以内を目安にお引取りをお願いいたします。<br>
+
+・引取り時に「管理番号」を現物で確認お願いいたします（取り違え防止）。<br>
+
+・積込は落札者様にてお願いいたします（必要に応じてお手伝いはします）。<br>
+
+・受渡し後のキャンセル／返品はお受けできません。<br>
+
+<br>
+<b>【支店・ターミナル止めをご希望の場合（取引メッセージでご連絡ください）】</b><br>
+
+・希望の支店・ターミナル名（正式名称）<br>
+
+・受取人氏名<br>
+
+・電話番号</td></tr>
+</table>
+
+<table width="720" border="0" cellspacing="0" cellpadding="0"><tr><td height="14"></td></tr></table>
+
+<!-- ★ お電話番号 -->
+
+<table width="720" border="1" bordercolor="#cccccc" cellpadding="10" cellspacing="0" style="background-color:#FFFFFF; border-collapse:collapse;">
+<tr><td bgcolor="#FFF0F0"><b>★ お電話番号のお願い（重要）</b></td></tr>
+<tr><td>
+ヤフオクの仕様により、出品者側に落札者様のお電話番号が表示されない場合があります。<br>
+
+西濃運輸の発送手続きに必要なため、落札後に <b>取引メッセージ</b> でお電話番号をお知らせください。<br>
+
+<font size="2" color="#666666">※お電話番号は発送手続きにのみ使用します。</font></td></tr>
+</table>
+
+<table width="720" border="0" cellspacing="0" cellpadding="0"><tr><td height="14"></td></tr></table>
+
+<!-- ★ 領収書 -->
+
+<table width="720" border="1" bordercolor="#cccccc" cellpadding="10" cellspacing="0" style="background-color:#FFFFFF; border-collapse:collapse;">
+<tr><td bgcolor="#EEF6FF"><b>★ 領収書について（電子発行）</b></td></tr>
+<tr><td>
+領収書をご希望の場合、<b>PDF（電子領収書）</b>で発行し、取引メッセージでご案内します。<br>
+
+PDF送付先としてメールアドレスが必要な場合は、取引メッセージでお知らせください。<br>
+
+<font size="2" color="#666666">※メールアドレスは領収書送付の目的にのみ使用します。</font></td></tr>
+</table>
+
+<table width="720" border="0" cellspacing="0" cellpadding="0"><tr><td height="14"></td></tr></table>
+
+<!-- ★ 支払方法 -->
+
+<table width="720" border="1" bordercolor="#cccccc" cellpadding="10" cellspacing="0" style="background-color:#FFFFFF; border-collapse:collapse;">
+<tr><td bgcolor="#F7F9FC"><b>★ 支払方法</b></td></tr>
+<tr><td>
+■ Yahoo!かんたん決済<br>
+
+※商品の発送は、ご入金確認後の発送になります。</td></tr>
+</table>
+
+<table width="720" border="0" cellspacing="0" cellpadding="0"><tr><td height="14"></td></tr></table>
+
+<div align="center"><font size="2" color="#666666">※中古品をご理解いただける方のみご入札ください。気になる点は事前にご質問ください。</font></div>
+
+</td></tr></table>
+</table>
+</table>`;
+
+  // K・S・小物の固定文は受け取り次第ここに追加予定
+  const FIXED_K = ''; // TODO: K用固定文
+  const FIXED_S = ''; // TODO: S用固定文
+  const FIXED_KOBUTSU = ''; // TODO: 小物用固定文
+
+  // 管理番号頭文字で振り分け
+  const prefix = mgmt ? mgmt[0].toUpperCase() : 'T';
+  let fixedText = '';
+  let fixedPropKey = '';
+  if (prefix === 'K') {
+    fixedText = FIXED_K;
+    fixedPropKey = '固定文（Kテンプレ本文）';
+  } else if (prefix === 'S') {
+    fixedText = FIXED_S;
+    fixedPropKey = '固定文（Sテンプレ本文）';
+  } else {
+    // T系・その他はデフォルト通常版
+    fixedText = FIXED_T;
+    fixedPropKey = '固定文（テンプレ本文）';
+  }
+  // ────────────────────────────────────────────────
+
   const titleText = [maker, size, pattern].filter(Boolean).join(' ');
   const props = {
     '名前':          { title: [{ text: { content: titleText } }] },
@@ -1221,6 +1482,10 @@ async function submitForm() {
     '商品説明':       { rich_text: [{ text: { content: desc } }] },
     'ホイール付き？':  { checkbox: wheel === '__YES__' },
   };
+  // 固定文をプロパティに追加（テキストが空でなければ）
+  if (fixedText && fixedPropKey) {
+    props[fixedPropKey] = { rich_text: [{ text: { content: fixedText } }] };
+  }
   if (maker)   props['メーカー']         = { select: { name: maker } };
   if (cat)     props['カテゴリ']         = { select: { name: cat } };
   if (num)     props['本数']             = { select: { name: num } };
@@ -1245,7 +1510,207 @@ async function submitForm() {
   }
 }
 
-function resetForm() {
+// ===== 出品手続き =====
+
+function renderShipList() {
+  const wrap = document.getElementById('ship-list-wrap');
+  // 未掲載のみ・管理番号順
+  const unposted = allRecords
+    .filter(r => p(r, '進捗') === '未掲載')
+    .sort((a, b) => {
+      const ma = p(a, '管理番号') || '';
+      const mb = p(b, '管理番号') || '';
+      const pa = ma.match(/^([A-Za-z]+)(\d+)$/);
+      const pb = mb.match(/^([A-Za-z]+)(\d+)$/);
+      if (pa && pb) {
+        if (pa[1] !== pb[1]) return pa[1].localeCompare(pb[1]);
+        return parseInt(pa[2]) - parseInt(pb[2]);
+      }
+      return ma.localeCompare(mb, 'ja');
+    });
+
+  if (!unposted.length) {
+    wrap.innerHTML = '<div class="ship-empty">未掲載の出品物はありません</div>';
+    return;
+  }
+
+  const items = unposted.map(r => {
+    const mgmt    = p(r, '管理番号') || '—';
+    const maker   = p(r, 'メーカー') || '';
+    const size    = p(r, 'サイズ（正式）') || p(r, '名前') || '—';
+    const pattern = p(r, 'パターン') || '';
+    const num     = p(r, '本数') || '';
+    const sub     = [maker, size, pattern, num ? num + '本' : ''].filter(Boolean).join(' ');
+    return `<div class="ship-card" onclick="openShipDetail('${r.id}')">
+      <div class="ship-card-info">
+        <div class="ship-card-mgmt">${esc(mgmt)}</div>
+        <div class="ship-card-sub">${esc(sub)}</div>
+      </div>
+      <div class="ship-card-arrow">›</div>
+    </div>`;
+  }).join('');
+
+  wrap.innerHTML = `<div class="ship-list">${items}</div>`;
+}
+
+function getShipHtml(record) {
+  const mgmt = p(record, '管理番号') || '';
+  const prefix = mgmt ? mgmt[0].toUpperCase() : 'T';
+
+  // フォーミュラプロパティはrich_textではなくformulaで返ってくる
+  function pFormula(rec, key) {
+    const prop = rec.properties[key];
+    if (!prop) return '';
+    if (prop.type === 'formula') {
+      const f = prop.formula;
+      if (f.type === 'string') return f.string || '';
+    }
+    if (prop.type === 'rich_text') return prop.rich_text?.map(t => t.plain_text).join('') || '';
+    return '';
+  }
+
+  let html = '';
+  let fixedText = '';
+
+  if (prefix === 'K') {
+    html      = pFormula(record, 'HTML（K）');
+    fixedText = p(record, '固定文（Kテンプレ本文）');
+  } else if (prefix === 'S') {
+    html      = pFormula(record, 'HTML（S）');
+    fixedText = p(record, '固定文（Sテンプレ本文）');
+  } else {
+    html      = pFormula(record, 'HTML');
+    fixedText = p(record, '固定文（テンプレ本文）');
+  }
+
+  // HTMLと固定文を結合（どちらかが空でも結合）
+  const combined = [html, fixedText].filter(Boolean).join('\n\n');
+  return combined;
+}
+
+async function openShipDetail(pageId) {
+  const record = allRecords.find(r => r.id === pageId);
+  if (!record) return;
+
+  const mgmt    = p(record, '管理番号') || '—';
+  const maker   = p(record, 'メーカー') || '—';
+  const size    = p(record, 'サイズ（正式）') || p(record, '名前') || '—';
+  const pattern = p(record, 'パターン') || '—';
+  const num     = p(record, '本数') || '—';
+  const tread   = p(record, '残溝') || '—';
+  const serial  = p(record, 'セリアル') || '—';
+  const cat     = p(record, 'カテゴリ') || '—';
+  const storage = p(record, '保管場所') || '—';
+  const storDet = p(record, '保管場所詳細') || '';
+  const price   = p(record, '値段');
+  const title   = p(record, 'タイトル') || '';
+
+  // フォーミュラのタイトルを取得
+  function pFormula(rec, key) {
+    const prop = rec.properties[key];
+    if (!prop) return '';
+    if (prop.type === 'formula') {
+      const f = prop.formula;
+      if (f.type === 'string') return f.string || '';
+    }
+    return p(rec, key);
+  }
+  const yTitle = pFormula(record, 'タイトル');
+
+  const combinedHtml = getShipHtml(record);
+  const hasHtml = !!combinedHtml;
+
+  document.getElementById('ship-detail-title').textContent = `出品手続き：${mgmt}`;
+
+  const priceStr = price ? `¥${Number(price).toLocaleString()}` : '未設定';
+  const storageStr = [storage !== '—' ? storage : '', storDet].filter(Boolean).join(' ');
+
+  document.getElementById('ship-detail-body').innerHTML = `
+    <div class="ship-section-lbl">商品情報</div>
+    <div class="ship-info-grid">
+      <div class="ship-info-key">管理番号</div><div class="ship-info-val">${esc(mgmt)}</div>
+      <div class="ship-info-key">メーカー</div><div class="ship-info-val">${esc(maker)}</div>
+      <div class="ship-info-key">サイズ</div><div class="ship-info-val">${esc(size)}</div>
+      <div class="ship-info-key">パターン</div><div class="ship-info-val">${esc(pattern)}</div>
+      <div class="ship-info-key">本数</div><div class="ship-info-val">${esc(num)}${num !== '—' ? '本' : ''}</div>
+      <div class="ship-info-key">残溝</div><div class="ship-info-val">${esc(tread)}${tread !== '—' ? 'mm' : ''}</div>
+      <div class="ship-info-key">セリアル</div><div class="ship-info-val">${esc(serial)}</div>
+      <div class="ship-info-key">カテゴリ</div><div class="ship-info-val">${esc(cat)}</div>
+      <div class="ship-info-key">保管場所</div><div class="ship-info-val">${esc(storageStr || '—')}</div>
+      <div class="ship-info-key">開始価格</div><div class="ship-info-val">${priceStr}</div>
+    </div>
+
+    ${yTitle ? `
+    <div class="ship-section-lbl">ヤフオクタイトル</div>
+    <div class="ship-warn">📋 以下をヤフオクの「商品名」欄にコピーしてください</div>
+    <div class="ship-html-box" id="ship-title-box">${esc(yTitle)}</div>
+    <button class="ship-copy-btn" id="ship-title-copy-btn" onclick="copyShipText('ship-title-box','ship-title-copy-btn')">
+      📋 タイトルをコピー
+    </button>` : ''}
+
+    <div class="ship-section-lbl">商品説明HTML（ヤフオク貼り付け用）</div>
+    ${hasHtml
+      ? `<div class="ship-warn">📋 以下をヤフオクの「商品説明」欄にコピーして貼り付けてください</div>
+         <div class="ship-html-box" id="ship-html-box">${esc(combinedHtml)}</div>
+         <button class="ship-copy-btn" id="ship-html-copy-btn" onclick="copyShipText('ship-html-box','ship-html-copy-btn')">
+           📋 商品説明HTMLをコピー
+         </button>`
+      : `<div class="ship-warn" style="color:var(--red);border-color:rgba(239,68,68,.4)">
+           ⚠️ HTMLが生成されていません。必須項目（メーカー・サイズ・管理番号・固定文）を確認してください。
+         </div>`
+    }
+
+    <div class="ship-section-lbl">出品後の処理</div>
+    <button class="ship-status-btn" onclick="markAsPosted('${pageId}')">
+      ✅ ヤフオクに出品済みにする（進捗→掲載中）
+    </button>
+  `;
+
+  document.getElementById('ship-detail-overlay').classList.add('open');
+}
+
+function closeShipDetail() {
+  document.getElementById('ship-detail-overlay').classList.remove('open');
+}
+
+function copyShipText(boxId, btnId) {
+  const box = document.getElementById(boxId);
+  const text = box.textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById(btnId);
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✅ コピーしました！';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('copied'); }, 2000);
+  }).catch(() => {
+    // フォールバック
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('コピーしました');
+  });
+}
+
+async function markAsPosted(pageId) {
+  if (!confirm('この商品を「掲載中」に変更しますか？')) return;
+  try {
+    await notionPatch(pageId, { '進捗': { select: { name: '掲載中' } } });
+    // ローカルデータも更新
+    const rec = allRecords.find(r => r.id === pageId);
+    if (rec) rec.properties['進捗'] = { type: 'select', select: { name: '掲載中' } };
+    showToast('掲載中に変更しました');
+    closeShipDetail();
+    renderShipList();
+    updateStats();
+  } catch(e) {
+    showToast('更新エラー: ' + e.message, true);
+  }
+}
+
+
   ['f-mgmt','f-size','f-pattern','f-tread','f-serial','f-storage-detail','f-price','f-desc','f-note'].forEach(id => {
     document.getElementById(id).value = '';
   });

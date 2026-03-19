@@ -2228,6 +2228,26 @@ function priceCalcEst(cardId,basePrice) {
 // ─── 初期化 ──────────────────────────────────────────────────────────────────
 
 window.onload = () => {
+  // ポータルセッションを優先参照（ポータルでログイン済みなら即起動）
+  try {
+    const raw = localStorage.getItem('foo_portal_session');
+    if (raw) {
+      const session = JSON.parse(raw);
+      if (session && new Date(session.expires) > new Date() && session.name) {
+        _selectedStaff = session.name;
+        USER_NAME = session.name;
+        // セッションの有効期限を30日リセット
+        const expires = new Date();
+        expires.setDate(expires.getDate() + 30);
+        session.expires = expires.toISOString();
+        localStorage.setItem('foo_portal_session', JSON.stringify(session));
+        launchApp();
+        return;
+      }
+    }
+  } catch(e) {}
+
+  // ポータルセッションなし → 旧来の名前保存を参照
   const n = localStorage.getItem('tire_name');
   if (n) {
     _selectedStaff = n;

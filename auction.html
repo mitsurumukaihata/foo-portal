@@ -19,7 +19,7 @@
   --teal-bg:#1a3030;--teal:#5dd5b0;
 }
 @media (prefers-color-scheme: light) {
-  :root{
+  :root:not([data-theme]) {
     --bg:#faf6ee;--bg2:#fff;--bg3:#fff8f0;--bg4:#f5ede0;
     --text:#1a1a1a;--text2:#555;--text3:#999;--text4:#bbb;
     --border:#e5d5b0;--border2:#ddd;
@@ -29,6 +29,28 @@
     --orange-bg:#fff3e0;
     --teal-bg:#e0f4ee;--teal:#1a8060;
   }
+}
+[data-theme="light"] {
+  --bg:#faf6ee;--bg2:#fff;--bg3:#fff8f0;--bg4:#f5ede0;
+  --amber:#e07000;--amber2:#fff3e0;--amber3:#fff3e0;
+  --text:#1a1a1a;--text2:#555;--text3:#999;--text4:#bbb;
+  --border:#e5d5b0;--border2:#ddd;
+  --blue-bg:#e3f2fd;--blue:#1565c0;
+  --green-bg:#e8f5e9;--green:#2e7d32;
+  --red-bg:#fce4ec;--red:#c62828;
+  --orange-bg:#fff3e0;
+  --teal-bg:#e0f4ee;--teal:#1a8060;
+}
+[data-theme="dark"] {
+  --bg:#1a1a1a;--bg2:#222;--bg3:#2a2a2a;--bg4:#333;
+  --amber:#f0a500;--amber2:#3a2800;--amber3:#2a1f00;
+  --text:#f0f0f0;--text2:#aaa;--text3:#777;--text4:#555;
+  --border:#333;--border2:#444;
+  --blue-bg:#0a2040;--blue:#60aaff;
+  --green-bg:#1a3a1a;--green:#6fcf6f;
+  --red-bg:#3a0a0a;--red:#f06060;
+  --orange-bg:#3a2a00;
+  --teal-bg:#1a3030;--teal:#5dd5b0;
 }
 
 html,body{height:100%;font-family:'Noto Sans JP','Hiragino Sans',sans-serif;font-size:14px;background:var(--bg);color:var(--text);transition:background .2s,color .2s;}
@@ -53,6 +75,7 @@ html,body{height:100%;font-family:'Noto Sans JP','Hiragino Sans',sans-serif;font
 .stat-card{border-radius:8px;padding:8px 6px;text-align:center;cursor:pointer;border:1px solid var(--border);background:var(--bg2);transition:all .15s;}
 .stat-card.active{border-color:var(--amber);background:var(--amber3);}
 @media (prefers-color-scheme: light) { .stat-card.active{background:#fff3e0;} }
+[data-theme="light"] .stat-card.active{background:#fff3e0;}
 .stat-num{font-size:18px;font-weight:600;}
 .stat-lbl{font-size:10px;color:var(--text3);margin-top:2px;}
 
@@ -110,6 +133,7 @@ select.fi:focus{border-color:var(--amber);}
 /* ===== MODAL ===== */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:12px 16px;overflow-y:auto;}
 @media (prefers-color-scheme: light) { .overlay{background:rgba(0,0,0,.4);} }
+[data-theme="light"] .overlay{background:rgba(0,0,0,.4);}
 .modal{background:var(--bg2);border-radius:12px;border:1px solid var(--border2);width:100%;max-width:340px;overflow:hidden;margin:auto;}
 .modal-header{background:var(--bg);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);}
 .modal-title{font-size:14px;font-weight:600;color:var(--amber);}
@@ -122,6 +146,7 @@ select.fi:focus{border-color:var(--amber);}
 .st-opt{padding:10px;border-radius:8px;text-align:center;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border2);color:var(--text3);background:var(--bg3);transition:all .1s;}
 .st-opt.selected{border-color:var(--amber);color:var(--amber);background:var(--amber3);}
 @media (prefers-color-scheme: light) { .st-opt.selected{background:#fff3e0;} }
+[data-theme="light"] .st-opt.selected{background:#fff3e0;}
 .st-opt:hover:not(.selected){background:var(--bg4);}
 
 .modal-actions{display:flex;gap:8px;}
@@ -195,6 +220,7 @@ select.fi:focus{border-color:var(--amber);}
 .form-wrap{max-width:600px;margin:0 auto;width:100%;}
 .sec-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--amber);margin:16px 0 8px;border-bottom:1px solid var(--amber3);padding-bottom:4px;}
 @media (prefers-color-scheme: light) { .sec-lbl{border-color:#ffe0b0;} }
+[data-theme="light"] .sec-lbl{border-color:#ffe0b0;}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .fg{display:flex;flex-direction:column;}
 .fg.full{grid-column:1/-1;}
@@ -539,6 +565,12 @@ let searchQuery = '';
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', () => {
+  // ポータルのテーマ設定を引き継ぐ
+  const portalTheme = localStorage.getItem('foo_portal_theme');
+  if (portalTheme && portalTheme !== 'auto') {
+    document.documentElement.setAttribute('data-theme', portalTheme);
+  }
+
   // URLパラメータからユーザー名を受け取る（ポータルからのリンク用）
   const urlParams = new URLSearchParams(window.location.search);
   const urlUser = urlParams.get('user');

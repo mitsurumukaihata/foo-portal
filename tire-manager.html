@@ -1665,39 +1665,44 @@ function renderStockResult(size, catKey, records) {
   });
 
   sortedPatterns.forEach(p => {
-    const safeP = p.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const safeP = p.replace(/'/g, "\\'");
+    const prep = prepStock[p] || 0;
+    const ord = orderStock[p] || 0;
+    const prepCls = prep === 0 ? 'zero' : 'positive';
+    const ordCls = ord === 0 ? 'zero' : 'positive';
+    const prepColor = prep > 0 ? 'var(--yellow)' : '';
+    const ordColor = ord > 0 ? 'var(--purple)' : '';
+
+    let warehouseCols = '';
+    WAREHOUSES.forEach(w => {
+      const n = stock[p]?.[w] || 0;
+      const cls = n === 0 ? 'zero' : 'positive';
+      const cursor = n > 0 ? 'pointer' : 'default';
+      const click = n > 0 ? `_currentPattern='${safeP}';renderHistory('${w}');` : '';
+      warehouseCols += `<div class="stock-count" style="min-width:40px;flex:1;cursor:${cursor};" onclick="${click}">
+        <div class="stock-count-num ${cls}">${n}</div>
+        <div class="stock-count-label">本</div>
+      </div>`;
+    });
+
+    const prepClick = prep > 0 ? `_currentPattern='${safeP}';renderHistory('準備');` : '';
+    const ordClick = ord > 0 ? `_currentPattern='${safeP}';renderHistory('発注中');` : '';
+
     html += `
       <div class="stock-row">
         <div class="stock-pattern">
           <span style="font-weight:600;">${p}</span>
         </div>
         <div class="stock-counts" style="gap:4px;">
-          ${WAREHOUSES.map(w => {
-            const n = stock[p]?.[w] || 0;
-            const cls = n === 0 ? 'zero' : 'positive';
-            return `<div class="stock-count" style="min-width:40px;flex:1;cursor:${n>0?'pointer':'default'};"
-              onclick="if(${n}>0){_currentPattern='${safeP}';renderHistory('${w}');}">
-              <div class="stock-count-num ${cls}">${n}</div>
-              <div class="stock-count-label">本</div>
-            </div>`;
-          }).join('')}
-          ${(() => {
-            const prep = prepStock[p] || 0;
-            const ord = orderStock[p] || 0;
-            const prepCls = prep === 0 ? 'zero' : 'positive';
-            const ordCls = ord === 0 ? 'zero' : 'positive';
-            return `
-            <div class="stock-count" style="min-width:40px;flex:1;cursor:${prep>0?'pointer':'default'};border-left:1px solid var(--border);"
-              onclick="if(${prep}>0){_currentPattern='${safeP}';renderHistory('準備');}">
-              <div class="stock-count-num ${prepCls}" style="color:${prep>0?'var(--yellow)':''};">${prep}</div>
-              <div class="stock-count-label">本</div>
-            </div>
-            <div class="stock-count" style="min-width:40px;flex:1;cursor:${ord>0?'pointer':'default'};"
-              onclick="if(${ord}>0){_currentPattern='${safeP}';renderHistory('発注中');}">
-              <div class="stock-count-num ${ordCls}" style="color:${ord>0?'var(--purple)':''};">${ord}</div>
-              <div class="stock-count-label">本</div>
-            </div>`;
-          })()}
+          ${warehouseCols}
+          <div class="stock-count" style="min-width:40px;flex:1;cursor:${prep>0?'pointer':'default'};border-left:1px solid var(--border);" onclick="${prepClick}">
+            <div class="stock-count-num ${prepCls}" style="color:${prepColor};">${prep}</div>
+            <div class="stock-count-label">本</div>
+          </div>
+          <div class="stock-count" style="min-width:40px;flex:1;cursor:${ord>0?'pointer':'default'};" onclick="${ordClick}">
+            <div class="stock-count-num ${ordCls}" style="color:${ordColor};">${ord}</div>
+            <div class="stock-count-label">本</div>
+          </div>
         </div>
       </div>`;
   });

@@ -1616,14 +1616,13 @@ function calcStock(records, catKey) {
   return { stock, prepStock, orderStock, records, catKey };
 }
 
-// グローバルにレコードを保存（履歴表示用）
+// ─── 在庫確認：グローバル変数 ────────────────────────────────────────────────
 let _stockRecords = [];
 let _stockCatKey = '';
 let _stockSize = '';
 let _currentPattern = '';
 
 function renderStockResult(size, catKey, records) {
-  // グローバルに保存
   _stockRecords = records;
   _stockCatKey = catKey;
   _stockSize = size;
@@ -1632,185 +1631,178 @@ function renderStockResult(size, catKey, records) {
   const db = DB_MAP[catKey];
   const { stock, prepStock, orderStock } = calcStock(records, catKey);
 
-  // ヘッダー列：倉庫3つ + 準備 + 発注
-  const COLS = [...WAREHOUSES, '準備', '発注'];
   const COL_LABELS = [...WAREHOUSES.map(w => w.replace('倉庫','')), '準備中', '発注中'];
 
-  let html = `
-    <div class="content">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-        <button onclick="renderStockHome()" style="background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:0;">←</button>
-        <div class="screen-label" style="margin:0;">在庫確認</div>
-      </div>
-      <div class="screen-title" style="font-family:'DM Mono',monospace;font-size:18px;">${size}</div>
-      <div class="screen-sub" style="margin-bottom:0;">${db.name}</div>`;
+  let html = '<div class="content">';
+  html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">';
+  html += '<button onclick="renderStockHome()" style="background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:0;">←</button>';
+  html += '<div class="screen-label" style="margin:0;">在庫確認</div></div>';
+  html += '<div class="screen-title" style="font-family:'DM Mono',monospace;font-size:18px;">' + size + '</div>';
+  html += '<div class="screen-sub" style="margin-bottom:0;">' + db.name + '</div>';
+  html += '<div style="margin-top:16px;">';
 
-  html += `<div style="margin-top:16px;overflow-x:auto;">`;
-  html += `<div style="display:flex;justify-content:flex-end;gap:4px;padding:0 0 8px;border-bottom:1px solid var(--border);margin-bottom:4px;min-width:0;">
-    ${COL_LABELS.map((l, i) => {
-      const isSpecial = i >= 3;
-      return `<div style="text-align:center;min-width:40px;flex:1;"><div style="font-size:9px;color:${isSpecial ? 'var(--accent)' : 'var(--muted)'};">${l}</div></div>`;
-    }).join('')}
-  </div>`;
+  // ヘッダー行
+  html += '<div style="display:flex;justify-content:flex-end;gap:4px;padding:0 0 8px;border-bottom:1px solid var(--border);margin-bottom:4px;">';
+  COL_LABELS.forEach(function(l, i) {
+    var color = i >= 3 ? 'var(--accent)' : 'var(--muted)';
+    html += '<div style="text-align:center;min-width:40px;flex:1;"><div style="font-size:9px;color:' + color + ';">' + l + '</div></div>';
+  });
+  html += '</div>';
 
-  // メーカー順にソート
-  const MAKER_ORDER = ['TOYO','BRIDGESTONE','DUNLOP','MICHELIN','PIRELLI'];
-  const sortedPatterns = [...db.patterns].sort((a, b) => {
-    const orderA = MAKER_ORDER.indexOf(getMaker(a));
-    const orderB = MAKER_ORDER.indexOf(getMaker(b));
-    if (orderA !== orderB) return orderA - orderB;
-    const sumA = WAREHOUSES.reduce((s, w) => s + (stock[a]?.[w] || 0), 0);
-    const sumB = WAREHOUSES.reduce((s, w) => s + (stock[b]?.[w] || 0), 0);
-    return sumB - sumA;
+  // メーカー順ソート
+  var MAKER_ORDER = ['TOYO','BRIDGESTONE','DUNLOP','MICHELIN','PIRELLI'];
+  var sortedPatterns = db.patterns.slice().sort(function(a, b) {
+    var oA = MAKER_ORDER.indexOf(getMaker(a));
+    var oB = MAKER_ORDER.indexOf(getMaker(b));
+    if (oA !== oB) return oA - oB;
+    var sA = WAREHOUSES.reduce(function(s,w){ return s + (stock[a]?.[w]||0); }, 0);
+    var sB = WAREHOUSES.reduce(function(s,w){ return s + (stock[b]?.[w]||0); }, 0);
+    return sB - sA;
   });
 
-  sortedPatterns.forEach(p => {
-    const safeP = p.replace(/'/g, "\\'");
-    const prep = prepStock[p] || 0;
-    const ord = orderStock[p] || 0;
-    const prepCls = prep === 0 ? 'zero' : 'positive';
-    const ordCls = ord === 0 ? 'zero' : 'positive';
-    const prepColor = prep > 0 ? 'var(--yellow)' : '';
-    const ordColor = ord > 0 ? 'var(--purple)' : '';
+  sortedPatterns.forEach(function(p) {
+    var prep = prepStock[p] || 0;
+    var ord  = orderStock[p] || 0;
 
-    let warehouseCols = '';
-    WAREHOUSES.forEach(w => {
-      const n = stock[p]?.[w] || 0;
-      const cls = n === 0 ? 'zero' : 'positive';
-      const cursor = n > 0 ? 'pointer' : 'default';
-      const click = n > 0 ? `_currentPattern='${safeP}';renderHistory('${w}');` : '';
-      warehouseCols += `<div class="stock-count" style="min-width:40px;flex:1;cursor:${cursor};" onclick="${click}">
-        <div class="stock-count-num ${cls}">${n}</div>
-        <div class="stock-count-label">本</div>
-      </div>`;
+    html += '<div class="stock-row">';
+    html += '<div class="stock-pattern"><span style="font-weight:600;">' + p + '</span></div>';
+    html += '<div class="stock-counts" style="gap:4px;">';
+
+    // 倉庫3列
+    WAREHOUSES.forEach(function(w) {
+      var n   = stock[p]?.[w] || 0;
+      var cls = n === 0 ? 'zero' : 'positive';
+      var cur = n > 0 ? 'pointer' : 'default';
+      var clk = n > 0 ? '_currentPattern=\'' + p.replace(/'/g,"\\'") + '\';stockHistory(\'' + w + '\');' : '';
+      html += '<div class="stock-count" style="min-width:40px;flex:1;cursor:' + cur + ';" onclick="' + clk + '">';
+      html += '<div class="stock-count-num ' + cls + '">' + n + '</div>';
+      html += '<div class="stock-count-label">本</div></div>';
     });
 
-    const prepClick = prep > 0 ? `_currentPattern='${safeP}';renderHistory('準備');` : '';
-    const ordClick = ord > 0 ? `_currentPattern='${safeP}';renderHistory('発注中');` : '';
+    // 準備列
+    var prepCls = prep === 0 ? 'zero' : 'positive';
+    var prepColor = prep > 0 ? 'var(--yellow)' : '';
+    var prepCur = prep > 0 ? 'pointer' : 'default';
+    var prepClk = prep > 0 ? '_currentPattern=\'' + p.replace(/'/g,"\\'") + '\';stockHistory(\'準備\');' : '';
+    html += '<div class="stock-count" style="min-width:40px;flex:1;cursor:' + prepCur + ';border-left:1px solid var(--border);" onclick="' + prepClk + '">';
+    html += '<div class="stock-count-num ' + prepCls + '" style="color:' + prepColor + ';">' + prep + '</div>';
+    html += '<div class="stock-count-label">本</div></div>';
 
-    html += `
-      <div class="stock-row">
-        <div class="stock-pattern">
-          <span style="font-weight:600;">${p}</span>
-        </div>
-        <div class="stock-counts" style="gap:4px;">
-          ${warehouseCols}
-          <div class="stock-count" style="min-width:40px;flex:1;cursor:${prep>0?'pointer':'default'};border-left:1px solid var(--border);" onclick="${prepClick}">
-            <div class="stock-count-num ${prepCls}" style="color:${prepColor};">${prep}</div>
-            <div class="stock-count-label">本</div>
-          </div>
-          <div class="stock-count" style="min-width:40px;flex:1;cursor:${ord>0?'pointer':'default'};" onclick="${ordClick}">
-            <div class="stock-count-num ${ordCls}" style="color:${ordColor};">${ord}</div>
-            <div class="stock-count-label">本</div>
-          </div>
-        </div>
-      </div>`;
+    // 発注列
+    var ordCls = ord === 0 ? 'zero' : 'positive';
+    var ordColor = ord > 0 ? 'var(--purple)' : '';
+    var ordCur = ord > 0 ? 'pointer' : 'default';
+    var ordClk = ord > 0 ? '_currentPattern=\'' + p.replace(/'/g,"\\'") + '\';stockHistory(\'発注中\');' : '';
+    html += '<div class="stock-count" style="min-width:40px;flex:1;cursor:' + ordCur + ';" onclick="' + ordClk + '">';
+    html += '<div class="stock-count-num ' + ordCls + '" style="color:' + ordColor + ';">' + ord + '</div>';
+    html += '<div class="stock-count-label">本</div></div>';
+
+    html += '</div></div>';
   });
 
-  html += `</div>
-    <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);">
-      全 ${records.length} 件のレコードから計算 ・ ${new Date().toLocaleTimeString('ja-JP')} 取得
-    </div>
-    <button class="btn-primary" style="margin-top:16px;" onclick="renderStockHome()">🔍 別のサイズを検索</button>
-  </div>`;
+  html += '</div>';
+  html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);">';
+  html += '全 ' + records.length + ' 件のレコードから計算 ・ ' + new Date().toLocaleTimeString('ja-JP') + ' 取得</div>';
+  html += '<button class="btn-primary" style="margin-top:16px;" onclick="renderStockHome()">🔍 別のサイズを検索</button>';
+  html += '</div>';
 
   el.innerHTML = html;
 }
 
-// ─── 履歴ページ ───────────────────────────────────────────────────────────────
+function stockHistory(mode) {
+  var catKey  = _stockCatKey;
+  var pattern = _currentPattern;
+  var size    = _stockSize;
+  var records = _stockRecords;
 
-function renderHistory(mode) {
-  const catKey = _stockCatKey;
-  const pattern = _currentPattern;
-  const size = _stockSize;
-  const records = _stockRecords;
-  const el = document.getElementById('stock-content');
-  const db = DB_MAP[catKey];
-  const wField = db.warehouseField;
+  var el  = document.getElementById('stock-content');
+  var db  = DB_MAP[catKey];
+  var wField = db.warehouseField;
 
-  // フィルタリング
-  let filtered;
+  var filtered;
   if (mode === '準備') {
-    filtered = records.filter(r => r.properties['区分']?.select?.name === '準備'
-      && r.properties['パターン名']?.select?.name === pattern
-      && r.properties['サイズコード']?.select?.name === size);
+    filtered = records.filter(function(r) {
+      return r.properties['区分']?.select?.name === '準備'
+          && r.properties['パターン名']?.select?.name === pattern
+          && r.properties['サイズコード']?.select?.name === size;
+    });
   } else if (mode === '発注中') {
-    filtered = records.filter(r => r.properties['区分']?.select?.name === '発注中'
-      && r.properties['パターン名']?.select?.name === pattern
-      && r.properties['サイズコード']?.select?.name === size);
+    filtered = records.filter(function(r) {
+      return r.properties['区分']?.select?.name === '発注中'
+          && r.properties['パターン名']?.select?.name === pattern
+          && r.properties['サイズコード']?.select?.name === size;
+    });
   } else {
-    // 倉庫指定の在庫履歴：新しい順10件
-    filtered = records
-      .filter(r => r.properties['パターン名']?.select?.name === pattern
-        && r.properties['サイズコード']?.select?.name === size
-        && r.properties[wField]?.select?.name === mode
-        && r.properties['区分']?.select?.name !== '発注中')
-      .sort((a, b) => new Date(b.created_time) - new Date(a.created_time))
-      .slice(0, 10);
+    filtered = records.filter(function(r) {
+      return r.properties['パターン名']?.select?.name === pattern
+          && r.properties['サイズコード']?.select?.name === size
+          && r.properties[wField]?.select?.name === mode
+          && r.properties['区分']?.select?.name !== '発注中';
+    });
+    filtered.sort(function(a, b) { return new Date(b.created_time) - new Date(a.created_time); });
+    filtered = filtered.slice(0, 10);
   }
 
-  const modeLabel = mode === '準備' ? '準備中' : mode === '発注中' ? '発注中' : mode;
-  const modeColor = mode === '準備' ? 'var(--yellow)' : mode === '発注中' ? 'var(--purple)' : 'var(--accent)';
+  var modeLabel = mode === '準備' ? '準備中' : mode === '発注中' ? '発注中' : mode;
+  var modeColor = mode === '準備' ? 'var(--yellow)' : mode === '発注中' ? 'var(--purple)' : 'var(--accent)';
 
-  let rows = '';
+  var KUBUN_COLORS = {
+    '入庫':'var(--green)','出庫':'var(--red)','準備':'var(--yellow)',
+    '発注中':'var(--purple)','移動入庫':'var(--blue)','移動出庫':'var(--muted)',
+    '返品':'var(--blue)','返品（倉庫へ）':'var(--blue)','返品（メーカーへ）':'var(--muted)'
+  };
+
+  var rows = '';
   if (filtered.length === 0) {
-    rows = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:14px;">データがありません</div>`;
+    rows = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:14px;">データがありません</div>';
   } else {
-    filtered.forEach(r => {
-      const props = r.properties;
-      const kubun = props['区分']?.select?.name || '―';
-      const dest = props['出庫先']?.rich_text?.[0]?.plain_text || '―';
-      const qty = props['数量']?.number ?? '―';
-      const creator = props['作成者']?.select?.name || '―';
-      const dateRaw = r.created_time || '';
-      const date = dateRaw ? new Date(dateRaw).toLocaleDateString('ja-JP', {month:'numeric',day:'numeric'}) : '―';
+    filtered.forEach(function(r) {
+      var props   = r.properties;
+      var kubun   = props['区分']?.select?.name || '―';
+      var dest    = props['出庫先']?.rich_text?.[0]?.plain_text || '―';
+      var qty     = props['数量']?.number !== undefined ? props['数量'].number : '―';
+      var creator = props['作成者']?.select?.name || '―';
+      var dateRaw = r.created_time || '';
+      var date    = dateRaw ? new Date(dateRaw).toLocaleDateString('ja-JP', {month:'numeric',day:'numeric'}) : '―';
+      var kColor  = KUBUN_COLORS[kubun] || 'var(--muted)';
+      var cName   = creator.split('　')[0];
 
-      const kubunColors = {
-        '入庫':'var(--green)','出庫':'var(--red)','準備':'var(--yellow)',
-        '発注中':'var(--purple)','移動入庫':'var(--blue)','移動出庫':'var(--muted)',
-        '返品':'var(--blue)','返品（倉庫へ）':'var(--blue)','返品（メーカーへ）':'var(--muted)'
-      };
-      const kubunColor = kubunColors[kubun] || 'var(--muted)';
-
-      rows += `
-        <div style="border-bottom:1px solid var(--border);padding:10px 0;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-            <span style="font-size:11px;color:var(--muted);">${date}</span>
-            <span style="font-size:10px;color:${kubunColor};border:1px solid ${kubunColor};border-radius:4px;padding:1px 6px;">${kubun}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-size:13px;color:var(--text);flex:1;">${dest}</span>
-            <span style="font-size:16px;font-weight:700;color:var(--accent);font-family:'DM Mono',monospace;margin:0 12px;">${qty}本</span>
-            <span style="font-size:11px;color:var(--muted);">${creator.split('　')[0]}</span>
-          </div>
-        </div>`;
+      rows += '<div style="border-bottom:1px solid var(--border);padding:10px 0;">';
+      rows += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">';
+      rows += '<span style="font-size:11px;color:var(--muted);">' + date + '</span>';
+      rows += '<span style="font-size:10px;color:' + kColor + ';border:1px solid ' + kColor + ';border-radius:4px;padding:1px 6px;">' + kubun + '</span>';
+      rows += '</div>';
+      rows += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+      rows += '<span style="font-size:13px;color:var(--text);flex:1;">' + dest + '</span>';
+      rows += '<span style="font-size:16px;font-weight:700;color:var(--accent);font-family:'DM Mono',monospace;margin:0 12px;">' + qty + '本</span>';
+      rows += '<span style="font-size:11px;color:var(--muted);">' + cName + '</span>';
+      rows += '</div></div>';
     });
   }
 
-  const limitNote = (mode !== '準備' && mode !== '発注中') ? `<div style="font-size:11px;color:var(--muted);margin-top:8px;">最新10件表示</div>` : '';
+  var limitNote = (mode !== '準備' && mode !== '発注中')
+    ? '<div style="font-size:11px;color:var(--muted);margin-top:8px;">最新10件表示</div>' : '';
 
-  el.innerHTML = `
-    <div class="content">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-        <button onclick="history.back()" id="hist-back-btn" style="background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:0;">←</button>
-        <div class="screen-label" style="margin:0;">履歴</div>
-      </div>
-      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:2px;">
-        <div style="font-size:22px;font-weight:900;color:var(--text);">${pattern}</div>
-        <div style="font-size:14px;font-weight:700;color:var(--accent);font-family:'DM Mono',monospace;">${size}</div>
-      </div>
-      <div style="display:flex;gap:6px;margin-bottom:16px;">
-        <span style="font-size:11px;color:${modeColor};border:1px solid ${modeColor};border-radius:20px;padding:2px 10px;">${modeLabel}</span>
-        <span style="font-size:11px;color:var(--muted);background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:2px 10px;">${db.name}</span>
-      </div>
-      <div>${rows}</div>
-      ${limitNote}
-      <button class="btn-secondary" style="margin-top:16px;" id="hist-back-btn2">← 在庫一覧に戻る</button>
-    </div>`;
+  var html = '<div class="content">';
+  html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">';
+  html += '<button id="hist-back" style="background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:0;">←</button>';
+  html += '<div class="screen-label" style="margin:0;">履歴</div></div>';
+  html += '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:2px;">';
+  html += '<div style="font-size:22px;font-weight:900;color:var(--text);">' + pattern + '</div>';
+  html += '<div style="font-size:14px;font-weight:700;color:var(--accent);font-family:'DM Mono',monospace;">' + size + '</div>';
+  html += '</div>';
+  html += '<div style="display:flex;gap:6px;margin-bottom:16px;">';
+  html += '<span style="font-size:11px;color:' + modeColor + ';border:1px solid ' + modeColor + ';border-radius:20px;padding:2px 10px;">' + modeLabel + '</span>';
+  html += '<span style="font-size:11px;color:var(--muted);background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:2px 10px;">' + db.name + '</span>';
+  html += '</div>';
+  html += rows;
+  html += limitNote;
+  html += '<button class="btn-secondary" id="hist-back2" style="margin-top:16px;">← 在庫一覧に戻る</button>';
+  html += '</div>';
 
-  // 戻るボタン：在庫結果を再描画
-  document.getElementById('hist-back-btn').onclick = () => renderStockResult(_stockSize, _stockCatKey, _stockRecords);
-  document.getElementById('hist-back-btn2').onclick = () => renderStockResult(_stockSize, _stockCatKey, _stockRecords);
+  el.innerHTML = html;
+  document.getElementById('hist-back').onclick = function() { renderStockResult(_stockSize, _stockCatKey, _stockRecords); };
+  document.getElementById('hist-back2').onclick = function() { renderStockResult(_stockSize, _stockCatKey, _stockRecords); };
 }
 
 // ─── 初期化 ──────────────────────────────────────────────────────────────────

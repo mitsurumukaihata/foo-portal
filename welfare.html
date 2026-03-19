@@ -409,8 +409,9 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 <!-- ══════════════ 申請タブ ══════════════ -->
 <div id="tab-apply" class="tab-content active">
 
-  <div class="notice">
-    月上限 <strong>¥7,700（税込）</strong> ／ ジム・マッサージは同時利用不可 ／ 3か月繰越可
+  <div class="notice" id="limit-notice">
+    月上限 <strong>¥7,700（税込）</strong> ／ ジム・マッサージは同時利用不可 ／ 3か月繰越可<br>
+    <span style="font-size:11px;color:var(--text3);">※パートの方は月間の就業設定時間に応じて上限額が異なります</span>
   </div>
 
   <!-- 自分の残額カード -->
@@ -420,7 +421,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       <div class="budget-remaining">
         <div class="budget-remaining-label">残り利用可能額</div>
         <div class="budget-remaining-val" id="my-remaining">¥--</div>
-        <div class="budget-remaining-sub">上限7,700円 × 3か月 = 23,100円</div>
+        <div class="budget-remaining-sub" id="my-budget-sub">上限の計算中...</div>
       </div>
       <div class="budget-used-info">
         <div class="budget-used-label">今期利用済み</div>
@@ -501,7 +502,7 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       <input type="checkbox" id="chk-rule" onchange="updateSubmitBtn()" />
       <div>
         <div class="check-row-label">ルールを確認しました</div>
-        <div class="check-row-sub">月上限7,700円・同時利用不可・3か月繰越ルール</div>
+        <div class="check-row-sub">月上限は社員ごとに設定・同時利用不可・3か月繰越ルール</div>
       </div>
     </label>
 
@@ -611,6 +612,14 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
       報告書を提出する
     </button>
   </div>
+
+  <!-- 過去の提出履歴 -->
+  <div class="card" id="report-history-card">
+    <div class="card-label">過去の提出履歴</div>
+    <div id="report-history-list">
+      <div class="loading-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    </div>
+  </div>
 </div>
 
 <!-- ─── TOAST ─── -->
@@ -633,9 +642,17 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
 const DB_ID        = '1d0a695f8e8880a6a0f6e1ea80c7a74f';
 const REPORT_DB_ID = '1d0a695f8e88802bb1e8ebab1c75c5c8';
-const BUDGET_MAX_MONTHLY = 7700;
+const LIMIT_DB_ID  = '327a695f8e8880d1a8ddf62a33dba047';
 const QUARTER_MONTHS = 3;
-const BUDGET_MAX_QUARTERLY = BUDGET_MAX_MONTHLY * QUARTER_MONTHS;
+
+// 社員別の月上限（Notionから動的取得、フォールバック7700）
+let staffBudgetMap = {};
+function getMonthlyLimit(staff) {
+  return staffBudgetMap[staff] || 7700;
+}
+function getQuarterlyLimit(staff) {
+  return getMonthlyLimit(staff) * QUARTER_MONTHS;
+}
 
 // 報告書DB：社員名は姓のみのため変換マップ
 const STAFF_TO_LAST = {
@@ -751,9 +768,21 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 async function loadAll() {
   try {
+    // 社員別上限を取得
+    try {
+      const limData = await notionAPI(`databases/${LIMIT_DB_ID}/query`, 'POST', { page_size: 100 });
+      staffBudgetMap = {};
+      (limData.results || []).forEach(p => {
+        const name = p.properties['名前']?.title?.[0]?.plain_text || '';
+        const limit = p.properties['上限/月（税込み）']?.number || 7700;
+        if (name) staffBudgetMap[name] = limit;
+      });
+    } catch(e) { console.warn('上限DB取得失敗、デフォルト値を使用', e); }
+
     allRecords = await fetchRecords();
     renderList();
     renderAggregate();
+    updateLimitNotice();
   } catch(e) {
     console.error(e);
     showToast('データ取得に失敗しました', '✕');
@@ -777,6 +806,9 @@ function onStaffChange() {
   if (!staff) { card.style.display = 'none'; updateSubmitBtn(); return; }
   card.style.display = 'block';
   updateSubmitBtn();
+  updateLimitNotice();
+  const monthlyLimit = getMonthlyLimit(staff);
+  const quarterlyLimit = getQuarterlyLimit(staff);
 
   const now = new Date();
   const q = getQuarter(now);
@@ -784,16 +816,27 @@ function onStaffChange() {
   const used = allRecords
     .filter(r => r.staff === staff && r.date >= start && r.date <= end)
     .reduce((s, r) => s + r.amount, 0);
-  const remaining = Math.max(0, BUDGET_MAX_QUARTERLY - used);
-  const pct = Math.min(100, Math.round(used / BUDGET_MAX_QUARTERLY * 100));
+  const remaining = Math.max(0, quarterlyLimit - used);
+  const pct = Math.min(100, Math.round(used / quarterlyLimit * 100));
 
   document.getElementById('my-remaining').textContent = `¥${remaining.toLocaleString()}`;
   document.getElementById('my-used').textContent = `¥${used.toLocaleString()}`;
   document.getElementById('my-period-label').textContent = `${q.year}年 Q${q.q}`;
   document.getElementById('my-budget-pct').textContent = `${pct}%`;
+  document.getElementById('my-budget-sub').textContent = `上限${monthlyLimit.toLocaleString()}円 × 3か月 = ${quarterlyLimit.toLocaleString()}円`;
   const fill = document.getElementById('my-budget-fill');
   fill.style.width = `${pct}%`;
   fill.className = 'budget-fill' + (pct >= 100 ? ' over' : pct >= 80 ? ' warn' : '');
+}
+
+// ─── 注意書きを社員選択に応じて更新 ───
+function updateLimitNotice() {
+  const staff = document.getElementById('inp-staff').value;
+  const notice = document.getElementById('limit-notice');
+  if (staff && staffBudgetMap[staff]) {
+    const ml = getMonthlyLimit(staff);
+    notice.innerHTML = `月上限 <strong>¥${ml.toLocaleString()}（税込）</strong> ／ ジム・マッサージは同時利用不可 ／ 3か月繰越可<br><span style="font-size:11px;color:var(--text3);">※パートの方は月間の就業設定時間に応じて上限額が異なります</span>`;
+  }
 }
 
 function updateSubmitBtn() {
@@ -815,7 +858,7 @@ async function submitApply() {
   if (!staff || !content || !date || !amount) {
     showToast('必須項目を入力してください', '⚠️'); return;
   }
-  if (amount > BUDGET_MAX_QUARTERLY) {
+  if (amount > getQuarterlyLimit(staff)) {
     showToast('金額が上限を超えています', '⚠️'); return;
   }
 
@@ -1022,9 +1065,11 @@ function renderAggregatePeriod(year, q) {
   const staffData = staffList.map((name, i) => {
     const recs = records.filter(r => r.staff === name);
     const used = recs.reduce((s, r) => s + r.amount, 0);
-    const pct = Math.min(100, Math.round(used / BUDGET_MAX_QUARTERLY * 100));
+    const qLimit = getQuarterlyLimit(name);
+    const mLimit = getMonthlyLimit(name);
+    const pct = Math.min(100, Math.round(used / qLimit * 100));
     const contents = [...new Set(recs.map(r => r.content).filter(Boolean))];
-    return { name, used, pct, contents, color: staffColors[i] };
+    return { name, used, pct, contents, color: staffColors[i], qLimit, mLimit };
   });
 
   const container = document.getElementById('agg-container');
@@ -1056,7 +1101,7 @@ function renderAggregatePeriod(year, q) {
               <div class="staff-agg-tags">
                 ${s.contents.map(c => `<span class="staff-tag">${c}</span>`).join('')}
               </div>
-              <div class="staff-limit">${s.pct}% / 上限¥${BUDGET_MAX_QUARTERLY.toLocaleString()}</div>
+              <div class="staff-limit">${s.pct}% / 上限¥${s.qLimit.toLocaleString()}</div>
             </div>
           </div>`).join('')}
       </div>
@@ -1150,6 +1195,42 @@ function renderReportStatus() {
   });
   container.innerHTML = rows.join('') +
     `<div style="font-size:11px; color:var(--text3); margin-top:8px;">対象期：${q.year}年 ${currentPeriod}</div>`;
+
+  // 過去の履歴も更新
+  renderReportHistory();
+}
+
+function renderReportHistory() {
+  const container = document.getElementById('report-history-list');
+  if (!reportRecords.length) {
+    container.innerHTML = `<div style="text-align:center; color:var(--text3); padding:16px 0; font-size:13px;">提出履歴はありません</div>`;
+    return;
+  }
+
+  // 提出済みのものを日付の新しい順で表示
+  const submitted = reportRecords
+    .filter(r => r.submitted)
+    .sort((a, b) => (b.submitDate || '').localeCompare(a.submitDate || ''));
+
+  if (!submitted.length) {
+    container.innerHTML = `<div style="text-align:center; color:var(--text3); padding:16px 0; font-size:13px;">提出履歴はありません</div>`;
+    return;
+  }
+
+  const ratingIcon = { '非常に良かった': '😄', 'ちょっと良かった': '🙂', '普通': '😐', '微妙': '😕', '全然良くなかった': '😞', 'あまり使えなかった': '🤔' };
+
+  container.innerHTML = submitted.map(r => `
+    <div style="padding:12px 0; border-bottom:0.5px solid var(--border);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+        <span style="font-size:13px; font-weight:500; color:var(--text);">${r.staff}</span>
+        <span style="font-size:11px; color:var(--text3);">${r.submitDate ? r.submitDate.replace(/-/g,'/') : ''}</span>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center; margin-bottom:4px;">
+        <span style="font-size:12px; color:var(--amber); font-weight:500;">${r.period}</span>
+        <span style="font-size:12px; color:var(--text2);">${ratingIcon[r.rating] || '📝'} ${r.rating || ''}</span>
+      </div>
+      ${r.comment ? `<div style="font-size:12px; color:var(--text2); line-height:1.5; padding:6px 10px; background:var(--surface2); border-radius:var(--radius-sm);">${r.comment}</div>` : ''}
+    </div>`).join('');
 }
 
 function onRepStaffChange() {

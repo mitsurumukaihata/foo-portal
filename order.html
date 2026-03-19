@@ -488,9 +488,7 @@ const DB_MAP = {
   rt:           {id:'201a695f8e888104bb47c7103d5909dc', name:'RT 再生',             icon:'♻️', warehouseField:'倉庫',
     sizes:['195/85R16','205/75R16','205/85R16','225/80R17.5','225/90R17.5','245/80R17.5','245/70R19.5','265/70R19.5','275/70R22.5','275/80R22.5','11R22.5 14P','11R22.5 16P'],
     patterns:['RTM919','RTM810','RTM804','RTM807','RTM81C-170','RTM890','RTW910','RTW911','RTW970','RTG610']},
-  pirelli:      {id:'201a695f8e8881de8106d2248fe8b25f', name:'PIRELLI',             icon:'🇮🇹', warehouseField:'倉庫',
-    sizes:['295/80R22.5','315/80R22.5','385/65R22.5','275/80R22.5','245/70R19.5','265/70R19.5'],
-    patterns:['FR01','TR01','R02','R01','TG01','ALL ROADS','WINTER D','ADR26','GU01']},
+  // PIRELLI: 発注ほぼなし・除外
   tt:           {id:'201a695f8e8881a6930fcf2bd752e676', name:'T/T チューブタイプ', icon:'🔧', warehouseField:'倉庫',
     sizes:['7.00R15　10P','7.00R15　12P','6.50R16　10P','6.50R16　12P','7.00R16　10P','7.00R16　12P','7.50R16　12P','7.50R16　14P','8.25R16　14P'],
     patterns:['M614','M626','M125','M131','M134','M319','M501','M504','M519','M919','M935','M890','R225','SP185']},
@@ -499,7 +497,42 @@ const DB_MAP = {
     patterns:['V03e','V02e','M935','K370','R710','V600','W300','W989','LV01','VL10A','VAN01','SV01']},
   lift:         {id:'201a695f8e8881c5b2c3d9e9ce2ffd21', name:'リフト',              icon:'🏗️', warehouseField:'出庫倉庫',
     sizes:['4.00-8　8P','5.00-8　8P','6.00-9　10P','6.50-10　10P','4.50-12　8P','7.00-12　12P','7.00-12　14P','5.50-15　8P','6.00-15　10P','7.00-15MS','7.00-15','8.25-15','7.50-16','17*8.00-8　4P','18*7-8　8P','21*8-9　14P','23*9-10　16P','27*8.50-15　4P','27*8.50-15　6P','28*8-15　12P','28*9-15','250-15','300-15'],
-    patterns:['G-8','G-8P','G-15','PowerTRAX']},
+    patterns:['G-8','G-8P','G-15']},
+};
+
+// ─── メーカー×パターン マスター ─────────────────────────────────────────────────
+// 仕入先を選んだとき、該当カテゴリ内のパターンをこのリストで絞り込む
+const MAKER_PATTERNS = {
+  'TOYO': new Set([
+    'M646','M676','M125','M317','M323','M319','M320','M619','M626',
+    'M929','M919','M966','M920','M939',
+    'M634','M135','M134e','M131',
+    'M935','M937','M934',
+    'RTM919',
+    'M614','M501','M504','M519',
+    'V03e','V02e',
+    'G-8','G-8P','G-15',
+  ]),
+  'BRIDGESTONE': new Set([
+    'M888','M899','M801','M746','R225','R241','G539',
+    'W910','W900S','W911','W970','W999',
+    'M804','R207',
+    'W989',
+    'RTM810','RTM804','RTM807','RTM81C-170','RTM890','RTW910','RTW911','RTW970','RTG610',
+    'M890','R225',
+    'K370','R710','V600','W300',
+    'M626',
+  ]),
+  'DUNLOP': new Set([
+    'SP680','SP122',
+    'SP001','SP081','SP088',
+    'SPLT50','SPLT21','SPLT22',
+    'LV01','LT01',
+    'SP185',
+    'VL10A','VAN01','SV01',
+  ]),
+  'Michelin': new Set(['XJE4','XDW']),
+  'ネット購入': null, // 絞り込みなし（全パターン表示）
 };
 
 const STATUS_LABEL = {'新規発注':'新規発注','発注済':'発注済','納入済':'納入済','キャンセル':'キャンセル'};
@@ -904,22 +937,48 @@ function pickCat(key) {
   document.querySelectorAll('#cat-chips .chip').forEach(c => {
     c.classList.toggle('on', c.dataset.key === key);
   });
-  // パターンドロップダウンを構築
-  const db = DB_MAP[key];
-  const patSel = document.getElementById('f-pattern');
-  patSel.innerHTML = '<option value="">選択してください</option>';
-  db.patterns.forEach(p => {
-    const opt = document.createElement('option');
-    opt.value = p; opt.textContent = p;
-    patSel.appendChild(opt);
-  });
-  document.getElementById('f-pattern-wrap').style.display = 'block';
+  // 仕入先に応じてパターンを絞り込む
+  buildPatternDropdown(key);
   // DB連携グリッドをこのDBのみONに
   selDBs = new Set([key]);
   document.querySelectorAll('.db-item').forEach(el => {
     el.classList.toggle('on', el.dataset.key === key);
   });
   updateSummary();
+}
+
+// 仕入先×カテゴリでパターンドロップダウンを構築
+function buildPatternDropdown(key) {
+  if(!key) return;
+  const db       = DB_MAP[key];
+  const supplier = document.getElementById('f-supplier').value;
+  const makerSet = MAKER_PATTERNS[supplier]; // nullなら絞り込みなし
+
+  const patSel = document.getElementById('f-pattern');
+  patSel.innerHTML = '<option value="">選択してください</option>';
+
+  const filtered = makerSet
+    ? db.patterns.filter(p => makerSet.has(p))
+    : db.patterns;
+
+  if(!filtered.length) {
+    // 絞り込み結果が0件の場合は全パターン表示（フォールバック）
+    db.patterns.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p; opt.textContent = p;
+      patSel.appendChild(opt);
+    });
+    document.getElementById('f-pattern-wrap').querySelector('.field-label').innerHTML =
+      'パターン名 <span style="font-size:10px;color:var(--muted);font-weight:400;">（選択した仕入先に該当なし・全表示）</span>';
+  } else {
+    filtered.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p; opt.textContent = p;
+      patSel.appendChild(opt);
+    });
+    document.getElementById('f-pattern-wrap').querySelector('.field-label').innerHTML = 'パターン名';
+  }
+  document.getElementById('f-pattern-wrap').style.display = 'block';
 }
 
 function toggleDB(el) {
@@ -940,6 +999,9 @@ function updateSummary() {
   const pattern  = document.getElementById('f-pattern')?.value || '';
   const ostaff   = document.getElementById('f-orderstaff-display')?.textContent || '';
   const box      = document.getElementById('form-summary');
+
+  // カテゴリ選択済みなら仕入先変更時にパターンを再構築
+  if(selCatKey) buildPatternDropdown(selCatKey);
 
   if(supplier && selSize) {
     box.style.display = 'block';

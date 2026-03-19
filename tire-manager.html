@@ -451,9 +451,9 @@ body {
   border-bottom: 0.5px solid var(--border);
 }
 .stock-row:last-child { border-bottom: none; }
-.stock-pattern { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; min-width: 80px; }
-.stock-counts { display: flex; gap: 8px; flex: 1; justify-content: flex-end; }
-.stock-count { text-align: center; }
+.stock-pattern { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; flex: 0 0 80px; min-width: 0; }
+.stock-counts { display: flex; flex: 1; justify-content: flex-end; gap: 0; }
+.stock-count { text-align: center; flex: 1; min-width: 0; }
 .stock-count-num { font-size: 16px; font-weight: 700; font-family: 'DM Mono', monospace; }
 .stock-count-num.zero { color: var(--muted); }
 .stock-count-num.positive { color: var(--green); }
@@ -554,7 +554,15 @@ body {
 <!-- App -->
 <div id="app">
   <div class="header">
-    <div class="header-brand">Tire Manager f.o.o</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
+      <div class="header-brand">Tire Manager f.o.o</div>
+      <a href="https://mitsurumukaihata.github.io/foo-portal/"
+        style="font-size:11px;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:3px;padding:3px 8px;border:0.5px solid var(--border);border-radius:20px;transition:border-color 0.15s;"
+        onmouseover="this.style.borderColor='var(--border2)'"
+        onmouseout="this.style.borderColor='var(--border)'">
+        ← ポータル
+      </a>
+    </div>
     <div class="header-title">タイヤ<span>入出庫</span></div>
   </div>
   <div class="nav">
@@ -1712,14 +1720,16 @@ function renderStockResult(size, catKey, records) {
   html += '<div style="margin-top:16px;">';
 
   // ヘッダー
-  html += '<div style="display:flex;justify-content:flex-end;gap:4px;padding:0 0 8px;border-bottom:1px solid var(--border);margin-bottom:4px;">';
+  html += '<div style="display:flex;padding:0 0 8px;border-bottom:1px solid var(--border);margin-bottom:4px;">';
+  html += '<div style="flex:0 0 80px;min-width:0;"></div>';
+  html += '<div style="display:flex;flex:1;">';
   var wLabels = WAREHOUSES.map(function(w){ return w.replace('倉庫',''); });
   wLabels.forEach(function(l) {
-    html += '<div style="text-align:center;min-width:40px;flex:1;"><div style="font-size:9px;color:var(--muted);">' + l + '</div></div>';
+    html += '<div style="text-align:center;flex:1;min-width:0;"><div style="font-size:9px;color:var(--muted);">' + l + '</div></div>';
   });
-  html += '<div style="text-align:center;min-width:40px;flex:1;"><div style="font-size:9px;color:var(--accent);">準備中</div></div>';
-  html += '<div style="text-align:center;min-width:40px;flex:1;"><div style="font-size:9px;color:var(--accent);">発注中</div></div>';
-  html += '</div>';
+  html += '<div style="text-align:center;flex:1;min-width:0;"><div style="font-size:9px;color:var(--accent);">準備中</div></div>';
+  html += '<div style="text-align:center;flex:1;min-width:0;"><div style="font-size:9px;color:var(--accent);">発注中</div></div>';
+  html += '</div></div>';
 
   // 各パターン行
   sortedPatterns.forEach(function(p) {
@@ -1728,13 +1738,13 @@ function renderStockResult(size, catKey, records) {
 
     html += '<div class="stock-row">';
     html += '<div class="stock-pattern"><span style="font-weight:600;">' + p + '</span></div>';
-    html += '<div class="stock-counts" style="gap:4px;">';
+    html += '<div class="stock-counts">';
 
     WAREHOUSES.forEach(function(w) {
       var n = stock[p]?.[w] || 0;
       var cls = n > 0 ? 'positive' : 'zero';
       var cur = n > 0 ? 'pointer' : 'default';
-      html += '<div class="stock-count" style="min-width:40px;flex:1;cursor:' + cur + ';" ';
+      html += '<div class="stock-count" style="cursor:' + cur + ';" ';
       if (n > 0) {
         html += 'data-pattern="' + p.replace(/"/g,'&quot;') + '" data-mode="' + w + '" onclick="onStockTap(this)"';
       }
@@ -1746,7 +1756,7 @@ function renderStockResult(size, catKey, records) {
     // 準備列
     var prepCls = prep > 0 ? 'positive' : 'zero';
     var prepStyle = prep > 0 ? 'color:var(--yellow);' : '';
-    html += '<div class="stock-count" style="min-width:40px;flex:1;cursor:' + (prep>0?'pointer':'default') + ';border-left:1px solid var(--border);" ';
+    html += '<div class="stock-count" style="cursor:' + (prep>0?'pointer':'default') + ';border-left:1px solid var(--border);" ';
     if (prep > 0) {
       html += 'data-pattern="' + p.replace(/"/g,'&quot;') + '" data-mode="準備" onclick="onStockTap(this)"';
     }
@@ -1757,7 +1767,7 @@ function renderStockResult(size, catKey, records) {
     // 発注列
     var ordCls = ord > 0 ? 'positive' : 'zero';
     var ordStyle = ord > 0 ? 'color:var(--purple);' : '';
-    html += '<div class="stock-count" style="min-width:40px;flex:1;cursor:' + (ord>0?'pointer':'default') + ';" ';
+    html += '<div class="stock-count" style="cursor:' + (ord>0?'pointer':'default') + ';" ';
     if (ord > 0) {
       html += 'data-pattern="' + p.replace(/"/g,'&quot;') + '" data-mode="発注中" onclick="onStockTap(this)"';
     }

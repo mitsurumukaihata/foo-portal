@@ -470,6 +470,56 @@ body {
 .cat-sel-btn .csb-icon { font-size: 18px; margin-bottom: 6px; display: block; }
 .cat-sel-btn .csb-name { font-size: 12px; font-weight: 700; color: var(--text); line-height: 1.3; }
 .cat-sel-btn .csb-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+/* ── 価格検索ページ ── */
+.price-search-wrap { padding: 16px 20px 0; }
+.price-db-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.price-db-tab {
+  background: var(--s2); border: 1.5px solid var(--border);
+  border-radius: 20px; padding: 6px 12px;
+  font-size: 11px; font-weight: 700; color: var(--muted);
+  cursor: pointer; transition: all 0.12s; white-space: nowrap;
+}
+.price-db-tab.active { border-color: var(--accent); background: rgba(240,165,0,0.1); color: var(--accent); }
+.price-result-list { padding: 0 20px 40px; }
+.price-card {
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
+}
+.price-card-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+.price-pattern { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 700; color: var(--text); }
+.price-val { font-size: 18px; font-weight: 900; color: var(--accent); text-align: right; line-height: 1; }
+.price-val-label { font-size: 9px; color: var(--muted); text-align: right; margin-top: 2px; }
+.price-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.price-size { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); }
+.price-tag { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; display: inline-block; }
+.price-tag-maker { background: rgba(59,130,246,0.12); color: var(--blue); }
+.price-tag-cat   { background: rgba(240,165,0,0.1);   color: var(--accent); }
+.price-note { font-size: 11px; color: var(--muted); margin-top: 4px; border-top: 0.5px solid var(--border); padding-top: 4px; }
+.price-empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; }
+.pct-tabs { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 12px; }
+.pct-tab {
+  font-size: 11px; font-weight: 700; padding: 6px 8px;
+  border-radius: 8px; border: 1.5px solid var(--border);
+  color: var(--muted); cursor: pointer;
+  background: var(--s2); text-align: center; min-width: 48px; transition: all 0.12s;
+}
+.pct-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pct-tab:active { transform: scale(0.95); }
+.est-row { display: grid; grid-template-columns: 1fr 72px 64px; gap: 5px; align-items: center; margin-bottom: 7px; }
+.est-lbl { font-size: 13px; color: var(--text); }
+.est-inp {
+  width: 100%; background: var(--s2); border: 1.5px solid var(--border);
+  border-radius: 8px; padding: 7px 9px; font-size: 13px;
+  font-family: 'DM Mono', monospace; color: var(--text);
+  outline: none; text-align: right; transition: border-color 0.15s;
+}
+.est-inp:focus { border-color: var(--accent); }
+.est-inp::placeholder { color: var(--muted); font-family: 'Noto Sans JP', sans-serif; font-size: 11px; }
+.price-count-bar { display: flex; justify-content: space-between; align-items: center; padding: 8px 0 10px; border-bottom: 0.5px solid var(--border); margin-bottom: 10px; }
+.price-count-text { font-size: 11px; color: var(--muted); }
+.price-sort-sel { background: var(--s2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 11px; color: var(--text); font-family: 'Noto Sans JP', sans-serif; outline: none; cursor: pointer; }
+
 </style>
 </head>
 <body>
@@ -510,6 +560,7 @@ body {
   <div class="nav">
     <button class="nav-btn active" onclick="switchTab('entry')">入出庫</button>
     <button class="nav-btn" onclick="switchTab('stock')">在庫確認</button>
+    <button class="nav-btn" onclick="switchTab('price')">価格検索</button>
   </div>
 
   <!-- 入出庫ページ -->
@@ -521,6 +572,11 @@ body {
   <!-- 在庫確認ページ -->
   <div class="page" id="page-stock">
     <div id="stock-content"></div>
+  </div>
+
+  <!-- 価格検索ページ -->
+  <div class="page" id="page-price">
+    <div id="price-content"></div>
   </div>
 
 
@@ -708,11 +764,13 @@ function logout() {
 // ─── Tab ─────────────────────────────────────────────────────────────────────
 
 function switchTab(tab) {
+  const tabs = ['entry','stock','price'];
   document.querySelectorAll('.nav-btn').forEach((b,i) => {
-    b.classList.toggle('active', ['entry','stock'][i] === tab);
+    b.classList.toggle('active', tabs[i] === tab);
   });
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + tab).classList.add('active');
+  if (tab === 'price' && !priceState.initialized) renderPriceHome();
 }
 
 // ─── Step bar ────────────────────────────────────────────────────────────────
@@ -1818,6 +1876,344 @@ function stockHistory(mode) {
   document.getElementById('hist-back').onclick = function() { renderStockResult(_stockSize, _stockCatKey, _stockRecords); };
   document.getElementById('hist-back2').onclick = function() { renderStockResult(_stockSize, _stockCatKey, _stockRecords); };
 }
+
+
+// ─── 価格検索ページ ──────────────────────────────────────────────────────────
+
+const PRICE_DB_MAP = {
+  'lts': { id: '213a695f-8e88-8166-bfb4-e50682f7479c', name: 'LTS ノーマル', icon: '🚐' },
+  'van': { id: '214a695f-8e88-81ed-89df-faa0a5eb3587', name: 'バン', icon: '🚌' },
+  'pc':  { id: '2f6a695f-8e88-81e8-8f56-ccd99cec9c74', name: 'PC', icon: '🚗' },
+  'stl': { id: '249a695f-8e88-8162-8ddd-e4fdbf285c2d', name: 'スタッドレス', icon: '❄️' }
+};
+
+let priceState = {
+  initialized: false, dbKey: 'lts', query: '', selectedSize: '',
+  makerFilter: 'all', step: 'search', patternRows: [],
+  selectedPattern: '', results: [], loading: false, estOpen: {}, estPct: {},
+};
+
+const PRICE_SIZE_MAP_FALLBACK = {
+  'lts': ['175/75R15','185/65R15','185/75R15','195/75R15','195/85R15','205/80R15','185/70R16','185/85R16','195/85R16','205/65R16','205/70R16','225/70R16','205/75R16','205/85R16','215/85R16','225/85R16','195/60R17.5','195/70R17.5','205/60R17.5','225/60R17.5','205/70R17.5','205/80R17.5','215/70R17.5 118/116'],
+  'van': ['145/80R12','145/80R13','145R12','145R13','155/80R12','155/80R13','155/80R14','155R12','155R13','155R14','165/80R13','165/80R14','165R13','165R14','175/80R14','175R13','175R14','185/80R14','185/80R15','185R14','195/70R15','195/80R14','195/80R15','195R14','205/70R15','215/70R15','215/80R15'],
+  'pc': ['145/65R15','155/65R13','155/65R14','165/65R13','165/65R14','165/65R15','165/70R13','165/70R14','175/65R14','175/65R15','175/70R14','185/65R14','185/65R15','195/65R15','195/65R16','205/65R15','205/65R16'],
+  'stl': []
+};
+const PRICE_SIZE_CACHE = {};
+
+async function fetchPriceSizes(dbKey) {
+  if (PRICE_SIZE_CACHE[dbKey] && PRICE_SIZE_CACHE[dbKey].length > 0) return PRICE_SIZE_CACHE[dbKey];
+  const db = PRICE_DB_MAP[dbKey];
+  try {
+    const allSizes = new Set();
+    let cursor;
+    for (let page = 0; page < 5; page++) {
+      const body = { page_size: 100 };
+      if (cursor) body.start_cursor = cursor;
+      const res = await notionAPI('POST', `/databases/${db.id}/query`, body);
+      if (res.object === 'error') break;
+      res.results.forEach(r => {
+        const sz = r.properties['サイズ']?.rich_text?.[0]?.plain_text;
+        if (sz && sz.trim()) allSizes.add(sz.trim());
+      });
+      if (!res.has_more) break;
+      cursor = res.next_cursor;
+    }
+    const sorted = [...allSizes].sort((a, b) => a.localeCompare(b, 'ja', { numeric: true }));
+    PRICE_SIZE_CACHE[dbKey] = sorted;
+    return sorted;
+  } catch(e) {
+    return PRICE_SIZE_MAP_FALLBACK[dbKey] || [];
+  }
+}
+
+function priceSelectDb(key) {
+  priceState.dbKey = key; priceState.step = 'search'; priceState.query = '';
+  priceState.selectedSize = ''; priceState.makerFilter = 'all';
+  priceState.patternRows = []; priceState.selectedPattern = '';
+  priceState.results = []; priceState.estOpen = {}; priceState.estPct = {};
+  renderPriceHome();
+}
+
+function renderPriceHome() {
+  priceState.initialized = true;
+  if (priceState.step === 'pattern') { renderPricePatternStep(); return; }
+  if (priceState.step === 'result')  { renderPriceResultStep(); return; }
+  const el = document.getElementById('price-content');
+  el.innerHTML = `
+    <div class="price-search-wrap">
+      <div class="screen-label" style="padding-top:4px;">価格検索</div>
+      <div class="screen-title" style="margin-bottom:10px;">A表 価格参照</div>
+      <div class="price-db-tabs">
+        ${Object.entries(PRICE_DB_MAP).map(([k,db]) =>
+          `<div class="price-db-tab${priceState.dbKey===k?' active':''}" onclick="priceSelectDb('${k}')">${db.icon} ${db.name}</div>`
+        ).join('')}
+      </div>
+      <div class="screen-sub" style="margin-bottom:8px;">サイズを入力（3文字以上で候補表示）</div>
+      <div class="search-box" style="margin-bottom:6px;">
+        <input id="price-search-inp" type="search" placeholder="例：225 または 22585R16"
+          autocomplete="off" inputmode="numeric" lang="en"
+          value="${priceState.query}" oninput="priceInputNormalize(this)">
+        <button class="search-clear" onclick="priceClearSearch()">✕</button>
+      </div>
+      <div id="price-size-candidates" class="candidates" style="margin-bottom:6px;"></div>
+      <button class="btn-primary" id="price-search-btn" style="margin-bottom:12px;"
+        onclick="priceGoPattern()" ${priceState.selectedSize?'':'disabled'}>
+        ${priceState.selectedSize ? priceState.selectedSize+' のパターンを選ぶ →' : 'サイズを選択してください'}
+      </button>
+    </div>`;
+  if (priceState.query && priceState.query.length >= 3) priceFilterSizes(priceState.query);
+}
+
+function priceInputNormalize(el) {
+  let v = el.value.replace(/[Ａ-Ｚａ-ｚ０-９]/g, c => String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+  v = v.replace(/[／]/g,'/').replace(/[．]/g,'.').replace(/　/g,' ').toUpperCase();
+  if (el.value !== v) { const pos = el.selectionStart; el.value = v; try { el.setSelectionRange(pos,pos); } catch(e) {} }
+  priceState.query = v; priceFilterSizes(v);
+}
+function normalizeSizeQuery(q) { return q.replace(/[\/R\.]/gi,'').replace(/\s/g,'').toUpperCase(); }
+function normalizeSizeStr(s)   { return s.replace(/[\/R\.]/gi,'').replace(/\s/g,'').toUpperCase(); }
+
+async function priceFilterSizes(v) {
+  priceState.query = v;
+  const q = v.trim();
+  const c = document.getElementById('price-size-candidates');
+  const btn = document.getElementById('price-search-btn');
+  if (!c) return;
+  if (q.length < 3) {
+    c.innerHTML = q.length > 0 ? `<div style="text-align:center;padding:8px;font-size:12px;color:var(--muted);">あと${3-q.length}文字入力してください</div>` : '';
+    if (btn) { btn.disabled = true; btn.textContent = 'サイズを選択してください'; }
+    return;
+  }
+  if (!PRICE_SIZE_CACHE[priceState.dbKey]) c.innerHTML = `<div style="text-align:center;padding:8px;font-size:12px;color:var(--muted);">サイズ一覧を取得中…</div>`;
+  const sizes = await fetchPriceSizes(priceState.dbKey);
+  const nq = normalizeSizeQuery(q);
+  const hits = sizes.filter(s => normalizeSizeStr(s).includes(nq) || s.toUpperCase().includes(q.replace(/\s/g,''))).slice(0,15);
+  if (hits.length === 0) {
+    c.innerHTML = `<div style="text-align:center;padding:8px;font-size:12px;color:var(--muted);">候補なし</div>`;
+    priceState.selectedSize = q;
+    if (btn) { btn.disabled = false; btn.textContent = `「${q}」のパターンを選ぶ →`; }
+    return;
+  }
+  c.innerHTML = hits.map(s =>
+    `<div class="candidate${priceState.selectedSize===s?' sel':''}" onclick="pricePickSize('${s}')">
+      <span class="candidate-text">${s}</span><span class="candidate-badge">選択</span>
+    </div>`
+  ).join('');
+  if (priceState.selectedSize && hits.includes(priceState.selectedSize) && btn) {
+    btn.disabled = false; btn.textContent = `${priceState.selectedSize} のパターンを選ぶ →`;
+  }
+}
+
+function pricePickSize(s) {
+  priceState.selectedSize = s; priceState.query = s;
+  const inp = document.getElementById('price-search-inp');
+  if (inp) inp.value = s;
+  const c = document.getElementById('price-size-candidates');
+  if (c) c.querySelectorAll('.candidate').forEach(el => {
+    el.classList.toggle('sel', el.querySelector('.candidate-text').textContent === s);
+  });
+  const btn = document.getElementById('price-search-btn');
+  if (btn) { btn.disabled = false; btn.textContent = `${s} のパターンを選ぶ →`; }
+}
+
+function priceClearSearch() {
+  priceState.query=''; priceState.selectedSize=''; priceState.step='search';
+  priceState.patternRows=[]; priceState.selectedPattern=''; priceState.results=[];
+  priceState.estOpen={}; priceState.estPct={};
+  renderPriceHome();
+}
+
+async function priceGoPattern() {
+  if (priceState.loading) return;
+  const sz = priceState.selectedSize || priceState.query;
+  if (!sz) return;
+  priceState.loading = true;
+  document.getElementById('price-content').innerHTML = '<div class="content"><div class="loading-wrap"><div class="spinner"></div><div class="loading-text">パターンデータを取得中…</div></div></div>';
+  const db = PRICE_DB_MAP[priceState.dbKey];
+  try {
+    let all = [], cursor;
+    while (true) {
+      const body = { filter: { property: 'サイズ', rich_text: { contains: sz } }, page_size: 100 };
+      if (cursor) body.start_cursor = cursor;
+      const res = await notionAPI('POST', `/databases/${db.id}/query`, body);
+      if (res.object === 'error') throw new Error(res.message);
+      all = all.concat(res.results);
+      if (!res.has_more) break;
+      cursor = res.next_cursor;
+    }
+    priceState.patternRows = all.map(r => {
+      const p = r.properties;
+      return { id:r.id, size:p['サイズ']?.rich_text?.[0]?.plain_text||'', pattern:p['パターン']?.select?.name||'', maker:p['メーカー']?.select?.name||'', cat:p['カテゴリ']?.select?.name||'', price:p['価格']?.number??null, note:p['備考']?.rich_text?.[0]?.plain_text||'', weight:p['加重指数']?.rich_text?.[0]?.plain_text||'' };
+    });
+    priceState.loading=false; priceState.step='pattern'; priceState.selectedPattern='';
+    renderPricePatternStep();
+  } catch(e) {
+    priceState.loading = false;
+    document.getElementById('price-content').innerHTML = `<div class="content"><div class="error-box">取得に失敗しました。<br><small>${e.message}</small></div><button class="btn-secondary" onclick="priceState.step='search';renderPriceHome()">← 戻る</button></div>`;
+  }
+}
+
+function renderPricePatternStep() {
+  const rows = priceState.patternRows;
+  const MAKER_ORDER = ['TOYO TIRES','BRIDGESTONE','DUNLOP','YOKOHAMA'];
+  const makerLabel = {'TOYO TIRES':'TOYO','BRIDGESTONE':'BS','DUNLOP':'DUNLOP','YOKOHAMA':'YOKO','all':'全メーカー'};
+  const patMap = {};
+  rows.forEach(r => {
+    const key = r.pattern+'|'+r.maker;
+    if (!patMap[key]) patMap[key] = {pattern:r.pattern,maker:r.maker,minPrice:r.price};
+    else if (r.price!==null&&(patMap[key].minPrice===null||r.price<patMap[key].minPrice)) patMap[key].minPrice=r.price;
+  });
+  let pats = Object.values(patMap).filter(p => priceState.makerFilter==='all'||p.maker===priceState.makerFilter);
+  pats.sort((a,b) => { const ai=MAKER_ORDER.indexOf(a.maker),bi=MAKER_ORDER.indexOf(b.maker); const md=(ai===-1?99:ai)-(bi===-1?99:bi); return md!==0?md:a.pattern.localeCompare(b.pattern); });
+  const makers = ['all',...MAKER_ORDER.filter(m=>Object.values(patMap).some(p=>p.maker===m))];
+  document.getElementById('price-content').innerHTML = `
+    <div class="price-search-wrap">
+      <button class="btn-secondary" style="margin-bottom:12px;margin-top:4px;" onclick="priceState.step='search';renderPriceHome()">← ${priceState.selectedSize} を変更</button>
+      <div class="screen-label">パターンを選択</div>
+      <div style="font-size:20px;font-weight:900;font-family:'DM Mono',monospace;color:var(--accent);margin-bottom:10px;">${priceState.selectedSize}</div>
+      <div class="price-db-tabs" style="margin-bottom:12px;">${makers.map(m=>`<div class="price-db-tab${priceState.makerFilter===m?' active':''}" onclick="pricePatternFilterMaker('${m}')">${makerLabel[m]||m}</div>`).join('')}</div>
+      <div class="pattern-list">
+        ${pats.length===0?'<div class="price-empty">該当するパターンが見つかりません</div>':pats.map(p=>{
+          const key=p.pattern+'|'+p.maker, sel=priceState.selectedPattern===key;
+          return `<div class="pattern-item${sel?' sel':''}" onclick="pricePickPattern('${key.replace(/'/g,"\'")}')">
+            <div class="pattern-dot"></div>
+            <div><div class="pattern-name">${p.pattern}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${p.maker}</div></div>
+            <div style="margin-left:auto;text-align:right;flex-shrink:0;">${p.minPrice!==null?`<div style="font-size:14px;font-weight:700;color:var(--accent);">¥${p.minPrice.toLocaleString()}</div><div style="font-size:9px;color:var(--muted);">A表〜</div>`:'<div style="font-size:12px;color:var(--muted);">要確認</div>'}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <button class="btn-primary" id="price-pattern-btn" style="margin-top:8px;" onclick="priceGoResult()" ${priceState.selectedPattern?'':'disabled'}>${priceState.selectedPattern?priceState.selectedPattern.split('|')[0]+' の価格を見る →':'パターンを選択してください'}</button>
+    </div>`;
+}
+
+function pricePatternFilterMaker(maker) { priceState.makerFilter=maker; priceState.selectedPattern=''; renderPricePatternStep(); }
+function pricePickPattern(key) {
+  priceState.selectedPattern=key;
+  document.querySelectorAll('.pattern-item').forEach(el=>el.classList.remove('sel'));
+  event.currentTarget.classList.add('sel');
+  const btn=document.getElementById('price-pattern-btn');
+  if(btn){btn.disabled=false;btn.textContent=key.split('|')[0]+' の価格を見る →';}
+}
+
+function priceGoResult() {
+  if(!priceState.selectedPattern) return;
+  const [pat,maker]=priceState.selectedPattern.split('|');
+  priceState.results=priceState.patternRows.filter(r=>r.pattern===pat&&r.maker===maker);
+  priceState.results.sort((a,b)=>{if(a.price===null)return 1;if(b.price===null)return -1;return a.price-b.price;});
+  priceState.step='result'; priceState.estOpen={}; priceState.estPct={};
+  renderPriceResultStep();
+}
+
+function renderPriceResultStep() {
+  const rows=priceState.results;
+  document.getElementById('price-content').innerHTML=`
+    <div class="price-search-wrap" style="padding-bottom:0;">
+      <button class="btn-secondary" style="margin-bottom:12px;margin-top:4px;" onclick="priceState.step='pattern';renderPricePatternStep()">← パターン選択に戻る</button>
+      <div class="screen-label">検索結果</div>
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px;">
+        <span style="font-size:20px;font-weight:900;font-family:'DM Mono',monospace;color:var(--accent);">${priceState.selectedSize}</span>
+        <span style="font-size:13px;font-weight:700;color:var(--text);">${priceState.selectedPattern.split('|')[0]}</span>
+        <span style="font-size:11px;color:var(--muted);">${rows.length}件</span>
+      </div>
+    </div>
+    <div class="price-result-list" id="price-cards-area">${rows.map((r,idx)=>buildPriceCard(r,idx)).join('')}</div>`;
+}
+
+function buildPriceCard(r,idx) {
+  const cardId='pc'+idx, isOpen=!!priceState.estOpen[cardId], pct=priceState.estPct[cardId]||100;
+  const pctList=[70,75,80,85,90,95,100], bp=r.price??'null';
+  const pctTabsHtml=pctList.map(p=>{const val=r.price!==null?Math.round(r.price*p/100):null;return `<div class="pct-tab${pct===p?' active':''}" onclick="priceSetPct('${cardId}',${p},${bp})"><div style="font-size:11px;font-weight:700;">${p===100?'A表':p+'%'}</div><div style="font-size:10px;margin-top:1px;opacity:0.85;">${val!==null?'¥'+val.toLocaleString():'-'}</div></div>`;}).join('');
+  const curPctVal=r.price!==null?Math.round(r.price*pct/100):null;
+  const pctOuterHtml=isOpen?`<div style="padding:0 20px 0;"><div style="background:var(--s1);border:1.5px solid var(--border2);border-radius:10px;padding:12px 14px;margin-bottom:8px;"><div class="screen-label" style="margin-bottom:8px;">掛率を選択（内部用）</div><div class="pct-tabs" id="${cardId}-pcts">${pctTabsHtml}</div></div></div>`:'';
+  const numAttr=(id,val)=>`id="${cardId}-${id}" type="text" inputmode="decimal" value="${val}" onfocus="priceNumFocus(this)" onblur="priceNumBlur(this,'${cardId}',${bp})" oninput="priceNumInput(this,'${cardId}',${bp})" class="est-inp"`;
+  const qtyAttr=(id,val)=>`id="${cardId}-${id}" type="text" inputmode="numeric" value="${val}" onfocus="priceNumFocus(this)" onblur="priceNumBlur(this,'${cardId}',${bp})" oninput="priceNumInput(this,'${cardId}',${bp})" class="est-inp"`;
+  const tireUnitDisp=curPctVal!==null?curPctVal.toLocaleString():'-';
+  return `${pctOuterHtml}
+  <div class="price-card" id="${cardId}" style="cursor:pointer;">
+    <div onclick="priceToggleEst('${cardId}',${bp})">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div style="font-size:22px;font-weight:900;font-family:'DM Mono',monospace;color:var(--text);letter-spacing:-0.02em;line-height:1.1;">${r.size}</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:5px;">
+            <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(240,165,0,0.12);color:var(--accent);">${r.pattern}</span>
+            <span style="font-size:11px;color:var(--muted);">${r.maker}</span>
+          </div>
+          ${r.weight?`<div style="font-size:11px;color:var(--muted);margin-top:3px;">${r.weight}</div>`:''}
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-left:12px;">${isOpen?'<div style="font-size:12px;color:var(--muted);">見積もり 閉じる ↑</div>':'<div style="font-size:10px;color:var(--muted);">見積もり ↓</div>'}</div>
+      </div>
+      ${r.note?`<div class="price-note" style="margin-top:8px;">${r.note}</div>`:''}
+    </div>
+    <div id="${cardId}-est" style="display:${isOpen?'block':'none'};">
+      <div style="height:0.5px;background:var(--border);margin:12px 0;"></div>
+      <div class="screen-label" style="margin-bottom:4px;">追加項目</div>
+      <div style="display:grid;grid-template-columns:1fr 80px 64px;gap:5px;margin-bottom:4px;"><div></div><div style="font-size:10px;color:var(--muted);text-align:right;">単価</div><div style="font-size:10px;color:var(--muted);text-align:right;">数量</div></div>
+      <div class="est-row"><span class="est-lbl">タイヤ</span><div id="${cardId}-tunit" style="font-size:13px;color:var(--accent);font-family:'DM Mono',monospace;text-align:right;padding:7px 4px;">¥${tireUnitDisp}</div><input ${qtyAttr('tqty','4')} style="text-align:right;"></div>
+      <div class="est-row"><span class="est-lbl">工賃</span><input ${numAttr('ku','3,000')}><input ${qtyAttr('kq','4')}></div>
+      <div class="est-row"><span class="est-lbl">廃タイヤ</span><input ${numAttr('hu','500')}><input ${qtyAttr('hq','4')}></div>
+      <div class="est-row"><span class="est-lbl">出張</span><input ${numAttr('su','0')}><input ${qtyAttr('sq','1')}></div>
+      <div class="est-row"><input type="text" placeholder="その他1" id="${cardId}-o1n" class="est-inp" style="text-align:left;font-size:12px;" oninput="priceCalcEst('${cardId}',${bp})"><input ${numAttr('o1u','0')}><input ${qtyAttr('o1q','1')}></div>
+      <div class="est-row"><input type="text" placeholder="その他2" id="${cardId}-o2n" class="est-inp" style="text-align:left;font-size:12px;" oninput="priceCalcEst('${cardId}',${bp})"><input ${numAttr('o2u','0')}><input ${qtyAttr('o2q','1')}></div>
+      <div class="screen-label" style="margin-top:10px;margin-bottom:4px;">備考</div>
+      <textarea id="${cardId}-memo" placeholder="メモ・特記事項" class="memo-input" style="min-height:60px;font-size:13px;"></textarea>
+      <div id="${cardId}-bd" style="margin:10px 0 6px;font-size:12px;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;">
+        <div style="background:var(--s2);border-radius:8px;padding:10px 12px;"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">税別合計</div><div style="font-size:18px;font-weight:900;color:var(--text);font-family:'DM Mono',monospace;" id="${cardId}-tot">-</div></div>
+        <div style="background:var(--s2);border-radius:8px;padding:10px 12px;"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">税込（10%）</div><div style="font-size:18px;font-weight:900;color:var(--accent);font-family:'DM Mono',monospace;" id="${cardId}-tax">-</div></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function priceToggleEst(cardId,basePrice) { priceState.estOpen[cardId]=!priceState.estOpen[cardId]; renderPriceResultStep(); if(priceState.estOpen[cardId]) setTimeout(()=>priceCalcEst(cardId,basePrice),30); }
+function priceSetPct(cardId,pct,basePrice) {
+  priceState.estPct[cardId]=pct;
+  const container=document.getElementById(cardId+'-pcts');
+  if(container) container.querySelectorAll('.pct-tab').forEach((el,i)=>{el.classList.toggle('active',[70,75,80,85,90,95,100][i]===pct);});
+  const tunit=document.getElementById(cardId+'-tunit');
+  if(tunit&&basePrice!==null) tunit.textContent='¥'+Math.round(basePrice*pct/100).toLocaleString();
+  priceCalcEst(cardId,basePrice);
+}
+function priceEstVal(id) { const el=document.getElementById(id); if(!el) return 0; return parseFloat(el.value.replace(/,/g,'').replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)))||0; }
+function priceEstStr(id) { return document.getElementById(id)?.value||''; }
+function priceNumFocus(el) { el.value=el.value.replace(/,/g,''); el.select(); }
+function priceNumBlur(el,cardId,basePrice) {
+  const v=el.value.replace(/,/g,'').replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+  const n=parseFloat(v);
+  if(!isNaN(n)&&n>0&&el.id&&el.id.match(/-(ku|hu|su|o1u|o2u)$/)) el.value=n.toLocaleString();
+  else if(!isNaN(n)) el.value=n===0?'0':String(n);
+  priceCalcEst(cardId,basePrice);
+}
+function priceNumInput(el,cardId,basePrice) {
+  let v=el.value.replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[^0-9,]/g,'');
+  if(el.value!==v) el.value=v;
+  priceCalcEst(cardId,basePrice);
+}
+function priceCalcEst(cardId,basePrice) {
+  const pct=priceState.estPct[cardId]||100;
+  const tireUnit=basePrice!==null?Math.round(basePrice*pct/100):0;
+  const tQty=priceEstVal(cardId+'-tqty');
+  const tunit=document.getElementById(cardId+'-tunit');
+  if(tunit&&basePrice!==null) tunit.textContent='¥'+tireUnit.toLocaleString();
+  const items=[
+    {name:`タイヤ (${pct===100?'A表':pct+'%'})`,unit:tireUnit,qty:tQty},
+    {name:'工賃',unit:priceEstVal(cardId+'-ku'),qty:priceEstVal(cardId+'-kq')},
+    {name:'廃タイヤ',unit:priceEstVal(cardId+'-hu'),qty:priceEstVal(cardId+'-hq')},
+    {name:'出張',unit:priceEstVal(cardId+'-su'),qty:priceEstVal(cardId+'-sq')},
+  ];
+  const o1Name=priceEstStr(cardId+'-o1n').trim()||'その他1', o1Unit=priceEstVal(cardId+'-o1u'), o1Qty=priceEstVal(cardId+'-o1q');
+  if(o1Unit>0) items.push({name:o1Name,unit:o1Unit,qty:o1Qty});
+  const o2Name=priceEstStr(cardId+'-o2n').trim()||'その他2', o2Unit=priceEstVal(cardId+'-o2u'), o2Qty=priceEstVal(cardId+'-o2q');
+  if(o2Unit>0) items.push({name:o2Name,unit:o2Unit,qty:o2Qty});
+  let total=0, bdHtml='';
+  items.forEach(it=>{const sub=it.unit*it.qty;if(sub===0)return;total+=sub;bdHtml+=`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:0.5px solid var(--border);"><span style="color:var(--muted);">${it.name} × ${it.qty}</span><span>¥${sub.toLocaleString()}</span></div>`;});
+  const bd=document.getElementById(cardId+'-bd'), tot=document.getElementById(cardId+'-tot'), tax=document.getElementById(cardId+'-tax');
+  if(bd) bd.innerHTML=bdHtml;
+  if(tot) tot.textContent='¥'+total.toLocaleString();
+  if(tax) tax.textContent='¥'+Math.round(total*1.1).toLocaleString();
+}
+
 
 // ─── 初期化 ──────────────────────────────────────────────────────────────────
 

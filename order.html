@@ -317,27 +317,22 @@ body{
 </div>
 
 <div class="tabs">
-  <button class="tab-btn active" id="tab-list"   onclick="switchTab('list')">一覧</button>
-  <button class="tab-btn"        id="tab-pending" onclick="switchTab('pending')">未入荷</button>
+  <button class="tab-btn active" id="tab-pending" onclick="switchTab('pending')">未入荷</button>
   <button class="tab-btn"        id="tab-new"     onclick="switchTab('new')">＋ 新規発注</button>
+  <button class="tab-btn"        id="tab-history" onclick="switchTab('history')">履歴</button>
 </div>
 
-<!-- ══ 一覧タブ ══ -->
-<div class="body" id="pane-list">
-  <div class="filter-row" id="filter-row">
-    <button class="chip on" data-maker="ALL" onclick="filterMaker(this)">すべて</button>
-    <button class="chip" data-maker="TOYO"        onclick="filterMaker(this)">TOYO</button>
-    <button class="chip" data-maker="BRIDGESTONE"  onclick="filterMaker(this)">BS</button>
-    <button class="chip" data-maker="ネット購入"   onclick="filterMaker(this)">ネット</button>
-  </div>
-  <div id="list-container">
+<!-- ══ 未入荷タブ ══ -->
+<div class="body" id="pane-pending">
+  <div id="pending-container">
     <div class="loading-state">読み込み中...</div>
   </div>
 </div>
 
-<!-- ══ 未入荷タブ ══ -->
-<div class="body" id="pane-pending" style="display:none;">
-  <div id="pending-container">
+<!-- ══ 履歴タブ ══ -->
+<div class="body" id="pane-history" style="display:none;">
+  <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">納入済の発注履歴（最新20件）</div>
+  <div id="history-container">
     <div class="loading-state">読み込み中...</div>
   </div>
 </div>
@@ -449,6 +444,42 @@ body{
   </div>
 
   <div class="form-section">
+    <div class="form-section-title">📞 注文方法</div>
+
+    <!-- 電話注文済 -->
+    <div class="field">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;
+        background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;">
+        <input type="checkbox" id="f-tel-chk" onchange="onOrderMethodChange()"
+          style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;">
+        <span style="font-size:14px;font-weight:700;">📞 電話注文済</span>
+      </label>
+    </div>
+    <div id="f-tel-receiver-wrap" class="field" style="display:none;padding-left:4px;">
+      <div class="field-label">電話を受けてくれた担当者</div>
+      <select class="fselect" id="f-tel-receiver">
+        <option value="">選択してください</option>
+      </select>
+    </div>
+
+    <!-- 口頭注文済 -->
+    <div class="field">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;
+        background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;">
+        <input type="checkbox" id="f-verbal-chk" onchange="onOrderMethodChange()"
+          style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;">
+        <span style="font-size:14px;font-weight:700;">🗣 口頭注文済</span>
+      </label>
+    </div>
+    <div id="f-verbal-receiver-wrap" class="field" style="display:none;padding-left:4px;">
+      <div class="field-label">口頭で伝えた担当者</div>
+      <select class="fselect" id="f-verbal-receiver">
+        <option value="">選択してください</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-section">
     <div class="form-section-title">📝 備考</div>
     <textarea class="ftextarea" id="f-memo" placeholder="急ぎ・顧客向け・特記事項など..."></textarea>
   </div>
@@ -554,7 +585,7 @@ const STATUS_BTN   = {'新規発注':'active-new','発注済':'active-sent','納
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let orders    = [];
-let curTab    = 'list';
+let curTab    = 'pending';
 let selMaker  = 'ALL';
 let qty       = 4;
 let selDBs    = new Set(Object.keys(DB_MAP));
@@ -563,6 +594,9 @@ let curStatus = null;
 let loginUser = '';   // ポータルセッションから取得
 let selSize   = '';   // 選択済みサイズ
 let selCatKey = '';   // 選択済みカテゴリキー
+let receivers = [];   // 受注者マスター（メーカー別担当者）
+
+const RECEIVER_DB = '3ae94ce5-04cd-41f2-91a4-8c19e0ac253f';
 
 // ─── ログインユーザー取得（ポータルのsessionKeyと同じ） ─────────────────────────
 (function(){
@@ -602,12 +636,12 @@ function cycleTheme(){
 // ─── タブ切り替え ──────────────────────────────────────────────────────────────
 function switchTab(tab) {
   curTab = tab;
-  ['list','pending','new'].forEach(t => {
+  ['pending','new','history'].forEach(t => {
     document.getElementById('tab-'+t).classList.toggle('active', t===tab);
     document.getElementById('pane-'+t).style.display = t===tab ? 'block' : 'none';
   });
-  if(tab === 'list') renderList();
   if(tab === 'pending') renderPending();
+  if(tab === 'history') renderHistory();
   if(tab === 'new') initForm();
 }
 
@@ -667,8 +701,54 @@ async function loadOrders() {
   } catch(e) {
     orders = [];
     console.error('loadOrders error:', e);
-    return e.message; // エラーメッセージを返す
+    return e.message;
   }
+}
+
+// ─── 受注者マスター取得 ───────────────────────────────────────────────────────
+async function loadReceivers() {
+  try {
+    const data = await notionQuery(RECEIVER_DB, null, null);
+    receivers = (data.results || []).map(p => ({
+      id:   p.id,
+      name: (p.properties['名前']?.title || []).map(t=>t.plain_text).join(''),
+      makers: (p.properties['メーカー']?.multi_select || []).map(m=>m.name),
+    }));
+  } catch(e) {
+    console.error('loadReceivers error:', e);
+    receivers = [];
+  }
+}
+
+// ─── 受注者ドロップダウンをメーカーで絞り込み ────────────────────────────────
+function buildReceiverOptions(supplier) {
+  const filtered = supplier
+    ? receivers.filter(r => r.makers.length === 0 || r.makers.includes(supplier))
+    : receivers;
+  const opts = '<option value="">選択してください</option>' +
+    filtered.map(r => `<option value="${r.name}">${r.name}</option>`).join('');
+  document.getElementById('f-tel-receiver').innerHTML     = opts;
+  document.getElementById('f-verbal-receiver').innerHTML  = opts;
+}
+
+// ─── 履歴タブ（納入済 最新20件）──────────────────────────────────────────────
+function renderHistory() {
+  const el = document.getElementById('history-container');
+  el.innerHTML = '<div class="loading-state">読み込み中...</div>';
+  loadOrders().then((err) => {
+    if(err) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div>読み込みエラー<br><span style="font-size:11px;word-break:break-all;">${err}</span></div>`;
+      return;
+    }
+    const done = orders
+      .filter(o => propStr(o,'ステータス') === '納入済')
+      .slice(0, 20);
+    if(!done.length) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div>納入済の履歴はありません</div>';
+      return;
+    }
+    el.innerHTML = done.map(orderCardHTML).join('');
+  });
 }
 
 // ─── 一覧レンダリング ─────────────────────────────────────────────────────────
@@ -850,10 +930,19 @@ function initForm() {
 
   // 注文担当をログインユーザーから自動セット
   const dispEl = document.getElementById('f-orderstaff-display');
-  // ポータルのfull name → 発注管理表の注文担当（向畑 or 岡崎）へマッピング
   const staffMap = {'向畑　充':'向畑','岡崎　由美':'岡崎'};
   const mapped = staffMap[loginUser] || loginUser.split('　')[0] || '—';
   dispEl.textContent = mapped || '未設定';
+
+  // 受注者マスター読み込み（初回のみ）
+  if(receivers.length === 0) {
+    loadReceivers().then(() => {
+      const supplier = document.getElementById('f-supplier').value;
+      buildReceiverOptions(supplier);
+    });
+  } else {
+    buildReceiverOptions(document.getElementById('f-supplier').value);
+  }
 
   // DB選択グリッド
   const grid = document.getElementById('db-grid');
@@ -871,6 +960,14 @@ function initForm() {
     ).join('');
   }
   updateSummary();
+}
+
+// ─── 電話・口頭チェックボックスの制御 ─────────────────────────────────────────
+function onOrderMethodChange() {
+  const telChk    = document.getElementById('f-tel-chk').checked;
+  const verbalChk = document.getElementById('f-verbal-chk').checked;
+  document.getElementById('f-tel-receiver-wrap').style.display    = telChk    ? 'block' : 'none';
+  document.getElementById('f-verbal-receiver-wrap').style.display = verbalChk ? 'block' : 'none';
 }
 
 // ── サイズ予測検索 ──
@@ -1038,6 +1135,8 @@ function updateSummary() {
   const ostaff   = document.getElementById('f-orderstaff-display')?.textContent || '';
   const box      = document.getElementById('form-summary');
 
+  // 仕入先が変わったら受注者を絞り込む
+  buildReceiverOptions(supplier);
   // カテゴリ選択済みなら仕入先変更時にパターンを再構築
   if(selCatKey) buildPatternDropdown(selCatKey);
 
@@ -1085,16 +1184,24 @@ async function submitOrder() {
       '数量':         {number: qty},
       '種別':         {select:{name:'タイヤ'}},
     };
+    const telChk    = document.getElementById('f-tel-chk').checked;
+    const verbalChk = document.getElementById('f-verbal-chk').checked;
+    const telReceiver    = document.getElementById('f-tel-receiver').value;
+    const verbalReceiver = document.getElementById('f-verbal-receiver').value;
+    const receiver = telReceiver || verbalReceiver || '';
+
     if(supplier)  orderProps['仕入先']       = {select:{name: supplier}};
     if(ostaff)    orderProps['注文担当']      = {select:{name: ostaff}};
     if(selSize)   orderProps['サイズコード']  = {rich_text:[{text:{content: selSize}}]};
-    // サイズ・パターンselectは選択肢に存在する値のみ送る（不一致でAPIエラー回避）
     try { if(selSize)  orderProps['サイズ']   = {select:{name: selSize}}; } catch(e){}
     try { if(pattern)  orderProps['パターン'] = {select:{name: pattern}}; } catch(e){}
     if(location)  orderProps['納入予定場所']  = {select:{name: location}};
     if(orderdate) orderProps['発注日']        = {date:{start: orderdate}};
     if(duedate)   orderProps['納期予定日']    = {date:{start: duedate}};
     if(memo)      orderProps['備考欄']        = {rich_text:[{text:{content: memo}}]};
+    orderProps['電話注文済'] = {checkbox: telChk};
+    orderProps['口頭注文済'] = {checkbox: verbalChk};
+    if(receiver)  orderProps['受注者']        = {rich_text:[{text:{content: receiver}}]};
 
     await notionCreate(ORDER_DB, orderProps);
 
@@ -1151,6 +1258,10 @@ function resetForm() {
   document.getElementById('f-duedate').disabled = false;
   document.getElementById('f-duedate').style.opacity = '1';
   document.getElementById('f-duedate-unknown').checked = false;
+  document.getElementById('f-tel-chk').checked    = false;
+  document.getElementById('f-verbal-chk').checked = false;
+  document.getElementById('f-tel-receiver-wrap').style.display    = 'none';
+  document.getElementById('f-verbal-receiver-wrap').style.display = 'none';
   qty = 4;
   document.getElementById('qty-display').textContent = '4';
   document.getElementById('form-summary').style.display = 'none';
@@ -1170,7 +1281,7 @@ function hideFeedback() {
 }
 
 // ─── 初期ロード ───────────────────────────────────────────────────────────────
-renderList();
+renderPending();
 </script>
 </body>
 </html>

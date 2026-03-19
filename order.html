@@ -404,8 +404,8 @@ body{
         <div class="field-label">納入予定場所</div>
         <select class="fselect" id="f-location">
           <option value="">未定</option>
-          <option>志和</option>
           <option>五日市</option>
+          <option>志和</option>
         </select>
       </div>
       <div class="field">
@@ -423,7 +423,14 @@ body{
         <input class="finput" id="f-orderdate" type="date">
       </div>
       <div class="field">
-        <div class="field-label">納期予定日</div>
+        <div class="field-label">
+          納期予定日
+          <label style="display:inline-flex;align-items:center;gap:4px;margin-left:8px;font-weight:400;color:var(--muted);cursor:pointer;">
+            <input type="checkbox" id="f-duedate-unknown" onchange="toggleDueDate(this)"
+              style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer;">
+            <span style="font-size:10px;">未定</span>
+          </label>
+        </div>
         <input class="finput" id="f-duedate" type="date">
       </div>
     </div>
@@ -988,6 +995,18 @@ function toggleDB(el) {
   updateSummary();
 }
 
+function toggleDueDate(cb) {
+  const input = document.getElementById('f-duedate');
+  if(cb.checked) {
+    input.value = '';
+    input.disabled = true;
+    input.style.opacity = '0.35';
+  } else {
+    input.disabled = false;
+    input.style.opacity = '1';
+  }
+}
+
 function changeQty(d) {
   qty = Math.max(1, qty + d);
   document.getElementById('qty-display').textContent = qty;
@@ -1106,7 +1125,10 @@ function resetForm() {
   document.getElementById('f-pattern').innerHTML           = '<option value="">選択してください</option>';
   document.getElementById('f-memo').value     = '';
   document.getElementById('f-location').value = '';
-  document.getElementById('f-duedate').value  = '';
+  document.getElementById('f-duedate').value   = '';
+  document.getElementById('f-duedate').disabled = false;
+  document.getElementById('f-duedate').style.opacity = '1';
+  document.getElementById('f-duedate-unknown').checked = false;
   qty = 4;
   document.getElementById('qty-display').textContent = '4';
   document.getElementById('form-summary').style.display = 'none';

@@ -1,0 +1,1821 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+<title>タイヤ入出庫 | Tire Manager f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+/* ダークモード（デフォルト）: チャコール × アンバー */
+:root {
+  --bg: #18181f;
+  --s1: #101015;
+  --s2: #1e1e26;
+  --s3: #26262f;
+  --border: #2c2c38;
+  --border2: #3c3c4a;
+  --text: #f0f0f2;
+  --muted: #68687a;
+  --accent: #f0a500;
+  --accent2: #f5be40;
+  --green: #22c55e;
+  --blue: #3b82f6;
+  --yellow: #f59e0b;
+  --red: #ef4444;
+  --purple: #a855f7;
+}
+
+/* ライトモード: クリーム白 × バーントオレンジ */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #fdf6ee;
+    --s1: #ffffff;
+    --s2: #fdf0e4;
+    --s3: #f5e6d4;
+    --border: #e8d8c4;
+    --border2: #d8c4a8;
+    --text: #1a1208;
+    --muted: #a08060;
+    --accent: #e07000;
+    --accent2: #c05800;
+    --green: #1a9e4a;
+    --blue: #2563eb;
+    --yellow: #d97706;
+    --red: #dc2626;
+    --purple: #9333ea;
+  }
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Sans JP', sans-serif;
+  min-height: 100vh;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* ── Token Gate ── */
+#token-gate {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 32px 24px;
+}
+.gate-logo { font-size: 11px; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 32px; }
+.gate-title { font-size: 28px; font-weight: 900; letter-spacing: -0.03em; margin-bottom: 8px; }
+.gate-title span { color: var(--accent); }
+.gate-sub { font-size: 13px; color: var(--muted); margin-bottom: 32px; line-height: 1.6; }
+.gate-label { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
+.gate-input {
+  width: 100%;
+  background: var(--s2);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-size: 13px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text);
+  outline: none;
+  margin-bottom: 12px;
+  transition: border-color 0.15s;
+}
+.gate-input:focus { border-color: var(--accent); }
+.gate-input::placeholder { color: var(--muted); }
+.gate-btn {
+  width: 100%;
+  background: var(--accent);
+  border: none;
+  border-radius: 10px;
+  padding: 15px;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: 'Noto Sans JP', sans-serif;
+  cursor: pointer;
+  margin-top: 4px;
+}
+.gate-note { font-size: 11px; color: var(--muted); margin-top: 16px; line-height: 1.6; }
+.gate-staff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.gate-staff-btn {
+  background: var(--s2); border: 1.5px solid var(--border);
+  border-radius: 10px; padding: 14px 10px; text-align: center;
+  cursor: pointer; font-size: 14px; font-weight: 700; color: var(--text);
+  transition: all 0.15s;
+}
+.gate-staff-btn:active { transform: scale(0.97); }
+.gate-staff-btn.selected { border-color: var(--accent); background: rgba(240,165,0,0.1); color: var(--accent); }
+.gate-start-label { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
+.prep-divider { text-align:center; color:var(--muted); font-size:12px; margin:12px 0; letter-spacing:0.05em; }
+.btn-prep {
+  width:100%; background:rgba(240,165,0,0.1); border:1.5px solid var(--accent);
+  border-radius:10px; padding:13px; color:var(--accent); font-size:14px;
+  font-family:'Noto Sans JP',sans-serif; cursor:pointer; font-weight:700;
+  transition:all 0.15s;
+}
+.btn-prep:active { transform:scale(0.97); }
+.prep-list-item {
+  background:var(--s2); border:1px solid var(--border); border-radius:10px;
+  padding:12px 14px; margin-bottom:8px; cursor:pointer; transition:all 0.15s;
+}
+.prep-list-item:active { transform:scale(0.98); border-color:var(--accent); }
+.prep-row1 { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+.prep-dest { font-size:13px; font-weight:700; color:var(--text); flex:1; }
+.prep-pattern { font-size:13px; font-weight:700; color:var(--accent); }
+.prep-size { font-size:12px; color:var(--muted); font-family:'DM Mono',monospace; }
+.prep-row2 { display:flex; gap:12px; }
+.prep-qty { font-size:12px; color:var(--green); font-weight:700; }
+.prep-warehouse { font-size:12px; color:var(--muted); }
+.prep-empty { text-align:center; padding:32px 20px; color:var(--muted); font-size:14px; }
+
+/* ── App Shell ── */
+#app { display: none; flex-direction: column; min-height: 100vh; }
+
+.header {
+  background: var(--s1);
+  border-bottom: 0.5px solid var(--border);
+  padding: 14px 20px 10px;
+  position: sticky; top: 0; z-index: 100;
+}
+.header-brand { font-size: 10px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 2px; }
+.header-title { font-size: 17px; font-weight: 900; letter-spacing: -0.02em; }
+.header-title span { color: var(--accent); }
+
+.nav {
+  display: flex;
+  background: var(--s1);
+  border-bottom: 0.5px solid var(--border);
+}
+.nav-btn {
+  flex: 1;
+  padding: 10px 6px 8px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-family: 'Noto Sans JP', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.page { display: none; flex: 1; overflow-y: auto; padding-bottom: 40px; }
+.page.active { display: block; }
+
+/* ── Step bar ── */
+.step-bar { display: flex; gap: 4px; padding: 12px 20px; background: var(--s1); border-bottom: 0.5px solid var(--border); }
+.step-dot { height: 2px; flex: 1; background: var(--border); border-radius: 2px; transition: background 0.3s; }
+.step-dot.done { background: var(--accent); }
+.step-dot.active { background: var(--accent2); }
+
+/* ── Content ── */
+.content { padding: 20px; }
+.screen-label { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
+.screen-title { font-size: 20px; font-weight: 900; letter-spacing: -0.02em; margin-bottom: 6px; line-height: 1.2; }
+.screen-sub { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-bottom: 16px; }
+
+/* ── Buttons ── */
+.btn-primary {
+  width: 100%; background: var(--accent); border: none; border-radius: 10px;
+  padding: 14px; color: #ffffff; font-size: 14px; font-weight: 700;
+  font-family: 'Noto Sans JP', sans-serif; cursor: pointer; margin-top: 10px;
+  transition: opacity 0.15s;
+}
+.btn-primary:disabled { opacity: 0.4; cursor: default; }
+.btn-secondary {
+  width: 100%; background: transparent; border: 1.5px solid var(--border2);
+  border-radius: 10px; padding: 12px; color: var(--text); font-size: 14px;
+  font-family: 'Noto Sans JP', sans-serif; cursor: pointer; margin-top: 6px;
+  font-weight: 500;
+}
+.btn-danger {
+  width: 100%; background: transparent; border: 1px solid var(--red);
+  border-radius: 10px; padding: 11px; color: var(--red); font-size: 13px;
+  font-family: 'Noto Sans JP', sans-serif; cursor: pointer; margin-top: 6px;
+}
+
+/* ── Search ── */
+.search-box {
+  background: var(--s2); border: 1.5px solid var(--border);
+  border-radius: 10px; padding: 12px 14px;
+  display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+  transition: border-color 0.15s;
+}
+.search-box:focus-within { border-color: var(--accent); }
+.search-box input {
+  background: transparent; border: none; outline: none;
+  color: var(--text); font-size: 18px; font-family: 'DM Mono', monospace;
+  font-weight: 500; flex: 1; width: 100%;
+}
+.search-box input::placeholder { color: var(--muted); font-size: 14px; font-family: 'Noto Sans JP', sans-serif; }
+.search-clear {
+  background: var(--s3); border: none; border-radius: 50%;
+  width: 20px; height: 20px; color: var(--muted); font-size: 12px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Candidates ── */
+.candidates { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.candidate {
+  background: var(--s2); border: 1.5px solid var(--border);
+  border-radius: 8px; padding: 12px 14px;
+  display: flex; justify-content: space-between; align-items: center;
+  cursor: pointer; transition: all 0.12s;
+}
+.candidate:active { transform: scale(0.98); }
+.candidate.sel { border-color: var(--accent); background: rgba(240,165,0,0.08); }
+.candidate-text { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 500; }
+.candidate-badge { font-size: 9px; padding: 2px 7px; border-radius: 20px; background: rgba(240,165,0,0.12); color: var(--accent2); }
+
+/* ── Cat cards ── */
+.cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.cat-card {
+  background: var(--s2); border: 1.5px solid var(--border);
+  border-radius: 10px; padding: 14px 12px; cursor: pointer; transition: all 0.12s;
+}
+.cat-card:active { transform: scale(0.97); }
+.cat-card.sel { border-color: var(--accent); background: rgba(240,165,0,0.08); }
+.cat-card.sel::before { background: var(--accent); }
+.cat-icon { font-size: 18px; margin-bottom: 6px; display: block; }
+.cat-name { font-size: 12px; font-weight: 700; line-height: 1.3; }
+.cat-sub { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+/* ── Pattern list ── */
+.pattern-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.pattern-item {
+  background: var(--s2); border: 1.5px solid var(--border);
+  border-radius: 8px; padding: 12px 14px; cursor: pointer;
+  display: flex; align-items: center; gap: 10px; transition: all 0.12s;
+}
+.pattern-item:active { transform: scale(0.98); }
+.pattern-item.sel { border-color: var(--accent); background: rgba(240,165,0,0.08); }
+.pattern-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); flex-shrink: 0; transition: background 0.15s; }
+.pattern-item.sel .pattern-dot { background: var(--accent); }
+.pattern-name { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 500; }
+
+/* ── Numpad ── */
+.numpad-disp {
+  background: var(--s2); border: 1.5px solid var(--border);
+  border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 12px;
+}
+.num-val { font-size: 52px; font-weight: 500; color: var(--text); font-family: 'DM Mono', monospace; line-height: 1; }
+.num-val.empty { color: var(--muted); font-size: 24px; padding: 14px 0; }
+.num-unit { font-size: 13px; color: var(--muted); margin-top: 4px; }
+.numpad { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 10px; }
+.np-btn {
+  background: var(--s2); border: 1.5px solid var(--border);
+  border-radius: 10px; padding: 16px; font-size: 18px; font-weight: 500;
+  color: var(--text); cursor: pointer; text-align: center; transition: all 0.1s;
+  font-family: 'DM Mono', monospace;
+}
+.np-btn:active { background: var(--s3); transform: scale(0.95); }
+.np-del { color: var(--accent); }
+
+/* ── Type buttons ── */
+.type-group { margin-bottom: 16px; }
+.type-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.type-sep { height: 8px; }
+.type-btn {
+  border-radius: 8px; padding: 10px 6px; cursor: pointer;
+  text-align: center; border: 1.5px solid transparent; transition: all 0.12s;
+}
+.type-btn:active { transform: scale(0.96); }
+.type-btn .tn { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+.type-btn .ts { font-size: 9px; opacity: 0.7; }
+.t-in  { background: rgba(34,197,94,0.12);  color: var(--green); }
+.t-in.sel  { border-color: var(--green); }
+.t-out { background: rgba(239,68,68,0.12);  color: var(--red); }
+.t-out.sel { border-color: var(--red); }
+.t-pre { background: rgba(245,158,11,0.12); color: var(--yellow); }
+.t-pre.sel { border-color: var(--yellow); }
+.t-ord { background: rgba(168,85,247,0.12); color: var(--purple); }
+.t-ord.sel { border-color: var(--purple); }
+.t-r1  { background: rgba(59,130,246,0.12); color: var(--blue); }
+.t-r1.sel  { border-color: var(--blue); }
+.t-r2  { background: rgba(168,85,247,0.12); color: var(--purple); }
+.t-r2.sel  { border-color: var(--purple); }
+.t-mv  { background: rgba(255,92,43,0.12);  color: var(--accent); }
+.t-mv.sel  { border-color: var(--accent); }
+
+/* ── Dest input ── */
+.dest-wrap { margin-top: 12px; }
+.dest-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+.dest-input {
+  width: 100%; background: var(--s2); border: 1.5px solid var(--border);
+  border-radius: 8px; padding: 12px 14px; font-size: 14px;
+  font-family: 'Noto Sans JP', sans-serif; color: var(--text);
+  outline: none; transition: border-color 0.15s;
+}
+.dest-input:focus { border-color: var(--accent); }
+.dest-input::placeholder { color: var(--muted); }
+
+/* ── Warehouse buttons ── */
+.soko-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.soko-btn {
+  background: var(--s2); border: 1.5px solid var(--border);
+  border-radius: 10px; padding: 14px 16px; cursor: pointer;
+  display: flex; align-items: center; gap: 12px; transition: all 0.12s;
+}
+.soko-btn:active { transform: scale(0.98); }
+.soko-btn.sel { border-color: var(--accent); background: rgba(240,165,0,0.08); }
+.soko-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.soko-name { font-size: 15px; font-weight: 700; }
+
+/* ── Move screen ── */
+.move-info {
+  background: rgba(240,165,0,0.08); border: 1px solid rgba(255,92,43,0.25);
+  border-radius: 10px; padding: 12px 14px; margin-bottom: 16px;
+  font-size: 12px; color: var(--accent2); line-height: 1.5;
+}
+.move-section { font-size: 10px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
+.move-main { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.move-card-big {
+  background: var(--s2); border: 1.5px solid var(--border);
+  border-radius: 12px; padding: 16px 10px; cursor: pointer;
+  text-align: center; transition: all 0.12s;
+}
+.move-card-big:active { transform: scale(0.97); }
+.move-card-big.sel { border-color: var(--accent); background: rgba(240,165,0,0.1); }
+.move-card-big .mf { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.move-card-big .ma { font-size: 20px; color: var(--accent); line-height: 1; margin-bottom: 6px; }
+.move-card-big .mt { font-size: 13px; font-weight: 700; color: var(--text); }
+.move-card-big .mb { font-size: 9px; color: var(--accent2); margin-top: 6px; background: rgba(240,165,0,0.12); padding: 2px 8px; border-radius: 20px; display: inline-block; }
+.move-sub { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 16px; }
+.move-card-sm {
+  background: var(--s2); border: 1.5px solid var(--border);
+  border-radius: 8px; padding: 12px 8px; cursor: pointer;
+  text-align: center; transition: all 0.12s;
+}
+.move-card-sm:active { transform: scale(0.97); }
+.move-card-sm.sel { border-color: var(--accent); background: rgba(240,165,0,0.08); }
+.move-card-sm .sf { font-size: 11px; font-weight: 700; color: var(--text); }
+.move-card-sm .sa { font-size: 14px; color: var(--muted); margin: 2px 0; }
+.move-card-sm.sel .sa { color: var(--accent); }
+.move-card-sm .st { font-size: 11px; font-weight: 700; color: var(--text); }
+
+/* ── Confirm ── */
+.confirm-box {
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 16px; margin-bottom: 12px;
+}
+.conf-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 7px 0; border-bottom: 0.5px solid var(--border);
+}
+.conf-row:last-child { border-bottom: none; }
+.conf-label { font-size: 11px; color: var(--muted); }
+.conf-val { font-size: 13px; font-weight: 500; text-align: right; }
+.conf-size { font-family: 'DM Mono', monospace; font-size: 14px; color: var(--accent2); }
+.type-tag {
+  font-size: 10px; font-weight: 700; padding: 3px 9px;
+  border-radius: 20px; display: inline-block;
+}
+.tag-in  { background: rgba(34,197,94,0.15);  color: var(--green); }
+.tag-out { background: rgba(239,68,68,0.15);  color: var(--red); }
+.tag-pre { background: rgba(245,158,11,0.15); color: var(--yellow); }
+.tag-r1  { background: rgba(59,130,246,0.15); color: var(--blue); }
+.tag-r2  { background: rgba(168,85,247,0.15); color: var(--purple); }
+.tag-mv  { background: rgba(240,165,0,0.12);  color: var(--accent); }
+
+.record-preview {
+  margin-top: 10px; background: var(--s1);
+  border-radius: 8px; padding: 10px 12px;
+}
+.rp-title { font-size: 10px; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.05em; }
+.rp-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+.rp-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+.rp-text { font-size: 11px; color: var(--muted); }
+
+/* ── Success ── */
+.success-wrap { text-align: center; padding: 24px 20px; }
+.success-icon {
+  width: 64px; height: 64px; background: rgba(34,197,94,0.15);
+  border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; margin: 0 auto 16px; font-size: 28px; color: var(--green);
+}
+.success-title { font-size: 20px; font-weight: 900; letter-spacing: -0.02em; margin-bottom: 8px; }
+.success-sub { font-size: 13px; color: var(--muted); line-height: 1.6; }
+.success-tag {
+  display: inline-block; margin-top: 12px;
+  background: rgba(255,92,43,0.12); color: var(--accent2);
+  padding: 5px 14px; border-radius: 20px; font-size: 11px;
+}
+.success-records { margin-top: 16px; background: var(--s2); border-radius: 10px; padding: 12px 14px; text-align: left; }
+
+/* ── Error ── */
+.error-box {
+  background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
+  border-radius: 8px; padding: 12px 14px; margin-bottom: 12px;
+  font-size: 12px; color: var(--red); line-height: 1.5;
+}
+
+/* ── Loading ── */
+.loading-wrap { text-align: center; padding: 40px 20px; }
+.spinner {
+  width: 32px; height: 32px; border: 2px solid var(--border);
+  border-top-color: var(--accent); border-radius: 50%;
+  animation: spin 0.8s linear infinite; margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 13px; color: var(--muted); }
+
+/* ── Memo ── */
+.memo-input {
+  width: 100%; background: var(--s2); border: 1.5px solid var(--border);
+  border-radius: 8px; padding: 12px 14px; font-size: 13px;
+  font-family: 'Noto Sans JP', sans-serif; color: var(--text);
+  outline: none; resize: none; transition: border-color 0.15s; min-height: 72px;
+}
+.memo-input:focus { border-color: var(--accent); }
+.memo-input::placeholder { color: var(--muted); }
+
+/* ── 在庫ページ ── */
+.stock-size-search { padding: 16px 20px 0; }
+.stock-results { padding: 0 20px 20px; }
+.stock-cat-title {
+  font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.08em;
+  text-transform: uppercase; padding: 16px 0 8px;
+  border-bottom: 0.5px solid var(--border); margin-bottom: 8px;
+}
+.stock-row {
+  display: flex; align-items: center; padding: 10px 0;
+  border-bottom: 0.5px solid var(--border);
+}
+.stock-row:last-child { border-bottom: none; }
+.stock-pattern { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; min-width: 80px; }
+.stock-counts { display: flex; gap: 8px; flex: 1; justify-content: flex-end; }
+.stock-count { text-align: center; }
+.stock-count-num { font-size: 16px; font-weight: 700; font-family: 'DM Mono', monospace; }
+.stock-count-num.zero { color: var(--muted); }
+.stock-count-num.positive { color: var(--green); }
+.stock-count-label { font-size: 9px; color: var(--muted); margin-top: 1px; }
+.stock-empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; }
+
+.cat-select-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 16px 20px; }
+.cat-sel-btn {
+  background: var(--s2); border: 1.5px solid var(--border);
+  border-radius: 10px; padding: 14px 12px; cursor: pointer;
+  text-align: left; transition: all 0.12s;
+}
+.cat-sel-btn:active { transform: scale(0.97); }
+.cat-sel-btn .csb-icon { font-size: 18px; margin-bottom: 6px; display: block; }
+.cat-sel-btn .csb-name { font-size: 12px; font-weight: 700; color: var(--text); line-height: 1.3; }
+.cat-sel-btn .csb-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<!-- Token Gate -->
+<div id="token-gate">
+  <div class="gate-logo">Tire Manager f.o.o</div>
+  <div class="gate-title">タイヤ<span>入出庫</span></div>
+  <div class="gate-sub">
+    社員名を選択してアプリを起動してください。
+  </div>
+  <div class="gate-staff-grid" id="staff-grid">
+    <div class="gate-staff-btn" onclick="selectStaff('向畑 充')">向畑 充</div>
+    <div class="gate-staff-btn" onclick="selectStaff('矢島 明和')">矢島 明和</div>
+    <div class="gate-staff-btn" onclick="selectStaff('大田 健')">大田 健</div>
+    <div class="gate-staff-btn" onclick="selectStaff('中川 颯')">中川 颯</div>
+    <div class="gate-staff-btn" onclick="selectStaff('平野 春之')">平野 春之</div>
+    <div class="gate-staff-btn" onclick="selectStaff('山根 祐司')">山根 祐司</div>
+    <div class="gate-staff-btn" onclick="selectStaff('村田 良典')">村田 良典</div>
+    <div class="gate-staff-btn" onclick="selectStaff('岡崎 由美')">岡崎 由美</div>
+    <div class="gate-staff-btn" onclick="selectStaff('藤井 真理亜')">藤井 真理亜</div>
+  </div>
+  <div id="selected-staff" style="margin:12px 0;min-height:32px;"></div>
+  <button class="gate-btn" id="gate-start-btn" onclick="startApp()" disabled>起動する</button>
+  <div class="gate-note">
+    ※ 名前を選択して起動してください。<br>
+    ※ ブラウザを閉じても名前は保持されます。
+  </div>
+  <div id="gate-error" class="error-box" style="display:none;margin-top:12px;"></div>
+</div>
+
+<!-- App -->
+<div id="app">
+  <div class="header">
+    <div class="header-brand">Tire Manager f.o.o</div>
+    <div class="header-title">タイヤ<span>入出庫</span></div>
+  </div>
+  <div class="nav">
+    <button class="nav-btn active" onclick="switchTab('entry')">入出庫</button>
+    <button class="nav-btn" onclick="switchTab('stock')">在庫確認</button>
+  </div>
+
+  <!-- 入出庫ページ -->
+  <div class="page active" id="page-entry">
+    <div class="step-bar" id="step-bar"></div>
+    <div id="entry-content"></div>
+  </div>
+
+  <!-- 在庫確認ページ -->
+  <div class="page" id="page-stock">
+    <div id="stock-content"></div>
+  </div>
+
+
+</div>
+
+<script>
+
+const MAKER_LOGO = {
+  TOYO: 'https://mitsurumukaihata.github.io/tire-app/TOYO.jpg',
+  BRIDGESTONE: 'https://mitsurumukaihata.github.io/tire-app/BRIDGESTONE.jpg',
+  DUNLOP: 'https://mitsurumukaihata.github.io/tire-app/dunlop.jpg',
+  MICHELIN: 'https://mitsurumukaihata.github.io/tire-app/mish.jpg',
+  PIRELLI: 'https://mitsurumukaihata.github.io/tire-app/pirelli-logo-0.png',
+};
+
+function getMaker(pattern) {
+  const p = pattern.toUpperCase();
+  if (['XJE4'].includes(pattern)) return 'MICHELIN';
+  if (['FR01','TR01','R02','R01','TG01','ALL ROADS','WINTER D','ADR26','GU01'].includes(pattern)) return 'PIRELLI';
+  if (p.startsWith('W') || p.startsWith('G539') || ['R225','R241','LV01','W300','RTM810','RTM804','RTM807','RTM81C-170','RTM890','RTW910','RTW911','RTW970','RTG610'].includes(pattern)) return 'BRIDGESTONE';
+  if (p.startsWith('G539')) return 'BRIDGESTONE';
+  if (['LT01','SV01','VAN01','SPLT50','SPLT21','SPLT22','POWERTRAX'].includes(p) || p.startsWith('SP')) return 'DUNLOP';
+  if (p === 'POWERTRAX') return 'DUNLOP';
+  return 'TOYO';
+}
+
+function makerLogoImg(pattern, size=32) {
+  return ''; // ロゴは現在非表示
+}
+
+// ─── DB マスターデータ ───────────────────────────────────────────────────────
+
+const DB_MAP = {
+  'ltl_normal': {
+    id: '200a695f8e888018b5f5eac83fdad412',
+    name: 'LTL TB ノーマル',
+    icon: '🚛',
+    sub: '大型 チューブレス',
+    warehouseField: '倉庫',
+    sizes: ['225/80R17.5','225/90R17.5','215/70R17.5 123/121','235/70R17.5','245/80R17.5','245/70R19.5','265/70R19.5','9R19.5','275/70R22.5','275/80R22.5','295/70R22.5','295/80R22.5','255/70R22.5','315/80R22.5','385/65R22.5','11R22.5','10R22.5'],
+    patterns: ['M646','M676','M125','M317','M323','M319','M320','M619','M626','M888','M899','M801','M746','R225','R241','G539','SP680','SP122','XJE4'],
+    kubun: ['入庫','出庫','準備','発注中','返品（倉庫へ）','返品（メーカーへ）','移動入庫','移動出庫']
+  },
+  'ltl_studless': {
+    id: '201a695f8e888171abb8e349ad4d055a',
+    name: 'LTL TB スタッドレス',
+    icon: '❄️',
+    sub: '大型 冬用',
+    warehouseField: '倉庫',
+    sizes: ['225/80R17.5','225/90R17.5','215/70R17.5 123/121','235/70R17.5','245/80R17.5','245/70R19.5','265/70R19.5','9R19.5','275/70R22.5','275/80R22.5','295/70R22.5','295/80R22.5','255/70R22.5','315/80R22.5','385/65R22.5','11R22.5','10R22.5'],
+    patterns: ['M929','M919','M966','M920','M939','W910','W900S','W911','W970','W999','SP001','SP081','SP088','XDW'],
+    kubun: ['入庫','出庫','準備','発注中','返品（倉庫へ）','返品（メーカーへ）','移動入庫','移動出庫']
+  },
+  'lts_normal': {
+    id: '201a695f8e8881adb144cd3a1639132d',
+    name: 'LTS ノーマル',
+    icon: '🚐',
+    sub: '小型 チューブレス',
+    warehouseField: '倉庫',
+    sizes: ['175/75R15','185/65R15','185/75R15','195/75R15','195/85R15','205/80R15','185/70R16','185/85R16','195/85R16','205/65R16','205/70R16','225/70R16','205/75R16','205/85R16','215/85R16','225/85R16','195/60R17.5','195/70R17.5','205/60R17.5','225/60R17.5','205/70R17.5','205/80R17.5','215/70R17.5 118/116'],
+    patterns: ['M634','M135','M134e','M131','M319','M804','R207','SPLT50','SPLT21','SPLT22'],
+    kubun: ['入庫','出庫','準備','発注中','返品（倉庫へ）','返品（メーカーへ）','移動入庫','移動出庫']
+  },
+  'lts_studless': {
+    id: '201a695f8e8881a299e8fb57bad707f6',
+    name: 'LTS スタッドレス',
+    icon: '❄️',
+    sub: '小型 冬用',
+    warehouseField: '倉庫',
+    sizes: ['175/75R15','185/65R15','185/75R15','195/75R15','195/85R15','205/80R15','185/70R16','185/85R16','195/85R16','205/65R16','205/70R16','225/70R16','205/75R16','205/85R16','215/85R16','225/85R16','195/60R17.5','195/70R17.5','205/60R17.5','225/60R17.5','205/70R17.5','205/80R17.5','215/70R17.5 118/116'],
+    patterns: ['M935','M937','M934','LV01','W989','LT01'],
+    kubun: ['入庫','出庫','準備','発注中','返品（倉庫へ）','返品（メーカーへ）','移動入庫','移動出庫']
+  },
+  'rt': {
+    id: '201a695f8e888104bb47c7103d5909dc',
+    name: 'RT 再生',
+    icon: '♻️',
+    sub: 'リトレッドタイヤ',
+    warehouseField: '倉庫',
+    sizes: ['195/85R16','205/75R16','205/85R16','225/80R17.5','225/90R17.5','245/80R17.5','245/70R19.5','265/70R19.5','275/70R22.5','275/80R22.5','11R22.5 14P','11R22.5 16P'],
+    patterns: ['RTM919','RTM810','RTM804','RTM807','RTM81C-170','RTM890','RTW910','RTW911','RTW970','RTG610'],
+    kubun: ['入庫','出庫','準備','発注中','返品（倉庫へ）','返品（メーカーへ）','移動入庫','移動出庫']
+  },
+  'tt': {
+    id: '201a695f8e8881a6930fcf2bd752e676',
+    name: 'T/T チューブタイプ',
+    icon: '🔧',
+    sub: 'チューブタイプ',
+    warehouseField: '倉庫',
+    sizes: ['7.00R15　10P','7.00R15　12P','6.50R16　10P','6.50R16　12P','7.00R16　10P','7.00R16　12P','7.50R16　12P','7.50R16　14P','8.25R16　14P'],
+    patterns: ['M614','M626','M125','M131','M134','M319','M501','M504','M519','M919','M935','M890','R225','SP185'],
+    kubun: ['入庫','出庫','準備','発注中','返品','移動入庫','移動出庫']
+  },
+  'van': {
+    id: '201a695f8e8881f3a958cead42156e07',
+    name: 'バン',
+    icon: '🚌',
+    sub: 'バン・軽トラ',
+    warehouseField: '出庫倉庫',
+    sizes: ['145/80R12　86/84','145/80R12　80/78','145R12　6P','145R12　8P','155R12　8P','165/80R13　90/88','165/80R13　94/93','165R13　6P','165R13　8P','145R13　6P','145R13　8P','155R13　6P','155R13　8P','175R13　8P','155/80R14　88/86','165/80R14　91/90','165/80R14　97/95','165R14　6P','165R14　8P','175/80R14　99/98','175R14　6P','175R14　8P','185/80R14　97N','185/80R14　102/10','185R14　6P','185R14　8P','195R14　8P','195/80R15　103/101','185/75R15　106/104','195/70R15　106/104','215/70R15　107/105','185/80R15　103/101','195/80R15　107/105','205/80R15　109/107'],
+    patterns: ['V03e','V02e','M935','K370','R710','V600','W300','W989','LV01','VL10A','VAN01','SV01'],
+    kubun: ['入庫','出庫','準備','発注中','返品（倉庫へ）','返品（メーカーへ）','移動入庫','移動出庫']
+  },
+  'lift': {
+    id: '201a695f8e8881c5b2c3d9e9ce2ffd21',
+    name: 'リフト',
+    icon: '🏗️',
+    sub: 'フォークリフト用',
+    warehouseField: '出庫倉庫',
+    sizes: ['4.00-8　8P','5.00-8　8P','6.00-9　10P','6.50-10　10P','4.50-12　8P','7.00-12　12P','7.00-12　14P','5.50-15　8P','6.00-15　10P','7.00-15MS','7.00-15','8.25-15','7.50-16','17*8.00-8　4P','18*7-8　8P','21*8-9　14P','23*9-10　16P','27*8.50-15　4P','27*8.50-15　6P','28*8-15　12P','28*9-15','250-15','300-15'],
+    patterns: ['G-8','G-8P','G-15','PowerTRAX'],
+    kubun: ['入庫','出庫','準備','発注中','返品','移動入庫','移動出庫']
+  }
+};
+
+const WAREHOUSES = ['五日市倉庫','志和倉庫','海田倉庫'];
+
+const KUBUN_TO_SHORIYTYPE = {
+  '入庫':'入庫','移動入庫':'入庫',
+  '出庫':'出庫','準備':'出庫','移動出庫':'出庫',
+  '返品（倉庫へ）':'返品入庫','返品（メーカーへ）':'出庫',
+  '返品':'返品入庫'
+};
+
+const KUBUN_SIGN = {
+  '入庫':1,'移動入庫':1,'返品（倉庫へ）':1,'返品':1,
+  '出庫':-1,'準備':-1,'移動出庫':-1,'返品（メーカーへ）':-1,
+  '発注中':0
+};
+
+// ─── State ──────────────────────────────────────────────────────────────────
+
+let TOKEN = '';
+let USER_NAME = '';
+let state = {};
+
+function resetState() {
+  state = {
+    step: 0, // 0=size 1=cat 2=pattern 3=qty 4=kubun 5=move_dir 6=warehouse 7=confirm 8=done
+    size: '', cat: '', pattern: '', qty: 0,
+    kubun: '', warehouse: '', dest: '', memo: '',
+    moveDir: null, // {from, to}
+    isMove: false
+  };
+}
+
+// ─── Token Gate ──────────────────────────────────────────────────────────────
+
+let _selectedStaff = '';
+function selectStaff(name) {
+  _selectedStaff = name;
+  document.querySelectorAll('.gate-staff-btn').forEach(b => {
+    b.classList.toggle('selected', b.textContent === name);
+  });
+  const sel = document.getElementById('selected-staff');
+  if (sel) sel.innerHTML = `<div style="text-align:center;font-size:14px;font-weight:700;color:var(--accent);">選択中：${name}</div>`;
+  const btn = document.getElementById('gate-start-btn');
+  if (btn) btn.disabled = false;
+}
+function startApp() {
+  if (!_selectedStaff) { showGateError('社員名を選択してください'); return; }
+  USER_NAME = _selectedStaff;
+  localStorage.setItem('tire_name', _selectedStaff);
+  launchApp();
+}
+
+function showGateError(msg) {
+  const el = document.getElementById('gate-error');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+function launchApp() {
+  document.getElementById('token-gate').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  resetState();
+  renderEntry();
+  renderStockHome();
+}
+
+function logout() {
+  localStorage.removeItem('tire_name');
+  location.reload();
+}
+
+// ─── Tab ─────────────────────────────────────────────────────────────────────
+
+function switchTab(tab) {
+  document.querySelectorAll('.nav-btn').forEach((b,i) => {
+    b.classList.toggle('active', ['entry','stock'][i] === tab);
+  });
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + tab).classList.add('active');
+}
+
+// ─── Step bar ────────────────────────────────────────────────────────────────
+
+function renderStepBar() {
+  const total = state.isMove ? 6 : 7;
+  const cur = state.step > 4 && state.isMove ? state.step - 1 : state.step;
+  const bar = document.getElementById('step-bar');
+  bar.innerHTML = Array.from({length: total}, (_, i) =>
+    `<div class="step-dot${i < cur ? ' done' : i === cur ? ' active' : ''}"></div>`
+  ).join('');
+}
+
+// ─── Entry page ──────────────────────────────────────────────────────────────
+
+function renderEntry() {
+  renderStepBar();
+  const el = document.getElementById('entry-content');
+  const renders = [
+    renderSize, renderCat, renderPattern, renderQty,
+    renderKubun, renderMoveDir, renderWarehouse, renderConfirm, renderDone
+  ];
+  el.innerHTML = '';
+  const fn = renders[state.step];
+  if (fn) fn(el);
+}
+
+// Step 0: サイズ入力
+function renderSize(el) {
+  el.innerHTML = `
+    <div class="content">
+      <div class="screen-label">ステップ 1</div>
+      <div class="screen-title">タイヤサイズを入力</div>
+      <div class="search-box">
+        <input id="sz-input" type="text" placeholder="例：275 または 27580" autocomplete="off" inputmode="numeric" lang="en">
+        <button class="search-clear" onclick="document.getElementById('sz-input').value='';filterSizes('')">✕</button>
+      </div>
+      <div id="sz-candidates" class="candidates"></div>
+      <button class="btn-primary" id="sz-next" onclick="goStep(1)" disabled>次へ →</button>
+      <div class="prep-divider">または</div>
+      <button class="btn-prep" onclick="renderPrepCatSelect()">📋 準備中タイヤを出庫する</button>
+    </div>`;
+  const inp = document.getElementById('sz-input');
+  inp.addEventListener('input', e => filterSizes(e.target.value));
+  inp.focus();
+}
+
+function digits(s) { return s.replace(/[^\d]/g, ''); }
+
+function filterSizes(v) {
+  const q = v.trim();
+  const all = Object.values(DB_MAP).flatMap(db => db.sizes);
+  const uniq = [...new Set(all)];
+  let hits = [];
+  if (q) {
+    const dq = digits(q);
+    hits = uniq.filter(s => {
+      const ds = digits(s);
+      return s.toLowerCase().includes(q.toLowerCase()) || (dq.length >= 3 && ds.startsWith(dq));
+    }).slice(0, 8);
+  }
+  const c = document.getElementById('sz-candidates');
+  if (!c) return;
+  c.innerHTML = hits.map(s =>
+    `<div class="candidate${state.size === s ? ' sel' : ''}" onclick="pickSize('${s}')">
+      <span class="candidate-text">${s}</span>
+      <span class="candidate-badge">選択</span>
+    </div>`
+  ).join('');
+  const btn = document.getElementById('sz-next');
+  if (btn) btn.disabled = !state.size;
+}
+
+function pickSize(s) {
+  state.size = s;
+  document.getElementById('sz-input').value = s;
+  filterSizes(s);
+  const btn = document.getElementById('sz-next');
+  if (btn) btn.disabled = false;
+}
+
+// Step 1: カテゴリー選択
+function renderCat(el) {
+  const matching = Object.entries(DB_MAP).filter(([k, db]) => db.sizes.includes(state.size));
+  if (matching.length === 1) {
+    state.cat = matching[0][0];
+    goStep(2); return;
+  }
+  el.innerHTML = `
+    <div class="content">
+      <div class="screen-label">ステップ 2</div>
+      <div class="screen-title">カテゴリーを選択</div>
+      <div class="screen-sub">${state.size} が見つかりました</div>
+      <div class="cat-grid">
+        ${matching.map(([k, db]) => `
+          <div class="cat-card${state.cat === k ? ' sel' : ''}" onclick="pickCat('${k}')">
+            <span class="cat-icon">${db.icon}</span>
+            <div class="cat-name">${db.name}</div>
+            <div class="cat-sub">${db.sub}</div>
+          </div>`).join('')}
+      </div>
+      <button class="btn-primary" id="cat-next" onclick="goStep(2)" ${state.cat ? '' : 'disabled'}>次へ →</button>
+      <button class="btn-secondary" onclick="goStep(0)">← 戻る</button>
+      <button class="btn-danger" onclick="cancelEntry()">✕ 取り消し（最初に戻る）</button>
+    </div>`;
+}
+
+function pickCat(k) {
+  state.cat = k;
+  document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('sel'));
+  event.currentTarget.classList.add('sel');
+  const btn = document.getElementById('cat-next');
+  if (btn) btn.disabled = false;
+}
+
+// Step 2: パターン選択
+function renderPattern(el) {
+  const db = DB_MAP[state.cat];
+  el.innerHTML = `
+    <div class="content">
+      <div class="screen-label">ステップ 3</div>
+      <div class="screen-title">パターンを選択</div>
+      <div class="screen-sub">${state.size} ／ ${db.name}</div>
+      <div class="search-box" style="margin-bottom:10px;">
+        <input id="pat-search" type="search" placeholder="例：6 または M8" autocomplete="off"
+          autocorrect="off" autocapitalize="none" spellcheck="false"
+          inputmode="latin" lang="en" oninput="filterPatterns(this.value)">
+        <button class="search-clear" onclick="document.getElementById('pat-search').value='';filterPatterns('')">✕</button>
+      </div>
+      <button class="btn-primary" id="pat-next-top" onclick="goStep(3)" ${state.pattern ? '' : 'disabled'} style="margin-bottom:10px;">次へ →</button>
+      <div class="pattern-list" id="pattern-list">
+        ${renderPatternItems(db.patterns, '')}
+      </div>
+      <button class="btn-primary" id="pat-next" onclick="goStep(3)" ${state.pattern ? '' : 'disabled'}>次へ →</button>
+      <button class="btn-secondary" onclick="goStep(1)">← 戻る</button>
+      <button class="btn-danger" onclick="cancelEntry()">✕ 取り消し（最初に戻る）</button>
+    </div>`;
+}
+
+function renderPatternItems(patterns, query) {
+  const q = query.trim().toLowerCase();
+  const hits = q ? patterns.filter(p => p.toLowerCase().includes(q)) : patterns;
+  if (hits.length === 0) return `<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">該当なし</div>`;
+  return hits.map(p => {
+    const sel = state.pattern === p;
+    const logo = makerLogoImg(p, 14);
+    return `<div class="pattern-item${sel ? ' sel' : ''}" onclick="pickPattern('${p}')">
+      <div class="pattern-dot" style="background:${sel ? 'var(--accent)' : 'var(--border)'}"></div>
+      <div class="pattern-name">${p}</div>
+      <div style="margin-left:auto;">${logo}</div>
+    </div>`;
+  }).join('');
+}
+
+function filterPatterns(q) {
+  const db = DB_MAP[state.cat];
+  const list = document.getElementById('pattern-list');
+  if (list) list.innerHTML = renderPatternItems(db.patterns, q);
+}
+
+function pickPattern(p) {
+  state.pattern = p;
+  const db = DB_MAP[state.cat];
+  const q = document.getElementById('pat-search')?.value || '';
+  const list = document.getElementById('pattern-list');
+  if (list) list.innerHTML = renderPatternItems(db.patterns, q);
+  ['pat-next','pat-next-top'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.disabled = false;
+  });
+}
+
+// Step 3: 本数
+function renderQty(el) {
+  el.innerHTML = `
+    <div class="content">
+      <div class="screen-label">ステップ 4</div>
+      <div class="screen-title">本数を入力</div>
+      <div class="numpad-disp">
+        <div class="num-val${state.qty === 0 ? ' empty' : ''}" id="num-disp">${state.qty === 0 ? '本数を入力' : state.qty}</div>
+        <div class="num-unit">本</div>
+      </div>
+      <div class="numpad" id="numpad"></div>
+      <button class="btn-primary" id="qty-next" onclick="goStep(4)" ${state.qty > 0 ? '' : 'disabled'}>次へ →</button>
+      <button class="btn-secondary" onclick="goStep(2)">← 戻る</button>
+      <button class="btn-danger" onclick="cancelEntry()">✕ 取り消し（最初に戻る）</button>
+    </div>`;
+  buildNumpad();
+}
+
+function buildNumpad() {
+  const np = document.getElementById('numpad');
+  if (!np) return;
+  '1 2 3 4 5 6 7 8 9 _ 0 ⌫'.split(' ').forEach(v => {
+    const d = document.createElement('div');
+    d.className = 'np-btn' + (v === '⌫' ? ' np-del' : '');
+    d.textContent = v === '_' ? '' : v;
+    if (v !== '_') d.onclick = () => tapNum(v);
+    np.appendChild(d);
+  });
+}
+
+function tapNum(v) {
+  if (v === '⌫') { state.qty = Math.floor(state.qty / 10) || 0; }
+  else { state.qty = state.qty === 0 ? parseInt(v) : parseInt(String(state.qty) + v); }
+  if (state.qty > 999) state.qty = 999;
+  const d = document.getElementById('num-disp');
+  if (d) {
+    d.className = state.qty === 0 ? 'num-val empty' : 'num-val';
+    d.textContent = state.qty === 0 ? '本数を入力' : state.qty;
+  }
+  const btn = document.getElementById('qty-next');
+  if (btn) btn.disabled = state.qty === 0;
+}
+
+// Step 4: 区分
+function renderKubun(el) {
+  const db = DB_MAP[state.cat];
+  const kubunList = db.kubun.filter(k => !['移動入庫','移動出庫'].includes(k));
+  const top3 = ['入庫','出庫','準備','発注中'].filter(k => kubunList.includes(k));
+  const bot = kubunList.filter(k => !top3.includes(k));
+
+  const typeMap = {
+    '入庫':{cls:'t-in',sub:'在庫＋'},
+    '出庫':{cls:'t-out',sub:'在庫−'},
+    '準備':{cls:'t-pre',sub:'取置き'},
+    '発注中':{cls:'t-ord',sub:'発注中'},
+    '返品（倉庫へ）':{cls:'t-r1',sub:'倉庫へ'},
+    '返品（メーカーへ）':{cls:'t-r2',sub:'メーカーへ'},
+    '返品':{cls:'t-r1',sub:'倉庫へ'},
+  };
+
+  el.innerHTML = `
+    <div class="content">
+      <div class="screen-label">ステップ 5</div>
+      <div class="screen-title">区分を選択</div>
+      <div class="type-group">
+        <div class="type-row">
+          ${top3.map(k => `
+            <div class="type-btn ${typeMap[k]?.cls||'t-in'}${state.kubun===k?' sel':''}" onclick="pickKubun('${k}',false)">
+              <div class="tn">${k}</div>
+              <div class="ts">${typeMap[k]?.sub||''}</div>
+            </div>`).join('')}
+        </div>
+        <div class="type-sep"></div>
+        <div class="type-row">
+          ${bot.map(k => `
+            <div class="type-btn ${typeMap[k]?.cls||'t-r1'}${state.kubun===k?' sel':''}" onclick="pickKubun('${k}',false)">
+              <div class="tn">${k.replace('（倉庫へ）','').replace('（メーカーへ）','')}</div>
+              <div class="ts">${typeMap[k]?.sub||''}</div>
+            </div>`).join('')}
+          <div class="type-btn t-mv${state.isMove?' sel':''}" onclick="pickKubun('移動',true)">
+            <div class="tn">移動</div>
+            <div class="ts">倉庫間</div>
+          </div>
+        </div>
+      </div>
+      ${(state.kubun==='出庫'||state.kubun==='準備') ? `
+        <div class="dest-wrap">
+          <div class="dest-label">出庫先（任意）</div>
+          <input class="dest-input" id="dest-inp" placeholder="例：株式会社〇〇運輸" value="${state.dest}" oninput="state.dest=this.value" inputmode="text" lang="ja">
+        </div>` : ''}
+      <div style="height:10px;"></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">メモ（任意）</div>
+      <textarea class="memo-input" id="memo-inp" placeholder="特記事項があれば入力…" oninput="state.memo=this.value" inputmode="text" lang="ja">${state.memo}</textarea>
+      <button class="btn-primary" id="kubun-next" onclick="kubunNext()" ${state.kubun||state.isMove?'':'disabled'}>次へ →</button>
+      <button class="btn-secondary" onclick="goStep(3)">← 戻る</button>
+      <button class="btn-danger" onclick="cancelEntry()">✕ 取り消し（最初に戻る）</button>
+    </div>`;
+}
+
+function pickKubun(k, isMove) {
+  state.isMove = isMove;
+  state.kubun = isMove ? '' : k;
+  renderEntry();
+}
+
+function kubunNext() {
+  if (state.isMove) { goStep(5); }
+  else { goStep(6); }
+}
+
+// Step 5: 移動方向
+function renderMoveDir(el) {
+  const dirs = [
+    {from:'五日市倉庫', to:'志和倉庫', main:true},
+    {from:'志和倉庫', to:'五日市倉庫', main:true},
+    {from:'五日市倉庫', to:'海田倉庫', main:false},
+    {from:'海田倉庫', to:'五日市倉庫', main:false},
+    {from:'志和倉庫', to:'海田倉庫', main:false},
+    {from:'海田倉庫', to:'志和倉庫', main:false},
+  ];
+  const selKey = state.moveDir ? `${state.moveDir.from}→${state.moveDir.to}` : '';
+
+  el.innerHTML = `
+    <div class="content">
+      <div class="screen-label">移動 — 方向を選択</div>
+      <div class="screen-title">どこからどこへ？</div>
+      <div class="screen-sub">${state.size} ${state.pattern} × ${state.qty}本</div>
+      <div class="move-info">
+        送信時に自動で <strong style="color:var(--accent)">2件</strong> 記録されます<br>
+        <span style="font-size:10px;">移動出庫（From）＋ 移動入庫（To）</span>
+      </div>
+      <div class="move-section">よく使う</div>
+      <div class="move-main">
+        ${dirs.filter(d=>d.main).map(d => {
+          const k = `${d.from}→${d.to}`;
+          return `<div class="move-card-big${selKey===k?' sel':''}" onclick="pickMoveDir('${d.from}','${d.to}')">
+            <div class="mf">${d.from.replace('倉庫','')}</div>
+            <div class="ma">↓</div>
+            <div class="mt">${d.to.replace('倉庫','')}</div>
+            <div class="mb">よく使う</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="move-section">その他</div>
+      <div class="move-sub">
+        ${dirs.filter(d=>!d.main).map(d => {
+          const k = `${d.from}→${d.to}`;
+          return `<div class="move-card-sm${selKey===k?' sel':''}" onclick="pickMoveDir('${d.from}','${d.to}')">
+            <div class="sf">${d.from.replace('倉庫','')}</div>
+            <div class="sa">↓</div>
+            <div class="st">${d.to.replace('倉庫','')}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <button class="btn-primary" id="move-next" onclick="goStep(7)" ${state.moveDir?'':'disabled'}>確認画面へ →</button>
+      <button class="btn-secondary" onclick="goStep(4)">← 区分に戻る</button>
+      <button class="btn-danger" onclick="cancelEntry()">✕ 取り消し（最初に戻る）</button>
+    </div>`;
+}
+
+function pickMoveDir(from, to) {
+  state.moveDir = {from, to};
+  renderEntry();
+}
+
+// Step 6: 倉庫選択
+function renderWarehouse(el) {
+  el.innerHTML = `
+    <div class="content">
+      <div class="screen-label">ステップ 6</div>
+      <div class="screen-title">倉庫を選択</div>
+      <div class="soko-list">
+        ${WAREHOUSES.map(w => `
+          <div class="soko-btn${state.warehouse===w?' sel':''}" onclick="pickWarehouse('${w}')">
+            <div class="soko-dot" style="background:${w==='五日市倉庫'?'var(--green)':w==='志和倉庫'?'var(--blue)':'var(--yellow)'}"></div>
+            <div class="soko-name">${w}</div>
+          </div>`).join('')}
+      </div>
+      <button class="btn-primary" id="soko-next" onclick="goStep(7)" ${state.warehouse?'':'disabled'}>確認画面へ →</button>
+      <button class="btn-secondary" onclick="goStep(4)">← 戻る</button>
+      <button class="btn-danger" onclick="cancelEntry()">✕ 取り消し（最初に戻る）</button>
+    </div>`;
+}
+
+function pickWarehouse(w) {
+  state.warehouse = w;
+  document.querySelectorAll('.soko-btn').forEach(b => {
+    b.classList.toggle('sel', b.querySelector('.soko-name').textContent === w);
+  });
+  const btn = document.getElementById('soko-next');
+  if (btn) btn.disabled = false;
+}
+
+// Step 7: 確認
+function renderConfirm(el) {
+  const db = DB_MAP[state.cat];
+  const tagClass = {
+    '入庫':'tag-in','出庫':'tag-out','準備':'tag-pre',
+    '返品（倉庫へ）':'tag-r1','返品（メーカーへ）':'tag-r2',
+    '返品':'tag-r1','移動':'tag-mv'
+  };
+  const kubunDisplay = state.isMove ? '移動' : state.kubun;
+  const tc = tagClass[kubunDisplay] || 'tag-in';
+
+  el.innerHTML = `
+    <div class="content">
+      <div class="screen-label">ステップ 7</div>
+      <div class="screen-title">内容を確認</div>
+      <div class="confirm-box">
+        <div class="conf-row"><span class="conf-label">サイズ</span><span class="conf-val conf-size">${state.size}</span></div>
+        <div class="conf-row"><span class="conf-label">カテゴリー</span><span class="conf-val">${db.name}</span></div>
+        <div class="conf-row"><span class="conf-label">パターン</span><span class="conf-val" style="font-family:'DM Mono',monospace;">${state.pattern}</span></div>
+        <div class="conf-row"><span class="conf-label">本数</span><span class="conf-val">${state.qty} 本</span></div>
+        <div class="conf-row"><span class="conf-label">区分</span><span class="conf-val"><span class="type-tag ${tc}">${kubunDisplay}</span></span></div>
+        ${state.isMove ? `
+          <div class="conf-row"><span class="conf-label">移動方向</span><span class="conf-val">${state.moveDir.from.replace('倉庫','')} → ${state.moveDir.to.replace('倉庫','')}</span></div>
+          <div class="record-preview">
+            <div class="rp-title">自動生成される 2件 のレコード</div>
+            <div class="rp-row"><span class="rp-badge tag-out" style="background:rgba(239,68,68,0.15);color:var(--red);">移動出庫</span><span class="rp-text">${state.moveDir.from} −${state.qty}本</span></div>
+            <div class="rp-row"><span class="rp-badge tag-in" style="background:rgba(34,197,94,0.15);color:var(--green);">移動入庫</span><span class="rp-text">${state.moveDir.to} ＋${state.qty}本</span></div>
+          </div>` : `
+          <div class="conf-row"><span class="conf-label">倉庫</span><span class="conf-val">${state.warehouse}</span></div>
+          ${state.dest ? `<div class="conf-row"><span class="conf-label">出庫先</span><span class="conf-val">${state.dest}</span></div>` : ''}
+        `}
+        ${state.memo ? `<div class="conf-row"><span class="conf-label">メモ</span><span class="conf-val">${state.memo}</span></div>` : ''}
+      </div>
+      <div id="confirm-error"></div>
+      <button class="btn-primary" id="send-btn" onclick="submitEntry()">この内容で送信する</button>
+      <button class="btn-secondary" onclick="goStep(${state.isMove ? 5 : 6})">← 一つ前に戻る</button>
+      <button class="btn-danger" onclick="cancelEntry()">キャンセルして最初へ</button>
+    </div>`;
+}
+
+// Step 8: 完了
+function renderDone(el) {
+  const kubunDisplay = state.isMove ? '移動' : state.kubun;
+  el.innerHTML = `
+    <div class="success-wrap">
+      <div class="success-icon">✓</div>
+      <div class="success-title">送信しました</div>
+      <div class="success-sub">
+        Notionに記録されました<br>
+        ${state.size} ${state.pattern} ${kubunDisplay} × ${state.qty}本
+      </div>
+      <div class="success-tag">Notion DBに反映済み</div>
+      ${state.isMove ? `
+        <div class="success-records">
+          <div class="rp-title">記録した内容</div>
+          <div class="rp-row"><span class="rp-badge" style="background:rgba(239,68,68,0.15);color:var(--red);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;">移動出庫</span><span class="rp-text" style="font-size:11px;color:var(--muted);">${state.moveDir.from} −${state.qty}本</span></div>
+          <div class="rp-row"><span class="rp-badge" style="background:rgba(34,197,94,0.15);color:var(--green);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;">移動入庫</span><span class="rp-text" style="font-size:11px;color:var(--muted);">${state.moveDir.to} ＋${state.qty}本</span></div>
+        </div>` : ''}
+      <button class="btn-secondary" style="margin-top:24px;" onclick="newEntry()">続けて入力する</button>
+    </div>`;
+}
+
+function goStep(n) {
+  state.step = n;
+  renderEntry();
+}
+
+function cancelEntry() { resetState(); renderEntry(); }
+function newEntry() { resetState(); renderEntry(); }
+
+// ─── Notion API ──────────────────────────────────────────────────────────────
+
+async function notionAPI(method, path, body) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const res = await fetch('https://notion-proxy.33322666666mm.workers.dev' + path, {
+      method: method,
+      headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    const data = await res.json();
+    if (data.object === 'error') throw new Error(data.message + ' (code: ' + data.code + ')');
+    return data;
+  } catch(e) {
+    clearTimeout(timer);
+    if (e.name === 'AbortError') throw new Error('タイムアウト（15秒）。通信環境を確認してください。');
+    throw new Error('通信エラー: ' + e.message);
+  }
+}
+
+function getNow() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  return `${y}-${m}`;
+}
+
+function buildTitle(s) {
+  const db = DB_MAP[state.cat];
+  const k = state.isMove ? '移動' : state.kubun;
+  const w = state.isMove ? `${state.moveDir.from}→${state.moveDir.to}` : state.warehouse;
+  return `${s} ${state.pattern} ${k} ${w}`;
+}
+
+async function createRecord(kubun, warehouse) {
+  const db = DB_MAP[state.cat];
+  const wField = db.warehouseField;
+  const props = {
+    'タイトル': { title: [{ text: { content: buildTitle(state.size) } }] },
+    'サイズコード': { select: { name: state.size } },
+    'パターン名': { select: { name: state.pattern } },
+    '数量': { number: state.qty },
+    '区分': { select: { name: kubun } },
+    '処理タイプ': { select: { name: KUBUN_TO_SHORIYTYPE[kubun] || '出庫' } },
+    '年月': { rich_text: [{ text: { content: getNow() } }] },
+
+    '作成者': { select: { name: (USER_NAME || '').replace(/ /g, '　') } },
+  };
+  props[wField] = { select: { name: warehouse } };
+  if (state.dest && (state.kubun === '出庫' || state.kubun === '準備')) {
+    props['出庫先'] = { rich_text: [{ text: { content: state.dest } }] };
+  }
+  // LTL TBノーマルだけメモがselect型、それ以外はrich_text型
+  if (state.cat === 'ltl_normal') {
+    if (state.memo) props['メモ'] = { select: { name: state.memo } };
+    else delete props['メモ'];
+  } else {
+    props['メモ'] = { rich_text: state.memo ? [{ text: { content: state.memo } }] : [] };
+  }
+
+  return await notionAPI('POST', '/pages', {
+    parent: { database_id: db.id },
+    properties: props
+  });
+}
+
+async function submitEntry() {
+  const btn = document.getElementById('send-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '送信中…'; }
+
+  try {
+    let result;
+    if (state.isMove) {
+      result = await createRecord('移動出庫', state.moveDir.from);
+      if (result.object === 'error') throw new Error(result.message + ' (code: ' + result.code + ')');
+      result = await createRecord('移動入庫', state.moveDir.to);
+      if (result.object === 'error') throw new Error(result.message + ' (code: ' + result.code + ')');
+    } else {
+      result = await createRecord(state.kubun, state.warehouse);
+      if (result.object === 'error') throw new Error(result.message + ' (code: ' + result.code + ')');
+    }
+    goStep(8);
+  } catch(e) {
+    const errEl = document.getElementById('confirm-error');
+    if (errEl) errEl.innerHTML = `<div class="error-box">送信に失敗しました。<br><small>${e.message}</small></div>`;
+    if (btn) { btn.disabled = false; btn.textContent = 'この内容で送信する'; }
+  }
+}
+
+// ─── 準備リスト機能 ──────────────────────────────────────────────────────────
+
+function renderPrepCatSelect() {
+  const el = document.getElementById('entry-content');
+  el.innerHTML = `
+    <div class="content">
+      <div class="screen-label">準備中タイヤを出庫する</div>
+      <div class="screen-title">カテゴリーを選択</div>
+      <div class="cat-grid">
+        ${Object.entries(DB_MAP).map(([k, db]) => `
+          <div class="cat-card" onclick="loadPrepList('${k}')">
+            <span class="cat-icon">${db.icon}</span>
+            <div class="cat-name">${db.name}</div>
+            <div class="cat-sub">${db.sub}</div>
+          </div>`).join('')}
+      </div>
+      <button class="btn-secondary" onclick="renderEntry()">← 戻る</button>
+    </div>`;
+}
+
+async function loadPrepList(catKey) {
+  const el = document.getElementById('entry-content');
+  el.innerHTML = `
+    <div class="loading-wrap">
+      <div class="spinner"></div>
+      <div class="loading-text">準備中タイヤを取得中…</div>
+    </div>`;
+
+  const db = DB_MAP[catKey];
+  try {
+    let all = [], cursor = undefined;
+    while (true) {
+      const body = {
+        filter: { property: '区分', select: { equals: '準備' } },
+        sorts: [{ property: '日付', direction: 'descending' }],
+        page_size: 100
+      };
+      if (cursor) body.start_cursor = cursor;
+      const res = await notionAPI('POST', `/databases/${db.id}/query`, body);
+      if (res.object === 'error') throw new Error(res.message);
+      all = all.concat(res.results);
+      if (!res.has_more) break;
+      cursor = res.next_cursor;
+    }
+    renderPrepList(catKey, all);
+  } catch(e) {
+    el.innerHTML = `
+      <div class="content">
+        <div class="error-box">データの取得に失敗しました。<br><small>${e.message}</small></div>
+        <button class="btn-secondary" onclick="renderPrepCatSelect()">← 戻る</button>
+      </div>`;
+  }
+}
+
+function renderPrepList(catKey, records) {
+  const el = document.getElementById('entry-content');
+  const db = DB_MAP[catKey];
+
+  let listHtml = '';
+  if (records.length === 0) {
+    listHtml = `<div class="prep-empty">準備中のタイヤはありません</div>`;
+  } else {
+    listHtml = records.map(r => {
+      const p = r.properties;
+      const dest = p['出庫先']?.rich_text?.[0]?.plain_text || '（出庫先なし）';
+      const pattern = p['パターン名']?.select?.name || '―';
+      const size = p['サイズコード']?.select?.name || '―';
+      const qty = p['数量']?.number ?? '―';
+      const wField = db.warehouseField;
+      const warehouse = p[wField]?.select?.name || '―';
+      return `
+        <div class="prep-list-item" onclick="renderPrepEdit('${r.id}','${catKey}')">
+          <div class="prep-row1">
+            <span class="prep-dest">${dest}</span>
+            <span class="prep-pattern">${pattern}</span>
+            <span class="prep-size">${size}</span>
+          </div>
+          <div class="prep-row2">
+            <span class="prep-qty">📦 ${qty}本</span>
+            <span class="prep-warehouse">🏭 ${warehouse}</span>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  el.innerHTML = `
+    <div class="content">
+      <div class="screen-label">準備中タイヤ一覧</div>
+      <div class="screen-title">${db.icon} ${db.name}</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">${records.length}件の準備中タイヤ</div>
+      ${listHtml}
+      <button class="btn-secondary" style="margin-top:8px;" onclick="renderPrepCatSelect()">← カテゴリーに戻る</button>
+    </div>`;
+}
+
+function renderPrepEdit(pageId, catKey) {
+  const el = document.getElementById('entry-content');
+  const db = DB_MAP[catKey];
+  el.innerHTML = `
+    <div class="loading-wrap">
+      <div class="spinner"></div>
+      <div class="loading-text">詳細を取得中…</div>
+    </div>`;
+
+  notionAPI('GET', `/pages/${pageId}`).then(page => {
+    const p = page.properties;
+    const dest = p['出庫先']?.rich_text?.[0]?.plain_text || '';
+    const pattern = p['パターン名']?.select?.name || '―';
+    const size = p['サイズコード']?.select?.name || '―';
+    const qty = p['数量']?.number ?? 0;
+    const wField = db.warehouseField;
+    const warehouse = p[wField]?.select?.name || '';
+    const maker = getMaker(pattern);
+
+    el.innerHTML = `
+      <div class="content" style="padding:0;">
+
+        <!-- A3ヒーロー：左アンバーライン + パターン・サイズ大 -->
+        <div style="padding:20px 20px 16px;border-bottom:0.5px solid var(--border);">
+          <div style="display:flex;align-items:stretch;gap:14px;">
+            <div style="width:4px;border-radius:4px;background:var(--accent);flex-shrink:0;min-height:68px;"></div>
+            <div style="display:flex;flex-direction:column;justify-content:center;">
+              <div style="font-size:9px;color:var(--muted);letter-spacing:0.1em;margin-bottom:6px;">準備 → 出庫に変更</div>
+              <div style="font-size:28px;font-weight:900;color:var(--text);letter-spacing:-0.02em;line-height:1.1;">${pattern}</div>
+              <div style="font-size:22px;font-weight:700;color:var(--accent);font-family:'DM Mono',monospace;margin-top:4px;line-height:1.1;">${size}</div>
+              <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+                <span style="font-size:10px;color:var(--accent);background:rgba(240,165,0,0.12);border:1px solid rgba(240,165,0,0.3);border-radius:20px;padding:3px 10px;">${maker}</span>
+                <span style="font-size:10px;color:var(--muted);background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;">${db.name}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 編集フィールド -->
+        <div style="padding:16px 20px 20px;">
+          <div style="font-size:9px;color:var(--muted);letter-spacing:0.1em;margin-bottom:12px;">確認・変更</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+
+            <!-- 出庫先 -->
+            <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;">
+              <div style="font-size:10px;color:var(--muted);letter-spacing:0.06em;margin-bottom:6px;">出庫先</div>
+              <input id="prep-dest" type="text" value="${dest}" placeholder="出庫先（任意）"
+                style="background:transparent;border:none;outline:none;color:var(--accent);font-size:16px;font-weight:700;font-family:'Noto Sans JP',sans-serif;width:100%;">
+            </div>
+
+            <!-- 本数 -->
+            <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;">
+              <div style="font-size:10px;color:var(--muted);letter-spacing:0.06em;">本数</div>
+              <div style="display:flex;align-items:center;gap:12px;">
+                <button onclick="(()=>{const i=document.getElementById('prep-qty');if(parseInt(i.value)>1)i.value=parseInt(i.value)-1;})()"
+                  style="background:var(--s3);border:none;border-radius:8px;width:32px;height:32px;color:var(--text);font-size:18px;cursor:pointer;font-weight:700;">−</button>
+                <input id="prep-qty" type="number" value="${qty}" min="1"
+                  style="background:transparent;border:none;outline:none;color:var(--accent);font-size:22px;font-weight:900;font-family:'DM Mono',monospace;width:50px;text-align:center;">
+                <button onclick="(()=>{const i=document.getElementById('prep-qty');i.value=parseInt(i.value)+1;})()"
+                  style="background:var(--s3);border:none;border-radius:8px;width:32px;height:32px;color:var(--text);font-size:18px;cursor:pointer;font-weight:700;">＋</button>
+              </div>
+            </div>
+
+            <!-- 倉庫 -->
+            <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;">
+              <div style="font-size:10px;color:var(--muted);letter-spacing:0.06em;">倉庫</div>
+              <select id="prep-warehouse"
+                style="background:transparent;border:none;outline:none;color:var(--text);font-size:15px;font-weight:700;font-family:'Noto Sans JP',sans-serif;text-align:right;">
+                ${WAREHOUSES.map(w => `<option value="${w}" ${w === warehouse ? 'selected' : ''}>${w}</option>`).join('')}
+              </select>
+            </div>
+
+          </div>
+          <div id="prep-error"></div>
+          <button class="btn-primary" id="prep-send-btn" onclick="submitPrepToShukko('${pageId}','${catKey}')">
+            出庫に変更する
+          </button>
+          <button class="btn-secondary" onclick="loadPrepList('${catKey}')">← 一覧に戻る</button>
+        </div>
+      </div>`;
+  }).catch(e => {
+    el.innerHTML = `
+      <div class="content">
+        <div class="error-box">取得に失敗しました。<br><small>${e.message}</small></div>
+        <button class="btn-secondary" onclick="loadPrepList('${catKey}')">← 戻る</button>
+      </div>`;
+  });
+}
+
+async function submitPrepToShukko(pageId, catKey) {
+  const btn = document.getElementById('prep-send-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '更新中…'; }
+
+  const dest = document.getElementById('prep-dest')?.value.trim() || '';
+  const qty = parseInt(document.getElementById('prep-qty')?.value) || 0;
+  const db = DB_MAP[catKey];
+  const wField = db.warehouseField;
+  const warehouse = document.getElementById('prep-warehouse')?.value || '';
+
+  try {
+    const props = {
+      '区分': { select: { name: '出庫' } },
+      '処理タイプ': { select: { name: '出庫' } },
+      '数量': { number: qty },
+    };
+    props[wField] = { select: { name: warehouse } };
+    if (dest) props['出庫先'] = { rich_text: [{ text: { content: dest } }] };
+
+    await notionAPI('PATCH', `/pages/${pageId}`, { properties: props });
+
+    // 完了画面
+    const el = document.getElementById('entry-content');
+    el.innerHTML = `
+      <div class="content" style="text-align:center;padding:40px 20px;">
+        <div style="font-size:48px;margin-bottom:16px;">✅</div>
+        <div class="screen-title">出庫に変更しました</div>
+        <div style="font-size:14px;color:var(--muted);margin-bottom:32px;">Notionのレコードを更新しました</div>
+        <button class="btn-primary" onclick="renderEntry()">新しい入出庫を記録する</button>
+        <button class="btn-prep" style="margin-top:8px;" onclick="renderPrepCatSelect()">📋 準備リストに戻る</button>
+      </div>`;
+  } catch(e) {
+    const errEl = document.getElementById('prep-error');
+    if (errEl) errEl.innerHTML = `<div class="error-box">更新に失敗しました。<br><small>${e.message}</small></div>`;
+    if (btn) { btn.disabled = false; btn.textContent = '✅ 出庫に変更する'; }
+  }
+}
+
+// ─── 在庫確認ページ ──────────────────────────────────────────────────────────
+
+let stockState = { step: 0, size: '', cat: '', records: [] };
+
+function renderStockHome() {
+  const el = document.getElementById('stock-content');
+  el.innerHTML = `
+    <div class="stock-size-search">
+      <div class="screen-label" style="padding:16px 0 6px;">在庫確認</div>
+      <div class="screen-title">タイヤサイズを入力</div>
+      <div style="height:12px;"></div>
+      <div class="search-box">
+        <input id="stock-sz" type="text" placeholder="例：275 または 27580" autocomplete="off" inputmode="numeric">
+        <button class="search-clear" onclick="document.getElementById('stock-sz').value='';filterStockSizes('')">✕</button>
+      </div>
+      <div id="stock-sz-candidates" class="candidates"></div>
+    </div>`;
+  const inp = document.getElementById('stock-sz');
+  inp.addEventListener('input', e => filterStockSizes(e.target.value));
+}
+
+function filterStockSizes(v) {
+  const q = v.trim();
+  const all = Object.values(DB_MAP).flatMap(db => db.sizes);
+  const uniq = [...new Set(all)];
+  let hits = [];
+  if (q) {
+    const dq = digits(q);
+    hits = uniq.filter(s => {
+      const ds = digits(s);
+      return s.toLowerCase().includes(q.toLowerCase()) || (dq.length >= 3 && ds.startsWith(dq));
+    }).slice(0, 8);
+  }
+  const c = document.getElementById('stock-sz-candidates');
+  if (!c) return;
+  c.innerHTML = hits.map(s =>
+    `<div class="candidate" onclick="pickStockSize('${s}')">
+      <span class="candidate-text">${s}</span>
+      <span class="candidate-badge">選択</span>
+    </div>`
+  ).join('');
+}
+
+function pickStockSize(s) {
+  stockState.size = s;
+  const matching = Object.entries(DB_MAP).filter(([k, db]) => db.sizes.includes(s));
+  if (matching.length === 1) {
+    loadStockData(s, matching[0][0]);
+  } else {
+    renderStockCatSelect(s, matching);
+  }
+}
+
+function renderStockCatSelect(size, matching) {
+  const el = document.getElementById('stock-content');
+  el.innerHTML = `
+    <div class="content">
+      <div class="screen-label">在庫確認</div>
+      <div class="screen-title">カテゴリーを選択</div>
+      <div class="screen-sub">${size}</div>
+      <div class="cat-select-grid">
+        ${matching.map(([k, db]) => `
+          <div class="cat-sel-btn" onclick="loadStockData('${size}','${k}')">
+            <span class="csb-icon">${db.icon}</span>
+            <div class="csb-name">${db.name}</div>
+            <div class="csb-sub">${db.sub}</div>
+          </div>`).join('')}
+      </div>
+      <div style="padding:0 20px;">
+        <button class="btn-secondary" onclick="renderStockHome()">← 戻る</button>
+      </div>
+    </div>`;
+}
+
+async function loadStockData(size, catKey) {
+  const el = document.getElementById('stock-content');
+  el.innerHTML = `
+    <div class="loading-wrap">
+      <div class="spinner"></div>
+      <div class="loading-text">在庫データを取得中…</div>
+    </div>`;
+
+  const db = DB_MAP[catKey];
+  try {
+    const records = await fetchAllRecords(db.id, size);
+    renderStockResult(size, catKey, records);
+  } catch(e) {
+    el.innerHTML = `
+      <div class="content">
+        <div class="error-box">データの取得に失敗しました。<br>${e.message}</div>
+        <button class="btn-secondary" onclick="renderStockHome()">← 戻る</button>
+      </div>`;
+  }
+}
+
+async function fetchAllRecords(dbId, sizeFilter) {
+  let all = [], cursor = undefined;
+  while (true) {
+    const body = {
+      filter: { property: 'サイズコード', select: { equals: sizeFilter } },
+      page_size: 100
+    };
+    if (cursor) body.start_cursor = cursor;
+    const res = await notionAPI('POST', `/databases/${dbId}/query`, body);
+    if (res.object === 'error') throw new Error(res.message);
+    all = all.concat(res.results);
+    if (!res.has_more) break;
+    cursor = res.next_cursor;
+  }
+  return all;
+}
+
+function calcStock(records, catKey) {
+  const db = DB_MAP[catKey];
+  const wField = db.warehouseField;
+  // pattern × warehouse → stock
+  const stock = {};
+  // pattern → 準備合計・発注合計
+  const prepStock = {};
+  const orderStock = {};
+  db.patterns.forEach(p => {
+    stock[p] = {};
+    WAREHOUSES.forEach(w => { stock[p][w] = 0; });
+    prepStock[p] = 0;
+    orderStock[p] = 0;
+  });
+
+  records.forEach(r => {
+    const props = r.properties;
+    const pattern = props['パターン名']?.select?.name;
+    const warehouse = props[wField]?.select?.name;
+    const qty = props['数量']?.number || 0;
+    const kubun = props['区分']?.select?.name || '';
+    if (!pattern) return;
+    // 発注中：倉庫不問で合計
+    if (kubun === '発注中') {
+      if (!orderStock[pattern]) orderStock[pattern] = 0;
+      orderStock[pattern] += qty;
+      return;
+    }
+    if (!warehouse) return;
+    const sign = KUBUN_SIGN[kubun] || 0;
+    if (!stock[pattern]) stock[pattern] = {};
+    if (!stock[pattern][warehouse]) stock[pattern][warehouse] = 0;
+    stock[pattern][warehouse] += sign * qty;
+    // 準備中：倉庫ごとに合計（区分=準備のみ）
+    if (kubun === '準備') {
+      if (!prepStock[pattern]) prepStock[pattern] = 0;
+      prepStock[pattern] += qty;
+    }
+  });
+  return { stock, prepStock, orderStock, records, catKey };
+}
+
+// グローバルにレコードを保存（履歴表示用）
+let _stockRecords = [];
+let _stockCatKey = '';
+let _stockSize = '';
+let _currentPattern = '';
+
+function renderStockResult(size, catKey, records) {
+  // グローバルに保存
+  _stockRecords = records;
+  _stockCatKey = catKey;
+  _stockSize = size;
+
+  const el = document.getElementById('stock-content');
+  const db = DB_MAP[catKey];
+  const { stock, prepStock, orderStock } = calcStock(records, catKey);
+
+  // ヘッダー列：倉庫3つ + 準備 + 発注
+  const COLS = [...WAREHOUSES, '準備', '発注'];
+  const COL_LABELS = [...WAREHOUSES.map(w => w.replace('倉庫','')), '準備中', '発注中'];
+
+  let html = `
+    <div class="content">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <button onclick="renderStockHome()" style="background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:0;">←</button>
+        <div class="screen-label" style="margin:0;">在庫確認</div>
+      </div>
+      <div class="screen-title" style="font-family:'DM Mono',monospace;font-size:18px;">${size}</div>
+      <div class="screen-sub" style="margin-bottom:0;">${db.name}</div>`;
+
+  html += `<div style="margin-top:16px;overflow-x:auto;">`;
+  html += `<div style="display:flex;justify-content:flex-end;gap:4px;padding:0 0 8px;border-bottom:1px solid var(--border);margin-bottom:4px;min-width:0;">
+    ${COL_LABELS.map((l, i) => {
+      const isSpecial = i >= 3;
+      return `<div style="text-align:center;min-width:40px;flex:1;"><div style="font-size:9px;color:${isSpecial ? 'var(--accent)' : 'var(--muted)'};">${l}</div></div>`;
+    }).join('')}
+  </div>`;
+
+  // メーカー順にソート
+  const MAKER_ORDER = ['TOYO','BRIDGESTONE','DUNLOP','MICHELIN','PIRELLI'];
+  const sortedPatterns = [...db.patterns].sort((a, b) => {
+    const orderA = MAKER_ORDER.indexOf(getMaker(a));
+    const orderB = MAKER_ORDER.indexOf(getMaker(b));
+    if (orderA !== orderB) return orderA - orderB;
+    const sumA = WAREHOUSES.reduce((s, w) => s + (stock[a]?.[w] || 0), 0);
+    const sumB = WAREHOUSES.reduce((s, w) => s + (stock[b]?.[w] || 0), 0);
+    return sumB - sumA;
+  });
+
+  sortedPatterns.forEach(p => {
+    const safeP = p.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    html += `
+      <div class="stock-row">
+        <div class="stock-pattern">
+          <span style="font-weight:600;">${p}</span>
+        </div>
+        <div class="stock-counts" style="gap:4px;">
+          ${WAREHOUSES.map(w => {
+            const n = stock[p]?.[w] || 0;
+            const cls = n === 0 ? 'zero' : 'positive';
+            return `<div class="stock-count" style="min-width:40px;flex:1;cursor:${n>0?'pointer':'default'};"
+              onclick="if(${n}>0){_currentPattern='${safeP}';renderHistory('${w}');}">
+              <div class="stock-count-num ${cls}">${n}</div>
+              <div class="stock-count-label">本</div>
+            </div>`;
+          }).join('')}
+          ${(() => {
+            const prep = prepStock[p] || 0;
+            const ord = orderStock[p] || 0;
+            const prepCls = prep === 0 ? 'zero' : 'positive';
+            const ordCls = ord === 0 ? 'zero' : 'positive';
+            return `
+            <div class="stock-count" style="min-width:40px;flex:1;cursor:${prep>0?'pointer':'default'};border-left:1px solid var(--border);"
+              onclick="if(${prep}>0){_currentPattern='${safeP}';renderHistory('準備');}">
+              <div class="stock-count-num ${prepCls}" style="color:${prep>0?'var(--yellow)':''};">${prep}</div>
+              <div class="stock-count-label">本</div>
+            </div>
+            <div class="stock-count" style="min-width:40px;flex:1;cursor:${ord>0?'pointer':'default'};"
+              onclick="if(${ord}>0){_currentPattern='${safeP}';renderHistory('発注中');}">
+              <div class="stock-count-num ${ordCls}" style="color:${ord>0?'var(--purple)':''};">${ord}</div>
+              <div class="stock-count-label">本</div>
+            </div>`;
+          })()}
+        </div>
+      </div>`;
+  });
+
+  html += `</div>
+    <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);">
+      全 ${records.length} 件のレコードから計算 ・ ${new Date().toLocaleTimeString('ja-JP')} 取得
+    </div>
+    <button class="btn-primary" style="margin-top:16px;" onclick="renderStockHome()">🔍 別のサイズを検索</button>
+  </div>`;
+
+  el.innerHTML = html;
+}
+
+// ─── 履歴ページ ───────────────────────────────────────────────────────────────
+
+function renderHistory(mode) {
+  const catKey = _stockCatKey;
+  const pattern = _currentPattern;
+  const size = _stockSize;
+  const records = _stockRecords;
+  const el = document.getElementById('stock-content');
+  const db = DB_MAP[catKey];
+  const wField = db.warehouseField;
+
+  // フィルタリング
+  let filtered;
+  if (mode === '準備') {
+    filtered = records.filter(r => r.properties['区分']?.select?.name === '準備'
+      && r.properties['パターン名']?.select?.name === pattern
+      && r.properties['サイズコード']?.select?.name === size);
+  } else if (mode === '発注中') {
+    filtered = records.filter(r => r.properties['区分']?.select?.name === '発注中'
+      && r.properties['パターン名']?.select?.name === pattern
+      && r.properties['サイズコード']?.select?.name === size);
+  } else {
+    // 倉庫指定の在庫履歴：新しい順10件
+    filtered = records
+      .filter(r => r.properties['パターン名']?.select?.name === pattern
+        && r.properties['サイズコード']?.select?.name === size
+        && r.properties[wField]?.select?.name === mode
+        && r.properties['区分']?.select?.name !== '発注中')
+      .sort((a, b) => new Date(b.created_time) - new Date(a.created_time))
+      .slice(0, 10);
+  }
+
+  const modeLabel = mode === '準備' ? '準備中' : mode === '発注中' ? '発注中' : mode;
+  const modeColor = mode === '準備' ? 'var(--yellow)' : mode === '発注中' ? 'var(--purple)' : 'var(--accent)';
+
+  let rows = '';
+  if (filtered.length === 0) {
+    rows = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:14px;">データがありません</div>`;
+  } else {
+    filtered.forEach(r => {
+      const props = r.properties;
+      const kubun = props['区分']?.select?.name || '―';
+      const dest = props['出庫先']?.rich_text?.[0]?.plain_text || '―';
+      const qty = props['数量']?.number ?? '―';
+      const creator = props['作成者']?.select?.name || '―';
+      const dateRaw = r.created_time || '';
+      const date = dateRaw ? new Date(dateRaw).toLocaleDateString('ja-JP', {month:'numeric',day:'numeric'}) : '―';
+
+      const kubunColors = {
+        '入庫':'var(--green)','出庫':'var(--red)','準備':'var(--yellow)',
+        '発注中':'var(--purple)','移動入庫':'var(--blue)','移動出庫':'var(--muted)',
+        '返品':'var(--blue)','返品（倉庫へ）':'var(--blue)','返品（メーカーへ）':'var(--muted)'
+      };
+      const kubunColor = kubunColors[kubun] || 'var(--muted)';
+
+      rows += `
+        <div style="border-bottom:1px solid var(--border);padding:10px 0;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <span style="font-size:11px;color:var(--muted);">${date}</span>
+            <span style="font-size:10px;color:${kubunColor};border:1px solid ${kubunColor};border-radius:4px;padding:1px 6px;">${kubun}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;color:var(--text);flex:1;">${dest}</span>
+            <span style="font-size:16px;font-weight:700;color:var(--accent);font-family:'DM Mono',monospace;margin:0 12px;">${qty}本</span>
+            <span style="font-size:11px;color:var(--muted);">${creator.split('　')[0]}</span>
+          </div>
+        </div>`;
+    });
+  }
+
+  const limitNote = (mode !== '準備' && mode !== '発注中') ? `<div style="font-size:11px;color:var(--muted);margin-top:8px;">最新10件表示</div>` : '';
+
+  el.innerHTML = `
+    <div class="content">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <button onclick="history.back()" id="hist-back-btn" style="background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:0;">←</button>
+        <div class="screen-label" style="margin:0;">履歴</div>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:2px;">
+        <div style="font-size:22px;font-weight:900;color:var(--text);">${pattern}</div>
+        <div style="font-size:14px;font-weight:700;color:var(--accent);font-family:'DM Mono',monospace;">${size}</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:16px;">
+        <span style="font-size:11px;color:${modeColor};border:1px solid ${modeColor};border-radius:20px;padding:2px 10px;">${modeLabel}</span>
+        <span style="font-size:11px;color:var(--muted);background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:2px 10px;">${db.name}</span>
+      </div>
+      <div>${rows}</div>
+      ${limitNote}
+      <button class="btn-secondary" style="margin-top:16px;" id="hist-back-btn2">← 在庫一覧に戻る</button>
+    </div>`;
+
+  // 戻るボタン：在庫結果を再描画
+  document.getElementById('hist-back-btn').onclick = () => renderStockResult(_stockSize, _stockCatKey, _stockRecords);
+  document.getElementById('hist-back-btn2').onclick = () => renderStockResult(_stockSize, _stockCatKey, _stockRecords);
+}
+
+// ─── 初期化 ──────────────────────────────────────────────────────────────────
+
+window.onload = () => {
+  const n = localStorage.getItem('tire_name');
+  if (n) {
+    _selectedStaff = n;
+  }
+};
+</script>
+</body>
+</html>

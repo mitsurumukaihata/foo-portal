@@ -18,15 +18,17 @@
   --orange-bg:#3a2a00;
   --teal-bg:#1a3030;--teal:#5dd5b0;
 }
-.light{
-  --bg:#faf6ee;--bg2:#fff;--bg3:#fff8f0;--bg4:#f5ede0;
-  --text:#1a1a1a;--text2:#555;--text3:#999;--text4:#bbb;
-  --border:#e5d5b0;--border2:#ddd;
-  --blue-bg:#e3f2fd;--blue:#1565c0;
-  --green-bg:#e8f5e9;--green:#2e7d32;
-  --red-bg:#fce4ec;--red:#c62828;
-  --orange-bg:#fff3e0;
-  --teal-bg:#e0f4ee;--teal:#1a8060;
+@media (prefers-color-scheme: light) {
+  :root{
+    --bg:#faf6ee;--bg2:#fff;--bg3:#fff8f0;--bg4:#f5ede0;
+    --text:#1a1a1a;--text2:#555;--text3:#999;--text4:#bbb;
+    --border:#e5d5b0;--border2:#ddd;
+    --blue-bg:#e3f2fd;--blue:#1565c0;
+    --green-bg:#e8f5e9;--green:#2e7d32;
+    --red-bg:#fce4ec;--red:#c62828;
+    --orange-bg:#fff3e0;
+    --teal-bg:#e0f4ee;--teal:#1a8060;
+  }
 }
 
 html,body{height:100%;font-family:'Noto Sans JP','Hiragino Sans',sans-serif;font-size:14px;background:var(--bg);color:var(--text);transition:background .2s,color .2s;}
@@ -37,7 +39,6 @@ html,body{height:100%;font-family:'Noto Sans JP','Hiragino Sans',sans-serif;font
 .app-title{font-size:15px;font-weight:600;color:var(--amber);letter-spacing:.5px;white-space:nowrap;}
 .header-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
 .user-badge{font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--amber);color:var(--amber);background:var(--bg2);white-space:nowrap;}
-.theme-btn{font-size:11px;padding:3px 9px;border-radius:6px;cursor:pointer;border:1px solid var(--border2);color:var(--text3);background:transparent;}
 .portal-btn{font-size:11px;padding:3px 9px;border-radius:6px;cursor:pointer;border:1px solid var(--amber);color:var(--amber);background:transparent;text-decoration:none;white-space:nowrap;}
 
 .tab-bar{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;}
@@ -51,7 +52,7 @@ html,body{height:100%;font-family:'Noto Sans JP','Hiragino Sans',sans-serif;font
 .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;flex-shrink:0;}
 .stat-card{border-radius:8px;padding:8px 6px;text-align:center;cursor:pointer;border:1px solid var(--border);background:var(--bg2);transition:all .15s;}
 .stat-card.active{border-color:var(--amber);background:var(--amber3);}
-.light .stat-card.active{background:#fff3e0;}
+@media (prefers-color-scheme: light) { .stat-card.active{background:#fff3e0;} }
 .stat-num{font-size:18px;font-weight:600;}
 .stat-lbl{font-size:10px;color:var(--text3);margin-top:2px;}
 
@@ -84,7 +85,7 @@ select.fi:focus{border-color:var(--amber);}
 .mgmt{font-weight:600;color:var(--amber) !important;}
 /* 管理番号列固定 */
 .th-fixed{position:sticky;left:0;z-index:11;background:var(--bg2);}
-.td-fixed{position:sticky;left:0;z-index:5;background:var(--bg);border-right:1.5px solid var(--amber2) !important;}
+.td-fixed{position:sticky;left:0;z-index:5;background:var(--bg);border-right:1px solid var(--border) !important;}
 .list-table tr:hover .td-fixed{background:var(--bg2);}
 /* サイズセル */
 .size-text{display:inline-block;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;cursor:pointer;}
@@ -108,7 +109,7 @@ select.fi:focus{border-color:var(--amber);}
 
 /* ===== MODAL ===== */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:12px 16px;overflow-y:auto;}
-.light .overlay{background:rgba(0,0,0,.4);}
+@media (prefers-color-scheme: light) { .overlay{background:rgba(0,0,0,.4);} }
 .modal{background:var(--bg2);border-radius:12px;border:1px solid var(--border2);width:100%;max-width:340px;overflow:hidden;margin:auto;}
 .modal-header{background:var(--bg);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);}
 .modal-title{font-size:14px;font-weight:600;color:var(--amber);}
@@ -120,7 +121,7 @@ select.fi:focus{border-color:var(--amber);}
 .status-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
 .st-opt{padding:10px;border-radius:8px;text-align:center;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border2);color:var(--text3);background:var(--bg3);transition:all .1s;}
 .st-opt.selected{border-color:var(--amber);color:var(--amber);background:var(--amber3);}
-.light .st-opt.selected{background:#fff3e0;}
+@media (prefers-color-scheme: light) { .st-opt.selected{background:#fff3e0;} }
 .st-opt:hover:not(.selected){background:var(--bg4);}
 
 .modal-actions{display:flex;gap:8px;}
@@ -193,7 +194,7 @@ select.fi:focus{border-color:var(--amber);}
 /* ===== FORM TAB ===== */
 .form-wrap{max-width:600px;margin:0 auto;width:100%;}
 .sec-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--amber);margin:16px 0 8px;border-bottom:1px solid var(--amber3);padding-bottom:4px;}
-.light .sec-lbl{border-color:#ffe0b0;}
+@media (prefers-color-scheme: light) { .sec-lbl{border-color:#ffe0b0;} }
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .fg{display:flex;flex-direction:column;}
 .fg.full{grid-column:1/-1;}
@@ -233,7 +234,6 @@ select.fg-sel{appearance:none;-webkit-appearance:none;background-image:url("data
     <div class="header-right">
       <a class="portal-btn" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
       <div class="user-badge" id="user-badge">—</div>
-      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">ライト</button>
     </div>
   </div>
 
@@ -245,7 +245,7 @@ select.fg-sel{appearance:none;-webkit-appearance:none;background-image:url("data
   <!-- 一覧タブ -->
   <div id="tab-list" class="tab-content active">
     <div class="stat-row" id="stat-row">
-      <div class="stat-card active" data-status="" onclick="filterStatus(this)">
+      <div class="stat-card" data-status="未掲載" onclick="filterStatus(this)">
         <div class="stat-num" style="color:var(--amber)" id="cnt-all">—</div>
         <div class="stat-lbl">未掲載</div>
       </div>
@@ -536,7 +536,6 @@ let acData = [];
 let statusFilter = '';
 let prefixFilter = '';
 let searchQuery = '';
-let isLight = false;
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', () => {
@@ -548,24 +547,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   const stored = sessionStorage.getItem('fooUser');
   if (stored) setUser(stored);
-  const theme = localStorage.getItem('auctionTheme');
-  if (theme === 'light') { isLight = true; applyTheme(); }
   loadAllRecords();
   setupFormHints();
 });
 
 function setUser(name) {
   document.getElementById('user-badge').textContent = name;
-}
-
-function toggleTheme() {
-  isLight = !isLight;
-  applyTheme();
-  localStorage.setItem('auctionTheme', isLight ? 'light' : 'dark');
-}
-function applyTheme() {
-  document.body.classList.toggle('light', isLight);
-  document.getElementById('theme-btn').textContent = isLight ? 'ダーク' : 'ライト';
 }
 
 function switchTab(name) {
@@ -674,14 +661,20 @@ function updateStats() {
   document.getElementById('cnt-posted').textContent = counts['掲載中'];
   document.getElementById('cnt-prep').textContent   = counts['発送準備中'];
   document.getElementById('cnt-shipped').textContent = counts['発送済'];
-  document.querySelector('[data-status=""] .stat-lbl').textContent = '未掲載';
 }
 
 // ===== FILTERS =====
 function filterStatus(el) {
+  const isActive = el.classList.contains('active');
   document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-  statusFilter = el.dataset.status;
+  if (isActive) {
+    // すでにONだったカードをもう一度押したら解除→全件表示
+    statusFilter = '';
+  } else {
+    // OFFだったカードを押したらON
+    el.classList.add('active');
+    statusFilter = el.dataset.status;
+  }
   applyFilters();
 }
 

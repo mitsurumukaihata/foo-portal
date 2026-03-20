@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>給与明細 | f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #18181f;
+  --s1: #101015;
+  --s2: #1e1e26;
+  --s3: #26262f;
+  --border: #2c2c38;
+  --border2: #3c3c4a;
+  --text: #f0f0f2;
+  --muted: #68687a;
+  --accent: #f0a500;
+  --green: #22c55e;
+  --red: #ef4444;
+  --blue: #3b82f6;
+  --purple: #a855f7;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+    --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208;
+    --muted: #a08060; --accent: #e07000; --green: #1a9e4a;
+    --red: #dc2626; --blue: #2563eb; --purple: #9333ea;
+  }
+}
+[data-theme="dark"] {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2;
+  --muted: #68687a; --accent: #f0a500; --green: #22c55e;
+  --red: #ef4444; --blue: #3b82f6; --purple: #a855f7;
+}
+[data-theme="light"] {
+  --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+  --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208;
+  --muted: #a08060; --accent: #e07000; --green: #1a9e4a;
+  --red: #dc2626; --blue: #2563eb; --purple: #9333ea;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Sans JP', sans-serif;
+  min-height: 100vh;
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── ヘッダー ── */
+.header {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--s1);
+  border-bottom: 0.5px solid var(--border);
+  padding: 14px 16px;
+  display: flex; align-items: center; gap: 10px;
+  flex-shrink: 0;
+}
+.back-btn {
+  background: transparent; border: none;
+  color: var(--accent); font-size: 22px;
+  cursor: pointer; line-height: 1; padding: 0 4px;
+  font-family: inherit; flex-shrink: 0;
+}
+.header-title { font-size: 15px; font-weight: 900; flex: 1; }
+.header-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+/* ── フィルタータブ ── */
+.filter-bar {
+  display: flex; gap: 6px;
+  padding: 10px 14px;
+  background: var(--s1);
+  border-bottom: 0.5px solid var(--border);
+  overflow-x: auto; scrollbar-width: none;
+  flex-shrink: 0;
+}
+.filter-bar::-webkit-scrollbar { display: none; }
+.filter-btn {
+  flex-shrink: 0; padding: 5px 14px;
+  border-radius: 16px; font-size: 12px; font-weight: 700;
+  border: 1px solid var(--border2); background: var(--s2); color: var(--muted);
+  cursor: pointer; font-family: inherit; transition: all 0.15s;
+}
+.filter-btn.active {
+  border-color: var(--accent); background: rgba(240,165,0,0.12); color: var(--accent);
+}
+
+/* ── リスト ── */
+.list-body {
+  flex: 1; overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px 14px;
+}
+.year-label {
+  font-size: 11px; color: var(--muted);
+  letter-spacing: 0.08em; font-weight: 700;
+  padding: 8px 0 6px;
+  border-bottom: 0.5px solid var(--border);
+  margin-bottom: 8px;
+}
+.meisai-card {
+  background: var(--s1);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 8px;
+  display: flex; align-items: center; gap: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.meisai-card:active { transform: scale(0.99); }
+.meisai-card:hover { border-color: rgba(240,165,0,0.4); }
+.meisai-card.no-file { cursor: default; opacity: 0.6; }
+.meisai-card.no-file:hover { border-color: var(--border); }
+
+.meisai-month-badge {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.meisai-month-num { font-size: 16px; font-weight: 900; line-height: 1; }
+.meisai-month-unit { font-size: 9px; font-weight: 700; margin-top: 1px; }
+
+.meisai-info { flex: 1; min-width: 0; }
+.meisai-name { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meisai-meta { display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+.meisai-cat {
+  font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 10px;
+}
+.meisai-date { font-size: 11px; color: var(--muted); }
+.meisai-arrow { color: var(--muted); font-size: 18px; flex-shrink: 0; }
+
+/* ── ローディング・空状態 ── */
+.state-center {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 60px 20px; gap: 12px; color: var(--muted); font-size: 13px;
+}
+.spinner {
+  width: 28px; height: 28px;
+  border: 2.5px solid var(--border2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── PDFビューアオーバーレイ ── */
+#pdf-viewer {
+  display: none;
+  position: fixed; inset: 0;
+  background: #000;
+  z-index: 500;
+  max-width: 480px;
+  margin: 0 auto;
+  flex-direction: column;
+}
+#pdf-viewer.open { display: flex; }
+
+.pdf-header {
+  background: #111;
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 10px;
+  flex-shrink: 0;
+  border-bottom: 0.5px solid #333;
+}
+.pdf-back-btn {
+  background: transparent; border: none;
+  color: var(--accent); font-size: 22px;
+  cursor: pointer; line-height: 1; padding: 0 4px;
+  font-family: inherit;
+}
+.pdf-title { font-size: 13px; font-weight: 700; color: #fff; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pdf-notion-btn {
+  background: transparent;
+  border: 1px solid #444;
+  border-radius: 16px;
+  padding: 5px 10px;
+  color: #999;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  display: flex; align-items: center; gap: 4px;
+  flex-shrink: 0;
+}
+
+.pdf-loading {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 14px; color: #666; font-size: 13px;
+  background: #0a0a0a;
+}
+.pdf-loading .spinner { border-color: #333; border-top-color: var(--accent); }
+
+/* iFrameでPDF表示 */
+#pdf-frame {
+  flex: 1; border: none; width: 100%; display: none;
+  background: #fff;
+}
+
+/* エラー表示 */
+.pdf-error {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px; padding: 30px;
+  background: #0a0a0a;
+  text-align: center;
+}
+.pdf-error-icon { font-size: 40px; }
+.pdf-error-msg { font-size: 13px; color: #888; line-height: 1.7; }
+.pdf-open-notion {
+  background: var(--accent);
+  border: none; border-radius: 10px;
+  padding: 12px 24px;
+  color: #fff; font-size: 14px; font-weight: 700;
+  font-family: inherit; cursor: pointer;
+  text-decoration: none; display: inline-block;
+}
+</style>
+<script>
+(function(){
+  const t = localStorage.getItem('foo_portal_theme') || 'auto';
+  if (t !== 'auto') document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
+</head>
+<body>
+
+<!-- ── メイン画面 ── -->
+<div class="header">
+  <button class="back-btn" onclick="goBack()">‹</button>
+  <div>
+    <div class="header-title" id="header-title">💴 給与明細</div>
+    <div class="header-sub" id="header-sub">読み込み中...</div>
+  </div>
+</div>
+
+<div class="filter-bar" id="filter-bar">
+  <button class="filter-btn active" data-filter="all" onclick="setFilter('all',this)">すべて</button>
+  <button class="filter-btn" data-filter="給与" onclick="setFilter('給与',this)">💰 給与</button>
+  <button class="filter-btn" data-filter="賞与" onclick="setFilter('賞与',this)">🎁 賞与</button>
+  <button class="filter-btn" data-filter="決め事" onclick="setFilter('決め事',this)">📌 決め事</button>
+</div>
+
+<div class="list-body" id="list-body">
+  <div class="state-center">
+    <div class="spinner"></div>
+    <div>読み込み中...</div>
+  </div>
+</div>
+
+<!-- ── PDFビューアオーバーレイ ── -->
+<div id="pdf-viewer">
+  <div class="pdf-header">
+    <button class="pdf-back-btn" onclick="closePdf()">‹</button>
+    <div class="pdf-title" id="pdf-title">給与明細</div>
+    <a class="pdf-notion-btn" id="pdf-notion-link" href="#" target="_blank">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      Notion
+    </a>
+  </div>
+  <div class="pdf-loading" id="pdf-loading">
+    <div class="spinner"></div>
+    <div>PDFを読み込み中...</div>
+  </div>
+  <iframe id="pdf-frame" title="給与明細PDF"></iframe>
+  <div class="pdf-error" id="pdf-error" style="display:none;">
+    <div class="pdf-error-icon">📄</div>
+    <div class="pdf-error-msg" id="pdf-error-msg">PDFの読み込みに失敗しました。<br>Notionで直接確認してください。</div>
+    <a class="pdf-open-notion" id="pdf-error-btn" href="#" target="_blank">Notionで開く</a>
+  </div>
+</div>
+
+<script>
+const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
+const SESSION_KEY = 'foo_portal_session';
+
+// URLパラメータから情報を取得
+const params = new URLSearchParams(location.search);
+const targetName = params.get('name') || '';
+const targetDb   = params.get('db')   || '';
+// 管理者・経理が他スタッフを見る場合は name/db が渡される
+// 自分自身の場合はセッションから取得
+
+let allData = [];
+let currentFilter = 'all';
+let currentPageUrl = '';
+
+// ─── 戻るボタン ────────────────────────────────────────────────────────────────
+function goBack() {
+  // セッションのポータルへ戻る
+  location.href = 'https://mitsurumukaihata.github.io/foo-portal/';
+}
+
+// ─── API ───────────────────────────────────────────────────────────────────────
+async function notionAPI(method, path, body) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const res = await fetch(WORKER + path, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    return await res.json();
+  } catch(e) {
+    clearTimeout(timer);
+    throw new Error(e.name === 'AbortError' ? 'タイムアウト' : '通信エラー: ' + e.message);
+  }
+}
+
+// ─── 初期化 ───────────────────────────────────────────────────────────────────
+window.onload = async () => {
+  // セッション確認
+  let session = null;
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      if (new Date(d.expires) > new Date()) session = d;
+    }
+  } catch(e) {}
+
+  // ログインしていなければポータルへ
+  if (!session) {
+    location.href = 'https://mitsurumukaihata.github.io/foo-portal/';
+    return;
+  }
+
+  // name/db が指定されていれば（管理者が他スタッフの明細を見る）、それを使う
+  const name = targetName || session.name || '';
+  const dbId = targetDb  || session.meisaiDbId || '';
+
+  document.getElementById('header-title').textContent = `💴 ${name} の給与明細`;
+
+  if (!dbId) {
+    // 明細DBがない場合、Notionページに飛ぶ
+    if (session.payslipUrl) {
+      window.open(session.payslipUrl, '_blank');
+      goBack();
+    } else {
+      showError('明細データが設定されていません。');
+    }
+    return;
+  }
+
+  await loadMeisai(dbId, name);
+};
+
+async function loadMeisai(dbId, name) {
+  try {
+    const res = await notionAPI('POST', `/databases/${dbId}/query`, {
+      sorts: [{ property: '給与支給日', direction: 'descending' }],
+      page_size: 100,
+    });
+    if (res.object === 'error') throw new Error(res.message);
+
+    allData = (res.results || []).map(p => ({
+      id:      p.id,
+      title:   p.properties['名前']?.title?.[0]?.plain_text || '',
+      date:    p.properties['給与支給日']?.date?.start || '',
+      cat:     p.properties['カテゴリ']?.select?.name || '',
+      year:    p.properties['年']?.select?.name || '',
+      month:   p.properties['月']?.select?.name || '',
+      files:   p.properties['給与明細']?.files || [],
+      pageUrl: `https://www.notion.so/${p.id.replace(/-/g,'')}`,
+    }));
+
+    const count = allData.length;
+    document.getElementById('header-sub').textContent = `${count}件の明細`;
+    renderList();
+  } catch(e) {
+    showError('読み込みエラー: ' + e.message);
+  }
+}
+
+function showError(msg) {
+  document.getElementById('list-body').innerHTML = `
+    <div class="state-center">
+      <div style="font-size:32px;">⚠️</div>
+      <div>${msg}</div>
+    </div>`;
+}
+
+// ─── フィルター ────────────────────────────────────────────────────────────────
+function setFilter(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderList();
+}
+
+// ─── リスト描画 ───────────────────────────────────────────────────────────────
+const CAT_COLOR = {
+  '給与':   { bg: 'rgba(59,130,246,0.15)',  text: '#3b82f6' },
+  '夏季賞与': { bg: 'rgba(168,85,247,0.15)', text: '#a855f7' },
+  '冬季賞与': { bg: 'rgba(163,112,80,0.15)', text: '#a37050' },
+  '賞与':   { bg: 'rgba(232,120,152,0.15)', text: '#e07898' },
+  '決め事': { bg: 'rgba(240,165,0,0.15)',   text: '#f0a500' },
+};
+
+function renderList() {
+  const body = document.getElementById('list-body');
+  let data = [...allData];
+
+  if (currentFilter !== 'all') {
+    data = data.filter(r => {
+      if (currentFilter === '賞与') return r.cat.includes('賞与');
+      return r.cat === currentFilter;
+    });
+  }
+
+  if (!data.length) {
+    body.innerHTML = '<div class="state-center"><div style="font-size:28px;">📭</div><div>データがありません</div></div>';
+    return;
+  }
+
+  // 年でグループ化
+  const byYear = {};
+  data.forEach(r => {
+    const y = r.year || r.date?.slice(0,4) || '年不明';
+    if (!byYear[y]) byYear[y] = [];
+    byYear[y].push(r);
+  });
+
+  let html = '';
+  Object.keys(byYear).sort((a,b) => b.localeCompare(a)).forEach(year => {
+    html += `<div class="year-label">${year}年</div>`;
+    byYear[year].forEach(r => { html += cardHTML(r); });
+  });
+
+  body.innerHTML = html;
+}
+
+function cardHTML(r) {
+  const monthNum = r.month ? r.month.replace('月','') : (r.date ? parseInt(r.date.slice(5,7)) : '—');
+  const cc = CAT_COLOR[r.cat] || { bg: 'rgba(104,104,122,0.15)', text: 'var(--muted)' };
+  const hasFile = r.files.length > 0;
+  const noFileClass = hasFile ? '' : 'no-file';
+  const onclick = hasFile ? `onclick="openPdf(${JSON.stringify(r).replace(/"/g,'&quot;')})"` : '';
+
+  return `<div class="meisai-card ${noFileClass}" ${onclick}>
+    <div class="meisai-month-badge" style="background:${cc.bg};">
+      <div class="meisai-month-num" style="color:${cc.text};">${monthNum}</div>
+      <div class="meisai-month-unit" style="color:${cc.text};">月</div>
+    </div>
+    <div class="meisai-info">
+      <div class="meisai-name">${esc(r.title || r.date || '—')}</div>
+      <div class="meisai-meta">
+        <span class="meisai-cat" style="background:${cc.bg};color:${cc.text};">${esc(r.cat)}</span>
+        ${r.date ? `<span class="meisai-date">${r.date.replace(/-/g,'/')}</span>` : ''}
+        ${!hasFile ? `<span style="font-size:10px;color:var(--muted);">ファイルなし</span>` : ''}
+      </div>
+    </div>
+    ${hasFile ? `<div class="meisai-arrow">›</div>` : ''}
+  </div>`;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── PDFビューア ──────────────────────────────────────────────────────────────
+async function openPdf(record) {
+  const viewer  = document.getElementById('pdf-viewer');
+  const loading = document.getElementById('pdf-loading');
+  const frame   = document.getElementById('pdf-frame');
+  const errEl   = document.getElementById('pdf-error');
+
+  viewer.classList.add('open');
+  loading.style.display = 'flex';
+  frame.style.display   = 'none';
+  errEl.style.display   = 'none';
+
+  // タイトル・Notionリンクをセット
+  const label = record.title || record.date || '給与明細';
+  document.getElementById('pdf-title').textContent = label;
+  document.getElementById('pdf-notion-link').href = record.pageUrl;
+  document.getElementById('pdf-error-btn').href   = record.pageUrl;
+
+  currentPageUrl = record.pageUrl;
+
+  // ファイルのNotionファイルURL（期限付きURL）を取得
+  // record.files は Notion REST APIの file オブジェクト配列
+  // type: "file" → url がS3署名付きURL
+  // type: "external" → external.url
+  const fileObj = record.files[0];
+  if (!fileObj) {
+    showPdfError('ファイルが見つかりません。');
+    return;
+  }
+
+  // Notionファイルは files プロパティに配列で返ってくるが
+  // URLは既に含まれているのでそのまま使う
+  // ただし files[] は file_id を持っているだけの場合もある
+  // REST APIの /pages/{id} から直接取得する必要がある場合に備えて再取得
+  let pdfUrl = '';
+  if (fileObj.type === 'file') {
+    pdfUrl = fileObj.file?.url || fileObj.url || '';
+  } else if (fileObj.type === 'external') {
+    pdfUrl = fileObj.external?.url || fileObj.url || '';
+  } else {
+    // フォールバック：ページ詳細を再取得
+    pdfUrl = await fetchFileUrl(record.id);
+  }
+
+  if (!pdfUrl) {
+    // ページを再取得して新鮮なURLを得る
+    pdfUrl = await fetchFileUrl(record.id);
+  }
+
+  if (!pdfUrl) {
+    showPdfError('PDFのURLが取得できませんでした。\nNotionで直接確認してください。');
+    return;
+  }
+
+  // WorkerのPDFプロキシを通して表示
+  const proxyUrl = `${WORKER}/pdf-proxy?url=${encodeURIComponent(pdfUrl)}`;
+
+  // iFrameで表示
+  frame.onload = () => {
+    loading.style.display = 'none';
+    frame.style.display   = 'flex';
+  };
+  frame.onerror = () => {
+    showPdfError('PDFの表示に失敗しました。\nNotionで直接確認してください。');
+  };
+
+  // タイムアウト処理（10秒）
+  const timeout = setTimeout(() => {
+    if (loading.style.display !== 'none') {
+      showPdfError('読み込みがタイムアウトしました。\nNotionで直接確認してください。');
+    }
+  }, 10000);
+
+  frame.onload = () => {
+    clearTimeout(timeout);
+    loading.style.display = 'none';
+    frame.style.display   = 'block';
+  };
+
+  frame.src = proxyUrl;
+}
+
+// Notion REST APIからファイルURLを再取得（新鮮な署名付きURL）
+async function fetchFileUrl(pageId) {
+  try {
+    const res = await notionAPI('GET', `/pages/${pageId}`);
+    const files = res.properties?.['給与明細']?.files || [];
+    if (!files.length) return '';
+    const f = files[0];
+    return f.file?.url || f.external?.url || '';
+  } catch(e) {
+    return '';
+  }
+}
+
+function showPdfError(msg) {
+  document.getElementById('pdf-loading').style.display = 'none';
+  document.getElementById('pdf-frame').style.display   = 'none';
+  document.getElementById('pdf-error-msg').textContent = msg;
+  document.getElementById('pdf-error').style.display   = 'flex';
+}
+
+function closePdf() {
+  const viewer = document.getElementById('pdf-viewer');
+  viewer.classList.remove('open');
+  // iFrameをクリア（メモリ解放）
+  const frame = document.getElementById('pdf-frame');
+  frame.src   = '';
+  frame.style.display = 'none';
+  document.getElementById('pdf-loading').style.display = 'flex';
+  document.getElementById('pdf-error').style.display   = 'none';
+}
+
+// バックボタン（Android対応）
+window.addEventListener('popstate', () => {
+  const viewer = document.getElementById('pdf-viewer');
+  if (viewer.classList.contains('open')) {
+    closePdf();
+    history.pushState(null, '', location.href);
+  }
+});
+history.pushState(null, '', location.href);
+</script>
+</body>
+</html>

@@ -248,6 +248,7 @@ body {
   <button class="back-btn" onclick="goBack()">‹</button>
   <div>
     <div class="header-title" id="header-title">💴 給与明細</div>
+    <div class="header-sub" id="header-sub"></div>
     <div class="header-sub" id="header-sub">読み込み中...</div>
   </div>
 </div>
@@ -329,6 +330,8 @@ async function notionAPI(method, path, body) {
 }
 
 // ─── 初期化 ───────────────────────────────────────────────────────────────────
+const MASTER_DB = '08c5405729794337886b3565352ef96a';
+
 window.onload = async () => {
   // セッション確認
   let session = null;
@@ -346,6 +349,16 @@ window.onload = async () => {
     return;
   }
 
+  const mode = params.get('mode');
+
+  // mode=all → 全員分スタッフ選択リストを表示
+  if (mode === 'all') {
+    document.getElementById('header-title').textContent = '💴 給与明細';
+    document.getElementById('filter-bar').style.display = 'none';
+    await loadStaffList();
+    return;
+  }
+
   // name/db が指定されていれば（管理者が他スタッフの明細を見る）、それを使う
   const name = targetName || session.name || '';
   const dbId = targetDb  || session.meisaiDbId || '';
@@ -353,7 +366,6 @@ window.onload = async () => {
   document.getElementById('header-title').textContent = `💴 ${name} の給与明細`;
 
   if (!dbId) {
-    // 明細DBがない場合、Notionページに飛ぶ
     if (session.payslipUrl) {
       window.open(session.payslipUrl, '_blank');
       goBack();
@@ -365,6 +377,70 @@ window.onload = async () => {
 
   await loadMeisai(dbId, name);
 };
+
+// ─── 全スタッフリスト（mode=all） ─────────────────────────────────────────────
+async function loadStaffList() {
+  const body = document.getElementById('list-body');
+  body.innerHTML = '<div class="state-center"><div class="spinner"></div><div>読み込み中...</div></div>';
+  try {
+    const res = await notionAPI('POST', `/databases/${MASTER_DB}/query`, {
+      filter: { property: '在籍', select: { equals: '在籍中' } },
+      sorts:  [{ property: '表示順', direction: 'ascending' }],
+      page_size: 50,
+    });
+    if (res.object === 'error') throw new Error(res.message);
+
+    const staffList = (res.results || []).map(p => ({
+      name:   p.properties['氏名']?.title?.[0]?.plain_text || '',
+      group:  p.properties['アプリグループ']?.select?.name || '一般',
+      dbId:   p.properties['明細DB_ID']?.rich_text?.[0]?.plain_text || '',
+      url:    p.properties['給与明細URL']?.url || '',
+    })).filter(s => s.name);
+
+    document.getElementById('header-title').textContent = `💴 給与明細`;
+    // header-subに件数
+    const withDb = staffList.filter(s => s.dbId).length;
+    document.querySelector('.header-sub')
+      && (document.querySelector('.header-sub').textContent = `${staffList.length}名 · ${withDb}名が明細あり`);
+
+    const GRP_COLOR = {
+      '管理者': '#f0a500', '部長': '#fb923c', 'リーダー': '#a855f7',
+      '一般': '#3b82f6', '事務': '#22c55e', '経理': '#e07898',
+    };
+
+    let html = '';
+    staffList.forEach(s => {
+      const color = GRP_COLOR[s.group] || 'var(--muted)';
+      const initials = s.name.replace(/\s/g,'').slice(-1);
+      const hasDb = !!s.dbId;
+      const onclick = hasDb
+        ? `onclick="openStaff('${s.name.replace(/'/g,"\'")}','${s.dbId}')"`
+        : s.url ? `onclick="window.open('${s.url}','_blank')"` : '';
+      const opacity = (!hasDb && !s.url) ? 'opacity:0.4;' : '';
+      html += `<div class="meisai-card" style="${opacity}" ${onclick}>
+        <div class="meisai-month-badge" style="background:${color}20;">
+          <div class="meisai-month-num" style="color:${color};font-size:14px;">${initials}</div>
+        </div>
+        <div class="meisai-info">
+          <div class="meisai-name">${s.name}</div>
+          <div class="meisai-meta">
+            <span class="meisai-cat" style="background:${color}20;color:${color};">${s.group}</span>
+            <span class="meisai-date">${hasDb ? '明細あり' : s.url ? 'Notionページ' : '明細なし'}</span>
+          </div>
+        </div>
+        ${(hasDb || s.url) ? '<div class="meisai-arrow">›</div>' : ''}
+      </div>`;
+    });
+    body.innerHTML = html || '<div class="state-center">データなし</div>';
+  } catch(e) {
+    showError('読み込みエラー: ' + e.message);
+  }
+}
+
+function openStaff(name, dbId) {
+  const p = new URLSearchParams({ name, db: dbId });
+  location.href = 'payslip.html?' + p;
+}
 
 async function loadMeisai(dbId, name) {
   try {

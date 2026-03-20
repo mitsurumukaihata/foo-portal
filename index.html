@@ -1724,18 +1724,25 @@ async function loadAllPayslips() {
   }
 }
 
-// ─── 給与明細ビューア（アプリ内） ──────────────────────────────────────────────
-async function openPayslip() {
-  const session = JSON.parse(localStorage.getItem('foo_portal_session') || '{}');
+// ─── 給与明細 → payslip.htmlへ遷移 ───────────────────────────────────────────
+function openPayslip() {
+  const session = JSON.parse(localStorage.getItem(SESSION_KEY) || '{}');
   if (session.meisaiDbId) {
-    openPayslipViewer(session.name, session.meisaiDbId);
+    const params = new URLSearchParams({ name: session.name, db: session.meisaiDbId });
+    location.href = 'https://mitsurumukaihata.github.io/foo-portal/payslip.html?' + params;
   } else if (session.payslipUrl) {
     window.open(session.payslipUrl, '_blank');
   }
 }
 
-async function openPayslipViewer(name, dbId) {
-  // オーバーレイを作成・表示
+function openPayslipViewer(name, dbId) {
+  // payslip.htmlへ遷移
+  const params = new URLSearchParams({ name, db: dbId });
+  location.href = 'https://mitsurumukaihata.github.io/foo-portal/payslip.html?' + params;
+}
+
+async function _openPayslipViewerOld(name, dbId) {
+  // （旧コード・未使用）
   let overlay = document.getElementById('payslip-overlay');
   if (!overlay) {
     overlay = document.createElement('div');

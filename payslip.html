@@ -567,42 +567,15 @@ async function openPdf(record) {
   frame.style.display   = 'none';
   errEl.style.display   = 'none';
 
-  // タイトル・Notionリンクをセット
   const label = record.title || record.date || '給与明細';
   document.getElementById('pdf-title').textContent = label;
   document.getElementById('pdf-notion-link').href = record.pageUrl;
   document.getElementById('pdf-error-btn').href   = record.pageUrl;
-
   currentPageUrl = record.pageUrl;
 
-  // ファイルのNotionファイルURL（期限付きURL）を取得
-  // record.files は Notion REST APIの file オブジェクト配列
-  // type: "file" → url がS3署名付きURL
-  // type: "external" → external.url
-  const fileObj = record.files[0];
-  if (!fileObj) {
-    showPdfError('ファイルが見つかりません。');
-    return;
-  }
-
-  // Notionファイルは files プロパティに配列で返ってくるが
-  // URLは既に含まれているのでそのまま使う
-  // ただし files[] は file_id を持っているだけの場合もある
-  // REST APIの /pages/{id} から直接取得する必要がある場合に備えて再取得
-  let pdfUrl = '';
-  if (fileObj.type === 'file') {
-    pdfUrl = fileObj.file?.url || fileObj.url || '';
-  } else if (fileObj.type === 'external') {
-    pdfUrl = fileObj.external?.url || fileObj.url || '';
-  } else {
-    // フォールバック：ページ詳細を再取得
-    pdfUrl = await fetchFileUrl(record.id);
-  }
-
-  if (!pdfUrl) {
-    // ページを再取得して新鮮なURLを得る
-    pdfUrl = await fetchFileUrl(record.id);
-  }
+  // Notionのファイルプロパティは署名付きURLが期限切れになるため
+  // 必ずページを再取得して新鮮なURLを得る
+  const pdfUrl = await fetchFileUrl(record.id);
 
   if (!pdfUrl) {
     showPdfError('PDFのURLが取得できませんでした。\nNotionで直接確認してください。');
@@ -612,40 +585,39 @@ async function openPdf(record) {
   // WorkerのPDFプロキシを通して表示
   const proxyUrl = `${WORKER}/pdf-proxy?url=${encodeURIComponent(pdfUrl)}`;
 
-  // iFrameで表示
-  frame.onload = () => {
-    loading.style.display = 'none';
-    frame.style.display   = 'flex';
-  };
-  frame.onerror = () => {
-    showPdfError('PDFの表示に失敗しました。\nNotionで直接確認してください。');
-  };
-
-  // タイムアウト処理（10秒）
   const timeout = setTimeout(() => {
     if (loading.style.display !== 'none') {
       showPdfError('読み込みがタイムアウトしました。\nNotionで直接確認してください。');
     }
-  }, 10000);
+  }, 12000);
 
   frame.onload = () => {
     clearTimeout(timeout);
     loading.style.display = 'none';
     frame.style.display   = 'block';
   };
+  frame.onerror = () => {
+    clearTimeout(timeout);
+    showPdfError('PDFの表示に失敗しました。\nNotionで直接確認してください。');
+  };
 
   frame.src = proxyUrl;
 }
 
-// Notion REST APIからファイルURLを再取得（新鮮な署名付きURL）
+// Notion REST APIからファイルURLを再取得（新鮮な署名付きS3 URL）
 async function fetchFileUrl(pageId) {
   try {
     const res = await notionAPI('GET', `/pages/${pageId}`);
     const files = res.properties?.['給与明細']?.files || [];
     if (!files.length) return '';
     const f = files[0];
-    return f.file?.url || f.external?.url || '';
+    // type: "file" → file.url がS3署名付きURL（https://prod-files-secure.s3...）
+    // type: "external" → external.url
+    const url = f.file?.url || f.external?.url || '';
+    console.log('File URL type:', f.type, 'URL prefix:', url.slice(0, 60));
+    return url;
   } catch(e) {
+    console.error('fetchFileUrl error:', e);
     return '';
   }
 }

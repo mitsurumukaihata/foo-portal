@@ -1428,6 +1428,7 @@ async function verifyPin(name, pin) {
   const group       = props['アプリグループ']?.select?.name || '一般';
   const payslipUrl  = props['給与明細URL']?.url || '';
 
+  const meisaiDbId = props['明細DB_ID']?.rich_text?.[0]?.plain_text || '';
   return {
     name,
     email:      props['メールアドレス']?.email || '',
@@ -1435,6 +1436,7 @@ async function verifyPin(name, pin) {
     group,
     apps,
     payslipUrl,
+    meisaiDbId,
     pageId:     page.id,  // 最終ログイン更新用
   };
 }
@@ -1666,28 +1668,40 @@ function appCardHTML(def, encodedUser) {
 }
 
 // 全スタッフの給与明細リストを読み込む（管理者・経理用）
+// 表示順（ログイン画面の並び）で表示
 async function loadAllPayslips() {
   const listEl = document.getElementById('payslip-list-inner');
   if (!listEl) return;
   try {
     const res = await notionAPI('POST', `/databases/${MASTER_DB}/query`, {
       filter: { property: '在籍', select: { equals: '在籍中' } },
-      sorts:  [{ property: '氏名', direction: 'ascending' }],
-      page_size: 20,
+      sorts:  [{ property: '表示順', direction: 'ascending' }],
+      page_size: 50,
     });
     if (!res.results?.length) { listEl.innerHTML = '<div style="color:var(--muted);font-size:13px;">データなし</div>'; return; }
 
     const rows = res.results.map(page => {
-      const props = page.properties;
-      const name  = props['氏名']?.title?.[0]?.plain_text || '';
-      const url   = props['給与明細URL']?.url || '';
-      const grp   = props['アプリグループ']?.select?.name || '一般';
+      const props    = page.properties;
+      const name     = props['氏名']?.title?.[0]?.plain_text || '';
+      const url      = props['給与明細URL']?.url || '';
+      const grp      = props['アプリグループ']?.select?.name || '一般';
+      const dbId     = props['明細DB_ID']?.rich_text?.[0]?.plain_text || '';
       if (!name) return '';
-      if (url) {
-        return `<a href="${url}" target="_blank" class="app-row" style="margin-bottom:6px;">
-          <div class="app-icon" style="width:34px;height:34px;font-size:13px;font-weight:700;background:rgba(240,165,0,0.12);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--accent);">
-            ${name.replace(/\s/g,'').slice(-1)}
+      const initials = name.replace(/\s/g,'').slice(-1);
+      if (dbId) {
+        // 明細DBがある → アプリ内ビューアを開く
+        return `<div class="app-row" onclick="openPayslipViewer('${name}','${dbId}')" style="margin-bottom:6px;cursor:pointer;">
+          <div class="app-icon" style="width:34px;height:34px;font-size:13px;font-weight:700;background:rgba(240,165,0,0.12);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--accent);">${initials}</div>
+          <div class="app-text">
+            <div class="app-name" style="font-size:13px;">${name}</div>
+            <div class="app-sub">${grp}</div>
           </div>
+          <div class="app-arrow">›</div>
+        </div>`;
+      } else if (url) {
+        // 明細DBなし・URLあり → Notionページへ
+        return `<a href="${url}" target="_blank" class="app-row" style="margin-bottom:6px;">
+          <div class="app-icon" style="width:34px;height:34px;font-size:13px;font-weight:700;background:rgba(240,165,0,0.12);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--accent);">${initials}</div>
           <div class="app-text">
             <div class="app-name" style="font-size:13px;">${name}</div>
             <div class="app-sub">${grp}</div>
@@ -1696,12 +1710,10 @@ async function loadAllPayslips() {
         </a>`;
       } else {
         return `<div class="app-row" style="opacity:0.4;pointer-events:none;margin-bottom:6px;">
-          <div class="app-icon" style="width:34px;height:34px;font-size:13px;font-weight:700;background:rgba(240,165,0,0.12);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);">
-            ${name.replace(/\s/g,'').slice(-1)}
-          </div>
+          <div class="app-icon" style="width:34px;height:34px;font-size:13px;font-weight:700;background:rgba(240,165,0,0.12);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);">${initials}</div>
           <div class="app-text">
             <div class="app-name" style="font-size:13px;">${name}</div>
-            <div class="app-sub">URL未設定</div>
+            <div class="app-sub">明細なし</div>
           </div>
         </div>`;
       }
@@ -1710,6 +1722,126 @@ async function loadAllPayslips() {
   } catch(e) {
     if (listEl) listEl.innerHTML = `<div style="color:var(--red);font-size:12px;">読み込みエラー: ${e.message}</div>`;
   }
+}
+
+// ─── 給与明細ビューア（アプリ内） ──────────────────────────────────────────────
+async function openPayslip() {
+  const session = JSON.parse(localStorage.getItem('foo_portal_session') || '{}');
+  if (session.meisaiDbId) {
+    openPayslipViewer(session.name, session.meisaiDbId);
+  } else if (session.payslipUrl) {
+    window.open(session.payslipUrl, '_blank');
+  }
+}
+
+async function openPayslipViewer(name, dbId) {
+  // オーバーレイを作成・表示
+  let overlay = document.getElementById('payslip-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'payslip-overlay';
+    overlay.style.cssText = `position:fixed;inset:0;background:var(--bg);z-index:500;max-width:480px;margin:0 auto;display:flex;flex-direction:column;overflow:hidden;`;
+    overlay.innerHTML = `
+      <div style="background:var(--s1);border-bottom:0.5px solid var(--border);padding:14px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;">
+        <button onclick="document.getElementById('payslip-overlay').remove()" style="background:transparent;border:none;color:var(--accent);font-size:22px;cursor:pointer;line-height:1;padding:0 4px;">‹</button>
+        <div id="payslip-viewer-title" style="font-size:15px;font-weight:900;flex:1;"></div>
+      </div>
+      <div style="display:flex;gap:6px;padding:10px 14px;background:var(--s1);border-bottom:0.5px solid var(--border);overflow-x:auto;scrollbar-width:none;flex-shrink:0;" id="payslip-filter-row">
+        <button class="payslip-filter active" data-filter="all" onclick="filterPayslip('all',this)" style="flex-shrink:0;padding:5px 12px;border-radius:16px;font-size:12px;font-weight:700;border:1px solid var(--accent);background:rgba(240,165,0,0.12);color:var(--accent);cursor:pointer;font-family:inherit;">すべて</button>
+        <button class="payslip-filter" data-filter="給与" onclick="filterPayslip('給与',this)" style="flex-shrink:0;padding:5px 12px;border-radius:16px;font-size:12px;font-weight:700;border:1px solid var(--border2);background:var(--s2);color:var(--muted);cursor:pointer;font-family:inherit;">給与</button>
+        <button class="payslip-filter" data-filter="賞与" onclick="filterPayslip('賞与',this)" style="flex-shrink:0;padding:5px 12px;border-radius:16px;font-size:12px;font-weight:700;border:1px solid var(--border2);background:var(--s2);color:var(--muted);cursor:pointer;font-family:inherit;">賞与</button>
+        <button class="payslip-filter" data-filter="決め事" onclick="filterPayslip('決め事',this)" style="flex-shrink:0;padding:5px 12px;border-radius:16px;font-size:12px;font-weight:700;border:1px solid var(--border2);background:var(--s2);color:var(--muted);cursor:pointer;font-family:inherit;">決め事</button>
+      </div>
+      <div id="payslip-list" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 14px;">
+        <div style="text-align:center;padding:40px;color:var(--muted);font-size:13px;">読み込み中...</div>
+      </div>`;
+    document.body.appendChild(overlay);
+  }
+  document.getElementById('payslip-viewer-title').textContent = `💴 ${name}`;
+  overlay.style.display = 'flex';
+
+  // DBからデータを取得
+  try {
+    const res = await notionAPI('POST', `/databases/${dbId}/query`, {
+      sorts: [{ property: '給与支給日', direction: 'descending' }],
+      page_size: 100,
+    });
+    window._payslipData = (res.results || []).map(p => ({
+      id:       p.id,
+      name:     p.properties['名前']?.title?.[0]?.plain_text || '',
+      date:     p.properties['給与支給日']?.date?.start || '',
+      cat:      p.properties['カテゴリ']?.select?.name || '',
+      year:     p.properties['年']?.select?.name || '',
+      month:    p.properties['月']?.select?.name || '',
+      files:    p.properties['給与明細']?.files || [],
+      pageUrl:  `https://www.notion.so/${p.id.replace(/-/g,'')}`,
+    }));
+    renderPayslipList('all');
+  } catch(e) {
+    document.getElementById('payslip-list').innerHTML = `<div style="color:var(--red);font-size:13px;">読み込みエラー: ${e.message}</div>`;
+  }
+}
+
+function renderPayslipList(filter) {
+  const listEl = document.getElementById('payslip-list');
+  if (!listEl) return;
+  let data = window._payslipData || [];
+  if (filter !== 'all') {
+    data = data.filter(r => {
+      if (filter === '賞与') return r.cat.includes('賞与');
+      return r.cat === filter;
+    });
+  }
+  if (!data.length) {
+    listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px;">データなし</div>';
+    return;
+  }
+
+  // 年でグループ化して表示
+  const byYear = {};
+  data.forEach(r => {
+    const y = r.year || r.date?.slice(0,4) || '年不明';
+    if (!byYear[y]) byYear[y] = [];
+    byYear[y].push(r);
+  });
+
+  const catColor = { '給与': 'var(--blue)', '夏季賞与': '#a855f7', '冬季賞与': '#a37050', '賞与': '#e07898', '決め事': 'var(--accent)' };
+
+  let html = '';
+  Object.keys(byYear).sort((a,b) => b.localeCompare(a)).forEach(year => {
+    html += `<div style="font-size:11px;color:var(--muted);letter-spacing:0.08em;font-weight:700;padding:8px 0 4px;border-bottom:0.5px solid var(--border);margin-bottom:6px;">${year}年</div>`;
+    byYear[year].forEach(r => {
+      const monthLabel = r.month || (r.date ? r.date.slice(5,7) + '月' : '');
+      const color = catColor[r.cat] || 'var(--muted)';
+      const hasFile = r.files.length > 0;
+      html += `<div style="background:var(--s1);border:0.5px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;${hasFile ? 'cursor:pointer;' : ''}" ${hasFile ? `onclick="window.open('${r.pageUrl}','_blank')"` : ''}>
+        <div style="width:40px;height:40px;border-radius:8px;background:${color}20;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">
+          <div style="font-size:11px;font-weight:700;color:${color};">${monthLabel}</div>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:700;color:var(--text);">${r.name || r.date || '—'}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;display:flex;gap:6px;align-items:center;">
+            <span style="background:${color}20;color:${color};border-radius:10px;padding:1px 7px;font-weight:700;">${r.cat}</span>
+            ${r.date ? `<span>${r.date.replace(/-/g,'/')}</span>` : ''}
+          </div>
+        </div>
+        ${hasFile ? `<div style="color:var(--muted);font-size:18px;">›</div>` : `<div style="font-size:11px;color:var(--muted);">ファイルなし</div>`}
+      </div>`;
+    });
+  });
+  listEl.innerHTML = html;
+}
+
+function filterPayslip(filter, btn) {
+  document.querySelectorAll('.payslip-filter').forEach(b => {
+    b.style.borderColor = 'var(--border2)';
+    b.style.background  = 'var(--s2)';
+    b.style.color       = 'var(--muted)';
+  });
+  btn.style.borderColor = 'var(--accent)';
+  btn.style.background  = 'rgba(240,165,0,0.12)';
+  btn.style.color       = 'var(--accent)';
+  renderPayslipList(filter);
 }
 
 window.onload = async () => {

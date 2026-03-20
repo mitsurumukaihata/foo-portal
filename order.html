@@ -368,12 +368,19 @@ body{
       <div id="pdf-preview-content"></div>
     </div>
 
-    <!-- 発注書作成・ダウンロードボタン -->
-    <button class="btn-submit" id="btn-pdf-download" onclick="downloadOrderPdf()" style="background:var(--accent);margin-top:8px;">
-      📥 発注書PDFをダウンロード
-    </button>
-    <div style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center;">
-      ダウンロード後、メールに添付してメーカーへ送付してください
+    <!-- ボタン2つ：PDF + Gmail送信 -->
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
+      <button class="btn-submit" id="btn-pdf-download" onclick="downloadOrderPdf()"
+        style="background:var(--accent);">
+        📥 発注書PDFをダウンロード
+      </button>
+      <button class="btn-submit" id="btn-gmail-send" onclick="openGmailDraft()"
+        style="background:#c5221f;">
+        ✉️ Gmailで送信
+      </button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center;line-height:1.6;">
+      PDFをダウンロード後、Gmailで添付して送ってください
     </div>
   </div>
 
@@ -650,7 +657,8 @@ body{
 <script>
 // ─── 定数 ────────────────────────────────────────────────────────────────────
 const WORKER  = 'https://notion-proxy.33322666666mm.workers.dev';
-const ORDER_DB = '202a695f-8e88-80aa-92f6-f38d9b47b537';
+const ORDER_DB     = '202a695f-8e88-80aa-92f6-f38d9b47b537';
+const TANTOU_DB    = '1cea695f-8e88-8029-911d-f0eb63102669';  // 中間担当者DB
 
 const DB_MAP = {
   ltl_normal:   {id:'200a695f-8e88-8018-b5f5-eac83fdad412', name:'LTL TB ノーマル',   icon:'🚛', warehouseField:'倉庫',
@@ -807,13 +815,23 @@ async function notionQuery(dbId, filter=null, sorts=null) {
   const body = {page_size:100};
   if(filter) body.filter = filter;
   if(sorts)  body.sorts  = sorts;
-  const r = await fetch(`${WORKER}/databases/${dbId}/query`, {
-    method:'POST',
-    headers:{'Content-Type':'application/json','Notion-Version':'2022-06-28'},
-    body: JSON.stringify(body)
-  });
-  if(!r.ok) throw new Error(await r.text());
-  return r.json();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15000);
+  try {
+    const r = await fetch(`${WORKER}/databases/${dbId}/query`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Notion-Version':'2022-06-28'},
+      body: JSON.stringify(body),
+      signal: ctrl.signal
+    });
+    clearTimeout(timer);
+    if(!r.ok) throw new Error(await r.text());
+    return r.json();
+  } catch(e) {
+    clearTimeout(timer);
+    if(e.name === 'AbortError') throw new Error('タイムアウト（15秒）。通信環境を確認してください。');
+    throw e;
+  }
 }
 
 async function notionCreate(dbId, props) {
@@ -840,25 +858,36 @@ async function notionPatch(pageId, props) {
 }
 
 function propStr(page, key) {
-  const p = page.properties[key];
-  if(!p) return '';
-  if(p.type==='title')     return p.title.map(t=>t.plain_text).join('');
-  if(p.type==='rich_text') return p.rich_text.map(t=>t.plain_text).join('');
-  if(p.type==='select')    return p.select?.name || '';
-  if(p.type==='number')    return p.number ?? '';
-  if(p.type==='date')      return p.date?.start || '';
-  return '';
+  try {
+    const p = page.properties[key];
+    if(!p) return '';
+    if(p.type==='title')     return (p.title     || []).map(t=>t.plain_text).join('');
+    if(p.type==='rich_text') return (p.rich_text || []).map(t=>t.plain_text).join('');
+    if(p.type==='select')    return p.select?.name || '';
+    if(p.type==='multi_select') return (p.multi_select || []).map(s=>s.name).join(', ');
+    if(p.type==='number')    return p.number ?? '';
+    if(p.type==='date')      return p.date?.start || '';
+    if(p.type==='checkbox')  return p.checkbox ? '__YES__' : '__NO__';
+    if(p.type==='phone_number') return p.phone_number || '';
+    if(p.type==='email')     return p.email || '';
+    return '';
+  } catch(e) {
+    return '';
+  }
 }
 
 // 発注書未発行チェック：新規発注or発注済で発注書リレーションが空のもの
 function hasNoPdf(page) {
-  const s = propStr(page,'ステータス');
-  if(s !== '新規発注' && s !== '発注済') return false;
-  const rel = page.properties['発注書'];
-  if(!rel) return true;
-  // relation型：配列が空 or relation配列が空
-  if(rel.type === 'relation') return !rel.relation || rel.relation.length === 0;
-  return true;
+  try {
+    const s = propStr(page,'ステータス');
+    if(s !== '新規発注' && s !== '発注済') return false;
+    const rel = page.properties['発注書'];
+    if(!rel) return false;  // フィールドがなければ表示しない
+    if(rel.type === 'relation') return Array.isArray(rel.relation) && rel.relation.length === 0;
+    return false;
+  } catch(e) {
+    return false;
+  }
 }
 
 // ─── 発注一覧取得 ─────────────────────────────────────────────────────────────
@@ -1169,6 +1198,137 @@ function onPdfMakerChange() {
     ${rows}`;
 }
 
+
+// ─── Gmail下書き作成（受注者マスターDBのメアドを動的取得）──────────────────────
+async function openGmailDraft() {
+  const maker = document.querySelector('input[name="pdf-maker"]:checked')?.value;
+  if(!maker) { alert('メーカーを選択してください'); return; }
+
+  const targets = orders.filter(o => {
+    const s   = propStr(o,'ステータス');
+    const sup = propStr(o,'仕入先');
+    const match = maker === 'TOYO' ? sup === 'TOYO' : sup === 'BRIDGESTONE';
+    return match && (s === '新規発注' || s === '発注済');
+  });
+  if(!targets.length) { alert('対象データがありません'); return; }
+
+  const btn = document.getElementById('btn-gmail-send');
+  btn.disabled = true;
+  btn.textContent = '準備中...';
+
+  try {
+    // 中間担当者DBから「自動メール送信＝ON」かつ該当メーカーの担当者だけ取得
+    // 中間担当者DBの「選択」フィールドは TOYO / BS 表記
+    const makerForTantou = maker === 'BRIDGESTONE' ? 'BS' : maker;
+    const tantouData = await notionQuery(TANTOU_DB, {
+      and: [
+        { property: '選択',          select:   { equals: makerForTantou } },
+        { property: '自動メール送信', checkbox: { equals: true }           },
+      ]
+    });
+
+    // メアドを収集（自動メール送信ONかつメアドあり）
+    const emailList = [];
+    (tantouData.results || []).forEach(p => {
+      const name  = p.properties['名前']?.title?.[0]?.plain_text || '';
+      const email = p.properties['メールアドレス']?.email || '';
+      if(name && email) emailList.push({name, email});
+    });
+
+    if(!emailList.length) {
+      alert('中間担当者DBで「自動メール送信」にチェックが入っていて\nメールアドレスが登録されている担当者がいません。\nNotionの中間担当者DBを確認してください。');
+    }
+
+    // 受注者フィールドと照合してTo（メイン）を決定、残りはCC
+    const recvName  = propStr(targets[0], '受注者') || '';
+    const mainEntry = emailList.find(e => e.name === recvName) || emailList[0];
+    const toEmail   = mainEntry?.email || '';
+    const ccEmails  = emailList
+      .filter(e => e.email !== toEmail)
+      .map(e => e.email)
+      .join(',');
+
+    const makerLabel = MAKER_LABEL[maker] || maker;
+    const now        = new Date();
+    const dateStr    = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`;
+    const issuer     = loginUser || '向畑 充';
+    const recvSan    = recvName ? recvName + ' 様' : '担当者様';
+
+    // 件名
+    const subject = encodeURIComponent(`【発注書】${dateStr} ${makerLabel} 宛`);
+
+    // 本文
+    const newOrders     = targets.filter(o => propStr(o,'ステータス') === '新規発注');
+    const pendingOrders = targets.filter(o => propStr(o,'ステータス') === '発注済');
+
+    let body = `${makerLabel}
+${recvSan}
+
+`;
+    body += `お世話になっております。
+(有)タイヤマネージャーフー ${issuer} です。
+
+`;
+    body += `以下の通り発注いたします。よろしくお願いいたします。
+
+`;
+
+    if(newOrders.length) {
+      body += `■ 今回発注分\n`;
+      newOrders.forEach(o => {
+        const size = propStr(o,'タイヤサイズ');
+        const pat  = propStr(o,'パターン') || '—';
+        const qty  = propStr(o,'数量');
+        const loc  = propStr(o,'納入予定場所') || '—';
+        const due  = propStr(o,'納期予定日') || '未定';
+        body += `  ${pat} ${size}  ${qty}本  納入先：${loc}  納期：${due}\n`;
+      });
+      body += '\n';
+    }
+
+    if(pendingOrders.length) {
+      body += `■ 未入荷（既発注分）\n`;
+      pendingOrders.forEach(o => {
+        const size = propStr(o,'タイヤサイズ');
+        const pat  = propStr(o,'パターン') || '—';
+        const qty  = propStr(o,'数量');
+        const loc  = propStr(o,'納入予定場所') || '—';
+        const due  = propStr(o,'納期予定日') || '未定';
+        body += `  ${pat} ${size}  ${qty}本  納入先：${loc}  納期予定：${due}\n`;
+      });
+      body += '\n※ 未入荷分は引き続きよろしくお願いいたします。\n';
+    }
+
+    body += `\n─────────────────────\n`;
+    body += `(有)タイヤマネージャーフー
+`;
+    body += `〒731-5141 広島県広島市佐伯区千同3丁目394-1
+`;
+    body += `TEL: 082-942-3730
+`;
+
+    // Gmail composeページを開く
+    let gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1`
+      + `&to=${encodeURIComponent(toEmail)}`
+      + `&su=${subject}`
+      + `&body=${encodeURIComponent(body)}`;
+    if(ccEmails) gmailUrl += `&cc=${encodeURIComponent(ccEmails)}`;
+
+    if(!toEmail) {
+      // メアド未登録の場合はToなしで開いてアラート
+      alert('受注者マスターにメールアドレスが登録されていません。\nNotionの受注者マスターDBにメールアドレスを入力してください。');
+    }
+    window.open(gmailUrl, '_blank');
+
+  } catch(e) {
+    alert('エラーが発生しました: ' + e.message);
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✉️ Gmailで送信';
+  }
+}
+
 function buildPdfHtml(maker, targets) {
   const now = new Date();
   const fmt = d => d ? d.replace(/-/g,'/') : '—';
@@ -1190,8 +1350,8 @@ function buildPdfHtml(maker, targets) {
   const totalNew      = newOrders.reduce((s,o)=>s+(Number(propStr(o,'数量'))||0),0);
   const totalPending  = pendingOrders.reduce((s,o)=>s+(Number(propStr(o,'数量'))||0),0);
 
-  const thStyle = 'padding:3px 5px;font-size:6pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;';
-  const tdStyle = 'padding:3px 5px;font-size:7pt;text-align:right;border:0.3px solid #b8cfe8;';
+  const thStyle = 'padding:2px 4px;font-size:5pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;';
+  const tdStyle = 'padding:2px 4px;font-size:5.5pt;text-align:right;border:0.3px solid #b8cfe8;';
   const trEven  = 'background:#f0f5fc;';
 
   const mkRow = (o, i, showOrderDate) => {
@@ -1220,7 +1380,7 @@ function buildPdfHtml(maker, targets) {
   };
 
   const newTable = newOrders.length ? `
-    <div style="font-size:7pt;font-weight:bold;color:#2563a8;margin:8px 0 3px;">■ 今回発注分</div>
+    <div style="font-size:5.5pt;font-weight:bold;color:#2563a8;margin:5px 0 2px;">■ 今回発注分</div>
     <table style="width:100%;border-collapse:collapse;">
       <thead><tr>
         <th style="${thStyle}">パターン</th><th style="${thStyle}">サイズ</th>
@@ -1232,7 +1392,7 @@ function buildPdfHtml(maker, targets) {
     </table>` : '';
 
   const pendingTable = pendingOrders.length ? `
-    <div style="font-size:7pt;font-weight:bold;color:#2563a8;margin:10px 0 3px;">■ 未入荷（既発注分）</div>
+    <div style="font-size:5.5pt;font-weight:bold;color:#2563a8;margin:7px 0 2px;">■ 未入荷（既発注分）</div>
     <table style="width:100%;border-collapse:collapse;">
       <thead><tr>
         <th style="${thStyle}">パターン</th><th style="${thStyle}">サイズ</th>
@@ -1246,20 +1406,20 @@ function buildPdfHtml(maker, targets) {
   return `<!DOCTYPE html><html><head><meta charset="UTF-8">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'Hiragino Kaku Gothic ProN','IPAGothic',sans-serif;padding:14mm 13mm;font-size:7pt;color:#1a1a18;}
+    body{font-family:'Hiragino Kaku Gothic ProN','IPAGothic',sans-serif;padding:10mm 10mm;font-size:6pt;color:#1a1a18;}
   </style></head><body>
   <!-- ヘッダー -->
-  <table style="width:100%;border-collapse:collapse;border-bottom:2px solid #2563a8;padding-bottom:6px;margin-bottom:8px;">
+  <table style="width:100%;border-collapse:collapse;border-bottom:2px solid #2563a8;padding-bottom:4px;margin-bottom:6px;">
     <tr>
       <td style="vertical-align:middle;">
-        <div style="font-size:16pt;font-weight:bold;color:#2563a8;">発　注　書</div>
-        <div style="font-size:6.5pt;color:#666;margin-top:3px;">発行日：${issued}　　発行者：${issuer}</div>
+        <div style="font-size:13pt;font-weight:bold;color:#2563a8;">発　注　書</div>
+        <div style="font-size:5.5pt;color:#666;margin-top:2px;">発行日：${issued}　　発行者：${issuer}</div>
       </td>
       <td style="text-align:right;vertical-align:top;">
-        <div style="font-size:8.5pt;font-weight:bold;">(有)タイヤマネージャーフー</div>
-        <div style="font-size:6.5pt;color:#666;line-height:1.6;">〒731-5141</div>
-        <div style="font-size:6.5pt;color:#666;line-height:1.6;">広島県広島市佐伯区千同３丁目３９４－１</div>
-        <div style="font-size:6.5pt;color:#666;line-height:1.6;">TEL：082-942-3730</div>
+        <div style="font-size:7pt;font-weight:bold;">(有)タイヤマネージャーフー</div>
+        <div style="font-size:5.5pt;color:#666;line-height:1.5;">〒731-5141</div>
+        <div style="font-size:5.5pt;color:#666;line-height:1.5;">広島県広島市佐伯区千同３丁目３９４－１</div>
+        <div style="font-size:5.5pt;color:#666;line-height:1.5;">TEL：082-942-3730</div>
       </td>
     </tr>
   </table>
@@ -1267,14 +1427,14 @@ function buildPdfHtml(maker, targets) {
   <!-- 宛先 -->
   <table style="width:100%;border-collapse:collapse;border:1.5px solid #2563a8;background:#e8f0fa;margin-bottom:8px;">
     <tr>
-      <td style="padding:5px 8px;width:50%;border-right:0.5px solid #b8cfe8;">
-        <div style="font-size:6pt;color:#2563a8;font-weight:bold;margin-bottom:2px;">発注先</div>
-        <div style="font-size:9pt;font-weight:bold;">${MAKER_LABEL[maker] || maker}　御中</div>
-        <div style="font-size:7.5pt;margin-top:2px;">受注担当：${recvSan}</div>
+      <td style="padding:4px 7px;width:50%;border-right:0.5px solid #b8cfe8;">
+        <div style="font-size:5pt;color:#2563a8;font-weight:bold;margin-bottom:1px;">発注先</div>
+        <div style="font-size:7.5pt;font-weight:bold;">${MAKER_LABEL[maker] || maker}　御中</div>
+        <div style="font-size:6pt;margin-top:1px;">受注担当：${recvSan}</div>
       </td>
-      <td style="padding:5px 10px;">
-        <div style="font-size:6pt;color:#2563a8;font-weight:bold;margin-bottom:2px;">注文方法</div>
-        <div style="font-size:8pt;font-weight:bold;color:#084298;">${method}</div>
+      <td style="padding:4px 8px;">
+        <div style="font-size:5pt;color:#2563a8;font-weight:bold;margin-bottom:1px;">注文方法</div>
+        <div style="font-size:6.5pt;font-weight:bold;color:#084298;">${method}</div>
       </td>
     </tr>
   </table>
@@ -1283,13 +1443,13 @@ function buildPdfHtml(maker, targets) {
   ${pendingTable}
 
   <!-- 合計 -->
-  <div style="text-align:right;margin-top:6px;padding-top:5px;border-top:0.5px solid #e0dcd6;font-size:6pt;color:#666;">
-    今回発注合計：<span style="font-size:9pt;font-weight:bold;color:#2563a8;">${totalNew}本</span>
-    　　未入荷合計：<span style="font-size:9pt;font-weight:bold;color:#1a1a18;">${totalPending}本</span>
+  <div style="text-align:right;margin-top:6px;padding-top:5px;border-top:0.5px solid #e0dcd6;font-size:5pt;color:#666;">
+    今回発注合計：<span style="font-size:7.5pt;font-weight:bold;color:#2563a8;">${totalNew}本</span>
+    　　未入荷合計：<span style="font-size:7.5pt;font-weight:bold;color:#1a1a18;">${totalPending}本</span>
   </div>
 
   <!-- 注意欄 -->
-  <div style="background:#e8f0fa;border:0.5px solid #b8cfe8;padding:4px 7px;margin-top:7px;font-size:5.8pt;color:#666;line-height:1.45;">
+  <div style="background:#e8f0fa;border:0.5px solid #b8cfe8;padding:3px 6px;margin-top:5px;font-size:5pt;color:#666;line-height:1.35;">
     <div style="margin-bottom:1px;">※ 未入荷分は引き続きよろしくお願いいたします。</div>
     <div style="margin-bottom:1px;">※ 納期等に変更がある場合はご連絡ください。</div>
     <div style="margin-top:3px;margin-bottom:1px;">※ 「未入荷（既発注分）」の一覧は、弊社の社内入庫処理が完了していないものを表示しております。</div>
@@ -1298,7 +1458,7 @@ function buildPdfHtml(maker, targets) {
   </div>
 
   <!-- フッター -->
-  <div style="border-top:0.5px solid #e0dcd6;margin-top:8px;padding-top:4px;display:flex;justify-content:space-between;font-size:5.5pt;color:#aaa;">
+  <div style="border-top:0.5px solid #e0dcd6;margin-top:5px;padding-top:3px;display:flex;justify-content:space-between;font-size:4.5pt;color:#aaa;">
     <span>(有)タイヤマネージャーフー　〒731-5141 広島県広島市佐伯区千同３丁目３９４－１　TEL：082-942-3730</span>
     <span>自動生成　${issued}</span>
   </div>
@@ -1323,16 +1483,7 @@ async function downloadOrderPdf() {
     if(!targets.length) { alert('対象データがありません'); return; }
 
     const html = buildPdfHtml(maker, targets);
-
-    // 印刷ダイアログでPDF保存（ブラウザネイティブ）
-    const win = window.open('', '_blank');
-    win.document.write(html);
-    win.document.close();
-    win.onload = () => {
-      setTimeout(() => {
-        win.print();       // 「PDFとして保存」で保存
-      }, 400);
-    };
+    openPdfOverlay(html, maker);
 
   } catch(e) {
     alert('エラー: ' + e.message);
@@ -1341,6 +1492,89 @@ async function downloadOrderPdf() {
     btn.disabled = false;
     btn.textContent = '📥 発注書PDFをダウンロード';
   }
+}
+
+// ─── アプリ内PDFオーバーレイ ────────────────────────────────────────────────
+function openPdfOverlay(html, maker) {
+  // 既存オーバーレイがあれば削除
+  const existing = document.getElementById('pdf-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'pdf-overlay';
+  overlay.style.cssText = [
+    'position:fixed', 'inset:0', 'z-index:1000',
+    'background:var(--bg)',
+    'display:flex', 'flex-direction:column',
+    'max-width:480px', 'margin:0 auto',
+    'overflow:hidden',
+  ].join(';');
+
+  // ヘッダーバー
+  const makerLabel = maker === 'TOYO' ? 'TOYO 発注書' : 'BS 発注書';
+  overlay.innerHTML = `
+    <div style="
+      background:var(--s1);
+      border-bottom:0.5px solid var(--border);
+      padding:13px 16px;
+      display:flex; align-items:center; gap:10px;
+      flex-shrink:0;
+    ">
+      <button onclick="closePdfOverlay()" style="
+        background:transparent; border:none;
+        color:var(--accent); font-size:22px;
+        cursor:pointer; line-height:1; padding:0 4px;
+        font-family:inherit;
+      ">‹</button>
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:900;">📄 ${makerLabel}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:1px;">印刷してPDFとして保存できます</div>
+      </div>
+      <button onclick="printPdfOverlay()" style="
+        background:var(--accent); border:none;
+        border-radius:20px; padding:8px 16px;
+        color:#fff; font-size:12px; font-weight:700;
+        cursor:pointer; font-family:inherit;
+        display:flex; align-items:center; gap:5px;
+        flex-shrink:0;
+      ">🖨️ 印刷 / PDF保存</button>
+    </div>
+    <iframe id="pdf-overlay-frame"
+      style="flex:1;border:none;width:100%;background:#fff;"
+      title="発注書プレビュー">
+    </iframe>
+  `;
+
+  document.body.appendChild(overlay);
+
+  // iFrameにHTMLを書き込む
+  const frame = document.getElementById('pdf-overlay-frame');
+  frame.contentDocument.open();
+  frame.contentDocument.write(html);
+  frame.contentDocument.close();
+
+  // Android対応：戻るボタンで閉じる
+  history.pushState({ pdfOverlay: true }, '', location.href);
+  window.addEventListener('popstate', _onPopStatePdf, { once: true });
+}
+
+function _onPopStatePdf(e) {
+  if (e.state?.pdfOverlay) {
+    closePdfOverlay();
+  }
+}
+
+function closePdfOverlay() {
+  const overlay = document.getElementById('pdf-overlay');
+  if (overlay) overlay.remove();
+  window.removeEventListener('popstate', _onPopStatePdf);
+}
+
+function printPdfOverlay() {
+  const frame = document.getElementById('pdf-overlay-frame');
+  if (!frame) return;
+  frame.contentWindow.focus();
+  frame.contentWindow.print();
 }
 
 // ─── 一覧レンダリング ─────────────────────────────────────────────────────────
@@ -1386,15 +1620,26 @@ function renderPending() {
       el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div>読み込みエラー<br><span style="font-size:11px;word-break:break-all;">${err}</span></div>`;
       return;
     }
-    const pending = orders.filter(o => {
-      const s = propStr(o,'ステータス');
-      return s === '新規発注' || s === '発注済';
-    });
-    if(!pending.length) {
-      el.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div>未入荷の発注はありません</div>';
-      return;
+    try {
+      const pending = orders.filter(o => {
+        const s = propStr(o,'ステータス');
+        return s === '新規発注' || s === '発注済';
+      });
+      if(!pending.length) {
+        el.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div>未入荷の発注はありません</div>';
+        return;
+      }
+      el.innerHTML = '<div class="sec-label">未入荷（'+pending.length+'件）</div>' + pending.map(o => {
+      try { return orderCardHTML(o); }
+      catch(e) { console.error('card error:', o.id, e); return ''; }
+    }).join('');
+    } catch(e) {
+      console.error('renderPending error:', e);
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div>表示エラー<br><span style="font-size:11px;word-break:break-all;">${e.message}</span></div>`;
     }
-    el.innerHTML = '<div class="sec-label">未入荷（'+pending.length+'件）</div>' + pending.map(orderCardHTML).join('');
+  }).catch(e => {
+    console.error('renderPending catch:', e);
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div>読み込みエラー<br><span style="font-size:11px;word-break:break-all;">${e.message}</span></div>`;
   });
 }
 
@@ -1670,7 +1915,9 @@ function pickSize(s) {
   selSize = s;
   hideSizeDrop();
   document.getElementById('f-size-input').value = '';
-  // 選択表示
+  // 検索ラッパーを隠して選択済みボックスを表示（パターン名と同じ挙動）
+  const inputWrap = document.getElementById('f-size-input').parentElement;
+  if(inputWrap) inputWrap.style.display = 'none';
   const chosen = document.getElementById('f-size-chosen');
   document.getElementById('f-size-val').textContent = s;
   chosen.style.display = 'flex';
@@ -1682,6 +1929,8 @@ function clearSize() {
   selSize = '';
   selCatKey = '';
   document.getElementById('f-size-chosen').style.display = 'none';
+  const inputWrap2 = document.getElementById('f-size-input').parentElement;
+  if(inputWrap2) inputWrap2.style.display = '';
   document.getElementById('f-size-input').value = '';
   document.getElementById('f-cat-wrap').style.display = 'none';
   document.getElementById('f-pattern-wrap').style.display = 'none';
@@ -1955,6 +2204,8 @@ function resetForm() {
   document.getElementById('f-supplier').value              = '';
   document.getElementById('f-size-input').value            = '';
   document.getElementById('f-size-chosen').style.display   = 'none';
+  const inputWrap3 = document.getElementById('f-size-input').parentElement;
+  if(inputWrap3) inputWrap3.style.display = '';
   document.getElementById('f-cat-wrap').style.display      = 'none';
   document.getElementById('f-pattern-wrap').style.display  = 'none';
   document.getElementById('f-pattern').innerHTML           = '<option value="">選択してください</option>';

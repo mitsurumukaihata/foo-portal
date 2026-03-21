@@ -974,17 +974,7 @@ function openOrderPreviewOverlay(selectedItems, tantou, nouki, biko) {
   confirmBtn.disabled = false;
   confirmBtn.textContent = 'この内容で発注確定 → Notionに保存する';
 
-  // iframeにsrcdocをセット
-  const frame = document.getElementById('order-preview-frame');
-  const printContent = document.getElementById('print-content');
-  if (frame && printContent && printContent.innerHTML.trim()) {
-    const fname = defaultFilename;
-    frame.srcdoc = printContent.innerHTML.replace('<title></title>', `<title>${fname}</title>`);
-  }
-
-  // オーバーレイを表示
-  const overlay = document.getElementById('order-preview-overlay');
-  overlay.style.display = 'flex';
+  // オーバーレイは使用しない（インライン表示）
 
   // 発注データを保持
   window._pendingOrder = { selectedItems, tantou, nouki, biko };
@@ -1109,8 +1099,8 @@ function buildPrintSheet(items, tantou, nouki, biko) {
 
   // ── 発注管理アプリと同じスタイル ──
   // 列幅を明示（パターン・サイズは固定幅、他は狭め）
-  const TH  = (w='') => `padding:1px 2px;font-size:4.5pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;white-space:nowrap;${w?'width:'+w+';':''}`;
-  const tdS = (i,ex='') => `padding:1px 2px;font-size:4.5pt;text-align:center;border:0.3px solid #b8cfe8;${i%2===1?'background:#f0f5fc;':'background:#fff;'}white-space:nowrap;${ex}`;
+  const TH  = (w='') => `padding:1px 2px;font-size:4.0pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;white-space:nowrap;${w?'width:'+w+';':''}`;
+  const tdS = (i,ex='') => `padding:1px 2px;font-size:4.0pt;text-align:center;border:0.3px solid #b8cfe8;${i%2===1?'background:#f0f5fc;':'background:#fff;'}white-space:nowrap;${ex}`;
 
   // 五日市→志和が第一優先、その中でLTL TB→LTS→バンの順
   const CAT_ORDER = ['LTL TB　ノーマル','LTL TB　スタッドレス','LTS　ノーマル','LTS　スタッドレス','RT 再生','バン','リフト'];
@@ -1210,8 +1200,8 @@ async function _fetchAndInjectPending() {
   const iframe = document.getElementById('order-inline-frame') || document.getElementById('order-preview-frame');
   if (!iframe) return;
 
-  const TH = (w='') => `padding:1px 2px;font-size:4.5pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;white-space:nowrap;${w?'width:'+w+';':''}`;
-  const tdS = (i,ex='') => `padding:1px 2px;font-size:4.5pt;text-align:center;border:0.3px solid #b8cfe8;${i%2===1?'background:#f0f5fc;':'background:#fff;'}white-space:nowrap;${ex}`;
+  const TH = (w='') => `padding:1px 2px;font-size:4.0pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;white-space:nowrap;${w?'width:'+w+';':''}`;
+  const tdS = (i,ex='') => `padding:1px 2px;font-size:4.0pt;text-align:center;border:0.3px solid #b8cfe8;${i%2===1?'background:#f0f5fc;':'background:#fff;'}white-space:nowrap;${ex}`;
 
   try {
     const body = {

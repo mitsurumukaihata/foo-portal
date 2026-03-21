@@ -82,7 +82,7 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 .alert-dot-big { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
 .alert-info { flex:1; min-width:0; }
 .alert-pattern { font-size:14px; font-weight:700; font-family:'DM Mono',monospace; }
-.alert-meta { font-size:13px; font-family:'DM Mono',monospace; color:var(--accent2); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.alert-meta { font-size:13px; font-family:'DM Mono',monospace; color:var(--text); font-weight:700; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .alert-meta.sub { font-size:10px; font-family:'Noto Sans JP',sans-serif; color:var(--muted); }
 .alert-stocks { display:flex; gap:0; flex-shrink:0; }
 .st-cell { text-align:center; padding:0 8px; border-left:0.5px solid var(--border); }
@@ -123,7 +123,7 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 .order-check-icon { width:11px; height:11px; background:var(--accent); border-radius:2px; }
 .order-info { flex:1; min-width:0; }
 .order-pattern { font-size:13px; font-weight:700; font-family:'DM Mono',monospace; }
-.order-detail { font-size:10px; color:var(--muted); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.order-detail { font-size:13px; color:var(--text); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:700; font-family:'DM Mono',monospace; }
 .qty-wrap { display:flex; align-items:center; gap:6px; }
 .qty-btn { width:26px; height:26px; border-radius:6px; border:1px solid var(--border2); background:var(--s3); color:var(--text); font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:'Noto Sans JP',sans-serif; flex-shrink:0; }
 .qty-num { font-size:16px; font-weight:700; font-family:'DM Mono',monospace; color:var(--accent); width:30px; text-align:center; }
@@ -461,6 +461,15 @@ const DEFAULT_THRESHOLDS = [
 
 // スナップショット全件（ページID付き）をキャッシュ
 let snapshotCache = null; // { key: {pageId, stock, threshold} }
+
+// keyを安全なDOM IDに変換（btoa非対応文字の回避）
+function keyToSafeId(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(31, h) + str.charCodeAt(i) | 0;
+  }
+  return 'k' + Math.abs(h).toString(36);
+}
 
 async function loadAlerts() {
   const el = document.getElementById('alert-content');
@@ -1051,6 +1060,7 @@ function renderHistory(records) {
     const nouki    = p['納期予定日']?.date?.start || '';
     const place    = p['納入予定場所']?.select?.name || '—';
     const tantou   = p['注文担当']?.select?.name || '—';
+    const pattern  = p['パターン']?.select?.name || '';
     const dateStr  = r.created_time ? new Date(r.created_time).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}) : '—';
     const stCls    = STATUS_CLASS[status] || 'st-new';
     const noukiStr = nouki ? new Date(nouki).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}) : '—';
@@ -1060,7 +1070,11 @@ function renderHistory(records) {
         <div class="history-date">${dateStr} 登録</div>
         <span class="history-status ${stCls}">${status}</span>
       </div>
-      <div class="history-row-body">${escHtml(title)} &nbsp; <strong style="color:var(--accent);">${qty}本</strong></div>
+      <div class="history-row-body">
+        ${pattern ? `<span style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text);margin-right:6px;">${escHtml(pattern)}</span>` : ''}
+        <strong style="font-family:'DM Mono',monospace;">${escHtml(title)}</strong>
+        &nbsp; <strong style="color:var(--accent);">${qty}本</strong>
+      </div>
       <div class="history-row-meta">納入先：${place} ／ 担当：${tantou} ／ 希望納期：${noukiStr}</div>
     </div>`;
   });
@@ -1142,20 +1156,50 @@ function renderThresholdPage() {
 
   if (entries.length) {
     html += `<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:8px;">設定済み ${entries.length}件</div>`;
+
+    // パターン＋サイズでグルーピング（倉庫を横並びに）
+    const grouped = {};
     entries.forEach(([key, snap]) => {
-      const [cat, pattern, size, warehouse] = key.split('|');
-      const whColor = warehouse === '五日市倉庫' ? 'var(--green)' : 'var(--blue)';
-      const whBg    = warehouse === '五日市倉庫' ? 'rgba(34,197,94,.1)' : 'rgba(59,130,246,.1)';
-      html += `<div style="display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px;">
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;">${pattern}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${size}　${cat}</div>
-          <div style="margin-top:3px;"><span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;background:${whBg};color:${whColor};">${warehouse}</span></div>
+      const [cat, pattern, size, wh] = key.split('|');
+      const groupKey = `${cat}|${pattern}|${size}`;
+      if (!grouped[groupKey]) grouped[groupKey] = { cat, pattern, size, items: {} };
+      grouped[groupKey].items[wh] = { key, snap };
+    });
+
+    Object.entries(grouped).sort(([a],[b]) => a.localeCompare(b,'ja')).forEach(([, g]) => {
+      const itsuka = g.items['五日市倉庫'];
+      const shiwa  = g.items['志和倉庫'];
+      html += `<div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:9px 12px;margin-bottom:6px;">
+        <div style="background:var(--s3);border-radius:7px;padding:7px 10px;margin-bottom:8px;">
+          <div style="display:flex;align-items:baseline;gap:8px;">
+            <span style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text);">${g.pattern}</span>
+            <span style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text);">${g.size}</span>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px;">${g.cat}</div>
         </div>
-        <div style="display:flex;align-items:center;gap:0;flex-shrink:0;">
-          <button onclick="changeThreshold('${key}',-1)" style="width:28px;height:28px;border-radius:6px 0 0 6px;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:15px;cursor:pointer;">−</button>
-          <div id="th-num-${btoa(key).replace(/[^a-zA-Z0-9]/g,'')}" style="font-size:15px;font-weight:700;color:var(--accent);min-width:38px;text-align:center;border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);height:28px;line-height:28px;font-family:'DM Mono',monospace;">${snap.threshold}</div>
-          <button onclick="changeThreshold('${key}',+1)" style="width:28px;height:28px;border-radius:0 6px 6px 0;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:15px;cursor:pointer;">＋</button>
+        <div style="display:flex;gap:8px;">
+          ${itsuka ? `<div style="flex:1;display:flex;flex-direction:column;gap:4px;">
+            <div style="font-size:10px;font-weight:700;color:var(--green);">五日市倉庫</div>
+            <div style="display:flex;align-items:center;gap:0;">
+              <button onclick="changeThreshold('${itsuka.key}',-1)" style="width:28px;height:28px;border-radius:6px 0 0 6px;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:15px;cursor:pointer;">−</button>
+              <div id="th-num-${keyToSafeId(itsuka.key)}" style="flex:1;font-size:15px;font-weight:700;color:var(--accent);text-align:center;border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);height:28px;line-height:28px;font-family:'DM Mono',monospace;">${itsuka.snap.threshold}</div>
+              <button onclick="changeThreshold('${itsuka.key}',+1)" style="width:28px;height:28px;border-radius:0 6px 6px 0;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:15px;cursor:pointer;">＋</button>
+            </div>
+          </div>` : `<div style="flex:1;display:flex;flex-direction:column;gap:4px;opacity:0.3;">
+            <div style="font-size:10px;color:var(--muted);">五日市倉庫</div>
+            <div style="height:28px;border-radius:6px;border:1px dashed var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);">未設定</div>
+          </div>`}
+          ${shiwa ? `<div style="flex:1;display:flex;flex-direction:column;gap:4px;">
+            <div style="font-size:10px;font-weight:700;color:var(--blue);">志和倉庫</div>
+            <div style="display:flex;align-items:center;gap:0;">
+              <button onclick="changeThreshold('${shiwa.key}',-1)" style="width:28px;height:28px;border-radius:6px 0 0 6px;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:15px;cursor:pointer;">−</button>
+              <div id="th-num-${keyToSafeId(shiwa.key)}" style="flex:1;font-size:15px;font-weight:700;color:var(--accent);text-align:center;border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);height:28px;line-height:28px;font-family:'DM Mono',monospace;">${shiwa.snap.threshold}</div>
+              <button onclick="changeThreshold('${shiwa.key}',+1)" style="width:28px;height:28px;border-radius:0 6px 6px 0;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:15px;cursor:pointer;">＋</button>
+            </div>
+          </div>` : `<div style="flex:1;display:flex;flex-direction:column;gap:4px;opacity:0.3;">
+            <div style="font-size:10px;color:var(--muted);">志和倉庫</div>
+            <div style="height:28px;border-radius:6px;border:1px dashed var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);">未設定</div>
+          </div>`}
         </div>
       </div>`;
     });
@@ -1234,7 +1278,7 @@ async function changeThreshold(key, delta) {
   if (!snap || !snap.pageId) return;
   const newVal = Math.max(0, (snap.threshold || 0) + delta);
   snap.threshold = newVal;
-  const safeId = btoa(key).replace(/[^a-zA-Z0-9]/g,'');
+  const safeId = keyToSafeId(key);
   const el = document.getElementById(`th-num-${safeId}`);
   if (el) el.textContent = newVal;
   try {
@@ -1282,7 +1326,7 @@ function thPickSize(s) {
   const chips = document.getElementById('th-cat-chips');
   if (matchCats.length) {
     chips.innerHTML = matchCats.map(cat =>
-      `<button onclick="thPickCat('${cat}')" id="th-chip-${btoa(cat).replace(/[^a-zA-Z0-9]/g,'')}"
+      `<button onclick="thPickCat('${cat}')" id="th-chip-${keyToSafeId(cat)}"
        style="padding:4px 10px;border-radius:12px;border:1px solid var(--border2);background:var(--s2);color:var(--muted);font-size:11px;cursor:pointer;font-family:inherit;">${cat}</button>`
     ).join('');
     wrap.style.display = 'block';

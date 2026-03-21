@@ -1350,9 +1350,8 @@ function buildPdfHtml(maker, targets) {
   const totalNew      = newOrders.reduce((s,o)=>s+(Number(propStr(o,'数量'))||0),0);
   const totalPending  = pendingOrders.reduce((s,o)=>s+(Number(propStr(o,'数量'))||0),0);
 
-  const thStyle = 'padding:2px 4px;font-size:5pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;';
-  const tdStyle = 'padding:2px 4px;font-size:5.5pt;text-align:right;border:0.3px solid #b8cfe8;';
-  const trEven  = 'background:#f0f5fc;';
+  const TH = (w='') => `padding:1px 2px;font-size:3.5pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;white-space:nowrap;${w?'width:'+w+';':''}`;
+  const tdSF = (i,ex='') => `padding:1px 2px;font-size:3.5pt;text-align:center;border:0.3px solid #b8cfe8;${i%2===1?'background:#f0f5fc;':'background:#fff;'}white-space:nowrap;${ex}`;
 
   const mkRow = (o, i, showOrderDate) => {
     const pat  = propStr(o,'パターン') || '—';
@@ -1364,62 +1363,69 @@ function buildPdfHtml(maker, targets) {
     const due  = fmt(propStr(o,'納期予定日')) || '未定';
     const od   = fmt(propStr(o,'発注日'));
     const memo = propStr(o,'備考欄') || '';
-    const bg   = i%2===1 ? trEven : '';
-    const dateTd = showOrderDate ? `<td style="${tdStyle}${bg}">${od}</td>` : '';
-    return `<tr style="${bg}">
-      <td style="${tdStyle}${bg}">${pat}</td>
-      <td style="${tdStyle}${bg}">${size}</td>
-      <td style="${tdStyle}font-weight:bold;color:#e07000;${bg}">${qty}本</td>
-      <td style="${tdStyle}${bg}">${os}</td>
-      <td style="${tdStyle}${bg}">${rv}</td>
+    const dateTd = showOrderDate ? `<td style="${tdSF(i)}">${od}</td>` : '';
+    return `<tr>
+      <td style="${tdSF(i)}">${pat}</td>
+      <td style="${tdSF(i)}">${size}</td>
+      <td style="${tdSF(i,'font-weight:bold;color:#e07000;')}">${qty}本</td>
+      <td style="${tdSF(i)}">${os}</td>
+      <td style="${tdSF(i)}">${rv}</td>
       ${dateTd}
-      <td style="${tdStyle}${bg}">${loc}</td>
-      <td style="${tdStyle}${bg}">${due}</td>
-      <td style="${tdStyle}${bg}">${memo}</td>
+      <td style="${tdSF(i)}">${loc}</td>
+      <td style="${tdSF(i)}">${due}</td>
+      <td style="${tdSF(i,'color:#888;white-space:normal;text-align:left;')}">${memo}</td>
     </tr>`;
   };
 
   const newTable = newOrders.length ? `
-    <div style="font-size:5.5pt;font-weight:bold;color:#2563a8;margin:5px 0 2px;">■ 今回発注分</div>
-    <table style="width:100%;border-collapse:collapse;">
+    <div style="font-size:5pt;font-weight:bold;color:#2563a8;margin:4px 0 2px;">■ 今回発注分</div>
+    <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
       <thead><tr>
-        <th style="${thStyle}">パターン</th><th style="${thStyle}">サイズ</th>
-        <th style="${thStyle}">数量</th><th style="${thStyle}">発注者</th>
-        <th style="${thStyle}">受注者</th><th style="${thStyle}">納入場所</th>
-        <th style="${thStyle}">納期予定</th><th style="${thStyle}">備考</th>
+        <th style="${TH('10%')}">パターン</th><th style="${TH('14%')}">サイズ</th>
+        <th style="${TH('5%')}">本数</th><th style="${TH('7%')}">発注者</th>
+        <th style="${TH('7%')}">受注者</th><th style="${TH('8%')}">納入場所</th>
+        <th style="${TH('11%')}">納期予定</th><th style="${TH('27%')}">備考</th>
       </tr></thead>
       <tbody>${newOrders.map((o,i)=>mkRow(o,i,false)).join('')}</tbody>
     </table>` : '';
 
   const pendingTable = pendingOrders.length ? `
-    <div style="font-size:5.5pt;font-weight:bold;color:#2563a8;margin:7px 0 2px;">■ 未入荷（既発注分）</div>
-    <table style="width:100%;border-collapse:collapse;">
+    <div style="font-size:4pt;font-weight:bold;color:#2563a8;margin:6px 0 2px;">■ 未入荷（既発注分）</div>
+    <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
       <thead><tr>
-        <th style="${thStyle}">パターン</th><th style="${thStyle}">サイズ</th>
-        <th style="${thStyle}">数量</th><th style="${thStyle}">発注者</th>
-        <th style="${thStyle}">受注者</th><th style="${thStyle}">発注日</th>
-        <th style="${thStyle}">納入場所</th><th style="${thStyle}">納期予定</th><th style="${thStyle}">備考</th>
+        <th style="${TH('10%')}">パターン</th><th style="${TH('14%')}">サイズ</th>
+        <th style="${TH('5%')}">本数</th><th style="${TH('7%')}">発注者</th>
+        <th style="${TH('7%')}">受注者</th><th style="${TH('11%')}">発注日</th>
+        <th style="${TH('8%')}">納入場所</th><th style="${TH('11%')}">納期予定</th><th style="${TH('27%')}">備考</th>
       </tr></thead>
       <tbody>${pendingOrders.map((o,i)=>mkRow(o,i,true)).join('')}</tbody>
     </table>` : '';
 
+  // ファイル名生成 — TMFoo_発注書_発注者_日付
+  const STAFF_SHORT_F = {'向畑 充':'向畑','向畑　充':'向畑','岡崎 由美':'岡崎','岡崎　由美':'岡崎'};
+  const issuerShort = STAFF_SHORT_F[issuer] || issuer || '向畑';
+  const nowF = new Date();
+  const dsF = `${nowF.getFullYear()}${String(nowF.getMonth()+1).padStart(2,'0')}${String(nowF.getDate()).padStart(2,'0')}`;
+  const pdfFilename = `TMFoo_発注書_${issuerShort}_${dsF}`;
+
   return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>${pdfFilename}</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'Hiragino Kaku Gothic ProN','IPAGothic',sans-serif;padding:10mm 10mm;font-size:6pt;color:#1a1a18;}
+    body{font-family:'Hiragino Kaku Gothic ProN','IPAGothic',sans-serif;padding:8mm 6mm;font-size:5pt;color:#1a1a18;}
+    table{width:100%;border-collapse:collapse;table-layout:fixed;}
+    td,th{overflow:hidden;text-overflow:ellipsis;word-break:break-all;}
   </style></head><body>
   <!-- ヘッダー -->
   <table style="width:100%;border-collapse:collapse;border-bottom:2px solid #2563a8;padding-bottom:4px;margin-bottom:6px;">
     <tr>
       <td style="vertical-align:middle;">
         <div style="font-size:13pt;font-weight:bold;color:#2563a8;">発　注　書</div>
-        <div style="font-size:5.5pt;color:#666;margin-top:2px;">発行日：${issued}　　発行者：${issuer}</div>
+        <div style="font-size:5pt;color:#666;margin-top:2px;">発行日：${issued}　発行者：${issuerShort}</div>
       </td>
       <td style="text-align:right;vertical-align:top;">
         <div style="font-size:7pt;font-weight:bold;">(有)タイヤマネージャーフー</div>
-        <div style="font-size:5.5pt;color:#666;line-height:1.5;">〒731-5141</div>
-        <div style="font-size:5.5pt;color:#666;line-height:1.5;">広島県広島市佐伯区千同３丁目３９４－１</div>
-        <div style="font-size:5.5pt;color:#666;line-height:1.5;">TEL：082-942-3730</div>
+        <div style="font-size:5pt;color:#666;line-height:1.5;">〒731-5141 広島県広島市佐伯区千同３丁目３９４－１　TEL：082-942-3730</div>
       </td>
     </tr>
   </table>
@@ -1427,14 +1433,14 @@ function buildPdfHtml(maker, targets) {
   <!-- 宛先 -->
   <table style="width:100%;border-collapse:collapse;border:1.5px solid #2563a8;background:#e8f0fa;margin-bottom:8px;">
     <tr>
-      <td style="padding:4px 7px;width:50%;border-right:0.5px solid #b8cfe8;">
-        <div style="font-size:5pt;color:#2563a8;font-weight:bold;margin-bottom:1px;">発注先</div>
-        <div style="font-size:7.5pt;font-weight:bold;">${MAKER_LABEL[maker] || maker}　御中</div>
-        <div style="font-size:6pt;margin-top:1px;">受注担当：${recvSan}</div>
+      <td style="padding:3px 7px;width:65%;border-right:0.5px solid #b8cfe8;">
+        <div style="font-size:4.5pt;color:#2563a8;font-weight:bold;margin-bottom:1px;">発注先</div>
+        <div style="font-size:7pt;font-weight:bold;">${MAKER_LABEL[maker] || maker}　御中</div>
+        <div style="font-size:4.5pt;margin-top:1px;">受注担当：${recvSan}</div>
       </td>
-      <td style="padding:4px 8px;">
-        <div style="font-size:5pt;color:#2563a8;font-weight:bold;margin-bottom:1px;">注文方法</div>
-        <div style="font-size:6.5pt;font-weight:bold;color:#084298;">${method}</div>
+      <td style="padding:3px 7px;">
+        <div style="font-size:4.5pt;color:#2563a8;font-weight:bold;margin-bottom:1px;">注文方法</div>
+        <div style="font-size:5.5pt;font-weight:bold;color:#084298;">${method}</div>
       </td>
     </tr>
   </table>
@@ -1443,23 +1449,21 @@ function buildPdfHtml(maker, targets) {
   ${pendingTable}
 
   <!-- 合計 -->
-  <div style="text-align:right;margin-top:6px;padding-top:5px;border-top:0.5px solid #e0dcd6;font-size:5pt;color:#666;">
-    今回発注合計：<span style="font-size:7.5pt;font-weight:bold;color:#2563a8;">${totalNew}本</span>
-    　　未入荷合計：<span style="font-size:7.5pt;font-weight:bold;color:#1a1a18;">${totalPending}本</span>
+  <div style="text-align:right;margin-top:3px;padding-top:2px;border-top:0.5px solid #e0dcd6;font-size:4.5pt;color:#666;">
+    今回発注合計：<span style="font-size:7pt;font-weight:bold;color:#2563a8;">${totalNew}本</span>
+    　　未入荷合計：<span style="font-size:6pt;font-weight:bold;color:#1a1a18;">${totalPending}本</span>
   </div>
 
   <!-- 注意欄 -->
-  <div style="background:#e8f0fa;border:0.5px solid #b8cfe8;padding:3px 6px;margin-top:5px;font-size:5pt;color:#666;line-height:1.35;">
-    <div style="margin-bottom:1px;">※ 未入荷分は引き続きよろしくお願いいたします。</div>
-    <div style="margin-bottom:1px;">※ 納期等に変更がある場合はご連絡ください。</div>
-    <div style="margin-top:3px;margin-bottom:1px;">※ 「未入荷（既発注分）」の一覧は、弊社の社内入庫処理が完了していないものを表示しております。</div>
-    <div style="padding-left:1em;margin-bottom:1px;">実際にはすでに入荷・納品済みの場合でも、社内処理のタイミングにより未入荷として表示される</div>
-    <div style="padding-left:1em;">ことがございます。ご確認の際はあらかじめご了承ください。</div>
+  <div style="background:#e8f0fa;border:0.5px solid #b8cfe8;padding:3px 6px;margin-top:5px;font-size:4.5pt;color:#666;line-height:1.5;">
+    <div>※ 未入荷分は引き続きよろしくお願いいたします。</div>
+    <div>※ 納期等に変更がある場合はご連絡ください。</div>
+    <div style="margin-top:2px;">※ 「未入荷（既発注分）」の一覧は、弊社の社内入庫処理が完了していないものを表示しております。実際にはすでに入荷・納品済みの場合でも、社内処理のタイミングにより未入荷として表示されることがございます。ご確認の際はあらかじめご了承ください。</div>
   </div>
 
   <!-- フッター -->
-  <div style="border-top:0.5px solid #e0dcd6;margin-top:5px;padding-top:3px;display:flex;justify-content:space-between;font-size:4.5pt;color:#aaa;">
-    <span>(有)タイヤマネージャーフー　〒731-5141 広島県広島市佐伯区千同３丁目３９４－１　TEL：082-942-3730</span>
+  <div style="border-top:0.5px solid #e0dcd6;margin-top:4px;padding-top:2px;display:flex;justify-content:space-between;font-size:4pt;color:#aaa;">
+    <span>(有)タイヤマネージャーフー　広島市佐伯区千同３-３９４-１　TEL：082-942-3730</span>
     <span>自動生成　${issued}</span>
   </div>
 </body></html>`;

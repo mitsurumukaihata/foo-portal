@@ -1280,16 +1280,11 @@ function renderHistory() {
   const allSizes = [...new Set(Object.values(DB_MAP).flatMap(db => db.sizes || []))].sort();
 
   let html = `
-    <div style="position:relative;margin-bottom:12px;">
-      <input id="history-search" type="text" inputmode="tel" placeholder="タイヤサイズで検索（例: 275, 195/85）"
-        oninput="filterHistory(this.value);showSizeSuggestions(this.value)"
-        onfocus="showSizeSuggestions(this.value)"
-        autocomplete="off"
-        style="width:100%;padding:12px 14px;padding-right:40px;border-radius:10px;border:1.5px solid var(--border2);background:var(--s2);color:var(--text);font-size:14px;font-family:'DM Mono',monospace;outline:none;box-sizing:border-box;">
-      <span onclick="document.getElementById('history-search').value='';filterHistory('');hideSizeSuggestions();"
-        style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:18px;color:var(--muted);cursor:pointer;line-height:1;">×</span>
-      <div id="size-suggestions" style="display:none;position:absolute;left:0;right:0;top:100%;z-index:50;background:var(--s1);border:1px solid var(--border2);border-radius:0 0 10px 10px;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.3);"></div>
+    <div class="search-box">
+      <input id="history-search" type="text" inputmode="numeric" placeholder="例：275 または 27580" autocomplete="off">
+      <button class="search-clear" onclick="window._historySelectedSize='';document.getElementById('history-search').value='';filterHistorySizes('');applyHistoryFilter('')">✕</button>
     </div>
+    <div id="history-candidates" class="candidates"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
       <div style="font-size:12px;color:var(--muted);" id="history-count">直近の入出庫履歴（最新${historyRecords.length}件）</div>
       <button onclick="historyLoaded=false;loadHistory()" style="background:var(--s3);border:1px solid var(--border2);border-radius:6px;padding:5px 10px;font-size:11px;color:var(--text);cursor:pointer;font-family:inherit;">↻ 更新</button>
@@ -1297,6 +1292,7 @@ function renderHistory() {
 
   // サイズ候補をグローバルに保持
   window._historySizes = allSizes;
+  window._historySelectedSize = '';
 
   historyRecords.forEach((r, idx) => {
     const kubun = propStr(r, '区分');
@@ -1331,6 +1327,12 @@ function renderHistory() {
   });
 
   el.innerHTML = html;
+
+  // 検索イベントリスナー設定
+  const hInput = document.getElementById('history-search');
+  if (hInput) {
+    hInput.addEventListener('input', e => { window._historySelectedSize = ''; filterHistorySizes(e.target.value); });
+  }
 }
 
 // ─── 履歴レコード編集 ─────────────────────────────────────────────────────────
@@ -1430,8 +1432,39 @@ async function saveHistoryEdit(pageId, idx) {
 }
 
 // ─── 履歴検索・フィルタ ──────────────────────────────────────────────────────
-function filterHistory(query) {
-  const q = query.trim().toLowerCase();
+function filterHistorySizes(v) {
+  const q = v.trim();
+  const allSizes = window._historySizes || [];
+  let hits = [];
+  if (q) {
+    const dq = digits(q);
+    hits = allSizes.filter(s => {
+      const ds = digits(s);
+      return s.toLowerCase().includes(q.toLowerCase()) || (dq.length >= 3 && ds.startsWith(dq));
+    }).slice(0, 8);
+  }
+  // 候補カードを描画
+  const c = document.getElementById('history-candidates');
+  if (c) {
+    c.innerHTML = hits.map(s => `<div class="candidate${window._historySelectedSize === s ? ' sel' : ''}" onclick="pickHistorySize('${s}')"><span class="candidate-text">${s}</span><span class="candidate-badge">選択</span></div>`).join('');
+  }
+  // 選択済みサイズがなければカード全表示
+  if (!window._historySelectedSize) {
+    applyHistoryFilter(q);
+  }
+}
+
+function pickHistorySize(s) {
+  window._historySelectedSize = s;
+  document.getElementById('history-search').value = s;
+  // 候補を更新（選択状態を反映）
+  filterHistorySizes(s);
+  // カードをフィルタ
+  applyHistoryFilter(s);
+}
+
+function applyHistoryFilter(query) {
+  const q = (query || '').trim().toLowerCase();
   const cards = document.querySelectorAll('[id^="hist-"]');
   let shown = 0;
   cards.forEach(card => {
@@ -1444,47 +1477,7 @@ function filterHistory(query) {
   if (countEl) {
     countEl.textContent = q ? `「${query}」の検索結果: ${shown}件` : `直近の入出庫履歴（最新${historyRecords.length}件）`;
   }
-  // 候補表示はoninputのshowSizeSuggestionsに任せる
 }
-
-function showSizeSuggestions(query) {
-  const q = query.trim().toLowerCase();
-  const box = document.getElementById('size-suggestions');
-  if (!box || !window._historySizes) return;
-
-  const matches = q
-    ? window._historySizes.filter(s => s.toLowerCase().includes(q))
-    : window._historySizes.slice(0, 20);
-
-  if (!matches.length) { box.style.display = 'none'; return; }
-
-  box.innerHTML = matches.map(s => `
-    <div onclick="selectSizeFilter('${s}')"
-      style="padding:10px 14px;font-size:13px;font-family:'DM Mono',monospace;color:var(--text);cursor:pointer;border-bottom:0.5px solid var(--border);"
-      onmouseover="this.style.background='var(--s3)'" onmouseout="this.style.background='transparent'">
-      ${s}
-    </div>`).join('');
-  box.style.display = 'block';
-}
-
-function selectSizeFilter(size) {
-  const input = document.getElementById('history-search');
-  if (input) input.value = size;
-  hideSizeSuggestions();
-  filterHistory(size);
-}
-
-function hideSizeSuggestions() {
-  const box = document.getElementById('size-suggestions');
-  if (box) box.style.display = 'none';
-}
-
-// 候補欄の外をクリックしたら閉じる
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('#history-search') && !e.target.closest('#size-suggestions')) {
-    hideSizeSuggestions();
-  }
-});
 </script>
 </body>
 </html>

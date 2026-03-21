@@ -414,15 +414,17 @@ async function loadAlerts() {
     // スナップショットDBから全在庫を一括取得（高速）
     const snapRows = await fetchAllSnapshots();
 
-    // 在庫基準設定DBをカテゴリ別に取得
+    // 在庫基準設定DBを全カテゴリ並列取得（直列→並列で大幅高速化）
+    el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">しきい値を確認中…</div></div>';
+    const kijunEntries = Object.entries(KIJUN_DB_MAP);
+    const kijunResults = await Promise.all(
+      kijunEntries.map(([catName, dbInfo]) => fetchKijunForCat(catName, dbInfo.kijunId).then(rows => ({ catName, rows })))
+    );
+
     const allItems = [];
     const skippedCats = [];
 
-    for (const [catName, dbInfo] of Object.entries(KIJUN_DB_MAP)) {
-      el.innerHTML = `<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">${catName} のしきい値を確認中…</div></div>`;
-      await new Promise(r => setTimeout(r, 20));
-
-      const kijunRows = await fetchKijunForCat(catName, dbInfo.kijunId);
+    for (const { catName, rows: kijunRows } of kijunResults) {
       if (!kijunRows.length) { skippedCats.push(catName); continue; }
 
       for (const row of kijunRows) {

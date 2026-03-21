@@ -243,7 +243,7 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
     <div class="content" id="alert-content">
       <div class="loading-wrap">
         <div class="spinner"></div>
-        <div class="loading-text">在庫基準をチェック中…</div>
+        <div class="loading-text">読み込み中…</div>
       </div>
     </div>
   </div>
@@ -405,58 +405,88 @@ async function notionAPI(method, path, body) {
 // ──────────────────────────────────────
 // 在庫アラート読み込み
 // ──────────────────────────────────────
+// ─── ハードコードしきい値（Notionアクセス不要・即時） ───────────────────────
+const HARDCODED_THRESHOLDS = [
+  {cat:'LTL TB　ノーマル',pattern:'M646',size:'11R22.5',warehouse:'五日市倉庫',threshold:6},
+  {cat:'LTL TB　ノーマル',pattern:'M646',size:'11R22.5',warehouse:'志和倉庫',threshold:6},
+  {cat:'LTL TB　ノーマル',pattern:'M646',size:'215/70R17.5 123/121',warehouse:'五日市倉庫',threshold:6},
+  {cat:'LTL TB　ノーマル',pattern:'M646',size:'215/70R17.5 123/121',warehouse:'志和倉庫',threshold:6},
+  {cat:'LTL TB　ノーマル',pattern:'M646',size:'225/80R17.5',warehouse:'五日市倉庫',threshold:24},
+  {cat:'LTL TB　ノーマル',pattern:'M646',size:'225/80R17.5',warehouse:'志和倉庫',threshold:24},
+  {cat:'LTL TB　ノーマル',pattern:'M125',size:'225/80R17.5',warehouse:'五日市倉庫',threshold:6},
+  {cat:'LTL TB　ノーマル',pattern:'M125',size:'225/80R17.5',warehouse:'志和倉庫',threshold:6},
+  {cat:'LTL TB　ノーマル',pattern:'M646',size:'225/90R17.5',warehouse:'五日市倉庫',threshold:12},
+  {cat:'LTL TB　ノーマル',pattern:'M646',size:'225/90R17.5',warehouse:'志和倉庫',threshold:8},
+  {cat:'LTL TB　ノーマル',pattern:'M626',size:'235/70R17.5',warehouse:'五日市倉庫',threshold:2},
+  {cat:'LTL TB　ノーマル',pattern:'M626',size:'235/70R17.5',warehouse:'志和倉庫',threshold:8},
+  {cat:'LTL TB　ノーマル',pattern:'M646',size:'245/70R19.5',warehouse:'五日市倉庫',threshold:24},
+  {cat:'LTL TB　ノーマル',pattern:'M646',size:'245/70R19.5',warehouse:'志和倉庫',threshold:24},
+  {cat:'LTL TB　ノーマル',pattern:'M646',size:'245/80R17.5',warehouse:'五日市倉庫',threshold:6},
+  {cat:'LTL TB　ノーマル',pattern:'M646',size:'245/80R17.5',warehouse:'志和倉庫',threshold:6},
+  {cat:'LTL TB　ノーマル',pattern:'M646',size:'265/70R19.5',warehouse:'五日市倉庫',threshold:16},
+  {cat:'LTL TB　ノーマル',pattern:'M646',size:'265/70R19.5',warehouse:'志和倉庫',threshold:16},
+  {cat:'LTL TB　ノーマル',pattern:'M646',size:'275/70R22.5',warehouse:'五日市倉庫',threshold:6},
+  {cat:'LTL TB　ノーマル',pattern:'M646',size:'275/80R22.5',warehouse:'五日市倉庫',threshold:12},
+  {cat:'LTL TB　ノーマル',pattern:'M646',size:'275/80R22.5',warehouse:'志和倉庫',threshold:12},
+  {cat:'LTS　ノーマル',pattern:'M634',size:'195/75R15',warehouse:'五日市倉庫',threshold:12},
+  {cat:'LTS　ノーマル',pattern:'M135',size:'195/75R15',warehouse:'五日市倉庫',threshold:12},
+  {cat:'LTS　ノーマル',pattern:'M135',size:'195/75R15',warehouse:'志和倉庫',threshold:6},
+  {cat:'LTS　ノーマル',pattern:'M135',size:'195/85R15',warehouse:'五日市倉庫',threshold:6},
+  {cat:'LTS　ノーマル',pattern:'M634',size:'195/85R16',warehouse:'五日市倉庫',threshold:6},
+  {cat:'LTS　ノーマル',pattern:'M135',size:'195/85R16',warehouse:'五日市倉庫',threshold:12},
+  {cat:'LTS　ノーマル',pattern:'M634',size:'195/85R16',warehouse:'志和倉庫',threshold:6},
+  {cat:'LTS　ノーマル',pattern:'M135',size:'195/85R16',warehouse:'志和倉庫',threshold:6},
+  {cat:'LTS　ノーマル',pattern:'M634',size:'205/70R16',warehouse:'五日市倉庫',threshold:6},
+  {cat:'LTS　ノーマル',pattern:'M135',size:'205/70R16',warehouse:'五日市倉庫',threshold:6},
+  {cat:'LTS　ノーマル',pattern:'M135',size:'205/70R16',warehouse:'志和倉庫',threshold:6},
+  {cat:'LTS　ノーマル',pattern:'M634',size:'205/70R16',warehouse:'志和倉庫',threshold:6},
+  {cat:'LTS　ノーマル',pattern:'M634',size:'205/75R16',warehouse:'五日市倉庫',threshold:12},
+  {cat:'LTS　ノーマル',pattern:'M135',size:'205/75R16',warehouse:'五日市倉庫',threshold:12},
+  {cat:'LTS　ノーマル',pattern:'M135',size:'205/75R16',warehouse:'志和倉庫',threshold:6},
+  {cat:'LTS　ノーマル',pattern:'M634',size:'205/75R16',warehouse:'志和倉庫',threshold:6},
+  {cat:'LTS　ノーマル',pattern:'M634',size:'205/85R16',warehouse:'五日市倉庫',threshold:6},
+  {cat:'LTS　ノーマル',pattern:'M135',size:'205/85R16',warehouse:'五日市倉庫',threshold:12},
+  {cat:'LTS　ノーマル',pattern:'M135',size:'205/85R16',warehouse:'志和倉庫',threshold:6},
+  {cat:'LTS　ノーマル',pattern:'M634',size:'205/85R16',warehouse:'志和倉庫',threshold:6},
+];
+
 async function loadAlerts() {
   const el = document.getElementById('alert-content');
-  el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">在庫スナップショットを取得中…</div></div>';
+  el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">スナップショットを取得中…</div></div>';
   await new Promise(r => setTimeout(r, 30));
 
   try {
     // スナップショットDBから全在庫を一括取得（高速）
     const snapRows = await fetchAllSnapshots();
 
-    // 在庫基準設定DBを全カテゴリ並列取得（直列→並列で大幅高速化）
-    el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">しきい値を確認中…</div></div>';
-    const kijunEntries = Object.entries(KIJUN_DB_MAP);
-    const kijunResults = await Promise.all(
-      kijunEntries.map(([catName, dbInfo]) => fetchKijunForCat(catName, dbInfo.kijunId).then(rows => ({ catName, rows })))
-    );
-
+    // ハードコードされたしきい値でアラート判定（Notionアクセス不要）
     const allItems = [];
-    const skippedCats = [];
-
-    for (const { catName, rows: kijunRows } of kijunResults) {
-      if (!kijunRows.length) { skippedCats.push(catName); continue; }
-
-      for (const row of kijunRows) {
-        const key = `${catName}|${row.pattern}|${row.size}|${row.warehouse}`;
-        const snap = snapRows[key];
-        const realStock = snap ?? 0;
-        const threshold = row.threshold;
-
-        if (realStock < threshold) {
-          const needed = threshold - realStock;
-          const maker = guessMaker(row.pattern);
-          allItems.push({
-            kijunId: row.id,
-            pattern: row.pattern,
-            size: row.size,
-            category: catName,
-            warehouse: row.warehouse,
-            threshold,
-            actualStock: realStock,
-            prepQty: 0,
-            orderInFlight: 0,
-            realStock,
-            orderQty: needed,
-            selected: needed > 0 && maker === 'TOYO',
-            maker,
-          });
-        }
+    for (const row of HARDCODED_THRESHOLDS) {
+      const key = `${row.cat}|${row.pattern}|${row.size}|${row.warehouse}`;
+      const realStock = snapRows[key] ?? 0;
+      if (realStock < row.threshold) {
+        const needed = row.threshold - realStock;
+        const maker = guessMaker(row.pattern);
+        allItems.push({
+          kijunId: key,
+          pattern: row.pattern,
+          size: row.size,
+          category: row.cat,
+          warehouse: row.warehouse,
+          threshold: row.threshold,
+          actualStock: realStock,
+          prepQty: 0,
+          orderInFlight: 0,
+          realStock,
+          orderQty: needed,
+          selected: needed > 0 && maker === 'TOYO',
+          maker,
+        });
       }
     }
 
     alertItems = allItems;
-    window._skippedCats = skippedCats;
+    window._skippedCats = [];
     renderAlertPage();
     renderOrderPage();
 
@@ -496,13 +526,21 @@ async function fetchAllSnapshots() {
 
 
 async function fetchKijunForCat(catName, kijunDbId) {
+  // 1時間キャッシュ
+  const cacheKey = 'kijun_cache_' + kijunDbId;
+  try {
+    const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+    if (cached && cached.ts && Date.now() - cached.ts < 3600000) {
+      return cached.rows;
+    }
+  } catch(e) {}
   try {
     const res = await notionAPI('POST', `/databases/${kijunDbId}/query`, { page_size: 100 });
     if (res.object === 'error') {
       console.warn('[' + catName + '] スキップ: ' + res.message);
       return [];
     }
-    return (res.results || []).map(page => {
+    const rows = (res.results || []).map(page => {
       const p = page.properties;
       return {
         id: page.id,
@@ -513,6 +551,8 @@ async function fetchKijunForCat(catName, kijunDbId) {
       };
     }).filter(r => r.pattern && r.size && r.threshold > 0
                 && (r.warehouse === '五日市倉庫' || r.warehouse === '志和倉庫'));
+    try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), rows })); } catch(e) {}
+    return rows;
   } catch(e) {
     console.warn('[' + catName + '] スキップ: ' + e.message);
     return [];

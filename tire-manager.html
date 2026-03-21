@@ -1281,8 +1281,8 @@ function renderHistory() {
 
   let html = `
     <div style="position:relative;margin-bottom:12px;">
-      <input id="history-search" type="text" placeholder="タイヤサイズで検索（例: 275, 195/85）"
-        oninput="filterHistory(this.value)"
+      <input id="history-search" type="text" inputmode="tel" placeholder="タイヤサイズで検索（例: 275, 195/85）"
+        oninput="filterHistory(this.value);showSizeSuggestions(this.value)"
         onfocus="showSizeSuggestions(this.value)"
         autocomplete="off"
         style="width:100%;padding:12px 14px;padding-right:40px;border-radius:10px;border:1.5px solid var(--border2);background:var(--s2);color:var(--text);font-size:14px;font-family:'DM Mono',monospace;outline:none;box-sizing:border-box;">
@@ -1444,7 +1444,7 @@ function filterHistory(query) {
   if (countEl) {
     countEl.textContent = q ? `「${query}」の検索結果: ${shown}件` : `直近の入出庫履歴（最新${historyRecords.length}件）`;
   }
-  if (q) hideSizeSuggestions();
+  // 候補表示はoninputのshowSizeSuggestionsに任せる
 }
 
 function showSizeSuggestions(query) {

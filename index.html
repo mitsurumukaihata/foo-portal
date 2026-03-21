@@ -1375,7 +1375,7 @@ const APP_DEFS = [
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>` },
   { key: '📅 出勤簿',            id: 'kintai',  label: '出勤簿',             sub: '打刻 · 勤怠履歴',          section: '現場・業務',   url: 'https://mitsurumukaihata.github.io/foo-portal/kintai.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="14" x2="8" y2="14" stroke-width="2.5"/><line x1="12" y1="14" x2="12" y2="14" stroke-width="2.5"/><line x1="8" y1="18" x2="8" y2="18" stroke-width="2.5"/><line x1="12" y1="18" x2="12" y2="18" stroke-width="2.5"/></svg>` },
-  { key: '👤 顧客情報',          id: 'customer',label: '顧客情報',           sub: '検索 · 確認 · 登録',       section: '現場・業務',   action: 'openCustApp()',
+  { key: '👤 顧客情報',          id: 'customer',label: '顧客情報',           sub: '検索 · 確認 · 登録',       section: '現場・業務',   action: 'goCustomers()',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>` },
   { key: '📋 発注管理',          id: 'order',   label: '発注管理',           sub: '仕入れ発注 · 入出庫DB連携', section: '事務・経理',   url: 'https://mitsurumukaihata.github.io/foo-portal/order.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>` },
@@ -1950,6 +1950,11 @@ async function loadStaffList() {
 }
 
 // ═══════════════════════════════════════════════
+// 顧客情報アプリへ遷移（セッション引き継ぎ）
+function goCustomers() {
+  window.location.href = 'customers.html';
+}
+
 //  顧客情報アプリ
 // ═══════════════════════════════════════════════
 

@@ -24,6 +24,18 @@
     --yellow: #d97706; --red: #dc2626; --purple: #9333ea;
   }
 }
+[data-theme="dark"] {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --blue: #3b82f6;
+  --yellow: #f59e0b; --red: #ef4444; --purple: #a855f7;
+}
+[data-theme="light"] {
+  --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+  --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208; --muted: #a08060;
+  --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --blue: #2563eb;
+  --yellow: #d97706; --red: #dc2626; --purple: #9333ea;
+}
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', sans-serif; min-height: 100vh; max-width: 480px; margin: 0 auto; }
 #token-gate { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; padding: 32px 24px; }
@@ -283,6 +295,12 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 </div>
 
 <script>
+// ── テーマ同期（ポータルと連動）──
+(function(){
+  const t = localStorage.getItem('foo_portal_theme') || 'auto';
+  if (t !== 'auto') document.documentElement.setAttribute('data-theme', t);
+})();
+
 function getMaker(pattern) {
   const p = pattern.toUpperCase();
   if (['XJE4'].includes(pattern)) return 'MICHELIN';

@@ -1350,8 +1350,8 @@ function buildPdfHtml(maker, targets) {
   const totalNew      = newOrders.reduce((s,o)=>s+(Number(propStr(o,'数量'))||0),0);
   const totalPending  = pendingOrders.reduce((s,o)=>s+(Number(propStr(o,'数量'))||0),0);
 
-  const TH = (w='') => `padding:1px 2px;font-size:3.5pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;white-space:nowrap;${w?'width:'+w+';':''}`;
-  const tdSF = (i,ex='') => `padding:1px 2px;font-size:3.5pt;text-align:center;border:0.3px solid #b8cfe8;${i%2===1?'background:#f0f5fc;':'background:#fff;'}white-space:nowrap;${ex}`;
+  const TH = (w='') => `padding:2px 3px;font-size:5pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;white-space:nowrap;${w?'width:'+w+';':''}`;
+  const tdSF = (i,ex='') => `padding:2px 3px;font-size:5pt;text-align:center;border:0.3px solid #b8cfe8;${i%2===1?'background:#f0f5fc;':'background:#fff;'}white-space:nowrap;${ex}`;
 
   const mkRow = (o, i, showOrderDate) => {
     const pat  = propStr(o,'パターン') || '—';
@@ -1412,7 +1412,7 @@ function buildPdfHtml(maker, targets) {
   <title>${pdfFilename}</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'Hiragino Kaku Gothic ProN','IPAGothic',sans-serif;padding:8mm 6mm;font-size:5pt;color:#1a1a18;}
+    body{font-family:'Hiragino Kaku Gothic ProN','IPAGothic',sans-serif;padding:10mm 8mm;font-size:5pt;color:#1a1a18;}
     table{width:100%;border-collapse:collapse;table-layout:fixed;}
     td,th{overflow:hidden;text-overflow:ellipsis;word-break:break-all;}
   </style></head><body>

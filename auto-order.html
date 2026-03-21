@@ -1093,8 +1093,8 @@ function buildPrintSheet(items, tantou, nouki, biko) {
 
   // ── 発注管理アプリと同じスタイル ──
   // 列幅を明示（パターン・サイズは固定幅、他は狭め）
-  const TH  = (w='') => `padding:1px 2px;font-size:3.5pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;white-space:nowrap;${w?'width:'+w+';':''}`;
-  const tdS = (i,ex='') => `padding:1px 2px;font-size:3.5pt;text-align:center;border:0.3px solid #b8cfe8;${i%2===1?'background:#f0f5fc;':'background:#fff;'}white-space:nowrap;${ex}`;
+  const TH  = (w='') => `padding:2px 3px;font-size:5pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;white-space:nowrap;${w?'width:'+w+';':''}`;
+  const tdS = (i,ex='') => `padding:2px 3px;font-size:5pt;text-align:center;border:0.3px solid #b8cfe8;${i%2===1?'background:#f0f5fc;':'background:#fff;'}white-space:nowrap;${ex}`;
 
   // 五日市→志和が第一優先、その中でLTL TB→LTS→バンの順
   const CAT_ORDER = ['LTL TB　ノーマル','LTL TB　スタッドレス','LTS　ノーマル','LTS　スタッドレス','RT 再生','バン','リフト'];
@@ -1137,7 +1137,7 @@ function buildPrintSheet(items, tantou, nouki, biko) {
 <title>${window._pdfFilename || 'TMFoo_発注書_自動'}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Hiragino Kaku Gothic ProN','IPAGothic',sans-serif;padding:8mm 6mm;font-size:5pt;color:#1a1a18;}
+body{font-family:'Hiragino Kaku Gothic ProN','IPAGothic',sans-serif;padding:10mm 8mm;font-size:5pt;color:#1a1a18;}
 table{width:100%;border-collapse:collapse;table-layout:fixed;}
 td,th{overflow:hidden;text-overflow:ellipsis;word-break:break-all;}
 </style></head><body>
@@ -1195,8 +1195,8 @@ async function _fetchAndInjectPending() {
   const iframe = document.getElementById('order-inline-frame') || document.getElementById('order-preview-frame');
   if (!iframe) return;
 
-  const TH = (w='') => `padding:1px 2px;font-size:3.5pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;white-space:nowrap;${w?'width:'+w+';':''}`;
-  const tdS = (i,ex='') => `padding:1px 2px;font-size:3.5pt;text-align:center;border:0.3px solid #b8cfe8;${i%2===1?'background:#f0f5fc;':'background:#fff;'}white-space:nowrap;${ex}`;
+  const TH = (w='') => `padding:2px 3px;font-size:5pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;white-space:nowrap;${w?'width:'+w+';':''}`;
+  const tdS = (i,ex='') => `padding:2px 3px;font-size:5pt;text-align:center;border:0.3px solid #b8cfe8;${i%2===1?'background:#f0f5fc;':'background:#fff;'}white-space:nowrap;${ex}`;
 
   try {
     const body = {

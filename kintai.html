@@ -32,6 +32,16 @@
     --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --red: #dc2626; --blue: #2563eb;
   }
 }
+[data-theme="dark"] {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --red: #ef4444; --blue: #3b82f6;
+}
+[data-theme="light"] {
+  --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+  --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208; --muted: #a08060;
+  --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --red: #dc2626; --blue: #2563eb;
+}
 
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; max-width:480px; margin:0 auto; }
@@ -268,6 +278,12 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 </div>
 
 <script>
+// ── テーマ同期（ポータルと連動）──
+(function(){
+  const t = localStorage.getItem('foo_portal_theme') || 'auto';
+  if (t !== 'auto') document.documentElement.setAttribute('data-theme', t);
+})();
+
 // ─── 設定 ──────────────────────────────────────────────────────────────────
 const WORKER_URL   = 'https://notion-proxy.33322666666mm.workers.dev';
 const KINTAI_DB    = '200a695f8e8880b181d8c77b7dde51b5';

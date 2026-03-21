@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>自動発注 | Tire Manager f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a;
+  --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40;
+  --green: #22c55e; --red: #ef4444; --blue: #3b82f6;
+  --yellow: #f59e0b; --purple: #a855f7;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+    --border: #e8d8c4; --border2: #d8c4a8;
+    --text: #1a1208; --muted: #a08060;
+    --accent: #e07000; --accent2: #c05800;
+    --green: #1a9e4a; --red: #dc2626; --blue: #2563eb;
+    --yellow: #d97706; --purple: #9333ea;
+  }
+}
+[data-theme="dark"] {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --red: #ef4444;
+  --blue: #3b82f6; --yellow: #f59e0b; --purple: #a855f7;
+}
+[data-theme="light"] {
+  --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+  --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208; --muted: #a08060;
+  --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --red: #dc2626;
+  --blue: #2563eb; --yellow: #d97706; --purple: #9333ea;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; max-width:480px; margin:0 auto; }
+
+/* ── Header ── */
+.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:100; }
+.header-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:2px; }
+.header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+.header-title { font-size:17px; font-weight:900; letter-spacing:-0.02em; }
+.header-title span { color:var(--accent); }
+
+/* ── Nav ── */
+.nav { display:flex; background:var(--s1); border-bottom:0.5px solid var(--border); }
+.nav-btn { flex:1; padding:10px 4px 8px; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--muted); font-size:11px; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; }
+.nav-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+/* ── Page ── */
+.page { display:none; padding-bottom:40px; }
+.page.active { display:block; }
+.content { padding:16px 16px 0; }
+
+/* ── Summary ── */
+.summary-bar { display:flex; gap:8px; margin-bottom:12px; }
+.summ-card { flex:1; background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:10px 8px; text-align:center; }
+.summ-num { font-size:22px; font-weight:900; font-family:'DM Mono',monospace; line-height:1; }
+.summ-lbl { font-size:9px; color:var(--muted); margin-top:3px; }
+
+/* ── Notice ── */
+.notice-box { background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.3); border-radius:8px; padding:8px 12px; font-size:11px; color:var(--yellow); line-height:1.6; margin-bottom:12px; }
+
+/* ── Section header ── */
+.wh-section { display:flex; align-items:center; gap:8px; padding:10px 0 6px; font-size:10px; font-weight:700; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; border-top:0.5px solid var(--border); margin-top:4px; }
+.wh-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+/* ── Alert card ── */
+.alert-card { background:var(--s2); border:1px solid var(--border); border-radius:12px; margin-bottom:8px; overflow:hidden; cursor:pointer; transition:border-color 0.15s; }
+.alert-card.critical { border-color:rgba(239,68,68,0.4); background:rgba(239,68,68,0.04); }
+.alert-card.warning { border-color:rgba(245,158,11,0.35); background:rgba(245,158,11,0.04); }
+.alert-card-inner { display:flex; align-items:center; gap:10px; padding:11px 12px; }
+.alert-dot-big { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.alert-info { flex:1; min-width:0; }
+.alert-pattern { font-size:14px; font-weight:700; font-family:'DM Mono',monospace; }
+.alert-meta { font-size:10px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.alert-stocks { display:flex; gap:0; flex-shrink:0; }
+.st-cell { text-align:center; padding:0 8px; border-left:0.5px solid var(--border); }
+.st-num { font-size:15px; font-weight:700; font-family:'DM Mono',monospace; line-height:1; }
+.st-lbl { font-size:8px; color:var(--muted); margin-top:2px; }
+.alert-bar { height:3px; }
+.alert-bar-fill { height:100%; border-radius:0 0 0 0; transition:width 0.4s; }
+
+/* ── Tags ── */
+.tag { font-size:9px; font-weight:700; padding:2px 7px; border-radius:10px; display:inline-block; }
+.tag-toyo { background:rgba(240,165,0,0.12); color:var(--accent); border:1px solid rgba(240,165,0,0.3); }
+.tag-bs { background:rgba(59,130,246,0.12); color:var(--blue); border:1px solid rgba(59,130,246,0.25); }
+.tag-cat { background:var(--s3); color:var(--muted); }
+
+/* ── Buttons ── */
+.btn-primary { width:100%; background:var(--accent); border:none; border-radius:10px; padding:14px; color:#fff; font-size:14px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; margin-top:10px; transition:opacity 0.15s; }
+.btn-primary:disabled { opacity:0.4; cursor:default; }
+.btn-secondary { width:100%; background:transparent; border:1.5px solid var(--border2); border-radius:10px; padding:12px; color:var(--text); font-size:14px; font-family:'Noto Sans JP',sans-serif; cursor:pointer; margin-top:6px; font-weight:500; }
+.btn-danger { width:100%; background:transparent; border:1px solid var(--red); border-radius:10px; padding:11px; color:var(--red); font-size:13px; font-family:'Noto Sans JP',sans-serif; cursor:pointer; margin-top:6px; }
+
+/* ── Loading ── */
+.loading-wrap { text-align:center; padding:60px 20px; }
+.spinner { width:32px; height:32px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 16px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-text { font-size:13px; color:var(--muted); }
+
+/* ── Error ── */
+.error-box { background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); border-radius:8px; padding:12px 14px; font-size:12px; color:var(--red); line-height:1.6; margin-bottom:12px; }
+
+/* ── Order entries ── */
+.order-section-head { display:flex; align-items:center; justify-content:space-between; padding:8px 0 5px; border-top:0.5px solid var(--border); margin-top:4px; }
+.order-section-lbl { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; font-weight:700; }
+.order-count-badge { font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; }
+.order-entry { background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:6px; display:flex; align-items:center; gap:10px; }
+.order-entry.deselected { opacity:0.4; }
+.order-checkbox { width:20px; height:20px; border-radius:5px; border:1.5px solid var(--accent); background:rgba(240,165,0,0.1); display:flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; }
+.order-checkbox.off { border-color:var(--border2); background:transparent; }
+.order-check-icon { width:11px; height:11px; background:var(--accent); border-radius:2px; }
+.order-info { flex:1; min-width:0; }
+.order-pattern { font-size:13px; font-weight:700; font-family:'DM Mono',monospace; }
+.order-detail { font-size:10px; color:var(--muted); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.qty-wrap { display:flex; align-items:center; gap:6px; }
+.qty-btn { width:26px; height:26px; border-radius:6px; border:1px solid var(--border2); background:var(--s3); color:var(--text); font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:'Noto Sans JP',sans-serif; flex-shrink:0; }
+.qty-num { font-size:16px; font-weight:700; font-family:'DM Mono',monospace; color:var(--accent); width:30px; text-align:center; }
+
+/* ── PDF options ── */
+.pdf-options { display:flex; gap:8px; margin-bottom:12px; }
+.pdf-opt-btn { flex:1; padding:11px 8px; border-radius:10px; font-size:12px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; }
+.pdf-opt-toyo { background:rgba(240,165,0,0.1); border:1.5px solid var(--accent); color:var(--accent); }
+.pdf-opt-history { background:var(--s2); border:1.5px solid var(--border2); color:var(--muted); }
+
+/* ── Success box ── */
+.success-box { background:rgba(34,197,94,0.07); border:1px solid rgba(34,197,94,0.25); border-radius:10px; padding:12px 14px; font-size:12px; color:var(--green); line-height:1.7; margin-bottom:10px; }
+
+/* ── History ── */
+.history-row { background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:6px; }
+.history-row-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+.history-date { font-size:11px; color:var(--muted); }
+.history-status { font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; }
+.st-new { background:rgba(245,158,11,0.12); color:var(--yellow); }
+.st-ordered { background:rgba(240,165,0,0.12); color:var(--accent); }
+.st-done { background:rgba(34,197,94,0.12); color:var(--green); }
+.st-cancel { background:rgba(239,68,68,0.1); color:var(--red); }
+.history-row-body { font-size:12px; color:var(--text); }
+.history-row-meta { font-size:10px; color:var(--muted); margin-top:3px; }
+
+/* ── Delivery fields ── */
+.delivery-fields { background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:12px; }
+.df-row { display:flex; gap:10px; margin-bottom:8px; }
+.df-row:last-child { margin-bottom:0; }
+.df-field { flex:1; }
+.df-label { font-size:10px; color:var(--muted); margin-bottom:4px; letter-spacing:0.04em; }
+.df-input, .df-select { width:100%; background:var(--s3); border:1px solid var(--border2); border-radius:7px; padding:8px 10px; font-size:13px; font-family:'Noto Sans JP',sans-serif; color:var(--text); outline:none; transition:border-color 0.15s; }
+.df-input:focus, .df-select:focus { border-color:var(--accent); }
+.df-input::placeholder { color:var(--muted); }
+.df-select { appearance:none; }
+
+/* ── Divider ── */
+.divider { height:0.5px; background:var(--border); margin:10px 0; }
+
+/* ──────────────────────────────────────
+   印刷用スタイル（発注書PDF）
+─────────────────────────────────────── */
+@media print {
+  body { background:#fff !important; color:#000 !important; font-family:'Noto Sans JP',sans-serif !important; max-width:none !important; }
+  #main-app { display:none !important; }
+  #print-sheet { display:block !important; }
+}
+#print-sheet { display:none; }
+
+.print-page { padding:24mm 20mm; min-height:100vh; background:#fff; color:#000; }
+.print-header { border-bottom:2px solid #e07000; padding-bottom:10px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:flex-end; }
+.print-company { font-size:11px; color:#666; margin-bottom:4px; }
+.print-title { font-size:22px; font-weight:900; color:#e07000; letter-spacing:-0.02em; }
+.print-date { font-size:11px; color:#666; text-align:right; }
+.print-to-section { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+.print-to-block { }
+.print-to-label { font-size:9px; color:#888; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:3px; }
+.print-to-val { font-size:14px; font-weight:700; }
+.print-meta-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:16px; }
+.print-meta-item { background:#f8f3ee; border-radius:6px; padding:8px 10px; }
+.print-meta-label { font-size:9px; color:#888; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:2px; }
+.print-meta-val { font-size:13px; font-weight:700; }
+.print-table { width:100%; border-collapse:collapse; margin-bottom:12px; }
+.print-table thead tr { background:#e07000; color:#fff; }
+.print-table th { padding:7px 10px; font-size:11px; font-weight:700; text-align:left; letter-spacing:0.04em; }
+.print-table tbody tr:nth-child(even) { background:#fdf6ee; }
+.print-table td { padding:8px 10px; font-size:12px; border-bottom:0.5px solid #e8d8c4; }
+.print-table td.mono { font-family:'DM Mono',monospace; }
+.print-table td.qty-col { text-align:right; font-weight:700; color:#e07000; font-family:'DM Mono',monospace; }
+.print-table tfoot tr { background:#fdf0e4; }
+.print-table tfoot td { padding:8px 10px; font-size:13px; font-weight:700; }
+.print-total-row td:last-child { color:#e07000; font-size:16px; font-family:'DM Mono',monospace; }
+.print-footer { border-top:0.5px solid #e8d8c4; padding-top:10px; margin-top:16px; display:flex; justify-content:space-between; align-items:flex-end; }
+.print-footer-note { font-size:10px; color:#888; line-height:1.6; }
+.print-sign-area { text-align:right; }
+.print-sign-label { font-size:9px; color:#888; margin-bottom:20px; }
+.print-sign-line { width:120px; height:1px; background:#ccc; margin-left:auto; }
+.print-notice { background:#fef3cd; border:1px solid #e07000; border-radius:6px; padding:8px 12px; font-size:10px; color:#7a4000; line-height:1.7; margin-bottom:12px; }
+</style>
+<script>
+(function(){
+  const t = localStorage.getItem('foo_portal_theme') || 'auto';
+  if (t !== 'auto') document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
+</head>
+<body>
+
+<!-- ── 印刷用発注書（画面には非表示、印刷時のみ表示） ── -->
+<div id="print-sheet">
+  <div class="print-page" id="print-content">
+    <!-- JS で動的生成 -->
+  </div>
+</div>
+
+<!-- ── メインアプリ ── -->
+<div id="main-app">
+  <div class="header">
+    <div class="header-top">
+      <div class="header-brand">Tire Manager f.o.o</div>
+      <a href="https://mitsurumukaihata.github.io/foo-portal/"
+        style="font-size:11px;color:var(--muted);text-decoration:none;padding:3px 8px;border:0.5px solid var(--border);border-radius:20px;">
+        ← ポータル
+      </a>
+    </div>
+    <div class="header-title">自動<span>発注</span></div>
+  </div>
+
+  <div class="nav">
+    <button class="nav-btn active" onclick="switchTab('alert')">在庫アラート</button>
+    <button class="nav-btn" onclick="switchTab('order')">発注確認</button>
+    <button class="nav-btn" onclick="switchTab('history')">発注履歴</button>
+  </div>
+
+  <!-- 在庫アラートページ -->
+  <div class="page active" id="page-alert">
+    <div class="content" id="alert-content">
+      <div class="loading-wrap">
+        <div class="spinner"></div>
+        <div class="loading-text">在庫基準をチェック中…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 発注確認ページ -->
+  <div class="page" id="page-order">
+    <div class="content">
+      <div style="padding:8px 0 4px;">
+        <div style="font-size:9px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">発注内容の確認・調整</div>
+      </div>
+
+      <!-- 担当者・希望納期 -->
+      <div class="delivery-fields">
+        <div class="df-row">
+          <div class="df-field">
+            <div class="df-label">担当者</div>
+            <select class="df-select" id="order-tantou">
+              <option value="">選択してください</option>
+              <option value="向畑 充">向畑 充</option>
+              <option value="岡崎 由美">岡崎 由美</option>
+              <option value="矢島 明和">矢島 明和</option>
+              <option value="大田 健">大田 健</option>
+              <option value="中川 颯">中川 颯</option>
+            </select>
+          </div>
+          <div class="df-field">
+            <div class="df-label">希望納期</div>
+            <input class="df-input" type="date" id="order-nouki">
+          </div>
+        </div>
+        <div class="df-row">
+          <div class="df-field">
+            <div class="df-label">備考（任意）</div>
+            <input class="df-input" type="text" id="order-biko" placeholder="特記事項があれば…">
+          </div>
+        </div>
+      </div>
+
+      <div id="order-list-content">
+        <div style="text-align:center;padding:32px 0;color:var(--muted);font-size:13px;">
+          在庫アラートタブで発注対象を確認してください
+        </div>
+      </div>
+
+      <div id="order-actions" style="display:none;">
+        <div class="divider"></div>
+        <div id="order-error"></div>
+        <button class="btn-primary" id="order-submit-btn" onclick="submitOrders()">
+          PDF発行 ＋ Notionに記録する
+        </button>
+        <button class="btn-secondary" onclick="switchTab('alert')">← 在庫アラートに戻る</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 発注履歴ページ -->
+  <div class="page" id="page-history">
+    <div class="content" id="history-content">
+      <div class="loading-wrap">
+        <div class="spinner"></div>
+        <div class="loading-text">発注履歴を取得中…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ──────────────────────────────────────
+// 設定
+// ──────────────────────────────────────
+const WORKER      = 'https://notion-proxy.33322666666mm.workers.dev';
+const KIJUN_DB    = 'dfbcb5d0a491491a9b39e1e43de54419';   // 在庫基準設定DB
+const HACCHU_DB   = '202a695f8e8880aa92f6f38d9b47b537';   // 発注管理表DB
+const SESSION_KEY = 'foo_portal_session';
+
+// 在庫DBマッピング（カテゴリ名 → DB ID・warehouseField）
+const CAT_DB_MAP = {
+  'LTL TB　ノーマル':    { id:'200a695f8e888018b5f5eac83fdad412', wField:'倉庫' },
+  'LTL TB　スタッドレス':{ id:'201a695f8e888171abb8e349ad4d055a', wField:'倉庫' },
+  'LTS　ノーマル':       { id:'201a695f8e8881adb144cd3a1639132d', wField:'倉庫' },
+  'LTS　スタッドレス':   { id:'201a695f8e8881a299e8fb57bad707f6', wField:'倉庫' },
+  'RT 再生':             { id:'201a695f8e888104bb47c7103d5909dc', wField:'倉庫' },
+  'T/T チューブタイプ':  { id:'201a695f8e8881a6930fcf2bd752e676', wField:'倉庫' },
+  'バン':                { id:'201a695f8e8881f3a958cead42156e07', wField:'出庫倉庫' },
+  'リフト':              { id:'201a695f8e8881c5b2c3d9e9ce2ffd21', wField:'出庫倉庫' },
+};
+
+const KUBUN_SIGN = {
+  '入庫':1,'移動入庫':1,'返品（倉庫へ）':1,'返品':1,
+  '出庫':-1,'準備':-1,'移動出庫':-1,'返品（メーカーへ）':-1,
+  '発注中':0
+};
+const WAREHOUSES = ['五日市倉庫','志和倉庫'];
+
+// ──────────────────────────────────────
+// State
+// ──────────────────────────────────────
+let alertItems    = [];  // {kijunId, pattern, size, category, warehouse, threshold, realStock, orderQty, selected, maker}
+let orderItems    = [];  // alertItemsのselectedなもの（発注確認ページ用）
+let currentUser   = '';
+
+// ──────────────────────────────────────
+// 初期化
+// ──────────────────────────────────────
+window.onload = () => {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      if (s && new Date(s.expires) > new Date() && s.name) currentUser = s.name;
+    }
+  } catch(e) {}
+  if (!currentUser) currentUser = localStorage.getItem('tire_name') || '';
+
+  // デフォルト担当者セット
+  if (currentUser) {
+    const sel = document.getElementById('order-tantou');
+    for (let i=0; i<sel.options.length; i++) {
+      if (sel.options[i].value === currentUser) { sel.selectedIndex = i; break; }
+    }
+  }
+
+  // デフォルト納期：今日から7日後
+  const d = new Date();
+  d.setDate(d.getDate() + 7);
+  document.getElementById('order-nouki').value = d.toISOString().slice(0,10);
+
+  loadAlerts();
+};
+
+// ──────────────────────────────────────
+// Notion API
+// ──────────────────────────────────────
+async function notionAPI(method, path, body) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const res = await fetch(WORKER + path, {
+      method, headers:{'Content-Type':'application/json'},
+      body: body ? JSON.stringify(body) : undefined,
+      signal: ctrl.signal
+    });
+    clearTimeout(timer);
+    const data = await res.json();
+    if (data.object === 'error') throw new Error(data.message);
+    return data;
+  } catch(e) {
+    clearTimeout(timer);
+    if (e.name === 'AbortError') throw new Error('タイムアウト');
+    throw e;
+  }
+}
+
+// ──────────────────────────────────────
+// 在庫アラート読み込み
+// ──────────────────────────────────────
+async function loadAlerts() {
+  const el = document.getElementById('alert-content');
+  el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">在庫基準設定を取得中…</div></div>';
+
+  try {
+    // 1) 在庫基準設定を全取得
+    const kijunRows = await fetchAllKijun();
+
+    // 2) 対象倉庫（五日市・志和）のみ、しきい値 > 0 のものだけ処理
+    const targets = kijunRows.filter(r => {
+      const w = r.倉庫;
+      return (w === '五日市倉庫' || w === '志和倉庫') && (r.しきい値 || 0) > 0 && r.パターン名 && r.サイズコード;
+    });
+
+    if (!targets.length) {
+      el.innerHTML = '<div class="content"><div style="text-align:center;padding:48px 20px;color:var(--muted);font-size:14px;">在庫基準設定データがありません</div></div>';
+      return;
+    }
+
+    el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">在庫データを集計中…</div></div>';
+
+    // 3) 必要なカテゴリの在庫を取得
+    const catSet = [...new Set(targets.map(r => r.カテゴリ).filter(c => CAT_DB_MAP[c]))];
+    const stockMap = {}; // key: "pattern|size|warehouse" → {actual, prep, order}
+    await Promise.all(catSet.map(cat => fetchStockForCat(cat, stockMap)));
+
+    // 4) 実質在庫を計算してアラート判定
+    alertItems = targets.map(r => {
+      const key = r.倉庫 !== '全倉庫'
+        ? `${r.パターン名}|${r.サイズコード}|${r.倉庫}`
+        : null;
+      const orderKey = `${r.パターン名}|${r.サイズコード}|__order__`;
+      const st = key ? (stockMap[key] || {actual:0, prepQty:0}) : {actual:0, prepQty:0};
+      const orderQtyInFlight = stockMap[orderKey] || 0;
+      // 実質在庫 = 在庫本数（準備中含む） + 発注中の入荷予定
+      const realStock = st.actual + orderQtyInFlight;
+      const threshold = r.しきい値 || 0;
+      const needed = Math.max(0, threshold - realStock);
+      const maker = guessMaker(r.パターン名);
+      return {
+        kijunId: r.id,
+        pattern: r.パターン名,
+        size: r.サイズコード,
+        category: r.カテゴリ,
+        warehouse: r.倉庫,
+        threshold,
+        actualStock: st.actual,      // 純在庫（準備中を含む実在庫）
+        prepQty: st.prepQty,         // 準備中の内訳本数（表示用）
+        orderInFlight: orderQtyInFlight, // 発注中の入荷予定
+        realStock,
+        orderQty: needed,
+        selected: needed > 0 && maker === 'TOYO',
+        maker,
+      };
+    }).filter(item => item.realStock < item.threshold);
+
+    renderAlertPage();
+    renderOrderPage();
+
+  } catch(e) {
+    el.innerHTML = `<div class="content"><div class="error-box">エラーが発生しました<br><small>${e.message}</small></div><button class="btn-secondary" style="margin-top:8px;" onclick="loadAlerts()">再試行</button></div>`;
+  }
+}
+
+async function fetchAllKijun() {
+  let all = [], cursor;
+  while (true) {
+    const body = { page_size:100 };
+    if (cursor) body.start_cursor = cursor;
+    const res = await notionAPI('POST', `/databases/${KIJUN_DB}/query`, body);
+    res.results.forEach(page => {
+      const p = page.properties;
+      all.push({
+        id: page.id,
+        パターン名: p['パターン名']?.select?.name || '',
+        サイズコード: p['サイズコード']?.rich_text?.[0]?.plain_text || '',
+        カテゴリ: p['カテゴリ']?.select?.name || '',
+        タイヤメーカー: p['タイヤメーカー']?.select?.name || '',
+        倉庫: p['倉庫']?.select?.name || '',
+        しきい値: p['しきい値']?.number ?? 0,
+      });
+    });
+    if (!res.has_more) break;
+    cursor = res.next_cursor;
+  }
+  return all;
+}
+
+async function fetchStockForCat(cat, stockMap) {
+  const info = CAT_DB_MAP[cat];
+  if (!info) return;
+  let all = [], cursor;
+  while (true) {
+    const body = { page_size:100 };
+    if (cursor) body.start_cursor = cursor;
+    const res = await notionAPI('POST', `/databases/${info.id}/query`, body);
+    all = all.concat(res.results);
+    if (!res.has_more) break;
+    cursor = res.next_cursor;
+  }
+  all.forEach(r => {
+    const p = r.properties;
+    const pattern = p['パターン名']?.select?.name || '';
+    const size = p['サイズコード']?.select?.name || '';
+    const qty = p['数量']?.number || 0;
+    const kubun = p['区分']?.select?.name || '';
+    if (!pattern || !size) return;
+
+    // 発注中は倉庫不問で集計（入荷予定本数として加算）
+    if (kubun === '発注中') {
+      // 全倉庫キーに発注中を加算（後で各倉庫の realStock に足す）
+      const allKey = `${pattern}|${size}|__order__`;
+      if (!stockMap[allKey]) stockMap[allKey] = 0;
+      stockMap[allKey] += qty;
+      return;
+    }
+
+    const warehouse = p[info.wField]?.select?.name || '';
+    if (!warehouse) return;
+    const key = `${pattern}|${size}|${warehouse}`;
+    if (!stockMap[key]) stockMap[key] = {actual:0, prepQty:0};
+
+    const sign = KUBUN_SIGN[kubun] || 0;
+    stockMap[key].actual += sign * qty;
+    // 準備中の本数を別途記録（表示用）
+    if (kubun === '準備') stockMap[key].prepQty += qty;
+  });
+}
+
+function guessMaker(pattern) {
+  const p = (pattern || '').toUpperCase();
+  if (p.startsWith('W') || p.startsWith('G539') || p.startsWith('R') ||
+      ['LV01','W300','RTM810','RTM804','RTM807','RTM81C-170','RTM890','RTW910','RTW911','RTW970','RTG610'].includes(pattern)) return 'BS';
+  if (['LT01','SV01','VAN01','SPLT50','SPLT21','SPLT22'].includes(p) || p.startsWith('SP')) return 'DUNLOP';
+  if (pattern === 'XJE4') return 'MICHELIN';
+  return 'TOYO';
+}
+
+// ──────────────────────────────────────
+// アラートページ描画
+// ──────────────────────────────────────
+function renderAlertPage() {
+  const el = document.getElementById('alert-content');
+  const critical = alertItems.filter(i => i.realStock === 0).length;
+  const warning  = alertItems.filter(i => i.realStock > 0).length;
+  const toyo     = alertItems.filter(i => i.maker === 'TOYO').length;
+
+  let html = '<div style="padding:12px 0 0;">';
+
+  // サマリー
+  html += `<div class="summary-bar">
+    <div class="summ-card"><div class="summ-num" style="color:var(--red);">${critical}</div><div class="summ-lbl">在庫ゼロ</div></div>
+    <div class="summ-card"><div class="summ-num" style="color:var(--yellow);">${warning}</div><div class="summ-lbl">不足</div></div>
+    <div class="summ-card"><div class="summ-num" style="color:var(--accent);">${toyo}</div><div class="summ-lbl">TOYO要発注</div></div>
+  </div>`;
+
+  if (!alertItems.length) {
+    html += '<div style="text-align:center;padding:48px 0;color:var(--muted);font-size:14px;">在庫基準を満たしています ✓</div>';
+    html += '</div>';
+    el.innerHTML = html;
+    return;
+  }
+
+  html += `<div class="notice-box">準備中・発注中の在庫も加味した<strong style="color:var(--yellow);">実質在庫</strong>で判定しています</div>`;
+
+  // 倉庫別グルーピング
+  WAREHOUSES.forEach(wh => {
+    const items = alertItems.filter(i => i.warehouse === wh);
+    if (!items.length) return;
+    const dotColor = wh === '五日市倉庫' ? 'var(--green)' : 'var(--blue)';
+    html += `<div class="wh-section"><div class="wh-dot" style="background:${dotColor};"></div>${wh}</div>`;
+
+    items.sort((a,b) => (a.realStock/a.threshold) - (b.realStock/b.threshold));
+    items.forEach(item => {
+      const pct = Math.round((item.realStock / item.threshold) * 100);
+      const cls = item.realStock === 0 ? 'critical' : 'warning';
+      const dotColor2 = item.realStock === 0 ? 'var(--red)' : 'var(--yellow)';
+      const numColor  = item.realStock === 0 ? 'color:var(--red)' : 'color:var(--yellow)';
+      const barColor  = item.realStock === 0 ? 'var(--red)' : 'var(--yellow)';
+      const makerTag  = item.maker === 'TOYO'
+        ? `<span class="tag tag-toyo">TOYO</span>`
+        : item.maker === 'BS'
+        ? `<span class="tag tag-bs">BS</span>`
+        : `<span class="tag tag-cat">${item.maker}</span>`;
+
+      let stockInfo = `実在庫 ${item.actualStock}本`;
+      if (item.prepQty > 0) stockInfo += `（うち準備中 ${item.prepQty}本）`;
+      if (item.orderInFlight > 0) stockInfo += ` + 発注中 ${item.orderInFlight}本入荷予定`;
+
+      html += `<div class="alert-card ${cls}">
+        <div class="alert-card-inner">
+          <div class="alert-dot-big" style="background:${dotColor2};"></div>
+          <div class="alert-info">
+            <div class="alert-pattern">${item.pattern} &nbsp;${makerTag}</div>
+            <div class="alert-meta">${item.size} ／ ${item.category}</div>
+            <div class="alert-meta" style="margin-top:2px;font-size:9px;">${stockInfo}</div>
+          </div>
+          <div class="alert-stocks">
+            <div class="st-cell">
+              <div class="st-num" style="${numColor}">${item.realStock}</div>
+              <div class="st-lbl">実質在庫</div>
+            </div>
+            <div class="st-cell">
+              <div class="st-num" style="color:var(--muted);">${item.threshold}</div>
+              <div class="st-lbl">しきい値</div>
+            </div>
+          </div>
+        </div>
+        <div class="alert-bar"><div class="alert-bar-fill" style="width:${Math.min(pct,100)}%;background:${barColor};"></div></div>
+      </div>`;
+    });
+  });
+
+  const toyoCount = alertItems.filter(i => i.maker === 'TOYO' && i.orderQty > 0).length;
+  html += `<button class="btn-primary" onclick="goToOrderTab()" ${toyoCount ? '' : 'disabled'}>
+    TOYO 発注対象 ${toyoCount}品目 を確認する →
+  </button>`;
+  html += '<div style="height:16px;"></div>';
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function goToOrderTab() {
+  renderOrderPage();
+  switchTab('order');
+}
+
+// ──────────────────────────────────────
+// 発注確認ページ描画
+// ──────────────────────────────────────
+function renderOrderPage() {
+  const toyoItems = alertItems.filter(i => i.maker === 'TOYO' && i.orderQty > 0);
+  const el = document.getElementById('order-list-content');
+  const actEl = document.getElementById('order-actions');
+
+  if (!toyoItems.length) {
+    el.innerHTML = '<div style="text-align:center;padding:32px 0;color:var(--muted);font-size:13px;">TOYO発注対象はありません</div>';
+    actEl.style.display = 'none';
+    return;
+  }
+
+  actEl.style.display = 'block';
+
+  // 倉庫別グルーピング
+  let html = '';
+  WAREHOUSES.forEach(wh => {
+    const items = toyoItems.filter(i => i.warehouse === wh);
+    if (!items.length) return;
+    const dotColor = wh === '五日市倉庫' ? 'var(--green)' : 'var(--blue)';
+    html += `<div class="order-section-head">
+      <div class="order-section-lbl" style="display:flex;align-items:center;gap:6px;">
+        <div style="width:6px;height:6px;border-radius:50%;background:${dotColor};flex-shrink:0;"></div>${wh}
+      </div>
+      <span class="order-count-badge tag-toyo">${items.length}品目</span>
+    </div>`;
+
+    items.forEach((item, idx) => {
+      const globalIdx = alertItems.indexOf(item);
+      const chkCls = item.selected ? '' : 'off';
+      const chkIcon = item.selected ? '<div class="order-check-icon"></div>' : '';
+      const entryCls = item.selected ? '' : 'deselected';
+      html += `<div class="order-entry ${entryCls}" id="oe-${globalIdx}">
+        <div class="order-checkbox ${chkCls}" onclick="toggleOrderItem(${globalIdx})">${chkIcon}</div>
+        <div class="order-info">
+          <div class="order-pattern">${item.pattern}</div>
+          <div class="order-detail">${item.size} ／ <span style="color:var(--accent);font-weight:700;">${wh.replace('倉庫','')}</span></div>
+        </div>
+        <div class="qty-wrap">
+          <div class="qty-btn" onclick="changeQty(${globalIdx},-1)">−</div>
+          <div class="qty-num" id="qty-${globalIdx}">${item.orderQty}</div>
+          <div class="qty-btn" onclick="changeQty(${globalIdx},+1)">＋</div>
+        </div>
+      </div>`;
+    });
+  });
+
+  const selectedCount = toyoItems.filter(i => i.selected).length;
+  const totalQty = toyoItems.filter(i => i.selected).reduce((s,i) => s+i.orderQty, 0);
+
+  html += `<div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+    <div style="font-size:12px;color:var(--muted);">選択中 ${selectedCount}品目</div>
+    <div style="font-size:18px;font-weight:900;font-family:'DM Mono',monospace;color:var(--accent);">計 ${totalQty}本</div>
+  </div>`;
+
+  el.innerHTML = html;
+
+  const btn = document.getElementById('order-submit-btn');
+  if (btn) btn.disabled = selectedCount === 0;
+}
+
+function toggleOrderItem(idx) {
+  alertItems[idx].selected = !alertItems[idx].selected;
+  renderOrderPage();
+}
+
+function changeQty(idx, delta) {
+  alertItems[idx].orderQty = Math.max(1, alertItems[idx].orderQty + delta);
+  const el = document.getElementById(`qty-${idx}`);
+  if (el) el.textContent = alertItems[idx].orderQty;
+}
+
+// ──────────────────────────────────────
+// 発注処理
+// ──────────────────────────────────────
+async function submitOrders() {
+  const tantou = document.getElementById('order-tantou').value;
+  const nouki  = document.getElementById('order-nouki').value;
+  const biko   = document.getElementById('order-biko').value.trim();
+
+  if (!tantou) { alert('担当者を選択してください'); return; }
+  if (!nouki)  { alert('希望納期を入力してください'); return; }
+
+  const selectedItems = alertItems.filter(i => i.selected && i.maker === 'TOYO' && i.orderQty > 0);
+  if (!selectedItems.length) { alert('発注対象を選択してください'); return; }
+
+  const btn = document.getElementById('order-submit-btn');
+  btn.disabled = true;
+  btn.textContent = '処理中…';
+  document.getElementById('order-error').innerHTML = '';
+
+  try {
+    // 1) 発注管理表DBにレコード作成
+    await createHacchuRecords(selectedItems, tantou, nouki, biko);
+
+    // 2) PDF発行（印刷ダイアログを開く）
+    buildPrintSheet(selectedItems, tantou, nouki, biko);
+    setTimeout(() => window.print(), 300);
+
+    // 3) 成功表示
+    const actEl = document.getElementById('order-actions');
+    actEl.innerHTML = `<div class="success-box">
+      ✓ 発注管理表に ${selectedItems.length}件 を記録しました（ステータス：新規発注）<br>
+      ✓ PDF発注書の印刷ダイアログを開きました
+    </div>
+    <button class="btn-secondary" onclick="switchTab('history');loadHistory();">発注履歴を確認する</button>
+    <button class="btn-secondary" onclick="loadAlerts();">在庫アラートを再チェック</button>`;
+
+    // 発注済みアイテムをアラートから除外
+    alertItems = alertItems.filter(i => !selectedItems.includes(i));
+    renderAlertPage();
+
+  } catch(e) {
+    document.getElementById('order-error').innerHTML = `<div class="error-box">エラーが発生しました：${e.message}</div>`;
+    btn.disabled = false;
+    btn.textContent = 'PDF発行 ＋ Notionに記録する';
+  }
+}
+
+async function createHacchuRecords(items, tantou, nouki, biko) {
+  // 並列で作成
+  await Promise.all(items.map(item => {
+    const warehouseLabel = item.warehouse === '五日市倉庫' ? '五日市' : '志和';
+    const titleText = `${item.pattern} ${item.size} ${item.warehouse}`;
+    const props = {
+      'タイヤサイズ': { title: [{ text: { content: titleText } }] },
+      'パターン':     { select: { name: item.pattern } },
+      'サイズ':       { select: { name: item.size } },
+      '数量':         { number: item.orderQty },
+      '仕入先':       { select: { name: 'TOYO' } },
+      '種別':         { select: { name: 'タイヤ' } },
+      'ステータス':   { select: { name: '新規発注' } },
+      '納入予定場所': { select: { name: warehouseLabel } },
+      '注文担当':     { select: { name: tantou.includes('岡崎') ? '岡崎' : '向畑' } },
+    };
+    if (nouki) props['納期予定日'] = { date: { start: nouki } };
+    if (biko)  props['備考欄'] = { rich_text: [{ text: { content: biko } }] };
+    props['サイズコード'] = { rich_text: [{ text: { content: item.size } }] };
+    return notionAPI('POST', '/pages', { parent: { database_id: HACCHU_DB }, properties: props });
+  }));
+}
+
+// ──────────────────────────────────────
+// PDF発注書生成
+// ──────────────────────────────────────
+function buildPrintSheet(items, tantou, nouki, biko) {
+  const today = new Date();
+  const dateStr = `${today.getFullYear()}年${today.getMonth()+1}月${today.getDate()}日`;
+  const noukiStr = nouki
+    ? (() => { const d=new Date(nouki); return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`; })()
+    : '—';
+
+  const totalQty = items.reduce((s,i) => s + i.orderQty, 0);
+
+  // 倉庫別グループ化
+  const byWh = {};
+  items.forEach(i => {
+    const k = i.warehouse;
+    if (!byWh[k]) byWh[k] = [];
+    byWh[k].push(i);
+  });
+
+  let tableRows = '';
+  Object.entries(byWh).forEach(([wh, whItems]) => {
+    whItems.forEach((item, idx) => {
+      const rowStyle = idx % 2 === 0 ? '' : 'background:#fdf6ee;';
+      tableRows += `<tr style="${rowStyle}">
+        <td>${item.pattern}</td>
+        <td class="mono">${item.size}</td>
+        <td>${item.category || '—'}</td>
+        <td>${wh.replace('倉庫','')}</td>
+        <td class="qty-col">${item.orderQty}本</td>
+      </tr>`;
+    });
+  });
+
+  const noticeHtml = biko
+    ? `<div class="print-notice"><strong>備考：</strong>${escHtml(biko)}</div>`
+    : '';
+
+  document.getElementById('print-content').innerHTML = `
+    <div class="print-header">
+      <div>
+        <div class="print-company">有限会社タイヤマネージャー f.o.o</div>
+        <div class="print-title">発注書（TOYO TIRE）</div>
+      </div>
+      <div class="print-date">発行日：${dateStr}</div>
+    </div>
+
+    <div class="print-to-section">
+      <div class="print-to-block">
+        <div class="print-to-label">発注先</div>
+        <div class="print-to-val">TOYO TIRE 株式会社 御中</div>
+      </div>
+      <div class="print-to-block">
+        <div class="print-to-label">発注担当者</div>
+        <div class="print-to-val">${escHtml(tantou)}</div>
+      </div>
+    </div>
+
+    <div class="print-meta-grid">
+      <div class="print-meta-item">
+        <div class="print-meta-label">希望納期</div>
+        <div class="print-meta-val">${noukiStr}</div>
+      </div>
+      <div class="print-meta-item">
+        <div class="print-meta-label">合計本数</div>
+        <div class="print-meta-val" style="color:#e07000;">${totalQty}本</div>
+      </div>
+      <div class="print-meta-item">
+        <div class="print-meta-label">品目数</div>
+        <div class="print-meta-val">${items.length}品目</div>
+      </div>
+    </div>
+
+    ${noticeHtml}
+
+    <table class="print-table">
+      <thead>
+        <tr>
+          <th>パターン</th>
+          <th>サイズ</th>
+          <th>カテゴリ</th>
+          <th>納入先倉庫</th>
+          <th style="text-align:right;">数量</th>
+        </tr>
+      </thead>
+      <tbody>${tableRows}</tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4" style="font-size:12px;font-weight:700;">合計</td>
+          <td class="qty-col" style="font-size:16px;">${totalQty}本</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="print-footer">
+      <div class="print-footer-note">
+        ※ 本発注書の内容をご確認の上、ご対応をよろしくお願いいたします。<br>
+        ※ ご不明な点はご連絡ください。<br>
+        有限会社タイヤマネージャー f.o.o
+      </div>
+      <div class="print-sign-area">
+        <div class="print-sign-label">確認印</div>
+        <div class="print-sign-line"></div>
+      </div>
+    </div>`;
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ──────────────────────────────────────
+// 発注履歴
+// ──────────────────────────────────────
+async function loadHistory() {
+  const el = document.getElementById('history-content');
+  el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">発注履歴を取得中…</div></div>';
+  try {
+    const res = await notionAPI('POST', `/databases/${HACCHU_DB}/query`, {
+      filter: { property: '種別', select: { equals: 'タイヤ' } },
+      sorts: [{ property: '発注日', direction: 'descending' }],
+      page_size: 50,
+    });
+    renderHistory(res.results || []);
+  } catch(e) {
+    el.innerHTML = `<div class="content"><div class="error-box">取得エラー：${e.message}</div><button class="btn-secondary" onclick="loadHistory()">再試行</button></div>`;
+  }
+}
+
+function renderHistory(records) {
+  const el = document.getElementById('history-content');
+  if (!records.length) {
+    el.innerHTML = '<div style="text-align:center;padding:48px 20px;color:var(--muted);font-size:14px;">発注履歴がありません</div>';
+    return;
+  }
+
+  const STATUS_CLASS = {
+    '新規発注': 'st-new', '発注済': 'st-ordered', '納入済': 'st-done', 'キャンセル': 'st-cancel'
+  };
+
+  let html = '<div style="padding:12px 0 0;">';
+  records.forEach(r => {
+    const p = r.properties;
+    const title    = p['タイヤサイズ']?.title?.[0]?.plain_text || '—';
+    const status   = p['ステータス']?.select?.name || '—';
+    const qty      = p['数量']?.number ?? '—';
+    const nouki    = p['納期予定日']?.date?.start || '';
+    const place    = p['納入予定場所']?.select?.name || '—';
+    const tantou   = p['注文担当']?.select?.name || '—';
+    const dateStr  = r.created_time ? new Date(r.created_time).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}) : '—';
+    const stCls    = STATUS_CLASS[status] || 'st-new';
+    const noukiStr = nouki ? new Date(nouki).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}) : '—';
+
+    html += `<div class="history-row">
+      <div class="history-row-head">
+        <div class="history-date">${dateStr} 登録</div>
+        <span class="history-status ${stCls}">${status}</span>
+      </div>
+      <div class="history-row-body">${escHtml(title)} &nbsp; <strong style="color:var(--accent);">${qty}本</strong></div>
+      <div class="history-row-meta">納入先：${place} ／ 担当：${tantou} ／ 希望納期：${noukiStr}</div>
+    </div>`;
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// ──────────────────────────────────────
+// タブ切り替え
+// ──────────────────────────────────────
+function switchTab(tab) {
+  const tabs = ['alert','order','history'];
+  document.querySelectorAll('.nav-btn').forEach((b,i) => {
+    b.classList.toggle('active', tabs[i] === tab);
+  });
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + tab).classList.add('active');
+  if (tab === 'history') loadHistory();
+}
+</script>
+</body>
+</html>

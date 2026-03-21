@@ -236,6 +236,7 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
     <button class="nav-btn active" onclick="switchTab('alert')">在庫アラート</button>
     <button class="nav-btn" onclick="switchTab('order')">発注確認</button>
     <button class="nav-btn" onclick="switchTab('history')">発注履歴</button>
+    <button class="nav-btn" onclick="switchTab('threshold')">しきい値</button>
   </div>
 
   <!-- 在庫アラートページ -->
@@ -306,6 +307,13 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
         <div class="spinner"></div>
         <div class="loading-text">発注履歴を取得中…</div>
       </div>
+    </div>
+  </div>
+
+  <!-- しきい値設定ページ -->
+  <div class="page" id="page-threshold">
+    <div class="content" id="threshold-content">
+      <div class="loading-wrap"><div class="spinner"></div><div class="loading-text">読み込み中…</div></div>
     </div>
   </div>
 </div>
@@ -403,10 +411,11 @@ async function notionAPI(method, path, body) {
 }
 
 // ──────────────────────────────────────
-// 在庫アラート読み込み
+// 在庫アラート読み込み（DBのしきい値を使用）
 // ──────────────────────────────────────
-// ─── ハードコードしきい値（Notionアクセス不要・即時） ───────────────────────
-const HARDCODED_THRESHOLDS = [
+
+// 初回マイグレーション用デフォルトしきい値
+const DEFAULT_THRESHOLDS = [
   {cat:'LTL TB　ノーマル',pattern:'M646',size:'11R22.5',warehouse:'五日市倉庫',threshold:6},
   {cat:'LTL TB　ノーマル',pattern:'M646',size:'11R22.5',warehouse:'志和倉庫',threshold:6},
   {cat:'LTL TB　ノーマル',pattern:'M646',size:'215/70R17.5 123/121',warehouse:'五日市倉庫',threshold:6},
@@ -450,39 +459,48 @@ const HARDCODED_THRESHOLDS = [
   {cat:'LTS　ノーマル',pattern:'M634',size:'205/85R16',warehouse:'志和倉庫',threshold:6},
 ];
 
+// スナップショット全件（ページID付き）をキャッシュ
+let snapshotCache = null; // { key: {pageId, stock, threshold} }
+
 async function loadAlerts() {
   const el = document.getElementById('alert-content');
   el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">スナップショットを取得中…</div></div>';
   await new Promise(r => setTimeout(r, 30));
 
   try {
-    // スナップショットDBから全在庫を一括取得（高速）
-    const snapRows = await fetchAllSnapshots();
+    // スナップショットDBから全データ取得（在庫数＋しきい値）
+    snapshotCache = await fetchAllSnapshotsWithThreshold();
 
-    // ハードコードされたしきい値でアラート判定（Notionアクセス不要）
+    // しきい値が設定されているレコードでアラート判定
     const allItems = [];
-    for (const row of HARDCODED_THRESHOLDS) {
-      const key = `${row.cat}|${row.pattern}|${row.size}|${row.warehouse}`;
-      const realStock = snapRows[key] ?? 0;
-      if (realStock < row.threshold) {
-        const needed = row.threshold - realStock;
-        const maker = guessMaker(row.pattern);
+    for (const [key, snap] of Object.entries(snapshotCache)) {
+      const threshold = snap.threshold;
+      if (!threshold || threshold <= 0) continue; // しきい値未設定はスキップ
+      const realStock = snap.stock ?? 0;
+      if (realStock < threshold) {
+        const [cat, pattern, size, warehouse] = key.split('|');
+        const needed = threshold - realStock;
+        const maker = guessMaker(pattern);
         allItems.push({
+          pageId: snap.pageId,
           kijunId: key,
-          pattern: row.pattern,
-          size: row.size,
-          category: row.cat,
-          warehouse: row.warehouse,
-          threshold: row.threshold,
-          actualStock: realStock,
-          prepQty: 0,
-          orderInFlight: 0,
-          realStock,
+          pattern, size, category: cat, warehouse,
+          threshold, realStock,
+          actualStock: realStock, prepQty: 0, orderInFlight: 0,
           orderQty: needed,
           selected: needed > 0 && maker === 'TOYO',
           maker,
         });
       }
+    }
+
+    // しきい値が1件もDBに設定されていない場合→初回マイグレーション
+    const hasAnyThreshold = Object.values(snapshotCache).some(s => s.threshold > 0);
+    if (!hasAnyThreshold) {
+      el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">初回設定中… しきい値をDBに書き込んでいます</div></div>';
+      await migrateDefaultThresholds(snapshotCache);
+      snapshotCache = await fetchAllSnapshotsWithThreshold();
+      return loadAlerts();
     }
 
     alertItems = allItems;
@@ -495,9 +513,22 @@ async function loadAlerts() {
   }
 }
 
-// スナップショットDBから全レコードを取得
-// 戻り値: { "カテゴリ|パターン|サイズ|倉庫": 在庫数 }
-async function fetchAllSnapshots() {
+// デフォルトしきい値をDBに一括書き込み（初回のみ）
+async function migrateDefaultThresholds(snapMap) {
+  const tasks = DEFAULT_THRESHOLDS.map(row => {
+    const key = `${row.cat}|${row.pattern}|${row.size}|${row.warehouse}`;
+    const snap = snapMap[key];
+    if (!snap || !snap.pageId) return null;
+    return notionAPI('PATCH', `/pages/${snap.pageId}`, {
+      properties: { 'しきい値': { number: row.threshold } }
+    }).catch(() => null);
+  }).filter(Boolean);
+  await Promise.all(tasks);
+}
+
+// スナップショットDBから全レコードを取得（在庫数＋しきい値＋ページID）
+// 戻り値: { "カテゴリ|パターン|サイズ|倉庫": {pageId, stock, threshold} }
+async function fetchAllSnapshotsWithThreshold() {
   const map = {};
   let cursor;
   let pageNum = 0;
@@ -509,18 +540,29 @@ async function fetchAllSnapshots() {
     if (res.object === 'error') throw new Error('スナップショット取得エラー: ' + res.message);
     for (const page of res.results) {
       const p = page.properties;
-      const catName  = p['カテゴリ']?.select?.name || '';
-      const pattern  = p['パターン名']?.rich_text?.[0]?.plain_text || '';
-      const size     = p['サイズコード']?.rich_text?.[0]?.plain_text || '';
-      const warehouse= p['倉庫']?.select?.name || '';
-      const stock    = p['在庫数']?.number ?? 0;
+      const catName   = p['カテゴリ']?.select?.name || '';
+      const pattern   = p['パターン名']?.rich_text?.[0]?.plain_text || '';
+      const size      = p['サイズコード']?.rich_text?.[0]?.plain_text || '';
+      const warehouse = p['倉庫']?.select?.name || '';
+      const stock     = p['在庫数']?.number ?? 0;
+      const threshold = p['しきい値']?.number ?? 0;
       if (catName && pattern && size && warehouse) {
-        map[`${catName}|${pattern}|${size}|${warehouse}`] = stock;
+        map[`${catName}|${pattern}|${size}|${warehouse}`] = {
+          pageId: page.id, stock, threshold
+        };
       }
     }
     if (!res.has_more) break;
     cursor = res.next_cursor;
   }
+  return map;
+}
+
+// 後方互換（updateSnapshot等で使用）
+async function fetchAllSnapshots() {
+  const full = await fetchAllSnapshotsWithThreshold();
+  const map = {};
+  for (const [k,v] of Object.entries(full)) map[k] = v.stock;
   return map;
 }
 
@@ -1030,13 +1072,338 @@ function renderHistory(records) {
 // タブ切り替え
 // ──────────────────────────────────────
 function switchTab(tab) {
-  const tabs = ['alert','order','history'];
+  const tabs = ['alert','order','history','threshold'];
   document.querySelectorAll('.nav-btn').forEach((b,i) => {
     b.classList.toggle('active', tabs[i] === tab);
   });
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + tab).classList.add('active');
   if (tab === 'history') loadHistory();
+  if (tab === 'threshold') loadThresholdPage();
+}
+
+// ──────────────────────────────────────
+// しきい値設定
+// ──────────────────────────────────────
+
+// カテゴリ別パターンマスター（しきい値設定の予測候補用）
+const CAT_PATTERNS = {
+  'LTL TB　ノーマル':    ['M646','M676','M125','M317','M323','M319','M320','M619','M626','M888','M899','M801','M746','R225','R241','G539','SP680','SP122','XJE4'],
+  'LTL TB　スタッドレス':['M929','M919','M966','M920','M939','W910','W900S','W911','W970','W999','SP001','SP081','SP088','XDW'],
+  'LTS　ノーマル':       ['M634','M135','M134e','M131','M319','M804','R207','SPLT50','SPLT21','SPLT22'],
+  'LTS　スタッドレス':   ['M935','M937','M934','LV01','W989','LT01'],
+  'RT 再生':             ['RTM919','RTM810','RTM804','RTM807','RTM81C-170','RTM890','RTW910','RTW911','RTW970','RTG610'],
+  'バン':                ['V03e','V02e','M935','K370','R710','V600','W300','W989','LV01','VL10A','VAN01','SV01'],
+  'リフト':              ['G-8','G-8P','G-15'],
+};
+
+// カテゴリ別サイズマスター
+const CAT_SIZES = {
+  'LTL TB　ノーマル':    ['11R22.5','10R22.5','215/70R17.5 123/121','225/80R17.5','225/90R17.5','235/70R17.5','245/70R19.5','245/80R17.5','255/70R22.5','265/70R19.5','275/70R22.5','275/80R22.5','295/70R22.5','295/80R22.5','315/80R22.5','385/65R22.5','9R19.5'],
+  'LTL TB　スタッドレス':['11R22.5','10R22.5','215/70R17.5 123/121','225/80R17.5','225/90R17.5','235/70R17.5','245/70R19.5','245/80R17.5','255/70R22.5','265/70R19.5','275/70R22.5','275/80R22.5','295/70R22.5','295/80R22.5','315/80R22.5','385/65R22.5','9R19.5'],
+  'LTS　ノーマル':       ['175/75R15','185/65R15','185/75R15','195/75R15','195/85R15','205/80R15','185/70R16','185/85R16','195/85R16','205/65R16','205/70R16','205/75R16','205/85R16','215/85R16','225/70R16','225/85R16','195/60R17.5','195/70R17.5','205/60R17.5','205/70R17.5','205/80R17.5','215/70R17.5 118/116','225/60R17.5'],
+  'LTS　スタッドレス':   ['175/75R15','185/65R15','185/75R15','195/75R15','195/85R15','205/80R15','185/70R16','185/85R16','195/85R16','205/65R16','205/70R16','205/75R16','205/85R16','215/85R16','225/70R16','225/85R16','195/60R17.5','195/70R17.5','205/60R17.5','205/70R17.5','205/80R17.5','215/70R17.5 118/116','225/60R17.5'],
+  'RT 再生':             ['195/85R16','205/75R16','205/85R16','225/80R17.5','225/90R17.5','245/80R17.5','245/70R19.5','265/70R19.5','275/70R22.5','275/80R22.5','11R22.5 14P','11R22.5 16P'],
+  'バン':                ['145/80R12 86/84','145/80R12 80/78','145R12 6P','145R12 8P','155R12 8P','165/80R13 90/88','165/80R13 94/93','165R13 6P','165R13 8P','145R13 6P','145R13 8P','155R13 6P','155R13 8P','175R13 8P','155/80R14 88/86','165/80R14 91/90','165/80R14 97/95','165R14 6P','165R14 8P','175/80R14 99/98','175R14 6P','175R14 8P','185/80R14 97N','185/80R14 102/10','185R14 6P','185R14 8P','195R14 8P','195/80R15 103/101','185/75R15 106/104','195/70R15 106/104','215/70R15 107/105','185/80R15 103/101','195/80R15 107/105','205/80R15 109/107'],
+  'リフト':              ['4.00-8 8P','5.00-8 8P','6.00-9 10P','6.50-10 10P','4.50-12 8P','7.00-12 12P','7.00-12 14P','5.50-15 8P','6.00-15 10P','7.00-15MS','7.00-15','8.25-15','7.50-16','17*8.00-8 4P','18*7-8 8P','21*8-9 14P','23*9-10 16P','27*8.50-15 4P','27*8.50-15 6P','28*8-15 12P','28*9-15','250-15','300-15'],
+};
+
+let thNewQty = 6;
+let thNewCat = '';
+let thNewWh  = '五日市倉庫';
+
+async function loadThresholdPage() {
+  const el = document.getElementById('threshold-content');
+  el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">読み込み中…</div></div>';
+
+  try {
+    if (!snapshotCache) snapshotCache = await fetchAllSnapshotsWithThreshold();
+    renderThresholdPage();
+  } catch(e) {
+    el.innerHTML = `<div class="error-box">エラー: ${e.message}</div>`;
+  }
+}
+
+function renderThresholdPage() {
+  const el = document.getElementById('threshold-content');
+  const entries = Object.entries(snapshotCache)
+    .filter(([,v]) => v.threshold > 0)
+    .sort(([a],[b]) => a.localeCompare(b, 'ja'));
+
+  const unset = Object.entries(snapshotCache)
+    .filter(([,v]) => !v.threshold || v.threshold <= 0)
+    .length;
+
+  let html = '<div style="padding:12px 0 0;">';
+
+  if (unset > 0) {
+    html += `<div class="notice-box" style="border-color:rgba(59,130,246,0.4);color:var(--blue);">しきい値未設定: ${unset}件　（下のフォームから追加できます）</div>`;
+  }
+
+  if (entries.length) {
+    html += `<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:8px;">設定済み ${entries.length}件</div>`;
+    entries.forEach(([key, snap]) => {
+      const [cat, pattern, size, warehouse] = key.split('|');
+      const whColor = warehouse === '五日市倉庫' ? 'var(--green)' : 'var(--blue)';
+      const whBg    = warehouse === '五日市倉庫' ? 'rgba(34,197,94,.1)' : 'rgba(59,130,246,.1)';
+      html += `<div style="display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;">${pattern}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${size}　${cat}</div>
+          <div style="margin-top:3px;"><span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;background:${whBg};color:${whColor};">${warehouse}</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:0;flex-shrink:0;">
+          <button onclick="changeThreshold('${key}',-1)" style="width:28px;height:28px;border-radius:6px 0 0 6px;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:15px;cursor:pointer;">−</button>
+          <div id="th-num-${btoa(key).replace(/[^a-zA-Z0-9]/g,'')}" style="font-size:15px;font-weight:700;color:var(--accent);min-width:38px;text-align:center;border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);height:28px;line-height:28px;font-family:'DM Mono',monospace;">${snap.threshold}</div>
+          <button onclick="changeThreshold('${key}',+1)" style="width:28px;height:28px;border-radius:0 6px 6px 0;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:15px;cursor:pointer;">＋</button>
+        </div>
+      </div>`;
+    });
+  }
+
+  // 新規追加フォーム
+  html += `
+  <div style="border-top:0.5px solid var(--border);margin-top:12px;padding-top:14px;">
+    <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:10px;letter-spacing:.04em;">しきい値を新規追加</div>
+
+    <div style="margin-bottom:8px;">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:3px;">サイズ検索</div>
+      <div style="position:relative;">
+        <input class="df-input" id="th-size-input" type="text" inputmode="decimal"
+          placeholder="例: 225 または 22580"
+          oninput="onThSizeInput(this.value)"
+          onblur="setTimeout(()=>document.getElementById('th-size-drop').style.display='none',200)"
+          style="width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;font-size:13px;font-family:'Noto Sans JP',sans-serif;color:var(--text);outline:none;">
+        <div id="th-size-drop" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:var(--s2);border:1px solid var(--border2);border-radius:8px;max-height:180px;overflow-y:auto;margin-top:2px;"></div>
+      </div>
+      <div id="th-size-chosen" style="display:none;margin-top:5px;background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.3);border-radius:8px;padding:7px 12px;display:flex;align-items:center;justify-content:space-between;">
+        <span id="th-size-val" style="font-size:13px;font-weight:700;color:var(--accent);"></span>
+        <button onclick="thClearSize()" style="background:none;border:none;color:var(--muted);font-size:15px;cursor:pointer;line-height:1;">✕</button>
+      </div>
+    </div>
+
+    <div id="th-cat-wrap" style="display:none;margin-bottom:8px;">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">カテゴリ</div>
+      <div id="th-cat-chips" style="display:flex;flex-wrap:wrap;gap:5px;"></div>
+    </div>
+
+    <div id="th-pattern-wrap" style="display:none;margin-bottom:8px;">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:3px;">パターン</div>
+      <div style="position:relative;">
+        <input class="df-input" id="th-pattern-input" type="text"
+          placeholder="例: M646"
+          oninput="onThPatternInput(this.value)"
+          onblur="setTimeout(()=>document.getElementById('th-pattern-drop').style.display='none',200)"
+          style="width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;font-size:13px;font-family:'DM Mono',monospace;color:var(--text);outline:none;">
+        <div id="th-pattern-drop" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:var(--s2);border:1px solid var(--border2);border-radius:8px;max-height:180px;overflow-y:auto;margin-top:2px;"></div>
+      </div>
+    </div>
+
+    <div id="th-wh-wrap" style="display:none;margin-bottom:8px;">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:3px;">倉庫</div>
+      <div style="display:flex;gap:6px;">
+        <button id="th-wh-itsuka" onclick="thSelectWh('五日市倉庫')" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--accent);background:rgba(240,165,0,.1);color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">五日市倉庫</button>
+        <button id="th-wh-shiwa"  onclick="thSelectWh('志和倉庫')"   style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border2);background:var(--s3);color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">志和倉庫</button>
+      </div>
+    </div>
+
+    <div id="th-qty-wrap" style="display:none;margin-bottom:10px;">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:5px;">しきい値（本数）</div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button onclick="thNewQty=Math.max(1,thNewQty-1);document.getElementById('th-new-qty').textContent=thNewQty;" style="width:34px;height:34px;border-radius:8px;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:18px;cursor:pointer;">−</button>
+        <div id="th-new-qty" style="font-size:20px;font-weight:700;color:var(--accent);min-width:44px;text-align:center;font-family:'DM Mono',monospace;">${thNewQty}</div>
+        <button onclick="thNewQty=thNewQty+1;document.getElementById('th-new-qty').textContent=thNewQty;" style="width:34px;height:34px;border-radius:8px;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:18px;cursor:pointer;">＋</button>
+        <span style="font-size:12px;color:var(--muted);">本</span>
+      </div>
+    </div>
+
+    <div id="th-save-wrap" style="display:none;">
+      <div id="th-save-error" style="display:none;" class="error-box"></div>
+      <button id="th-save-btn" onclick="saveNewThreshold()" style="width:100%;background:var(--accent);border:none;border-radius:10px;padding:13px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Notionに保存する</button>
+    </div>
+  </div>
+  <div style="height:20px;"></div>
+  </div>`;
+
+  el.innerHTML = html;
+}
+
+// しきい値変更（±ボタン）→ 即座にNotionに保存
+async function changeThreshold(key, delta) {
+  const snap = snapshotCache[key];
+  if (!snap || !snap.pageId) return;
+  const newVal = Math.max(0, (snap.threshold || 0) + delta);
+  snap.threshold = newVal;
+  const safeId = btoa(key).replace(/[^a-zA-Z0-9]/g,'');
+  const el = document.getElementById(`th-num-${safeId}`);
+  if (el) el.textContent = newVal;
+  try {
+    await notionAPI('PATCH', `/pages/${snap.pageId}`, {
+      properties: { 'しきい値': { number: newVal } }
+    });
+  } catch(e) {
+    console.error('しきい値保存エラー:', e);
+  }
+}
+
+// サイズ予測検索
+function onThSizeInput(v) {
+  const dd = document.getElementById('th-size-drop');
+  const q = v.trim();
+  if (!q) { dd.style.display = 'none'; return; }
+  const dq = q.replace(/[^\d]/g,'');
+  const allSizes = new Set();
+  Object.values(CAT_SIZES).forEach(arr => arr.forEach(s => allSizes.add(s)));
+  const hits = [...allSizes].filter(s => {
+    const ds = s.replace(/[^\d]/g,'');
+    return s.toLowerCase().includes(q.toLowerCase()) || (dq.length >= 3 && ds.startsWith(dq));
+  }).slice(0,10);
+  if (!hits.length) { dd.style.display = 'none'; return; }
+  dd.innerHTML = hits.map(s =>
+    `<div onclick="thPickSize('${s.replace(/'/g,"\'")}');document.getElementById('th-size-drop').style.display='none';"
+     style="padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:0.5px solid var(--border);color:var(--text);">${s}</div>`
+  ).join('');
+  dd.style.display = 'block';
+}
+
+let thSelSize = '';
+let thSelPattern = '';
+
+function thPickSize(s) {
+  thSelSize = s;
+  const inp = document.getElementById('th-size-input');
+  if (inp) inp.style.display = 'none';
+  const chosen = document.getElementById('th-size-chosen');
+  document.getElementById('th-size-val').textContent = s;
+  chosen.style.display = 'flex';
+  // カテゴリチップ表示
+  const matchCats = Object.entries(CAT_SIZES).filter(([,sizes]) => sizes.includes(s)).map(([cat]) => cat);
+  const wrap = document.getElementById('th-cat-wrap');
+  const chips = document.getElementById('th-cat-chips');
+  if (matchCats.length) {
+    chips.innerHTML = matchCats.map(cat =>
+      `<button onclick="thPickCat('${cat}')" id="th-chip-${btoa(cat).replace(/[^a-zA-Z0-9]/g,'')}"
+       style="padding:4px 10px;border-radius:12px;border:1px solid var(--border2);background:var(--s2);color:var(--muted);font-size:11px;cursor:pointer;font-family:inherit;">${cat}</button>`
+    ).join('');
+    wrap.style.display = 'block';
+    if (matchCats.length === 1) thPickCat(matchCats[0]);
+  }
+  thUpdateSaveVisibility();
+}
+
+function thClearSize() {
+  thSelSize = ''; thSelPattern = ''; thNewCat = '';
+  const inp = document.getElementById('th-size-input');
+  if (inp) { inp.style.display = ''; inp.value = ''; }
+  document.getElementById('th-size-chosen').style.display = 'none';
+  document.getElementById('th-cat-wrap').style.display = 'none';
+  document.getElementById('th-pattern-wrap').style.display = 'none';
+  document.getElementById('th-wh-wrap').style.display = 'none';
+  document.getElementById('th-qty-wrap').style.display = 'none';
+  document.getElementById('th-save-wrap').style.display = 'none';
+}
+
+function thPickCat(cat) {
+  thNewCat = cat;
+  document.querySelectorAll('#th-cat-chips button').forEach(b => {
+    b.style.borderColor = b.textContent === cat ? 'var(--accent)' : 'var(--border2)';
+    b.style.color       = b.textContent === cat ? 'var(--accent)' : 'var(--muted)';
+    b.style.background  = b.textContent === cat ? 'rgba(240,165,0,.1)' : 'var(--s2)';
+  });
+  // パターンドロップダウン構築
+  const patterns = CAT_PATTERNS[cat] || [];
+  const patWrap = document.getElementById('th-pattern-wrap');
+  const patInp  = document.getElementById('th-pattern-input');
+  patInp.value = '';
+  patInp.dataset.patterns = JSON.stringify(patterns);
+  patWrap.style.display = 'block';
+  document.getElementById('th-wh-wrap').style.display = 'block';
+  document.getElementById('th-qty-wrap').style.display = 'block';
+  thUpdateSaveVisibility();
+}
+
+function onThPatternInput(v) {
+  const dd = document.getElementById('th-pattern-drop');
+  const patterns = JSON.parse(document.getElementById('th-pattern-input').dataset.patterns || '[]');
+  const q = v.trim().toUpperCase();
+  if (!q) { dd.style.display = 'none'; return; }
+  const hits = patterns.filter(p => p.toUpperCase().startsWith(q) || p.toUpperCase().includes(q)).slice(0,8);
+  if (!hits.length) { dd.style.display = 'none'; return; }
+  dd.innerHTML = hits.map(p =>
+    `<div onclick="document.getElementById('th-pattern-input').value='${p}';document.getElementById('th-pattern-drop').style.display='none';thSelPattern='${p}';"
+     style="padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:0.5px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;">${p}</div>`
+  ).join('');
+  dd.style.display = 'block';
+}
+
+function thSelectWh(wh) {
+  thNewWh = wh;
+  const i = document.getElementById('th-wh-itsuka');
+  const s = document.getElementById('th-wh-shiwa');
+  if (wh === '五日市倉庫') {
+    i.style.borderColor='var(--accent)'; i.style.color='var(--accent)'; i.style.background='rgba(240,165,0,.1)';
+    s.style.borderColor='var(--border2)'; s.style.color='var(--muted)'; s.style.background='var(--s3)';
+  } else {
+    s.style.borderColor='var(--blue)'; s.style.color='var(--blue)'; s.style.background='rgba(59,130,246,.1)';
+    i.style.borderColor='var(--border2)'; i.style.color='var(--muted)'; i.style.background='var(--s3)';
+  }
+}
+
+function thUpdateSaveVisibility() {
+  const showSave = thSelSize && thNewCat;
+  document.getElementById('th-save-wrap').style.display = showSave ? 'block' : 'none';
+}
+
+async function saveNewThreshold() {
+  const pattern = document.getElementById('th-pattern-input').value.trim() || thSelPattern;
+  const size    = thSelSize;
+  const cat     = thNewCat;
+  const wh      = thNewWh;
+  const val     = thNewQty;
+  const errEl   = document.getElementById('th-save-error');
+  const btn     = document.getElementById('th-save-btn');
+
+  if (!size || !cat) { errEl.textContent='サイズとカテゴリを選択してください'; errEl.style.display='block'; return; }
+  errEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = '保存中…';
+
+  const key = `${cat}|${pattern}|${size}|${wh}`;
+  const snap = snapshotCache?.[key];
+
+  try {
+    if (snap && snap.pageId) {
+      // 既存レコードのしきい値を更新
+      await notionAPI('PATCH', `/pages/${snap.pageId}`, {
+        properties: { 'しきい値': { number: val } }
+      });
+      snapshotCache[key].threshold = val;
+    } else {
+      // スナップショットに新規レコード作成
+      const name = pattern ? `${pattern}|${size}|${wh}` : `${size}|${wh}`;
+      const res = await notionAPI('POST', '/pages', {
+        parent: { database_id: SNAPSHOT_DB },
+        properties: {
+          'Name':       { title: [{ text: { content: name } }] },
+          'パターン名': { rich_text: [{ text: { content: pattern } }] },
+          'サイズコード':{ rich_text: [{ text: { content: size } }] },
+          'カテゴリ':   { select: { name: cat } },
+          '倉庫':       { select: { name: wh } },
+          '在庫数':     { number: 0 },
+          'しきい値':   { number: val },
+        }
+      });
+      if (snapshotCache) snapshotCache[key] = { pageId: res.id, stock: 0, threshold: val };
+    }
+    btn.textContent = '✓ 保存しました';
+    setTimeout(() => {
+      snapshotCache = null;
+      loadThresholdPage();
+    }, 800);
+  } catch(e) {
+    errEl.textContent = '保存エラー: ' + e.message;
+    errEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Notionに保存する';
+  }
 }
 </script>
 </body>

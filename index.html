@@ -980,11 +980,16 @@ body {
 
   <div id="step-staff">
     <div class="login-label">社員名</div>
-    <div class="staff-grid" id="staff-grid">
-      <!-- 動的ロード -->
-      <div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--muted);font-size:13px;">
-        <span class="loading-spinner" style="border-color:rgba(240,165,0,0.3);border-top-color:var(--accent);"></span>
-      </div>
+    <div class="staff-grid">
+      <button class="staff-btn" onclick="selectStaff('向畑 充')">向畑 充</button>
+      <button class="staff-btn" onclick="selectStaff('矢島 明和')">矢島 明和</button>
+      <button class="staff-btn" onclick="selectStaff('大田 健')">大田 健</button>
+      <button class="staff-btn" onclick="selectStaff('中川 颯')">中川 颯</button>
+      <button class="staff-btn" onclick="selectStaff('平野 春之')">平野 春之</button>
+      <button class="staff-btn" onclick="selectStaff('山根 祐司')">山根 祐司</button>
+      <button class="staff-btn" onclick="selectStaff('村田 良典')">村田 良典</button>
+      <button class="staff-btn" onclick="selectStaff('岡崎 由美')">岡崎 由美</button>
+      <button class="staff-btn" onclick="selectStaff('藤井 真理亜')">藤井 真理亜</button>
     </div>
     <div id="staff-error" class="error-box">社員名を選択してください</div>
   </div>
@@ -1035,8 +1040,125 @@ body {
     </div>
   </div>
 
-  <div class="portal-body" id="portal-body">
-    <!-- ログイン後にJSで動的レンダリング -->
+  <div class="portal-body">
+    <div class="sec">
+      <div class="sec-label">現場・業務</div>
+
+      <a class="app-row" href="https://mitsurumukaihata.github.io/tire-app/tire-manager.html">
+        <div class="app-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/>
+            <line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/>
+            <line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/>
+          </svg>
+        </div>
+        <div class="app-text">
+          <div class="app-name">タイヤ入出庫</div>
+          <div class="app-sub">在庫管理 · 価格検索</div>
+        </div>
+        <div class="app-arrow">›</div>
+      </a>
+
+      <a class="app-row" href="https://mitsurumukaihata.github.io/foo-portal/kintai.html">
+        <div class="app-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/>
+            <line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="14" x2="8" y2="14" stroke-width="2.5"/><line x1="12" y1="14" x2="12" y2="14" stroke-width="2.5"/>
+            <line x1="8" y1="18" x2="8" y2="18" stroke-width="2.5"/><line x1="12" y1="18" x2="12" y2="18" stroke-width="2.5"/>
+          </svg>
+        </div>
+        <div class="app-text">
+          <div class="app-name">出勤簿</div>
+          <div class="app-sub">打刻 · 勤怠履歴</div>
+        </div>
+        <div class="app-arrow">›</div>
+      </a>
+
+      <!-- 顧客情報（ボタン形式） -->
+      <div class="app-row" onclick="openCustApp()" style="cursor:pointer;">
+        <div class="app-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+        </div>
+        <div class="app-text">
+          <div class="app-name">顧客情報</div>
+          <div class="app-sub">検索 · 確認 · 登録</div>
+        </div>
+        <div class="app-arrow">›</div>
+      </div>
+
+      <a class="app-row" href="https://mitsurumukaihata.github.io/foo-portal/auction.html">
+        <div class="app-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L3 7v10l9 5 9-5V7z"/>
+            <polyline points="3 7 12 12 21 7"/><line x1="12" y1="12" x2="12" y2="22"/>
+          </svg>
+        </div>
+        <div class="app-text">
+          <div class="app-name">オークション管理</div>
+          <div class="app-sub">出品 · 落札 · 履歴</div>
+        </div>
+        <div class="app-arrow">›</div>
+      </a>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="sec">
+      <div class="sec-label">事務・経理</div>
+      <div class="grid2">
+        <a class="app-card" href="welfare.html">
+          <div class="app-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 12V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8"/>
+              <line x1="6" y1="9" x2="14" y2="9"/><line x1="6" y1="13" x2="10" y2="13"/>
+              <circle cx="18" cy="18" r="4"/>
+              <line x1="18" y1="15" x2="18" y2="21"/><line x1="15" y1="18" x2="21" y2="18"/>
+            </svg>
+          </div>
+          <div class="app-name">福利厚生<br>申請・管理</div>
+          <div class="app-sub">利用申請 ／ 集計</div>
+        </a>
+        <a class="app-card" href="auction.html">
+          <div class="app-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2"/>
+              <line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+              <polyline points="6 9 10 13 14 9 18 12"/>
+            </svg>
+          </div>
+          <div class="app-name">オークション<br>管理</div>
+          <div class="app-sub">出品 · 落札 · 履歴</div>
+        </a>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="sec">
+      <div class="sec-label">準備中</div>
+      <div class="grid2">
+        <div class="app-card coming">
+          <div class="app-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>
+            </svg>
+          </div>
+          <div class="app-name">作業報告書</div>
+          <div class="app-sub">準備中</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="portal-footer">
+      <div class="footer-ver">v1.1 · 2026</div>
+      <button class="btn-logout" onclick="logout()">ログアウト</button>
+    </div>
   </div>
 </div>
 
@@ -1233,11 +1355,11 @@ body {
       作業場所を追加（最大4件）
     </button>
 
-    <div class="cf-section-label" style="margin-top:16px;">🏠 保管場所（GoogleMap）</div>
+    <div class="cf-section-label" style="margin-top:16px;">🏠 保管場所（GoogleMap・最大3件）</div>
     <div id="cf-maps-storage"></div>
-    <button class="cf-map-add-btn" onclick="addMapField('storage')" id="cf-storage-add-btn">
+    <button class="cf-map-add-btn" onclick="addStorageField()" id="cf-storage-add-btn">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      保管場所を追加
+      保管場所を追加（最大3件）
     </button>
 
     <div class="cf-section-label">⚠️ 注意事項</div>
@@ -1367,41 +1489,6 @@ async function notionAPI(method, path, body) {
   }
 }
 
-// ─── アプリ定義（Notionプロパティ名 → アプリ情報） ──────────────────────────────
-const APP_DEFS = [
-  // key: Notionチェックボックスのプロパティ名
-  // id: 内部ID, label: 表示名, sub: サブテキスト, icon: SVG, url: リンク先, action: 関数呼び出し, section: セクション, coming: 準備中
-  { key: '🚛 タイヤ入出庫',      id: 'tire',    label: 'タイヤ入出庫',       sub: '在庫管理 · 価格検索',      section: '現場・業務',   url: 'https://mitsurumukaihata.github.io/foo-portal/tire-manager.html',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>` },
-  { key: '📅 出勤簿',            id: 'kintai',  label: '出勤簿',             sub: '打刻 · 勤怠履歴',          section: '現場・業務',   url: 'https://mitsurumukaihata.github.io/foo-portal/kintai.html',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="14" x2="8" y2="14" stroke-width="2.5"/><line x1="12" y1="14" x2="12" y2="14" stroke-width="2.5"/><line x1="8" y1="18" x2="8" y2="18" stroke-width="2.5"/><line x1="12" y1="18" x2="12" y2="18" stroke-width="2.5"/></svg>` },
-  { key: '👤 顧客情報',          id: 'customer',label: '顧客情報',           sub: '検索 · 確認 · 登録',       section: '現場・業務',   action: 'openCustApp()',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>` },
-  { key: '📋 発注管理',          id: 'order',   label: '発注管理',           sub: '仕入れ発注 · 入出庫DB連携', section: '事務・経理',   url: 'https://mitsurumukaihata.github.io/foo-portal/order.html',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>` },
-  { key: '💊 福利厚生',          id: 'welfare', label: '福利厚生',           sub: '申請 · 集計',              section: '事務・経理',   url: 'https://mitsurumukaihata.github.io/foo-portal/welfare.html',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8"/><line x1="6" y1="9" x2="14" y2="9"/><line x1="6" y1="13" x2="10" y2="13"/><circle cx="18" cy="18" r="4"/><line x1="18" y1="15" x2="18" y2="21"/><line x1="15" y1="18" x2="21" y2="18"/></svg>` },
-  { key: '🏷️ オークション',      id: 'auction', label: 'オークション',       sub: '出品 · 落札 · 履歴',       section: '事務・経理',   url: 'https://mitsurumukaihata.github.io/foo-portal/auction.html',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L3 7v10l9 5 9-5V7z"/><polyline points="3 7 12 12 21 7"/><line x1="12" y1="12" x2="12" y2="22"/></svg>` },
-  { key: '✅ タスク管理',         id: 'task',    label: 'タスク管理',         sub: '準備中',                   section: 'コミュニティ', coming: true,
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>` },
-  { key: '📣 会議内容',          id: 'meeting', label: '会議内容',           sub: '準備中',                   section: 'コミュニティ', coming: true,
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>` },
-  { key: '👔 部長コミュニティ',   id: 'manager', label: '部長コミュニティ',   sub: '準備中',                   section: 'コミュニティ', coming: true,
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>` },
-  { key: '🏅 リーダーコミュニティ', id: 'leader', label: 'リーダーコミュニティ', sub: '準備中',                section: 'コミュニティ', coming: true,
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>` },
-  { key: '📖 タイヤ交換マニュアル', id: 'manual', label: 'タイヤ交換マニュアル', sub: '準備中',                section: 'マニュアル',   coming: true,
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>` },
-  { key: '📝 作業報告書',         id: 'report',  label: '作業報告書',         sub: '準備中',                   section: 'マニュアル',   coming: true,
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>` },
-  { key: '🤖 自動発注',          id: 'auto',    label: '自動発注',           sub: '準備中',                   section: 'マニュアル',   coming: true,
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>` },
-  // 給与明細は特殊（別途処理）
-  { key: '💴 給与明細',          id: 'payslip', label: '給与明細',           sub: '自分の明細を確認',          section: '給与',         action: 'openPayslip()',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>` },
-];
-
 // ─── ログイン ─────────────────────────────────────────────────────────────────
 async function verifyPin(name, pin) {
   const res = await notionAPI('POST', `/databases/${MASTER_DB}/query`, {
@@ -1413,44 +1500,12 @@ async function verifyPin(name, pin) {
   });
   if (res.object === 'error') throw new Error(res.message);
   if (!res.results?.length) throw new Error('社員情報が見つかりません');
-  const page  = res.results[0];
-  const props = page.properties;
+  const props = res.results[0].properties;
   const storedPin = props['PIN']?.rich_text?.[0]?.plain_text || '';
+  const email     = props['メールアドレス']?.email || '';
+  const role      = props['権限']?.select?.name || '一般';
   if (storedPin !== pin) return null;
-
-  // アプリチェックボックスを取得
-  const apps = {};
-  APP_DEFS.forEach(def => {
-    apps[def.id] = props[def.key]?.checkbox === true;
-  });
-
-  // 給与明細URLと管理者・経理判定
-  const group       = props['アプリグループ']?.select?.name || '一般';
-  const payslipUrl  = props['給与明細URL']?.url || '';
-
-  const meisaiDbId = props['明細DB_ID']?.rich_text?.[0]?.plain_text || '';
-  return {
-    name,
-    email:      props['メールアドレス']?.email || '',
-    role:       props['権限']?.select?.name || '一般',
-    group,
-    apps,
-    payslipUrl,
-    meisaiDbId,
-    pageId:     page.id,  // 最終ログイン更新用
-  };
-}
-
-// 最終ログインをNotionに記録（非同期・失敗してもログインは続行）
-async function recordLastLogin(pageId) {
-  try {
-    const now = new Date();
-    const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-    const str = jst.toISOString().replace('T', ' ').slice(0, 16) + ' JST';
-    await notionAPI('PATCH', `/pages/${pageId}`, {
-      properties: { '最終ログイン': { rich_text: [{ text: { content: str } }] } }
-    });
-  } catch(e) { console.warn('最終ログイン記録失敗:', e); }
+  return { name, email, role };
 }
 
 function selectStaff(name) {
@@ -1522,7 +1577,6 @@ async function submitPin() {
       return;
     }
     saveSession(user);
-    recordLastLogin(user.pageId);  // 非同期・失敗しても続行
     launchPortal(user);
   } catch(e) {
     const errEl = document.getElementById('pin-error');
@@ -1537,421 +1591,17 @@ function launchPortal(user) {
   const initials = user.name.replace(/\s/g, '').slice(-1) || user.name[0];
   document.getElementById('portal-avatar').textContent = initials;
   document.getElementById('portal-name').textContent   = user.name;
-  document.getElementById('portal-role').textContent   = user.group || user.role;
-  renderPortalApps(user);
-}
-
-// ─── ポータルアプリ動的レンダリング ───────────────────────────────────────────
-function renderPortalApps(user) {
-  const apps   = user.apps || {};
-  const group  = user.group || '一般';
-  const isAdmin    = group === '管理者';
-  const isKeiri    = group === '経理';
+  document.getElementById('portal-role').textContent   = user.role;
   const encodedUser = encodeURIComponent(user.name);
-
-  // セクション別に振り分け
-  const sections = {};
-  APP_DEFS.forEach(def => {
-    if (def.id === 'payslip') return; // 給与明細は後で別処理
-    if (!apps[def.id]) return;        // チェックなしは非表示
-    if (!sections[def.section]) sections[def.section] = [];
-    sections[def.section].push(def);
+  document.querySelectorAll('a[href*="auction.html"]').forEach(a => {
+    a.href = 'https://mitsurumukaihata.github.io/foo-portal/auction.html?user=' + encodedUser;
   });
-
-  // 給与明細チェック
-  const showPayslip = apps['payslip'];
-
-  let html = '';
-
-  // セクション順序
-  const sectionOrder = ['現場・業務', '事務・経理', 'コミュニティ', 'マニュアル'];
-
-  sectionOrder.forEach(secName => {
-    const items = sections[secName];
-    if (!items || !items.length) return;
-
-    html += `<div class="sec"><div class="sec-label">${secName}</div>`;
-
-    // コミュニティ・マニュアルは2列グリッド、他は縦1列
-    const useGrid = (secName === 'コミュニティ' || secName === 'マニュアル');
-
-    if (useGrid) {
-      html += `<div class="grid2">`;
-      items.forEach(def => { html += appCardHTML(def, encodedUser); });
-      html += `</div>`;
-    } else {
-      items.forEach(def => { html += appRowHTML(def, encodedUser); });
-    }
-
-    html += `</div><div class="divider"></div>`;
-  });
-
-  // ─── 給与明細セクション ───────────────────────────────────────────────────
-  if (showPayslip) {
-    html += `<div class="sec"><div class="sec-label">給与</div>`;
-
-    if (isAdmin || isKeiri) {
-      // 管理者・経理：「全員の給与明細」1ボタンだけ表示 → payslip.htmlへ遷移
-      html += `<div class="app-row" onclick="openAllPayslips()" style="cursor:pointer;">
-        <div class="app-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-        </div>
-        <div class="app-text">
-          <div class="app-name">給与明細</div>
-          <div class="app-sub">全スタッフの明細を確認</div>
-        </div>
-        <div class="app-arrow">›</div>
-      </div>`;
-    } else {
-      // 一般・事務：自分の明細へ
-      const pUrl = user.payslipUrl || '';
-      if (pUrl) {
-        html += `<div class="app-row" onclick="openPayslip()" style="cursor:pointer;">
-          <div class="app-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-          </div>
-          <div class="app-text">
-            <div class="app-name">給与明細</div>
-            <div class="app-sub">自分の明細を確認</div>
-          </div>
-          <div class="app-arrow">›</div>
-        </div>`;
-      } else {
-        html += `<div class="app-row" style="opacity:0.4;pointer-events:none;">
-          <div class="app-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div>
-          <div class="app-text"><div class="app-name">給与明細</div><div class="app-sub">URLが未設定です（管理者に確認）</div></div>
-        </div>`;
-      }
-    }
-    html += `</div><div class="divider"></div>`;
-  }
-
-  // フッター
-  html += `<div class="portal-footer">
-    <div class="footer-ver">v2.0 · 2026</div>
-    <button class="btn-logout" onclick="logout()">ログアウト</button>
-  </div>`;
-
-  document.getElementById('portal-body').innerHTML = html;
-
-  // 給与明細リストは payslip.html で表示するため、ここでは不要
 }
 
-// app-row形式（縦1列・大きめ）
-function appRowHTML(def, encodedUser) {
-  const tag  = def.url ? 'a' : 'div';
-  const href = def.url ? `href="${def.url.replace('auction.html', `auction.html?user=${encodedUser}`)}"` : '';
-  const onclick = def.action ? `onclick="${def.action}"` : '';
-  const coming  = def.coming ? 'style="opacity:0.4;pointer-events:none;"' : '';
-  return `<${tag} class="app-row" ${href} ${onclick} ${coming}>
-    <div class="app-icon">${def.icon}</div>
-    <div class="app-text">
-      <div class="app-name">${def.label}${def.coming ? ' <span style="font-size:10px;color:var(--muted);font-weight:400;">準備中</span>' : ''}</div>
-      <div class="app-sub">${def.sub}</div>
-    </div>
-    <div class="app-arrow">›</div>
-  </${tag}>`;
-}
-
-// app-card形式（2列グリッド・小さめ）
-function appCardHTML(def, encodedUser) {
-  const tag  = def.url ? 'a' : 'div';
-  const href = def.url ? `href="${def.url}"` : '';
-  const onclick = def.action ? `onclick="${def.action}"` : '';
-  const coming  = def.coming ? 'coming' : '';
-  return `<${tag} class="app-card ${coming}" ${href} ${onclick}>
-    <div class="app-icon">${def.icon}</div>
-    <div class="app-name">${def.label}</div>
-    <div class="app-sub">${def.sub}</div>
-  </${tag}>`;
-}
-
-// 全スタッフの給与明細リストを読み込む（管理者・経理用）
-// 表示順（ログイン画面の並び）で表示
-async function loadAllPayslips() {
-  const listEl = document.getElementById('payslip-list-inner');
-  if (!listEl) return;
-  try {
-    const res = await notionAPI('POST', `/databases/${MASTER_DB}/query`, {
-      filter: { property: '在籍', select: { equals: '在籍中' } },
-      sorts:  [{ property: '表示順', direction: 'ascending' }],
-      page_size: 50,
-    });
-    if (!res.results?.length) { listEl.innerHTML = '<div style="color:var(--muted);font-size:13px;">データなし</div>'; return; }
-
-    const rows = res.results.map(page => {
-      const props    = page.properties;
-      const name     = props['氏名']?.title?.[0]?.plain_text || '';
-      const url      = props['給与明細URL']?.url || '';
-      const grp      = props['アプリグループ']?.select?.name || '一般';
-      const dbId     = props['明細DB_ID']?.rich_text?.[0]?.plain_text || '';
-      if (!name) return '';
-      const initials = name.replace(/\s/g,'').slice(-1);
-      if (dbId) {
-        // 明細DBがある → アプリ内ビューアを開く
-        return `<div class="app-row" onclick="openPayslipViewer('${name}','${dbId}')" style="margin-bottom:6px;cursor:pointer;">
-          <div class="app-icon" style="width:34px;height:34px;font-size:13px;font-weight:700;background:rgba(240,165,0,0.12);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--accent);">${initials}</div>
-          <div class="app-text">
-            <div class="app-name" style="font-size:13px;">${name}</div>
-            <div class="app-sub">${grp}</div>
-          </div>
-          <div class="app-arrow">›</div>
-        </div>`;
-      } else if (url) {
-        // 明細DBなし・URLあり → Notionページへ
-        return `<a href="${url}" target="_blank" class="app-row" style="margin-bottom:6px;">
-          <div class="app-icon" style="width:34px;height:34px;font-size:13px;font-weight:700;background:rgba(240,165,0,0.12);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--accent);">${initials}</div>
-          <div class="app-text">
-            <div class="app-name" style="font-size:13px;">${name}</div>
-            <div class="app-sub">${grp}</div>
-          </div>
-          <div class="app-arrow">›</div>
-        </a>`;
-      } else {
-        return `<div class="app-row" style="opacity:0.4;pointer-events:none;margin-bottom:6px;">
-          <div class="app-icon" style="width:34px;height:34px;font-size:13px;font-weight:700;background:rgba(240,165,0,0.12);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);">${initials}</div>
-          <div class="app-text">
-            <div class="app-name" style="font-size:13px;">${name}</div>
-            <div class="app-sub">明細なし</div>
-          </div>
-        </div>`;
-      }
-    }).join('');
-    listEl.innerHTML = rows || '<div style="color:var(--muted);font-size:13px;">データなし</div>';
-  } catch(e) {
-    if (listEl) listEl.innerHTML = `<div style="color:var(--red);font-size:12px;">読み込みエラー: ${e.message}</div>`;
-  }
-}
-
-// ─── 給与明細 → payslip.htmlへ遷移 ───────────────────────────────────────────
-// 管理者・経理用：全員リスト表示（staff選択画面）
-function openAllPayslips() {
-  location.href = 'https://mitsurumukaihata.github.io/foo-portal/payslip.html?mode=all';
-}
-
-function openPayslip() {
-  const session = JSON.parse(localStorage.getItem(SESSION_KEY) || '{}');
-  if (session.meisaiDbId) {
-    const params = new URLSearchParams({ name: session.name, db: session.meisaiDbId });
-    location.href = 'https://mitsurumukaihata.github.io/foo-portal/payslip.html?' + params;
-  } else if (session.payslipUrl) {
-    window.open(session.payslipUrl, '_blank');
-  }
-}
-
-function openPayslipViewer(name, dbId) {
-  // payslip.htmlへ遷移
-  const params = new URLSearchParams({ name, db: dbId });
-  location.href = 'https://mitsurumukaihata.github.io/foo-portal/payslip.html?' + params;
-}
-
-async function _openPayslipViewerOld(name, dbId) {
-  // （旧コード・未使用）
-  let overlay = document.getElementById('payslip-overlay');
-  if (!overlay) {
-    overlay = document.createElement('div');
-    overlay.id = 'payslip-overlay';
-    overlay.style.cssText = `position:fixed;inset:0;background:var(--bg);z-index:500;max-width:480px;margin:0 auto;display:flex;flex-direction:column;overflow:hidden;`;
-    overlay.innerHTML = `
-      <div style="background:var(--s1);border-bottom:0.5px solid var(--border);padding:14px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;">
-        <button onclick="document.getElementById('payslip-overlay').remove()" style="background:transparent;border:none;color:var(--accent);font-size:22px;cursor:pointer;line-height:1;padding:0 4px;">‹</button>
-        <div id="payslip-viewer-title" style="font-size:15px;font-weight:900;flex:1;"></div>
-      </div>
-      <div style="display:flex;gap:6px;padding:10px 14px;background:var(--s1);border-bottom:0.5px solid var(--border);overflow-x:auto;scrollbar-width:none;flex-shrink:0;" id="payslip-filter-row">
-        <button class="payslip-filter active" data-filter="all" onclick="filterPayslip('all',this)" style="flex-shrink:0;padding:5px 12px;border-radius:16px;font-size:12px;font-weight:700;border:1px solid var(--accent);background:rgba(240,165,0,0.12);color:var(--accent);cursor:pointer;font-family:inherit;">すべて</button>
-        <button class="payslip-filter" data-filter="給与" onclick="filterPayslip('給与',this)" style="flex-shrink:0;padding:5px 12px;border-radius:16px;font-size:12px;font-weight:700;border:1px solid var(--border2);background:var(--s2);color:var(--muted);cursor:pointer;font-family:inherit;">給与</button>
-        <button class="payslip-filter" data-filter="賞与" onclick="filterPayslip('賞与',this)" style="flex-shrink:0;padding:5px 12px;border-radius:16px;font-size:12px;font-weight:700;border:1px solid var(--border2);background:var(--s2);color:var(--muted);cursor:pointer;font-family:inherit;">賞与</button>
-        <button class="payslip-filter" data-filter="決め事" onclick="filterPayslip('決め事',this)" style="flex-shrink:0;padding:5px 12px;border-radius:16px;font-size:12px;font-weight:700;border:1px solid var(--border2);background:var(--s2);color:var(--muted);cursor:pointer;font-family:inherit;">決め事</button>
-      </div>
-      <div id="payslip-list" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 14px;">
-        <div style="text-align:center;padding:40px;color:var(--muted);font-size:13px;">読み込み中...</div>
-      </div>`;
-    document.body.appendChild(overlay);
-  }
-  document.getElementById('payslip-viewer-title').textContent = `💴 ${name}`;
-  overlay.style.display = 'flex';
-
-  // DBからデータを取得
-  try {
-    const res = await notionAPI('POST', `/databases/${dbId}/query`, {
-      sorts: [{ property: '給与支給日', direction: 'descending' }],
-      page_size: 100,
-    });
-    window._payslipData = (res.results || []).map(p => ({
-      id:       p.id,
-      name:     p.properties['名前']?.title?.[0]?.plain_text || '',
-      date:     p.properties['給与支給日']?.date?.start || '',
-      cat:      p.properties['カテゴリ']?.select?.name || '',
-      year:     p.properties['年']?.select?.name || '',
-      month:    p.properties['月']?.select?.name || '',
-      files:    p.properties['給与明細']?.files || [],
-      pageUrl:  `https://www.notion.so/${p.id.replace(/-/g,'')}`,
-    }));
-    renderPayslipList('all');
-  } catch(e) {
-    document.getElementById('payslip-list').innerHTML = `<div style="color:var(--red);font-size:13px;">読み込みエラー: ${e.message}</div>`;
-  }
-}
-
-function renderPayslipList(filter) {
-  const listEl = document.getElementById('payslip-list');
-  if (!listEl) return;
-  let data = window._payslipData || [];
-  if (filter !== 'all') {
-    data = data.filter(r => {
-      if (filter === '賞与') return r.cat.includes('賞与');
-      return r.cat === filter;
-    });
-  }
-  if (!data.length) {
-    listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px;">データなし</div>';
-    return;
-  }
-
-  // 年でグループ化して表示
-  const byYear = {};
-  data.forEach(r => {
-    const y = r.year || r.date?.slice(0,4) || '年不明';
-    if (!byYear[y]) byYear[y] = [];
-    byYear[y].push(r);
-  });
-
-  const catColor = { '給与': 'var(--blue)', '夏季賞与': '#a855f7', '冬季賞与': '#a37050', '賞与': '#e07898', '決め事': 'var(--accent)' };
-
-  let html = '';
-  Object.keys(byYear).sort((a,b) => b.localeCompare(a)).forEach(year => {
-    html += `<div style="font-size:11px;color:var(--muted);letter-spacing:0.08em;font-weight:700;padding:8px 0 4px;border-bottom:0.5px solid var(--border);margin-bottom:6px;">${year}年</div>`;
-    byYear[year].forEach(r => {
-      const monthLabel = r.month || (r.date ? r.date.slice(5,7) + '月' : '');
-      const color = catColor[r.cat] || 'var(--muted)';
-      const hasFile = r.files.length > 0;
-      html += `<div style="background:var(--s1);border:0.5px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;${hasFile ? 'cursor:pointer;' : ''}" ${hasFile ? `onclick="window.open('${r.pageUrl}','_blank')"` : ''}>
-        <div style="width:40px;height:40px;border-radius:8px;background:${color}20;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">
-          <div style="font-size:11px;font-weight:700;color:${color};">${monthLabel}</div>
-        </div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:700;color:var(--text);">${r.name || r.date || '—'}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px;display:flex;gap:6px;align-items:center;">
-            <span style="background:${color}20;color:${color};border-radius:10px;padding:1px 7px;font-weight:700;">${r.cat}</span>
-            ${r.date ? `<span>${r.date.replace(/-/g,'/')}</span>` : ''}
-          </div>
-        </div>
-        ${hasFile ? `<div style="color:var(--muted);font-size:18px;">›</div>` : `<div style="font-size:11px;color:var(--muted);">ファイルなし</div>`}
-      </div>`;
-    });
-  });
-  listEl.innerHTML = html;
-}
-
-function filterPayslip(filter, btn) {
-  document.querySelectorAll('.payslip-filter').forEach(b => {
-    b.style.borderColor = 'var(--border2)';
-    b.style.background  = 'var(--s2)';
-    b.style.color       = 'var(--muted)';
-  });
-  btn.style.borderColor = 'var(--accent)';
-  btn.style.background  = 'rgba(240,165,0,0.12)';
-  btn.style.color       = 'var(--accent)';
-  renderPayslipList(filter);
-}
-
-window.onload = async () => {
-  initTheme();
+window.onload = () => {
   const session = loadSession();
-  if (session) {
-    launchPortal(session);
-  } else {
-    await loadStaffList();
-  }
+  if (session) launchPortal(session);
 };
-
-// ─── スタッフリスト動的ロード（グループ別カテゴリ表示） ──────────────────────────
-// グループの表示順・ラベル定義
-const GROUP_ORDER = ['管理者', '部長', 'リーダー', '一般', '事務', '経理'];
-const GROUP_LABEL = {
-  '管理者':   '👑 管理者',
-  '部長':     '👔 部長',
-  'リーダー': '🏅 リーダー',
-  '一般':     '👷 一般',
-  '事務':     '📋 事務',
-  '経理':     '💰 経理',
-};
-
-async function loadStaffList() {
-  const grid = document.getElementById('staff-grid');
-  try {
-    const res = await notionAPI('POST', `/databases/${MASTER_DB}/query`, {
-      filter: { property: '在籍', select: { equals: '在籍中' } },
-      sorts:  [{ property: '表示順', direction: 'ascending' }],
-      page_size: 50,
-    });
-    if (res.object === 'error') throw new Error(res.message);
-
-    // グループ別に振り分け（表示順でソート済み）
-    const grouped = {};
-    (res.results || []).forEach(p => {
-      const name  = p.properties['氏名']?.title?.[0]?.plain_text || '';
-      const order = p.properties['表示順']?.number ?? 9999;
-      const grp   = p.properties['アプリグループ']?.select?.name || '一般';
-      if (!name) return;
-      if (!grouped[grp]) grouped[grp] = [];
-      grouped[grp].push({ name, order });
-    });
-
-    // グループ内も表示順でソート
-    Object.values(grouped).forEach(arr => arr.sort((a, b) => a.order - b.order));
-
-    if (!Object.keys(grouped).length) {
-      grid.innerHTML = '<div style="grid-column:1/-1;color:var(--muted);font-size:13px;text-align:center;padding:16px;">社員情報が見つかりません</div>';
-      return;
-    }
-
-    // グループ順に並べてHTML生成
-    // 部長・リーダーは同じラベル行にまとめて横並び
-    const MERGED_PAIR = ['部長', 'リーダー'];
-
-    const orderedGroups = GROUP_ORDER.filter(g => grouped[g])
-      .concat(Object.keys(grouped).filter(g => !GROUP_ORDER.includes(g)));
-
-    const rendered = new Set();
-    let html = '';
-
-    orderedGroups.forEach(grp => {
-      if (rendered.has(grp)) return;
-      const members = grouped[grp];
-      if (!members?.length) return;
-
-      // 部長・リーダーは1つのラベルにまとめて横並び
-      if (MERGED_PAIR.includes(grp)) {
-        // まだ描画していない場合のみラベルを出す
-        const pairMembers = MERGED_PAIR.flatMap(g => grouped[g] || []);
-        if (pairMembers.length) {
-          const pairLabel = MERGED_PAIR
-            .filter(g => grouped[g]?.length)
-            .map(g => GROUP_LABEL[g] || g).join(' · ');
-          html += `<div style="grid-column:1/-1;font-size:10px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;padding:6px 2px 2px;margin-top:4px;border-top:0.5px solid var(--border);">${pairLabel}</div>`;
-          pairMembers.forEach(({ name }) => {
-            html += '<button class="staff-btn" onclick="selectStaff(\'' + name + '\')">' + name + '</button>';
-          });
-          MERGED_PAIR.forEach(g => rendered.add(g));
-        }
-        return;
-      }
-
-      // 通常グループ
-      const label = GROUP_LABEL[grp] || grp;
-      html += `<div style="grid-column:1/-1;font-size:10px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;padding:6px 2px 2px;margin-top:4px;border-top:0.5px solid var(--border);">${label}</div>`;
-      members.forEach(({ name }) => {
-        html += '<button class="staff-btn" onclick="selectStaff(\'' + name + '\')">' + name + '</button>';
-      });
-      rendered.add(grp);
-    });
-
-    grid.innerHTML = html;
-  } catch(e) {
-    grid.innerHTML = `<div style="grid-column:1/-1;color:var(--red);font-size:12px;padding:16px;text-align:center;">読み込みエラー<br>${e.message}<br><button onclick="loadStaffList()" style="margin-top:8px;background:var(--accent);border:none;border-radius:8px;color:#fff;padding:6px 14px;font-size:12px;cursor:pointer;">再試行</button></div>`;
-  }
-}
 
 // ═══════════════════════════════════════════════
 //  顧客情報アプリ
@@ -2016,7 +1666,7 @@ async function fetchMgmtPersons() {
       mgmtPersonsCache[company].push(person);
       // IDキャッシュ（詳細画面のリレーション参照用）
       mgmtPersonsCache['_byId'] = mgmtPersonsCache['_byId'] || {};
-      mgmtPersonsCache['_byId'][page.id] = person;
+      mgmtPersonsCache['_byId'][page.id.replace(/-/g, '')] = person;
     });
   } catch(e) { console.warn('中間担当者取得失敗', e); }
 }
@@ -2029,7 +1679,7 @@ function parseCustomer(page) {
     yomi:        getProp(p, 'フリガナ', 'text'),
     row:         getProp(p, '行', 'select'),
     kanri:       getProp(p, '中間管理会社', 'select'),
-    mgmtRelIds:  (p['中間担当者']?.relation || []).map(r => r.id),  // リレーション先のID
+    mgmtRelIds:  (p['中間担当者']?.relation || []).map(r => r.id.replace(/-/g, '')),  // リレーション先のID（ハイフンなし）
     person1:     getProp(p, '担当者①', 'text'),
     role1:       getProp(p, '役職①', 'select'),
     tel1:        getProp(p, '連絡先①', 'text'),
@@ -2052,8 +1702,12 @@ function parseCustomer(page) {
     work3map:    getProp(p, '作業場所③Map', 'url'),
     work4name:   getProp(p, '作業場所④名称', 'text'),
     work4map:    getProp(p, '作業場所④Map', 'url'),
-    storageName: getProp(p, '保管場所名称', 'text'),
-    storageMap:  getProp(p, '保管場所Map', 'url'),
+    storage1name: getProp(p, '保管場所①名称', 'text'),
+    storage1map:  getProp(p, '保管場所①Map', 'url'),
+    storage2name: getProp(p, '保管場所②名称', 'text'),
+    storage2map:  getProp(p, '保管場所②Map', 'url'),
+    storage3name: getProp(p, '保管場所③名称', 'text'),
+    storage3map:  getProp(p, '保管場所③Map', 'url'),
     goodnotes:   getProp(p, 'GoodNotesリンク', 'url'),
     memo:        getProp(p, 'メモ', 'text'),
   };
@@ -2189,7 +1843,7 @@ const KANA_ROW_MAP = {
   'ナ行': ['ナ','ニ','ヌ','ネ','ノ'],
   'ハ行': ['ハ','ヒ','フ','ヘ','ホ'],
   'マ行': ['マ','ミ','ム','メ','モ'],
-  'ヤ・ラ・ワ行': ['ヤ','ラ','ワ'],
+  'ヤ・ラ・ワ行': ['ヤ','ユ','ヨ','ラ','リ','ル','レ','ロ','ワ','ヲ','ン'],
 };
 // カナ単文字 → 行マッピング
 const KANA_TO_ROW = {};
@@ -2207,10 +1861,28 @@ function selectKana(kana) {
   const subRow = document.getElementById('ca-kana-sub');
   if (kana !== 'すべて' && KANA_ROW_MAP[kana]) {
     const subs = KANA_ROW_MAP[kana];
-    subRow.innerHTML = subs.map(k =>
-      `<button class="ca-kana-tab" style="padding:6px 12px;font-size:11px;" onclick="selectKanaSub('${k}',this)">${k}</button>`
-    ).join('');
-    subRow.style.display = '';
+    // ヤ・ラ・ワ行はグループ区切り付きで表示
+    let html = '';
+    if (kana === 'ヤ・ラ・ワ行') {
+      const groups = [
+        { label: 'ヤ行', kanas: ['ヤ','ユ','ヨ'] },
+        { label: 'ラ行', kanas: ['ラ','リ','ル','レ','ロ'] },
+        { label: 'ワ行', kanas: ['ワ','ヲ','ン'] },
+      ];
+      groups.forEach(g => {
+        html += `<span style="font-size:9px;color:var(--muted);padding:0 4px 0 8px;align-self:center;white-space:nowrap;">${g.label}</span>`;
+        g.kanas.forEach(k => {
+          html += `<button class="ca-kana-tab" style="padding:6px 10px;font-size:11px;" onclick="selectKanaSub('${k}',this)">${k}</button>`;
+        });
+      });
+    } else {
+      html = subs.map(k =>
+        `<button class="ca-kana-tab" style="padding:6px 12px;font-size:11px;" onclick="selectKanaSub('${k}',this)">${k}</button>`
+      ).join('');
+    }
+    subRow.innerHTML = html;
+    subRow.style.display = 'flex';
+    subRow.style.alignItems = 'center';
   } else {
     subRow.innerHTML = '';
     subRow.style.display = 'none';
@@ -2323,7 +1995,7 @@ function openCustDetail(id) {
   let html = '';
 
   // 連絡先（会社代表を最上部）
-  html += `<div class="cd-section"><div class="cd-section-label">📞 連絡先</div><table class="cd-table">`;
+  html += `<div class="cd-section"><div class="cd-section-label">📞 お客様連絡先</div><table class="cd-table">`;
   if (c.telCompany) html += `<tr><td>会社代表</td><td><a class="cd-tel-link" href="tel:${c.telCompany.replace(/[-\s]/g,'')}">${esc(c.telCompany)}</a></td></tr>`;
   if (c.role1)    html += `<tr><td>役職①</td><td>${esc(c.role1)}</td></tr>`;
   if (c.person1)  html += `<tr><td>担当者①</td><td>${esc(c.person1)}</td></tr>`;
@@ -2407,16 +2079,23 @@ function openCustDetail(id) {
     html += `</div>`;
   }
 
-  // 保管場所
-  if (c.storageMap || c.storageName) {
+  // 保管場所①②③
+  const storagePlaces = [
+    { name: c.storage1name, map: c.storage1map },
+    { name: c.storage2name, map: c.storage2map },
+    { name: c.storage3name, map: c.storage3map },
+  ].filter(x => x.map || x.name);
+  if (storagePlaces.length) {
     html += `<div class="cd-section"><div class="cd-section-label">🏠 保管場所</div>`;
-    const label = c.storageName || 'GoogleMapを開く';
-    if (c.storageMap) {
-      html += `<a class="cd-map-btn" href="${esc(c.storageMap)}" target="_blank">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>${esc(label)}</a>`;
-    } else {
-      html += `<div style="font-size:13px;color:var(--text);">${esc(label)}</div>`;
-    }
+    storagePlaces.forEach((w, i) => {
+      const label = w.name || `保管場所${i > 0 ? i+1 : ''}を開く`;
+      if (w.map) {
+        html += `<a class="cd-map-btn" href="${esc(w.map)}" target="_blank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>${esc(label)}</a>`;
+      } else {
+        html += `<div style="font-size:13px;color:var(--text);padding:4px 0;">${esc(label)}</div>`;
+      }
+    });
     html += `</div>`;
   }
 
@@ -2555,26 +2234,47 @@ function addMapField(type) {
     wrap.appendChild(div);
     const addBtn = wrap.nextElementSibling;
     if (workMapCount >= 4) addBtn.style.display = 'none';
-  } else {
-    if (storageMapCount >= 1) { alert('保管場所は1件です'); return; }
-    storageMapCount++;
-    const wrap = document.getElementById('cf-maps-storage');
-    const div  = document.createElement('div');
-    div.className = 'cf-map-group';
-    div.id = 'cf-storage-group';
-    div.innerHTML = `
-      <div class="cf-map-group-header">
-        <div class="cf-map-group-num">保管場所</div>
-        <button class="cf-map-remove" onclick="removeMapField('storage',1)">×</button>
-      </div>
-      <div class="cf-label">場所の名称</div>
-      <input class="cf-input" id="cf-storage-name" type="text" placeholder="シンヨー車庫、現地 など" style="margin-bottom:8px;">
-      <div class="cf-label">GoogleMap URL</div>
-      <input class="cf-input" id="cf-storage-url" type="url" placeholder="https://maps.app.goo.gl/...">
-    `;
-    wrap.appendChild(div);
-    document.getElementById('cf-storage-add-btn').style.display = 'none';
   }
+}
+
+function addStorageField() {
+  if (storageMapCount >= 3) { alert('保管場所は最大3件です'); return; }
+  storageMapCount++;
+  const n = storageMapCount;
+  const wrap = document.getElementById('cf-maps-storage');
+  const div  = document.createElement('div');
+  div.className = 'cf-map-group';
+  div.id = `cf-storage-group-${n}`;
+  div.innerHTML = `
+    <div class="cf-map-group-header">
+      <div class="cf-map-group-num">保管場所 ${n}</div>
+      <button class="cf-map-remove" onclick="removeStorageField(${n})">×</button>
+    </div>
+    <div class="cf-label">場所の名称</div>
+    <input class="cf-input" id="cf-storage${n}-name" type="text" placeholder="シンヨー車庫、現地 など" style="margin-bottom:8px;">
+    <div class="cf-label">GoogleMap URL</div>
+    <input class="cf-input" id="cf-storage${n}-url" type="url" placeholder="https://maps.app.goo.gl/...">
+  `;
+  wrap.appendChild(div);
+  if (storageMapCount >= 3) document.getElementById('cf-storage-add-btn').style.display = 'none';
+}
+
+function removeStorageField(n) {
+  const el = document.getElementById(`cf-storage-group-${n}`);
+  if (el) el.remove();
+  storageMapCount = Math.max(0, storageMapCount - 1);
+  // 番号振り直し
+  document.querySelectorAll('[id^="cf-storage-group-"]').forEach((el, i) => {
+    const newN = i + 1;
+    el.id = `cf-storage-group-${newN}`;
+    el.querySelector('.cf-map-group-num').textContent = `保管場所 ${newN}`;
+    el.querySelector('.cf-map-remove').setAttribute('onclick', `removeStorageField(${newN})`);
+    const inputs = el.querySelectorAll('.cf-input');
+    if (inputs[0]) inputs[0].id = `cf-storage${newN}-name`;
+    if (inputs[1]) inputs[1].id = `cf-storage${newN}-url`;
+  });
+  storageMapCount = document.querySelectorAll('[id^="cf-storage-group-"]').length;
+  document.getElementById('cf-storage-add-btn').style.display = '';
 }
 
 function removeMapField(type, num) {
@@ -2593,11 +2293,6 @@ function removeMapField(type, num) {
     workMapCount = document.querySelectorAll('[id^="cf-work-group-"]').length;
     const wrap = document.getElementById('cf-maps-work');
     if (wrap && workMapCount < 4) wrap.nextElementSibling.style.display = '';
-  } else {
-    const el = document.getElementById('cf-storage-group');
-    if (el) el.remove();
-    storageMapCount = 0;
-    document.getElementById('cf-storage-add-btn').style.display = '';
   }
 }
 
@@ -2689,11 +2384,18 @@ function openCustForm(custData) {
     if (w.url)  document.getElementById(`cf-work${workMapCount}-url`).value  = w.url;
   });
 
-  if (custData?.storageName || custData?.storageMap) {
-    addMapField('storage');
-    if (custData.storageName) document.getElementById('cf-storage-name').value = custData.storageName;
-    if (custData.storageMap)  document.getElementById('cf-storage-url').value  = custData.storageMap;
-  }
+  // 保管場所①②③の復元
+  const storages = [
+    { name: custData?.storage1name, url: custData?.storage1map },
+    { name: custData?.storage2name, url: custData?.storage2map },
+    { name: custData?.storage3name, url: custData?.storage3map },
+  ].filter(x => x.name || x.url);
+  storages.forEach(s => {
+    addStorageField();
+    const n = storageMapCount;
+    if (s.name) document.getElementById(`cf-storage${n}-name`).value = s.name;
+    if (s.url)  document.getElementById(`cf-storage${n}-url`).value  = s.url;
+  });
 
   document.getElementById('cf-feedback').className = 'cf-save-feedback';
   document.getElementById('cf-feedback').textContent = '';
@@ -2717,8 +2419,7 @@ async function saveCustomer() {
 
   const selectedMakers = Array.from(document.querySelectorAll('.cf-multi-btn.on')).map(b => b.dataset.val || b.textContent.trim());
   const getWorkMap = (n, key) => document.getElementById(`cf-work${n}-${key}`)?.value.trim() || null;
-  const storageName = document.getElementById('cf-storage-name')?.value.trim() || null;
-  const storageUrl  = document.getElementById('cf-storage-url')?.value.trim()  || null;
+  const getStorage = (n, key) => document.getElementById(`cf-storage${n}-${key}`)?.value.trim() || null;
   const session = loadSession();
 
   // 役職取得

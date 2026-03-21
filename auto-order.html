@@ -852,11 +852,12 @@ function previewOrderPdf() {
   const selectedItems = alertItems.filter(i => i.selected && i.orderQty > 0);
   if (!selectedItems.length) { alert('発注対象を選択してください'); return; }
 
-  // PDFオーバーレイを表示（Notionには保存しない）
+  // 1) PDF内容生成（print-contentにセット）
   buildPrintSheet(selectedItems, tantou, nouki, biko);
-
-  // 確認ボタン付きオーバーレイを開く
+  // 2) オーバーレイ開いてiframeにsrcdocをセット
   openOrderPreviewOverlay(selectedItems, tantou, nouki, biko);
+  // 3) iframe描画後に未入荷データを注入
+  _fetchAndInjectPending();
 }
 
 function openOrderPreviewOverlay(selectedItems, tantou, nouki, biko) {
@@ -890,15 +891,13 @@ function openOrderPreviewOverlay(selectedItems, tantou, nouki, biko) {
 
   document.body.appendChild(overlay);
 
+  // buildPrintSheet が print-content に完全なHTML（srcdoc用）をセット済み → そのまま使う
   const frame = document.getElementById('order-preview-frame');
-  const sheet = document.getElementById('print-sheet');
-  if (sheet) {
-    frame.srcdoc = sheet.querySelector('#print-content')?.innerHTML
-      ? `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
-          body{font-family:'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;padding:8mm 10mm;font-size:6pt;color:#1a1a18;}
-          *{box-sizing:border-box;margin:0;padding:0;}
-        </style></head><body>${sheet.querySelector('#print-content').innerHTML}</body></html>`
-      : '<p style="padding:20px;">プレビューを生成中…</p>';
+  const printContent = document.getElementById('print-content');
+  if (frame && printContent && printContent.innerHTML.trim()) {
+    frame.srcdoc = printContent.innerHTML;
+  } else if (frame) {
+    frame.srcdoc = '<p style="padding:20px;">プレビューを生成中…</p>';
   }
 
   // 発注データを保持
@@ -982,109 +981,234 @@ async function createHacchuRecords(items, tantou, nouki, biko) {
 // PDF発注書生成
 // ──────────────────────────────────────
 function buildPrintSheet(items, tantou, nouki, biko) {
-  const today = new Date();
-  const dateStr = `${today.getFullYear()}年${today.getMonth()+1}月${today.getDate()}日`;
+  const now = new Date();
+  const issued = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   const noukiStr = nouki
-    ? (() => { const d=new Date(nouki); return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`; })()
-    : '—';
-
+    ? (() => { const d=new Date(nouki); return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`; })()
+    : '未定';
+  const todayStr = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()}`;
   const totalQty = items.reduce((s,i) => s + i.orderQty, 0);
 
-  // 倉庫別グループ化
-  const byWh = {};
-  items.forEach(i => {
-    const k = i.warehouse;
-    if (!byWh[k]) byWh[k] = [];
-    byWh[k].push(i);
+  const MAKER_LABEL_MAP = {
+    'TOYO':'トーヨータイヤジャパン広島営業所',
+    'BS':'ブリヂストンタイヤソリューションジャパン広島西',
+    'BRIDGESTONE':'ブリヂストンタイヤソリューションジャパン広島西',
+    'DUNLOP':'ダンロップ',
+  };
+  const makerCounts = {};
+  items.forEach(i => { makerCounts[i.maker] = (makerCounts[i.maker]||0) + 1; });
+  const mainMaker = Object.entries(makerCounts).sort((a,b)=>b[1]-a[1])[0]?.[0] || 'TOYO';
+  const makerLabel = MAKER_LABEL_MAP[mainMaker] || mainMaker;
+
+  const STAFF_SHORT = {
+    '向畑 充':'向畑','向畑　充':'向畑',
+    '岡崎 由美':'岡崎','岡崎　由美':'岡崎',
+  };
+  const tantouShort = STAFF_SHORT[tantou] || (tantou || '自動');
+
+  // ── 発注管理アプリと同じスタイル ──
+  // 列幅を明示（パターン・サイズは固定幅、他は狭め）
+  const TH  = (w='') => `padding:1px 2px;font-size:4.5pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;white-space:nowrap;${w?'width:'+w+';':''}`;
+  const tdS = (i,ex='') => `padding:1px 2px;font-size:4.5pt;text-align:center;border:0.3px solid #b8cfe8;${i%2===1?'background:#f0f5fc;':'background:#fff;'}white-space:nowrap;${ex}`;
+
+  // 五日市→志和が第一優先、その中でLTL TB→LTS→バンの順
+  const CAT_ORDER = ['LTL TB　ノーマル','LTL TB　スタッドレス','LTS　ノーマル','LTS　スタッドレス','RT 再生','バン','リフト'];
+  const WH_ORDER  = ['五日市','志和'];
+  items = [...items].sort((a, b) => {
+    const wa = WH_ORDER.indexOf(a.warehouse.replace('倉庫','')), wb = WH_ORDER.indexOf(b.warehouse.replace('倉庫',''));
+    if (wa !== wb) return (wa===-1?99:wa) - (wb===-1?99:wb);
+    const ca = CAT_ORDER.indexOf(a.category||''), cb = CAT_ORDER.indexOf(b.category||'');
+    if (ca !== cb) return (ca===-1?99:ca) - (cb===-1?99:cb);
+    return (a.pattern||'').localeCompare(b.pattern||'');
   });
 
-  let tableRows = '';
-  Object.entries(byWh).forEach(([wh, whItems]) => {
-    whItems.forEach((item, idx) => {
-      const rowStyle = idx % 2 === 0 ? '' : 'background:#fdf6ee;';
-      tableRows += `<tr style="${rowStyle}">
-        <td>${item.pattern}</td>
-        <td class="mono">${item.size}</td>
-        <td>${item.category || '—'}</td>
-        <td>${wh.replace('倉庫','')}</td>
-        <td class="qty-col">${item.orderQty}本</td>
-      </tr>`;
-    });
-  });
+  const mkRowNew = (item, i) => `<tr>
+    <td style="${tdS(i)}">${item.pattern}</td>
+    <td style="${tdS(i)}">${item.size}</td>
+    <td style="${tdS(i,'font-weight:bold;color:#e07000;')}">${item.orderQty}</td>
+    <td style="${tdS(i)}">${item.warehouse.replace('倉庫','')}</td>
+    <td style="${tdS(i)}">${tantouShort}</td>
+    <td style="${tdS(i)}">自動</td>
+    <td style="${tdS(i)}">${todayStr}</td>
+    <td style="${tdS(i)}">${noukiStr}</td>
+    <td style="${tdS(i,'color:#888;white-space:normal;text-align:left;')}">${escHtml(biko||'')}</td>
+  </tr>`;
 
-  const noticeHtml = biko
-    ? `<div class="print-notice"><strong>備考：</strong>${escHtml(biko)}</div>`
-    : '';
+  const theadNew = `<tr>
+    <th style="${TH('5%')}">パターン</th><th style="${TH('9%')}">サイズ</th>
+    <th style="${TH('4%')}">本数</th><th style="${TH('5%')}">納入場所</th>
+    <th style="${TH('4%')}">発注者</th><th style="${TH('4%')}">受注者</th>
+    <th style="${TH('7%')}">発注日</th><th style="${TH('7%')}">納期予定</th>
+    <th style="${TH('15%')}">備考</th>
+  </tr>`;
 
-  document.getElementById('print-content').innerHTML = `
-    <div class="print-header">
-      <div>
-        <div class="print-company">有限会社タイヤマネージャー f.o.o</div>
-        <div class="print-title">発注書（TOYO TIRE）</div>
-      </div>
-      <div class="print-date">発行日：${dateStr}</div>
-    </div>
+  const newRows = items.map((item, i) => mkRowNew(item, i)).join('');
 
-    <div class="print-to-section">
-      <div class="print-to-block">
-        <div class="print-to-label">発注先</div>
-        <div class="print-to-val">TOYO TIRE 株式会社 御中</div>
-      </div>
-      <div class="print-to-block">
-        <div class="print-to-label">発注担当者</div>
-        <div class="print-to-val">${escHtml(tantou)}</div>
-      </div>
-    </div>
+  // window._pdfState に今回の情報を保持（_fetchAndInjectPending が参照）
+  window._pdfState = { makerLabel, tantouShort, issued, totalQty, theadNew, newRows, TH, tdS: null };
 
-    <div class="print-meta-grid">
-      <div class="print-meta-item">
-        <div class="print-meta-label">希望納期</div>
-        <div class="print-meta-val">${noukiStr}</div>
-      </div>
-      <div class="print-meta-item">
-        <div class="print-meta-label">合計本数</div>
-        <div class="print-meta-val" style="color:#e07000;">${totalQty}本</div>
-      </div>
-      <div class="print-meta-item">
-        <div class="print-meta-label">品目数</div>
-        <div class="print-meta-val">${items.length}品目</div>
-      </div>
-    </div>
+  // iframeに書き込む完全HTML（pending-sectionはdivのまま残す）
+  const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Hiragino Kaku Gothic ProN','IPAGothic',sans-serif;padding:10mm 10mm;font-size:5pt;color:#1a1a18;}
+table{width:100%;border-collapse:collapse;}
+</style></head><body>
+<table style="width:100%;border-collapse:collapse;border-bottom:2px solid #2563a8;padding-bottom:4px;margin-bottom:6px;">
+  <tr>
+    <td>
+      <div style="font-size:13pt;font-weight:bold;color:#2563a8;">発　注　書</div>
+      <div style="font-size:5pt;color:#666;margin-top:2px;">発行日：${issued}　発行者：${tantouShort}</div>
+    </td>
+    <td style="text-align:right;vertical-align:top;">
+      <div style="font-size:7pt;font-weight:bold;">(有)タイヤマネージャーフー</div>
+      <div style="font-size:5pt;color:#666;line-height:1.5;">〒731-5141 広島県広島市佐伯区千同３丁目３９４－１　TEL：082-942-3730</div>
+    </td>
+  </tr>
+</table>
+<table style="width:100%;border-collapse:collapse;border:1.5px solid #2563a8;background:#e8f0fa;margin-bottom:8px;">
+  <tr>
+    <td style="padding:3px 7px;width:65%;border-right:0.5px solid #b8cfe8;">
+      <div style="font-size:4.5pt;color:#2563a8;font-weight:bold;margin-bottom:1px;">発注先</div>
+      <div style="font-size:7pt;font-weight:bold;">${escHtml(makerLabel)}　御中</div>
+    </td>
+    <td style="padding:3px 7px;">
+      <div style="font-size:4.5pt;color:#2563a8;font-weight:bold;margin-bottom:1px;">注文担当</div>
+      <div style="font-size:5.5pt;font-weight:bold;color:#084298;">自動発注システム</div>
+    </td>
+  </tr>
+</table>
+<div style="font-size:5pt;font-weight:bold;color:#2563a8;margin:4px 0 2px;">■ 今回発注分</div>
+<table style="width:100%;border-collapse:collapse;table-layout:fixed;"><thead>${theadNew}</thead><tbody>${newRows}</tbody></table>
+<div style="text-align:right;margin-top:3px;padding-top:2px;border-top:0.5px solid #e0dcd6;font-size:4.5pt;color:#666;">
+  今回発注合計：<span style="font-size:7pt;font-weight:bold;color:#2563a8;">${totalQty}本</span>
+</div>
+<div id="pending-section" style="margin-top:6px;">
+  <div style="font-size:4.5pt;color:#888;padding:3px 5px;border:0.3px solid #ccc;border-radius:2px;background:#f8f8f8;">未入荷（既発注分）を読み込み中…</div>
+</div>
+<div id="notices" style="background:#e8f0fa;border:0.5px solid #b8cfe8;padding:3px 6px;margin-top:5px;font-size:4.5pt;color:#666;line-height:1.5;">
+  <div>※ 未入荷分は引き続きよろしくお願いいたします。</div>
+  <div>※ 納期等に変更がある場合はご連絡ください。</div>
+  <div style="margin-top:2px;">※ 「未入荷（既発注分）」の一覧は、弊社の社内入庫処理が完了していないものを表示しております。実際にはすでに入荷・納品済みの場合でも、社内処理のタイミングにより未入荷として表示されることがございます。ご確認の際はあらかじめご了承ください。</div>
+</div>
+<div style="border-top:0.5px solid #e0dcd6;margin-top:4px;padding-top:2px;display:flex;justify-content:space-between;font-size:4pt;color:#aaa;">
+  <span>(有)タイヤマネージャーフー　広島市佐伯区千同３-３９４-１　TEL：082-942-3730</span>
+  <span>自動生成　${issued}</span>
+</div>
+</body></html>`;
 
-    ${noticeHtml}
-
-    <table class="print-table">
-      <thead>
-        <tr>
-          <th>パターン</th>
-          <th>サイズ</th>
-          <th>カテゴリ</th>
-          <th>納入先倉庫</th>
-          <th style="text-align:right;">数量</th>
-        </tr>
-      </thead>
-      <tbody>${tableRows}</tbody>
-      <tfoot>
-        <tr>
-          <td colspan="4" style="font-size:12px;font-weight:700;">合計</td>
-          <td class="qty-col" style="font-size:16px;">${totalQty}本</td>
-        </tr>
-      </tfoot>
-    </table>
-
-    <div class="print-footer">
-      <div class="print-footer-note">
-        ※ 本発注書の内容をご確認の上、ご対応をよろしくお願いいたします。<br>
-        ※ ご不明な点はご連絡ください。<br>
-        有限会社タイヤマネージャー f.o.o
-      </div>
-      <div class="print-sign-area">
-        <div class="print-sign-label">確認印</div>
-        <div class="print-sign-line"></div>
-      </div>
-    </div>`;
+  document.getElementById('print-content').innerHTML = fullHtml;
 }
 
+async function _fetchAndInjectPending() {
+  // iframeが描画された後を待つ
+  await new Promise(r => setTimeout(r, 300));
+
+  const iframe = document.getElementById('order-preview-frame');
+  if (!iframe) return;
+
+  const TH = (w='') => `padding:1px 2px;font-size:4.5pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;white-space:nowrap;${w?'width:'+w+';':''}`;
+  const tdS = (i,ex='') => `padding:1px 2px;font-size:4.5pt;text-align:center;border:0.3px solid #b8cfe8;${i%2===1?'background:#f0f5fc;':'background:#fff;'}white-space:nowrap;${ex}`;
+
+  try {
+    const body = {
+      filter: { or: [
+        { property: 'ステータス', select: { equals: '新規発注' } },
+        { property: 'ステータス', select: { equals: '発注済' } },
+      ]},
+      sorts: [{ property: '発注日', direction: 'descending' }],
+      page_size: 100,
+    };
+    const res = await notionAPI('POST', `/databases/${HACCHU_DB}/query`, body);
+    const records = res.results || [];
+
+    const fmt = s => s ? s.replace(/-/g,'/') : '—';
+
+    // 発注日（古い順）→倉庫（五日市→志和）→カテゴリ（LTL TB→LTS→バン）
+    const WH_ORD  = ['五日市','志和'];
+    // 仕入先×パターンからカテゴリを推定
+    const TOYO_LTL = new Set(['M646','M676','M125','M317','M323','M319','M320','M619','M626','M929','M919','M966','M920','M939']);
+    const TOYO_LTS = new Set(['M634','M135','M134e','M131','M804','M935','M937','M934']);
+    const BS_LTL   = new Set(['M888','M899','M801','M746','R225','R241','G539','W910','W900S','W911','W970','W999']);
+    const BS_LTS   = new Set(['R207','W989','LV01','LT01']);
+    const VAN_PAT  = new Set(['V03e','V02e','K370','R710','V600','W300','M935','VL10A','VAN01','SV01']);
+    const RT_PAT   = new Set(['RTM810','RTM804','RTM807','RTM81C-170','RTM890','RTW910','RTW911','RTW970','RTG610','RTM919']);
+    function getCatOrder(r) {
+      const pat = r.properties['パターン']?.select?.name || '';
+      if (RT_PAT.has(pat)) return 4;
+      if (VAN_PAT.has(pat)) return 5;
+      if (TOYO_LTL.has(pat) || BS_LTL.has(pat)) return 0; // LTL TB
+      if (TOYO_LTS.has(pat) || BS_LTS.has(pat)) return 2; // LTS
+      return 6;
+    }
+    records.sort((a, b) => {
+      const da = a.properties['発注日']?.date?.start || '';
+      const db2 = b.properties['発注日']?.date?.start || '';
+      if (da !== db2) return da < db2 ? -1 : 1;
+      const pa = a.properties['納入予定場所']?.select?.name || '';
+      const pb = b.properties['納入予定場所']?.select?.name || '';
+      const wa = WH_ORD.indexOf(pa), wb = WH_ORD.indexOf(pb);
+      if (wa !== wb) return (wa===-1?99:wa) - (wb===-1?99:wb);
+      const ca = getCatOrder(a), cb = getCatOrder(b);
+      if (ca !== cb) return ca - cb;
+      return (a.properties['パターン']?.select?.name||'').localeCompare(b.properties['パターン']?.select?.name||'');
+    });
+
+    const pendingRows = records.map((r, i) => {
+      const p = r.properties;
+      const pat    = p['パターン']?.select?.name || '—';
+      const size   = p['サイズ']?.select?.name || p['サイズコード']?.rich_text?.[0]?.plain_text || '—';
+      const qty    = p['数量']?.number ?? '—';
+      const place  = p['納入予定場所']?.select?.name || '—';
+      const nouki  = p['納期予定日']?.date?.start || '';
+      const odate  = p['発注日']?.date?.start || '';
+      const recv   = p['受注者']?.rich_text?.[0]?.plain_text || p['担当者']?.select?.name || '—';
+      const tantouR= p['注文担当']?.select?.name || '—';
+      const memo   = p['備考欄']?.rich_text?.[0]?.plain_text || '';
+      return `<tr>
+        <td style="${tdS(i)}">${pat}</td>
+        <td style="${tdS(i)}">${size}</td>
+        <td style="${tdS(i,'font-weight:bold;color:#e07000;')}">${qty}</td>
+        <td style="${tdS(i)}">${place}</td>
+        <td style="${tdS(i)}">${tantouR}</td>
+        <td style="${tdS(i)}">${recv}</td>
+        <td style="${tdS(i)}">${fmt(odate)}</td>
+        <td style="${tdS(i)}">${fmt(nouki)}</td>
+        <td style="${tdS(i,'color:#888;white-space:normal;text-align:left;')}">${memo}</td>
+      </tr>`;
+    }).join('');
+
+    const totalPending = records.reduce((s,r) => s + (r.properties['数量']?.number || 0), 0);
+
+    const pendingHtml = records.length === 0 ? '' : `
+<div style="font-size:4pt;font-weight:bold;color:#2563a8;margin-bottom:2px;">■ 未入荷（既発注分）</div>
+<table style="width:100%;border-collapse:collapse;table-layout:fixed;"><thead><tr>
+  <th style="${TH('5%')}">パターン</th><th style="${TH('9%')}">サイズ</th>
+  <th style="${TH('4%')}">本数</th><th style="${TH('5%')}">納入場所</th>
+  <th style="${TH('4%')}">発注者</th><th style="${TH('4%')}">受注者</th>
+  <th style="${TH('7%')}">発注日</th><th style="${TH('7%')}">納期予定</th>
+  <th style="${TH('15%')}">備考</th>
+</tr></thead><tbody>${pendingRows}</tbody></table>
+<div style="text-align:right;margin-top:2px;padding-top:2px;border-top:0.5px solid #e0dcd6;font-size:3pt;color:#666;">
+  未入荷合計：<span style="font-size:6pt;font-weight:bold;color:#1a1a18;">${totalPending}本</span>
+</div>`;
+
+    // iframeのcontentDocumentのDOMを直接書き換える
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (iframeDoc) {
+      const el = iframeDoc.getElementById('pending-section');
+      if (el) el.innerHTML = pendingHtml;
+    }
+
+  } catch(e) {
+    console.warn('未入荷データ取得失敗:', e.message);
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (iframeDoc) {
+      const el = iframeDoc.getElementById('pending-section');
+      if (el) el.innerHTML = `<div style="font-size:4.5pt;color:#e07000;">未入荷データ取得失敗: ${e.message}</div>`;
+    }
+  }
+}
 function escHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }

@@ -211,6 +211,41 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 </script>
 </head>
 <body>
+<!-- ══ 発注プレビューオーバーレイ（静的DOM）══ -->
+<div id="order-preview-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:var(--bg);flex-direction:column;">
+  <!-- ヘッダー -->
+  <div style="background:var(--s1);border-bottom:0.5px solid var(--border);padding:13px 16px;display:flex;align-items:flex-start;gap:10px;flex-shrink:0;">
+    <button id="opo-back-btn" onclick="closeOrderPreviewOverlay()" style="background:transparent;border:none;color:var(--accent);font-size:22px;cursor:pointer;line-height:1;padding:0 4px;font-family:inherit;flex-shrink:0;margin-top:2px;">‹</button>
+    <div style="flex:1;min-width:0;">
+      <div id="opo-title" style="font-size:14px;font-weight:900;">発注書プレビュー</div>
+      <div id="opo-subtitle" style="font-size:11px;color:var(--muted);margin-top:1px;"></div>
+      <div style="display:flex;align-items:center;gap:4px;margin-top:6px;">
+        <input id="pdf-filename-input" type="text" value=""
+          style="flex:1;min-width:0;background:var(--s3);border:1px solid var(--border2);border-radius:6px;
+                 padding:5px 8px;font-size:10px;color:var(--text);font-family:'DM Mono',monospace;outline:none;box-sizing:border-box;">
+        <span style="font-size:10px;color:var(--muted);flex-shrink:0;">.pdf</span>
+      </div>
+    </div>
+  </div>
+  <!-- プレビュー -->
+  <iframe id="order-preview-frame" style="flex:1;min-height:0;border:none;width:100%;background:#fff;" title="発注書プレビュー"></iframe>
+  <!-- フッター -->
+  <div style="background:var(--s1);border-top:0.5px solid var(--border);padding:12px 16px;flex-shrink:0;position:relative;z-index:10000;">
+    <div id="order-preview-error"></div>
+    <button id="order-confirm-btn" onclick="confirmAndSaveOrder()" style="width:100%;background:var(--green);border:none;border-radius:10px;padding:13px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:6px;">
+      この内容で発注確定 → Notionに保存する
+    </button>
+    <div style="display:flex;gap:6px;">
+      <button id="opo-print-btn" onclick="printOrderPreview()" style="flex:1;background:var(--accent);border:none;border-radius:10px;padding:11px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
+        🖨️ PDF保存
+      </button>
+      <button id="opo-cancel-btn" onclick="closeOrderPreviewOverlay()" style="flex:1;background:transparent;border:1px solid var(--border2);border-radius:10px;padding:11px;color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit;">
+        修正する
+      </button>
+    </div>
+  </div>
+</div>
+
 
 <!-- ── 印刷用発注書（画面には非表示、印刷時のみ表示） ── -->
 <div id="print-sheet">
@@ -292,10 +327,30 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
       <div id="order-actions" style="display:none;">
         <div class="divider"></div>
         <div id="order-error"></div>
-        <button class="btn-primary" id="order-submit-btn" onclick="submitOrders()">
-          PDF発行 ＋ Notionに記録する
-        </button>
-        <button class="btn-secondary" onclick="switchTab('alert')">← 在庫アラートに戻る</button>
+        <!-- プレビューエリア -->
+        <div id="order-pdf-preview" style="display:none;margin-bottom:10px;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">発注書プレビュー — 内容を確認してください</div>
+          <iframe id="order-preview-frame" style="width:100%;height:500px;border:1px solid var(--border);border-radius:8px;background:#fff;"></iframe>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button class="btn-primary" id="order-confirm-btn" onclick="confirmAndSaveOrder()">
+              この内容で発注確定 → Notionに保存する
+            </button>
+            <button class="btn-secondary" onclick="cancelPreview()" style="flex-shrink:0;">修正する</button>
+          </div>
+          <div style="margin-top:6px;display:flex;align-items:center;gap:6px;">
+            <button class="btn-secondary" onclick="printOrderPreview()" style="font-size:12px;padding:7px 12px;">🖨️ PDF保存</button>
+            <input id="pdf-filename-input" type="text" placeholder="ファイル名"
+              style="flex:1;background:var(--s3);border:1px solid var(--border2);border-radius:6px;padding:6px 8px;font-size:10px;color:var(--text);font-family:'DM Mono',monospace;outline:none;">
+            <span style="font-size:10px;color:var(--muted);">.pdf</span>
+          </div>
+        </div>
+        <!-- 通常ボタン -->
+        <div id="order-normal-btns">
+          <button class="btn-primary" id="order-submit-btn" onclick="submitOrders()">
+            PDFプレビューを表示
+          </button>
+          <button class="btn-secondary" onclick="switchTab('alert')">← 在庫アラートに戻る</button>
+        </div>
       </div>
     </div>
   </div>
@@ -852,56 +907,88 @@ function previewOrderPdf() {
   const selectedItems = alertItems.filter(i => i.selected && i.orderQty > 0);
   if (!selectedItems.length) { alert('発注対象を選択してください'); return; }
 
-  // 1) PDF内容生成（print-contentにセット）
+  // ファイル名生成
+  const STAFF_SHORT_PDF = {'向畑 充':'向畑','向畑　充':'向畑','岡崎 由美':'岡崎','岡崎　由美':'岡崎'};
+  const tantouForFile = STAFF_SHORT_PDF[tantou] || tantou || '向畑';
+  const MAKER_SHORT = {'TOYO':'TOYO','BS':'BS','BRIDGESTONE':'BS','DUNLOP':'DUNLOP'};
+  const mc = {};
+  selectedItems.forEach(i => { mc[i.maker] = (mc[i.maker]||0)+1; });
+  const mm = Object.entries(mc).sort((a,b)=>b[1]-a[1])[0]?.[0] || 'TOYO';
+  const now2 = new Date();
+  const ds = `${now2.getFullYear()}-${String(now2.getMonth()+1).padStart(2,'0')}-${String(now2.getDate()).padStart(2,'0')}`;
+  const defaultFilename = `TMFoo_発注書_自動発注_${MAKER_SHORT[mm]||mm}_${ds}`;
+  document.getElementById('pdf-filename-input').value = defaultFilename;
+  window._pdfFilename = defaultFilename;
+
+  // PDF生成
   buildPrintSheet(selectedItems, tantou, nouki, biko);
-  // 2) オーバーレイ開いてiframeにsrcdocをセット
-  openOrderPreviewOverlay(selectedItems, tantou, nouki, biko);
-  // 3) iframe描画後に未入荷データを注入
-  _fetchAndInjectPending();
-}
 
-function openOrderPreviewOverlay(selectedItems, tantou, nouki, biko) {
-  const existing = document.getElementById('order-preview-overlay');
-  if (existing) existing.remove();
-
-  const overlay = document.createElement('div');
-  overlay.id = 'order-preview-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:500;background:var(--bg);display:flex;flex-direction:column;max-width:480px;margin:0 auto;';
-
-  const totalQty = selectedItems.reduce((s,i) => s+i.orderQty, 0);
-
-  overlay.innerHTML = `
-    <div style="background:var(--s1);border-bottom:0.5px solid var(--border);padding:13px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;">
-      <button onclick="closeOrderPreviewOverlay()" style="background:transparent;border:none;color:var(--accent);font-size:22px;cursor:pointer;line-height:1;padding:0 4px;font-family:inherit;">‹</button>
-      <div style="flex:1;">
-        <div style="font-size:14px;font-weight:900;">発注書プレビュー</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:1px;">${selectedItems.length}品目 / 計${totalQty}本 — 内容を確認してください</div>
-      </div>
-    </div>
-    <iframe id="order-preview-frame" style="flex:1;border:none;width:100%;background:#fff;" title="発注書プレビュー"></iframe>
-    <div style="background:var(--s1);border-top:0.5px solid var(--border);padding:12px 16px;flex-shrink:0;">
-      <div id="order-preview-error"></div>
-      <button id="order-confirm-btn" onclick="confirmAndSaveOrder()" style="width:100%;background:var(--green);border:none;border-radius:10px;padding:13px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:6px;">
-        この内容で発注確定 → Notionに保存する
-      </button>
-      <button onclick="closeOrderPreviewOverlay()" style="width:100%;background:transparent;border:1px solid var(--border2);border-radius:10px;padding:11px;color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit;">
-        修正する
-      </button>
-    </div>`;
-
-  document.body.appendChild(overlay);
-
-  // buildPrintSheet が print-content に完全なHTML（srcdoc用）をセット済み → そのまま使う
+  // iframeにセット
   const frame = document.getElementById('order-preview-frame');
   const printContent = document.getElementById('print-content');
   if (frame && printContent && printContent.innerHTML.trim()) {
-    frame.srcdoc = printContent.innerHTML;
-  } else if (frame) {
-    frame.srcdoc = '<p style="padding:20px;">プレビューを生成中…</p>';
+    frame.srcdoc = printContent.innerHTML.replace('<title></title>', `<title>${defaultFilename}</title>`);
   }
+
+  // プレビューエリアを表示、通常ボタンを非表示
+  document.getElementById('order-pdf-preview').style.display = 'block';
+  document.getElementById('order-normal-btns').style.display = 'none';
+  document.getElementById('order-submit-btn').disabled = false;
 
   // 発注データを保持
   window._pendingOrder = { selectedItems, tantou, nouki, biko };
+
+  // 未入荷データを注入
+  _fetchAndInjectPending();
+
+  // プレビューエリアまでスクロール
+  document.getElementById('order-pdf-preview').scrollIntoView({ behavior:'smooth' });
+}
+
+function cancelPreview() {
+  document.getElementById('order-pdf-preview').style.display = 'none';
+  document.getElementById('order-normal-btns').style.display = 'block';
+  window._pendingOrder = null;
+}
+
+function openOrderPreviewOverlay(selectedItems, tantou, nouki, biko) {
+  const totalQty = selectedItems.reduce((s,i) => s+i.orderQty, 0);
+
+  // ファイル名候補を生成
+  const STAFF_SHORT_PDF = {'向畑 充':'向畑','向畑　充':'向畑','岡崎 由美':'岡崎','岡崎　由美':'岡崎'};
+  const tantouForFile = STAFF_SHORT_PDF[tantou] || tantou || '向畑';
+  const MAKER_SHORT = {'TOYO':'TOYO','BS':'BS','BRIDGESTONE':'BS','DUNLOP':'DUNLOP'};
+  const makerCounts2 = {};
+  selectedItems.forEach(i => { makerCounts2[i.maker] = (makerCounts2[i.maker]||0)+1; });
+  const mainMaker2 = Object.entries(makerCounts2).sort((a,b)=>b[1]-a[1])[0]?.[0] || 'TOYO';
+  const makerShort = MAKER_SHORT[mainMaker2] || mainMaker2;
+  const now2 = new Date();
+  const dateStr2 = `${now2.getFullYear()}-${String(now2.getMonth()+1).padStart(2,'0')}-${String(now2.getDate()).padStart(2,'0')}`;
+  const defaultFilename = `TMFoo_発注書_自動発注_${makerShort}_${dateStr2}`;
+
+  // 静的DOMを更新
+  document.getElementById('opo-subtitle').textContent = `${selectedItems.length}品目 / 計${totalQty}本`;
+  document.getElementById('pdf-filename-input').value = defaultFilename;
+  document.getElementById('order-preview-error').innerHTML = '';
+  const confirmBtn = document.getElementById('order-confirm-btn');
+  confirmBtn.disabled = false;
+  confirmBtn.textContent = 'この内容で発注確定 → Notionに保存する';
+
+  // iframeにsrcdocをセット
+  const frame = document.getElementById('order-preview-frame');
+  const printContent = document.getElementById('print-content');
+  if (frame && printContent && printContent.innerHTML.trim()) {
+    const fname = defaultFilename;
+    frame.srcdoc = printContent.innerHTML.replace('<title></title>', `<title>${fname}</title>`);
+  }
+
+  // オーバーレイを表示
+  const overlay = document.getElementById('order-preview-overlay');
+  overlay.style.display = 'flex';
+
+  // 発注データを保持
+  window._pendingOrder = { selectedItems, tantou, nouki, biko };
+  window._pdfFilename  = defaultFilename;
 
   history.pushState({ orderPreview: true }, '', location.href);
   window.addEventListener('popstate', _onPopStateOrder, { once: true });
@@ -911,9 +998,21 @@ function _onPopStateOrder(e) {
   if (e.state?.orderPreview) closeOrderPreviewOverlay();
 }
 
+function printOrderPreview() {
+  const frame = document.getElementById('order-preview-frame');
+  if (!frame) return;
+  const fname = document.getElementById('pdf-filename-input')?.value.trim() || window._pdfFilename || 'TMFoo_発注書';
+  try {
+    const iframeDoc = frame.contentDocument || frame.contentWindow?.document;
+    if (iframeDoc) iframeDoc.title = fname;
+  } catch(e) {}
+  frame.contentWindow?.focus();
+  frame.contentWindow?.print();
+}
+
 function closeOrderPreviewOverlay() {
   const overlay = document.getElementById('order-preview-overlay');
-  if (overlay) overlay.remove();
+  if (overlay) overlay.style.display = 'none';
   window._pendingOrder = null;
   window.removeEventListener('popstate', _onPopStateOrder);
 }
@@ -931,12 +1030,13 @@ async function confirmAndSaveOrder() {
   try {
     await createHacchuRecords(selectedItems, tantou, nouki, biko);
 
-    closeOrderPreviewOverlay();
+    // プレビューを隠してボタンを戻す
+    document.getElementById('order-pdf-preview').style.display = 'none';
+    document.getElementById('order-normal-btns').style.display = 'none';
 
     const actEl = document.getElementById('order-actions');
     actEl.innerHTML = `<div class="success-box">
-      ✓ 発注管理表に ${selectedItems.length}件 を記録しました<br>
-      ✓ PDFは確認済みです
+      ✓ 発注管理表に ${selectedItems.length}件 を記録しました
     </div>
     <button class="btn-secondary" onclick="switchTab('history');loadHistory();">発注履歴を確認する</button>
     <button class="btn-secondary" onclick="loadAlerts();">在庫アラートを再チェック</button>`;
@@ -1049,6 +1149,7 @@ function buildPrintSheet(items, tantou, nouki, biko) {
 
   // iframeに書き込む完全HTML（pending-sectionはdivのまま残す）
   const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title></title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Hiragino Kaku Gothic ProN','IPAGothic',sans-serif;padding:10mm 10mm;font-size:5pt;color:#1a1a18;}
@@ -1097,6 +1198,8 @@ table{width:100%;border-collapse:collapse;}
 </div>
 </body></html>`;
 
+  // ファイル名をwindowに保存（オーバーレイで使用）
+  window._pdfFilename = defaultFilename || 'TMFoo_発注書';
   document.getElementById('print-content').innerHTML = fullHtml;
 }
 
@@ -1197,7 +1300,10 @@ async function _fetchAndInjectPending() {
     const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
     if (iframeDoc) {
       const el = iframeDoc.getElementById('pending-section');
-      if (el) el.innerHTML = pendingHtml;
+      if (el) {
+        el.innerHTML = pendingHtml;
+
+      }
     }
 
   } catch(e) {
@@ -1692,6 +1798,15 @@ async function saveNewThreshold() {
     btn.disabled = false; btn.textContent = 'Notionに保存する';
   }
 }
+
+// ─── オーバーレイボタンのイベントリスナー登録
+window.addEventListener('load', () => {
+  document.getElementById('opo-back-btn').addEventListener('click', closeOrderPreviewOverlay);
+  document.getElementById('order-confirm-btn').addEventListener('click', confirmAndSaveOrder);
+  document.getElementById('opo-print-btn').addEventListener('click', printOrderPreview);
+  document.getElementById('opo-cancel-btn').addEventListener('click', closeOrderPreviewOverlay);
+});
 </script>
+
 </body>
 </html>

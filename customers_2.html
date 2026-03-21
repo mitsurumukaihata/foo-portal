@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>顧客情報 | f.o.o</title>
+<style>
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg:#18181f;--s1:#101015;--s2:#1e1e26;--s3:#26262f;
+  --border:#2c2c38;--border2:#3c3c4a;--text:#f0f0f2;--muted:#68687a;
+  --accent:#f0a500;--accent2:#f5be40;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;
+}
+@media(prefers-color-scheme:light){
+  :root:not([data-theme]){
+    --bg:#fdf6ee;--s1:#fff;--s2:#fdf0e4;--s3:#f5e6d4;
+    --border:#e8d8c4;--border2:#d8c4a8;--text:#1a1208;--muted:#a08060;
+    --accent:#e07000;--accent2:#c05800;--green:#1a9e4a;--red:#dc2626;--blue:#2563eb;
+  }
+}
+[data-theme="dark"]{
+  --bg:#18181f;--s1:#101015;--s2:#1e1e26;--s3:#26262f;
+  --border:#2c2c38;--border2:#3c3c4a;--text:#f0f0f2;--muted:#68687a;
+  --accent:#f0a500;--accent2:#f5be40;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;
+}
+[data-theme="light"]{
+  --bg:#fdf6ee;--s1:#fff;--s2:#fdf0e4;--s3:#f5e6d4;
+  --border:#e8d8c4;--border2:#d8c4a8;--text:#1a1208;--muted:#a08060;
+  --accent:#e07000;--accent2:#c05800;--green:#1a9e4a;--red:#dc2626;--blue:#2563eb;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;min-height:100vh;max-width:480px;margin:0 auto;}
+
+/* ── 認証中オーバーレイ ── */
+#auth-overlay{
+  position:fixed;inset:0;background:var(--bg);z-index:999;
+  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;
+}
+#auth-overlay.hidden{display:none;}
+.auth-spinner{width:32px;height:32px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.auth-msg{font-size:13px;color:var(--muted);}
+
+/* ── ヘッダー ── */
+.ca-header{
+  background:var(--s1);border-bottom:0.5px solid var(--border);
+  padding:14px 16px;display:flex;align-items:center;gap:10px;
+  position:sticky;top:0;z-index:100;flex-shrink:0;
+}
+.ca-back-btn{background:transparent;border:none;color:var(--accent);font-size:22px;cursor:pointer;line-height:1;padding:0 4px;font-family:inherit;}
+.ca-title{font-size:16px;font-weight:900;flex:1;}
+.ca-count-badge{font-size:11px;background:rgba(240,165,0,0.15);color:var(--accent);border:1px solid rgba(240,165,0,0.3);border-radius:12px;padding:2px 8px;font-weight:700;display:none;}
+.ca-new-btn{background:var(--accent);border:none;border-radius:20px;padding:6px 14px;color:#fff;font-size:12px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;}
+
+/* テーマトグル */
+.theme-toggle{background:transparent;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:4px 8px;color:rgba(255,255,255,0.7);font-size:14px;cursor:pointer;line-height:1;font-family:inherit;transition:all 0.15s;}
+[data-theme="light"] .theme-toggle,[data-theme="light"] .theme-toggle{border-color:rgba(0,0,0,0.15);color:rgba(0,0,0,0.5);}
+
+/* ── 検索 ── */
+.ca-search-wrap{padding:10px 14px;background:var(--s1);border-bottom:0.5px solid var(--border);flex-shrink:0;}
+.ca-search-box{background:var(--s3);border:1px solid var(--border2);border-radius:8px;display:flex;align-items:center;padding:8px 12px;gap:8px;}
+.ca-search-box input{background:none;border:none;outline:none;color:var(--text);font-size:14px;font-family:'Noto Sans JP',sans-serif;flex:1;}
+.ca-search-box input::placeholder{color:var(--muted);}
+.ca-search-clear{color:var(--muted);font-size:16px;cursor:pointer;background:none;border:none;line-height:1;padding:0;display:none;}
+.ca-search-clear.show{display:block;}
+
+/* ── カナタブ ── */
+.ca-kana-tabs{display:flex;overflow-x:auto;background:var(--s1);border-bottom:0.5px solid var(--border);scrollbar-width:none;flex-shrink:0;}
+.ca-kana-tabs::-webkit-scrollbar{display:none;}
+.kana-sub-row{background:var(--s1);border-bottom:0.5px solid var(--border);overflow-x:auto;scrollbar-width:none;flex-shrink:0;display:none;}
+.kana-sub-row::-webkit-scrollbar{display:none;}
+.ca-kana-tab{flex:0 0 auto;padding:9px 14px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;font-family:'Noto Sans JP',sans-serif;background:none;border-left:none;border-right:none;border-top:none;}
+.ca-kana-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* ── フィルターチップ ── */
+.ca-filter-row{display:flex;align-items:center;gap:6px;padding:8px 14px;background:var(--s1);border-bottom:0.5px solid var(--border);overflow-x:auto;scrollbar-width:none;flex-shrink:0;}
+.ca-filter-row::-webkit-scrollbar{display:none;}
+.ca-chip{flex-shrink:0;white-space:nowrap;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;border:1px solid var(--border2);background:var(--s2);color:var(--muted);cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:all 0.15s;}
+.ca-chip.on-foo{background:rgba(34,197,94,0.15);color:#22c55e;border-color:rgba(34,197,94,0.4);}
+.ca-chip.on-toyo{background:rgba(239,68,68,0.12);color:var(--red);border-color:rgba(239,68,68,0.35);}
+.ca-chip.on-bs{background:rgba(59,130,246,0.12);color:var(--blue);border-color:rgba(59,130,246,0.35);}
+.ca-chip.on-fe{background:rgba(168,85,247,0.12);color:#a855f7;border-color:rgba(168,85,247,0.35);}
+.ca-chip.on-fw{background:rgba(161,135,100,0.15);color:#a18764;border-color:rgba(161,135,100,0.4);}
+.ca-chip-clear{flex-shrink:0;margin-left:auto;white-space:nowrap;padding:4px 8px;border-radius:12px;font-size:11px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:'Noto Sans JP',sans-serif;display:none;}
+.ca-chip-clear.show{display:block;}
+
+/* ── 一覧 ── */
+.ca-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.ca-section-head{padding:6px 14px;font-size:10px;letter-spacing:0.08em;color:var(--muted);background:var(--bg);font-weight:700;}
+.ca-row{display:flex;align-items:center;padding:12px 14px;border-bottom:0.5px solid var(--border);cursor:pointer;gap:11px;background:var(--s2);transition:background 0.1s;}
+.ca-row:active{background:var(--s3);}
+.ca-row-info{flex:1;min-width:0;}
+.ca-row-name{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ca-row-yomi{font-size:10px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ca-row-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;}
+.ca-tag{font-size:10px;padding:2px 7px;border-radius:10px;white-space:nowrap;}
+.ca-tag.foo{background:rgba(34,197,94,0.12);color:#22c55e;border:1px solid rgba(34,197,94,0.25);}
+.ca-tag.toyo{background:rgba(239,68,68,0.1);color:var(--red);border:1px solid rgba(239,68,68,0.2);}
+.ca-tag.bs{background:rgba(59,130,246,0.1);color:var(--blue);border:1px solid rgba(59,130,246,0.2);}
+.ca-tag.fe{background:rgba(168,85,247,0.1);color:#a855f7;border:1px solid rgba(168,85,247,0.2);}
+.ca-tag.fw{background:rgba(161,135,100,0.12);color:#a18764;border:1px solid rgba(161,135,100,0.25);}
+.ca-tag.def{background:rgba(240,165,0,0.12);color:var(--accent);border:1px solid rgba(240,165,0,0.25);}
+.ca-row-arrow{color:var(--muted);font-size:18px;}
+.ca-empty{padding:48px 20px;text-align:center;color:var(--muted);font-size:14px;}
+.ca-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:60px 20px;color:var(--muted);font-size:13px;}
+.ca-spinner{width:28px;height:28px;border:2.5px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;}
+
+/* ── 詳細画面 ── */
+#cust-detail{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;max-width:480px;margin:0 auto;flex-direction:column;overflow:hidden;}
+#cust-detail.open{display:flex;}
+.cd-header{background:var(--s1);border-bottom:0.5px solid var(--border);padding:14px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.cd-back-btn{background:transparent;border:none;color:var(--accent);font-size:22px;cursor:pointer;line-height:1;padding:0 4px;}
+.cd-title{font-size:14px;font-weight:900;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cd-edit-btn{background:transparent;border:0.5px solid var(--border2);border-radius:20px;padding:5px 12px;color:var(--accent);font-size:11px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;}
+.cd-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.cd-section{padding:14px 16px;border-bottom:0.5px solid var(--border);}
+.cd-section-label{font-size:10px;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase;margin-bottom:10px;font-weight:700;}
+.cd-table{width:100%;border-collapse:collapse;}
+.cd-table td{padding:5px 0;vertical-align:top;}
+.cd-table td:first-child{color:var(--muted);font-size:12px;width:90px;padding-right:10px;}
+.cd-table td:last-child{font-size:13px;font-weight:500;}
+.cd-tel-link{color:var(--accent);text-decoration:none;font-weight:700;display:inline-flex;align-items:center;gap:4px;}
+.cd-tags-wrap{display:flex;gap:6px;flex-wrap:wrap;}
+.cd-badge{font-size:11px;padding:3px 9px;border-radius:20px;background:rgba(240,165,0,0.12);color:var(--accent);border:1px solid rgba(240,165,0,0.25);}
+.cd-notice-box{background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.7;color:var(--text);}
+.cd-map-btn{display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--green);text-decoration:none;font-size:13px;font-weight:700;margin-bottom:6px;width:100%;}
+.cd-map-btn svg{width:16px;height:16px;flex-shrink:0;}
+.cd-goodn-btn{display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--accent);text-decoration:none;font-size:13px;font-weight:700;width:100%;}
+.cd-goodn-btn svg{width:16px;height:16px;flex-shrink:0;}
+.cd-mgmt-card{background:var(--s1);border-radius:10px;border:1px solid var(--border2);overflow:hidden;margin-bottom:0;}
+.cd-mgmt-card-hdr{background:var(--s3);padding:8px 12px;display:flex;align-items:center;justify-content:space-between;}
+.cd-mgmt-lbl{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:0.08em;}
+.cd-mgmt-company{font-size:12px;font-weight:700;color:var(--accent);}
+
+/* ── フォーム ── */
+#cust-form{display:none;position:fixed;inset:0;background:var(--bg);z-index:300;max-width:480px;margin:0 auto;flex-direction:column;overflow:hidden;}
+#cust-form.open{display:flex;}
+.cf-header{background:var(--s1);border-bottom:0.5px solid var(--border);padding:14px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.cf-cancel-btn{background:transparent;border:none;color:var(--muted);font-size:13px;font-family:'Noto Sans JP',sans-serif;cursor:pointer;}
+.cf-title{font-size:15px;font-weight:900;flex:1;text-align:center;}
+.cf-save-btn{background:var(--accent);border:none;border-radius:20px;padding:6px 16px;color:#fff;font-size:12px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:opacity 0.15s;}
+.cf-save-btn:disabled{opacity:0.4;}
+.cf-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;}
+.cf-section-label{font-size:10px;letter-spacing:0.1em;color:var(--muted);font-weight:700;text-transform:uppercase;margin:16px 0 8px;padding-bottom:4px;border-bottom:0.5px solid var(--border);}
+.cf-section-label:first-child{margin-top:0;}
+.cf-field{margin-bottom:12px;}
+.cf-label{font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:500;}
+.cf-input,.cf-select,.cf-textarea{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:14px;font-family:'Noto Sans JP',sans-serif;padding:10px 12px;outline:none;transition:border-color 0.15s;}
+.cf-input:focus,.cf-select:focus,.cf-textarea:focus{border-color:var(--accent);}
+.cf-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2368687a' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
+.cf-textarea{resize:vertical;min-height:80px;line-height:1.6;}
+.cf-checkbox-row{display:flex;align-items:center;gap:10px;}
+.cf-checkbox{width:18px;height:18px;accent-color:var(--accent);flex-shrink:0;}
+.cf-multi-wrap{display:flex;gap:6px;flex-wrap:wrap;}
+.cf-multi-btn{padding:6px 12px;border-radius:20px;border:1.5px solid var(--border2);background:var(--s2);color:var(--muted);font-size:12px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:all 0.15s;}
+.cf-multi-btn.on{border-color:var(--accent);background:rgba(240,165,0,0.12);color:var(--accent);}
+.cf-map-group{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;}
+.cf-map-group-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.cf-map-group-num{font-size:11px;font-weight:700;color:var(--accent);}
+.cf-map-remove{background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1;padding:0;}
+.cf-map-add-btn{display:flex;align-items:center;gap:6px;width:100%;background:transparent;border:1.5px dashed var(--border2);border-radius:8px;padding:10px 14px;color:var(--muted);font-size:13px;font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:all 0.15s;}
+.cf-map-add-btn:hover{border-color:var(--accent);color:var(--accent);}
+.cf-save-feedback{margin-top:16px;padding:12px;border-radius:8px;font-size:13px;text-align:center;display:none;}
+.cf-save-feedback.success{background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:var(--green);display:block;}
+.cf-save-feedback.error{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:var(--red);display:block;}
+.cf-role-wrap{display:flex;gap:5px;flex-wrap:wrap;}
+.cf-role-btn{padding:5px 10px;border-radius:16px;border:1.5px solid var(--border2);background:var(--s2);color:var(--muted);font-size:11px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:all 0.15s;}
+.cf-role-btn.on{border-color:var(--accent);background:rgba(240,165,0,0.12);color:var(--accent);}
+.cf-person-block{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;}
+.swipe-transitioning{transition:transform 0.22s ease !important;}
+
+</style>
+<script>
+(function(){
+  const t = localStorage.getItem('foo_portal_theme') || 'auto';
+  if (t !== 'auto') document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
+</head>
+<body>
+
+<!-- 認証中オーバーレイ -->
+<div id="auth-overlay">
+  <div class="auth-spinner"></div>
+  <div class="auth-msg">認証確認中...</div>
+</div>
+
+<!-- メイン画面（縦長フレックス） -->
+<div id="main-app" style="display:none;flex-direction:column;min-height:100vh;">
+
+  <!-- ヘッダー -->
+  <div class="ca-header">
+    <button class="ca-back-btn" onclick="goPortal()" title="ポータルへ戻る">‹</button>
+    <div class="ca-title">👤 顧客情報</div>
+    <span id="ca-count-badge" class="ca-count-badge"></span>
+    <button class="theme-toggle" id="theme-toggle-btn" onclick="cycleTheme()" title="テーマ切り替え">🌙</button>
+    <button class="ca-new-btn" onclick="openCustForm(null)">+ 新規</button>
+  </div>
+
+  <!-- 検索 -->
+  <div class="ca-search-wrap">
+    <div class="ca-search-box">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="ca-search-input" placeholder="会社名・フリガナ・担当者で検索..." oninput="onSearchInput(this.value)">
+      <button class="ca-search-clear" id="ca-search-clear" onclick="clearSearch()">×</button>
+    </div>
+  </div>
+
+  <!-- カナタブ -->
+  <div class="ca-kana-tabs" id="ca-kana-tabs">
+    <button class="ca-kana-tab active" onclick="selectKana('すべて')">すべて</button>
+    <button class="ca-kana-tab" onclick="selectKana('ア行')">ア行</button>
+    <button class="ca-kana-tab" onclick="selectKana('カ行')">カ行</button>
+    <button class="ca-kana-tab" onclick="selectKana('サ行')">サ行</button>
+    <button class="ca-kana-tab" onclick="selectKana('タ行')">タ行</button>
+    <button class="ca-kana-tab" onclick="selectKana('ナ行')">ナ行</button>
+    <button class="ca-kana-tab" onclick="selectKana('ハ行')">ハ行</button>
+    <button class="ca-kana-tab" onclick="selectKana('マ行')">マ行</button>
+    <button class="ca-kana-tab" onclick="selectKana('ヤ・ラ・ワ行')">ヤ行</button>
+  </div>
+  <div class="kana-sub-row" id="ca-kana-sub"></div>
+
+  <!-- フィルターチップ -->
+  <div class="ca-filter-row">
+    <div class="ca-chip" id="chip-foo"  onclick="toggleChip('foo')">F.o.o</div>
+    <div class="ca-chip" id="chip-toyo" onclick="toggleChip('toyo')">TOYO</div>
+    <div class="ca-chip" id="chip-bs"   onclick="toggleChip('bs')">BS</div>
+    <div class="ca-chip" id="chip-fe"   onclick="toggleChip('fe')">ふそう東</div>
+    <div class="ca-chip" id="chip-fw"   onclick="toggleChip('fw')">ふそう西</div>
+    <div class="ca-chip-clear" id="chip-clear" onclick="clearChips()">全解除 ✕</div>
+  </div>
+
+  <!-- 一覧 -->
+  <div class="ca-list" id="ca-list">
+    <div class="ca-loading"><div class="ca-spinner"></div><div>読み込み中...</div></div>
+  </div>
+</div>
+
+<!-- 詳細画面 -->
+<div id="cust-detail">
+  <div class="cd-header">
+    <button class="cd-back-btn" onclick="closeCustDetail()">‹</button>
+    <div class="cd-title" id="cd-title">顧客詳細</div>
+    <button class="cd-edit-btn" onclick="editCurrentCustomer()">編集</button>
+  </div>
+  <div class="cd-body" id="cd-body"></div>
+</div>
+
+<!-- フォーム -->
+<div id="cust-form">
+  <div class="cf-header">
+    <button class="cf-cancel-btn" onclick="closeCustForm()">キャンセル</button>
+    <div class="cf-title" id="cf-title">新規顧客登録</div>
+    <button class="cf-save-btn" id="cf-save-btn" onclick="saveCustomer()">保存</button>
+  </div>
+  <div class="cf-body">
+    <div class="cf-section-label">📋 基本情報</div>
+    <div class="cf-field"><div class="cf-label">会社名 *</div><input class="cf-input" id="cf-name" type="text" placeholder="（有）〇〇運輸"></div>
+    <div class="cf-field"><div class="cf-label">フリガナ</div><input class="cf-input" id="cf-yomi" type="text" placeholder="かぶしきがいしゃ〇〇うんゆ"></div>
+    <div class="cf-field"><div class="cf-label">行</div>
+      <select class="cf-select" id="cf-row">
+        <option value="">選択してください</option>
+        <option>ア行</option><option>カ行</option><option>サ行</option>
+        <option>タ行</option><option>ナ行</option><option>ハ行</option>
+        <option>マ行</option><option>ヤ・ラ・ワ行</option>
+      </select>
+    </div>
+    <div class="cf-field"><div class="cf-label">中間管理会社</div>
+      <select class="cf-select" id="cf-kanri" onchange="onKanriChange()">
+        <option value="">F.o.o（自社）</option>
+        <option>TOYO</option><option>BS</option>
+        <option>ふそう東</option><option>ふそう西</option>
+      </select>
+    </div>
+    <div id="cf-mgmt-person-wrap" style="display:none;margin-bottom:10px;">
+      <div class="cf-label" style="margin-bottom:6px;">中間担当者（参照）</div>
+      <div id="cf-mgmt-person-list" style="background:var(--s3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--muted);">読み込み中...</div>
+    </div>
+    <div class="cf-field"><div class="cf-label">会社連絡先（代表）</div><input class="cf-input" id="cf-tel-company" type="tel" placeholder="082-000-0000"></div>
+
+    <div class="cf-section-label">👤 担当者</div>
+    <div id="cf-persons-wrap">
+      <div class="cf-person-block" id="cf-pb-0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="cf-label" style="margin:0;">担当者①</div></div>
+        <div class="cf-field"><div class="cf-label">役職</div>
+          <div class="cf-role-wrap" id="cf-role-0">
+            <button type="button" class="cf-role-btn" onclick="selRole(0,'代表')">代表</button>
+            <button type="button" class="cf-role-btn" onclick="selRole(0,'専務')">専務</button>
+            <button type="button" class="cf-role-btn" onclick="selRole(0,'常務')">常務</button>
+            <button type="button" class="cf-role-btn" onclick="selRole(0,'部長')">部長</button>
+            <button type="button" class="cf-role-btn" onclick="selRole(0,'課長')">課長</button>
+            <button type="button" class="cf-role-btn" onclick="selRole(0,'センター長')">センター長</button>
+            <button type="button" class="cf-role-btn" onclick="selRole(0,'その他')">その他</button>
+          </div>
+          <input class="cf-input" id="cf-role-other-0" type="text" placeholder="役職を入力..." style="display:none;margin-top:6px;">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <div class="cf-field" style="flex:1;"><div class="cf-label">名前</div><input class="cf-input" id="cf-person1" type="text" placeholder="山田さん"></div>
+          <div class="cf-field" style="flex:1;"><div class="cf-label">連絡先</div><input class="cf-input" id="cf-tel1" type="tel" placeholder="090-0000-0000"></div>
+        </div>
+      </div>
+    </div>
+    <button type="button" class="cf-map-add-btn" id="cf-add-person-btn" onclick="addPersonBlock()" style="margin-bottom:12px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      担当者を追加
+    </button>
+
+    <div class="cf-section-label">🔧 タイヤ情報</div>
+    <div class="cf-field"><div class="cf-label">タイヤメーカー</div>
+      <div class="cf-multi-wrap">
+        <button class="cf-multi-btn" data-val="TOYO"       onclick="toggleMaker(this)">TOYO</button>
+        <button class="cf-multi-btn" data-val="BRIDGESTONE" onclick="toggleMaker(this)">BS</button>
+        <button class="cf-multi-btn" data-val="DUNLOP"     onclick="toggleMaker(this)">ダンロップ</button>
+        <button class="cf-multi-btn" data-val="Michelin"   onclick="toggleMaker(this)">ミシュラン</button>
+        <button class="cf-multi-btn" data-val="YOKOHAMA"   onclick="toggleMaker(this)">ヨコハマ</button>
+        <button class="cf-multi-btn" data-val="その他"      onclick="toggleMaker(this)">その他</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <div class="cf-field" style="flex:1;"><div class="cf-label">スタッドレス</div>
+        <select class="cf-select" id="cf-studless"><option value="">—</option><option>なし</option><option>全輪</option><option>駆動輪のみ</option><option>前輪のみ</option></select>
+      </div>
+      <div class="cf-field" style="flex:1;"><div class="cf-label">履きつぶし</div>
+        <select class="cf-select" id="cf-hakitsubu"><option value="">—</option><option>あり</option><option>なし</option></select>
+      </div>
+    </div>
+    <div class="cf-field"><div class="cf-label">空気圧</div>
+      <select class="cf-select" id="cf-pressure-sel" onchange="onPressureChange()">
+        <option value="">—</option>
+        <option value="規定通り">規定通り</option>
+        <option value="その他">その他</option>
+      </select>
+      <input class="cf-input" id="cf-pressure" type="text" placeholder="空気圧の詳細を入力..." style="display:none;margin-top:6px;">
+    </div>
+    <div class="cf-field"><div class="cf-label">オプション</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;">
+        <label class="cf-checkbox-row"><input class="cf-checkbox" type="checkbox" id="cf-sensor"> 空気圧センサーあり</label>
+        <label class="cf-checkbox-row"><input class="cf-checkbox" type="checkbox" id="cf-checklink"> チェックリンクあり</label>
+      </div>
+    </div>
+
+    <div class="cf-section-label">📍 作業場所（GoogleMap）</div>
+    <div id="cf-maps-work"></div>
+    <button class="cf-map-add-btn" onclick="addMapField('work')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      作業場所を追加（最大4件）
+    </button>
+
+    <div class="cf-section-label" style="margin-top:16px;">🏠 保管場所（GoogleMap・最大3件）</div>
+    <div id="cf-maps-storage"></div>
+    <button class="cf-map-add-btn" onclick="addStorageField()" id="cf-storage-add-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      保管場所を追加（最大3件）
+    </button>
+
+    <div class="cf-section-label">⚠️ 注意事項</div>
+    <div class="cf-field"><textarea class="cf-textarea" id="cf-notice" placeholder="現場の注意点、鍵の場所、入構方法、増し締め等..."></textarea></div>
+
+    <div class="cf-section-label">📓 その他</div>
+    <div class="cf-field"><div class="cf-label">GoodNotesリンク</div><input class="cf-input" id="cf-goodnotes" type="url" placeholder="https://..."></div>
+    <div class="cf-field"><div class="cf-label">メモ</div><textarea class="cf-textarea" id="cf-memo" placeholder="社内共有メモ..."></textarea></div>
+
+    <div id="cf-feedback" class="cf-save-feedback"></div>
+    <div style="height:24px;"></div>
+  </div>
+</div>
+
+<script>
+
+// ─── 設定 ────────────────────────────────────────────────────────────────────
+const WORKER_URL  = 'https://notion-proxy.33322666666mm.workers.dev';
+const MASTER_DB   = '08c5405729794337886b3565352ef96a';
+const CUST_DB     = '1ca8d122be214e3892879932147143c9';
+const MGMT_DB     = '1cea695f8e888029911df0eb63102669';
+const SESSION_KEY = 'foo_portal_session';
+const SESSION_DAYS = 30;
+const THEME_KEY   = 'foo_portal_theme';
+
+// ─── 状態 ────────────────────────────────────────────────────────────────────
+let custAllData   = [];
+let custFiltered  = [];
+let currentKana   = 'すべて';
+let currentKanaSub = null;
+let currentSearch = '';
+let currentCustPage = null;
+let editingCustId  = null;
+let activeChips    = new Set();
+let mgmtPersonsCache = {};
+let workMapCount    = 0;
+let storageMapCount = 0;
+let personBlockCount = 1;
+
+// ─── テーマ ──────────────────────────────────────────────────────────────────
+function applyTheme(theme) {
+  const root = document.documentElement;
+  if (theme === 'auto') root.removeAttribute('data-theme');
+  else root.setAttribute('data-theme', theme);
+  const btn = document.getElementById('theme-toggle-btn');
+  if (!btn) return;
+  if (theme === 'dark')  { btn.textContent = '☀️'; btn.title = 'ライトモードへ'; }
+  else if (theme === 'light') { btn.textContent = '🌙'; btn.title = 'ダークモードへ'; }
+  else { btn.textContent = '🌓'; btn.title = 'テーマ切り替え'; }
+}
+function cycleTheme() {
+  const cur = localStorage.getItem(THEME_KEY) || 'auto';
+  const next = cur === 'auto' ? 'dark' : cur === 'dark' ? 'light' : 'auto';
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+}
+
+// ─── セッション管理 ──────────────────────────────────────────────────────────
+function loadSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (new Date(data.expires) < new Date()) { localStorage.removeItem(SESSION_KEY); return null; }
+    // セッション延長
+    const expires = new Date();
+    expires.setDate(expires.getDate() + SESSION_DAYS);
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ ...data, expires: expires.toISOString() }));
+    return data;
+  } catch(e) { return null; }
+}
+
+function goPortal() {
+  window.location.href = 'index_2.html';
+}
+
+// ─── Notion API ───────────────────────────────────────────────────────────────
+async function notionAPI(method, path, body) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const res = await fetch(WORKER_URL + path, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    return await res.json();
+  } catch(e) {
+    clearTimeout(timer);
+    if (e.name === 'AbortError') throw new Error('タイムアウト');
+    throw new Error('通信エラー: ' + e.message);
+  }
+}
+
+// ─── ヘルパー ─────────────────────────────────────────────────────────────────
+function h2k(s) {
+  return s.replace(/[\u3041-\u3096]/g, c => String.fromCharCode(c.charCodeAt(0) + 0x60));
+}
+
+function getProp(props, key, type) {
+  const p = props[key];
+  if (!p) return (type === 'multi') ? [] : '';
+  switch(type) {
+    case 'title':  return p.title?.[0]?.plain_text || '';
+    case 'text':   return p.rich_text?.[0]?.plain_text || '';
+    case 'select': return p.select?.name || '';
+    case 'multi':  return (p.multi_select || []).map(x => x.name);
+    case 'url':    return p.url || '';
+    case 'check':  return p.checkbox || false;
+    default:       return '';
+  }
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── 中間担当者DB ─────────────────────────────────────────────────────────────
+async function fetchMgmtPersons() {
+  if (Object.keys(mgmtPersonsCache).length > 0) return;
+  try {
+    const res = await notionAPI('POST', `/databases/${MGMT_DB}/query`, {
+      page_size: 100,
+      sorts: [{ property: '名前', direction: 'ascending' }]
+    });
+    if (res.object === 'error') return;
+    mgmtPersonsCache = {};
+    (res.results || []).forEach(page => {
+      const p = page.properties;
+      const company = getProp(p, '選択', 'select') || 'F.o.o';
+      const name    = getProp(p, '名前', 'title');
+      const tel     = (p['電話番号']?.phone_number || '').replace('tel:', '');
+      const role    = getProp(p, '役職', 'select');
+      if (!name) return;
+      const person = { id: page.id, name, tel, role };
+      if (!mgmtPersonsCache[company]) mgmtPersonsCache[company] = [];
+      mgmtPersonsCache[company].push(person);
+      mgmtPersonsCache['_byId'] = mgmtPersonsCache['_byId'] || {};
+      mgmtPersonsCache['_byId'][page.id] = person;
+    });
+  } catch(e) { console.warn('中間担当者取得失敗', e); }
+}
+
+// ─── 顧客データ取得 ──────────────────────────────────────────────────────────
+async function fetchAllCustomers() {
+  let allResults = [];
+  let cursor = undefined;
+  do {
+    const body = { page_size: 100, sorts: [{ property: '会社名', direction: 'ascending' }] };
+    if (cursor) body.start_cursor = cursor;
+    const res = await notionAPI('POST', `/databases/${CUST_DB}/query`, body);
+    if (res.object === 'error') throw new Error(res.message);
+    allResults = allResults.concat(res.results || []);
+    cursor = res.has_more ? res.next_cursor : undefined;
+  } while (cursor);
+  return allResults;
+}
+
+function parseCustomer(page) {
+  const p = page.properties;
+  return {
+    id:           page.id,
+    name:         getProp(p, '会社名', 'title'),
+    yomi:         getProp(p, 'フリガナ', 'text'),
+    row:          getProp(p, '行', 'select'),
+    kanri:        getProp(p, '中間管理会社', 'select'),
+    mgmtRelIds:   (p['中間担当者']?.relation || []).map(r => r.id),
+    person1:      getProp(p, '担当者①', 'text'),
+    role1:        getProp(p, '役職①', 'select'),
+    tel1:         getProp(p, '連絡先①', 'text'),
+    person2:      getProp(p, '担当者②', 'text'),
+    role2:        getProp(p, '役職②', 'select'),
+    tel2:         getProp(p, '連絡先②', 'text'),
+    telCompany:   getProp(p, '会社連絡先', 'text'),
+    makers:       getProp(p, '取り付けタイヤメーカー', 'multi'),
+    studless:     getProp(p, 'スタッドレス', 'select'),
+    haki:         getProp(p, '履きつぶし', 'select'),
+    pressure:     getProp(p, '空気圧', 'text'),
+    sensor:       getProp(p, '空気圧センサー', 'check'),
+    checklink:    getProp(p, 'チェックリンク', 'check'),
+    notice:       getProp(p, '注意事項', 'text'),
+    work1name:    getProp(p, '作業場所①名称', 'text'),
+    work1map:     getProp(p, '作業場所①Map', 'url'),
+    work2name:    getProp(p, '作業場所②名称', 'text'),
+    work2map:     getProp(p, '作業場所②Map', 'url'),
+    work3name:    getProp(p, '作業場所③名称', 'text'),
+    work3map:     getProp(p, '作業場所③Map', 'url'),
+    work4name:    getProp(p, '作業場所④名称', 'text'),
+    work4map:     getProp(p, '作業場所④Map', 'url'),
+    storage1name: getProp(p, '保管場所①名称', 'text'),
+    storage1map:  getProp(p, '保管場所①Map', 'url'),
+    storage2name: getProp(p, '保管場所②名称', 'text'),
+    storage2map:  getProp(p, '保管場所②Map', 'url'),
+    storage3name: getProp(p, '保管場所③名称', 'text'),
+    storage3map:  getProp(p, '保管場所③Map', 'url'),
+    goodnotes:    getProp(p, 'GoodNotesリンク', 'url'),
+    memo:         getProp(p, 'メモ', 'text'),
+  };
+}
+
+// ─── フィルターチップ ─────────────────────────────────────────────────────────
+const CHIP_MAP = { foo:'F.o.o', toyo:'TOYO', bs:'BS', fe:'ふそう東', fw:'ふそう西' };
+
+function toggleChip(key) {
+  activeChips.has(key) ? activeChips.delete(key) : activeChips.add(key);
+  document.getElementById('chip-' + key).classList.toggle('on-' + key, activeChips.has(key));
+  document.getElementById('chip-clear').classList.toggle('show', activeChips.size > 0);
+  applyFilter();
+}
+function clearChips() {
+  activeChips.clear();
+  Object.keys(CHIP_MAP).forEach(k => document.getElementById('chip-' + k).className = 'ca-chip');
+  document.getElementById('chip-clear').classList.remove('show');
+  applyFilter();
+}
+
+// ─── カナ行 ───────────────────────────────────────────────────────────────────
+const KANA_ROW_MAP = {
+  'ア行':['ア','イ','ウ','エ','オ'],'カ行':['カ','キ','ク','ケ','コ'],
+  'サ行':['サ','シ','ス','セ','ソ'],'タ行':['タ','チ','ツ','テ','ト'],
+  'ナ行':['ナ','ニ','ヌ','ネ','ノ'],'ハ行':['ハ','ヒ','フ','ヘ','ホ'],
+  'マ行':['マ','ミ','ム','メ','モ'],
+  'ヤ・ラ・ワ行':['ヤ','ユ','ヨ','ラ','リ','ル','レ','ロ','ワ','ヲ','ン'],
+};
+
+function selectKana(kana) {
+  currentKana = kana; currentKanaSub = null;
+  document.querySelectorAll('.ca-kana-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  const subRow = document.getElementById('ca-kana-sub');
+  if (kana !== 'すべて' && KANA_ROW_MAP[kana]) {
+    let html = '';
+    if (kana === 'ヤ・ラ・ワ行') {
+      const groups = [
+        {label:'ヤ行',kanas:['ヤ','ユ','ヨ']},
+        {label:'ラ行',kanas:['ラ','リ','ル','レ','ロ']},
+        {label:'ワ行',kanas:['ワ','ヲ','ン']},
+      ];
+      groups.forEach(g => {
+        html += `<span style="font-size:9px;color:var(--muted);padding:0 4px 0 8px;align-self:center;white-space:nowrap;">${g.label}</span>`;
+        g.kanas.forEach(k => { html += `<button class="ca-kana-tab" style="padding:6px 10px;font-size:11px;" onclick="selectKanaSub('${k}',this)">${k}</button>`; });
+      });
+    } else {
+      KANA_ROW_MAP[kana].forEach(k => { html += `<button class="ca-kana-tab" style="padding:6px 12px;font-size:11px;" onclick="selectKanaSub('${k}',this)">${k}</button>`; });
+    }
+    subRow.innerHTML = html;
+    subRow.style.display = 'flex';
+    subRow.style.alignItems = 'center';
+  } else {
+    subRow.innerHTML = ''; subRow.style.display = 'none';
+  }
+  applyFilter();
+}
+
+function selectKanaSub(k, btn) {
+  if (currentKanaSub === k) {
+    currentKanaSub = null;
+    document.querySelectorAll('#ca-kana-sub .ca-kana-tab').forEach(t => t.classList.remove('active'));
+  } else {
+    currentKanaSub = k;
+    document.querySelectorAll('#ca-kana-sub .ca-kana-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  applyFilter();
+}
+
+// ─── フィルター・検索 ─────────────────────────────────────────────────────────
+function applyFilter() {
+  let data = [...custAllData];
+  if (currentKana && currentKana !== 'すべて') data = data.filter(c => c.row === currentKana);
+  if (currentKanaSub) {
+    data = data.filter(c => {
+      const yomi = (c.yomi || '').trim();
+      if (yomi) return yomi.startsWith(currentKanaSub) || h2k(yomi).startsWith(currentKanaSub);
+      return true;
+    });
+  }
+  if (currentSearch) {
+    const raw = currentSearch.toLowerCase();
+    const q   = h2k(currentSearch);
+    data = data.filter(c =>
+      c.name.toLowerCase().includes(raw) ||
+      (c.yomi||'').toLowerCase().includes(raw) ||
+      h2k(c.yomi||'').includes(q) ||
+      (c.person1||'').toLowerCase().includes(raw) ||
+      (c.person2||'').toLowerCase().includes(raw) ||
+      (c.kanri||'').toLowerCase().includes(raw)
+    );
+  }
+  if (activeChips.size > 0) {
+    data = data.filter(c => {
+      const kanri = c.kanri || 'F.o.o';
+      return [...activeChips].some(k => CHIP_MAP[k] === kanri);
+    });
+  }
+  custFiltered = data;
+  renderList(data);
+}
+
+function onSearchInput(val) {
+  currentSearch = val;
+  document.getElementById('ca-search-clear').classList.toggle('show', val.length > 0);
+  if (val) {
+    currentKana = 'すべて';
+    document.querySelectorAll('.ca-kana-tab').forEach((t,i) => t.classList.toggle('active', i === 0));
+  }
+  applyFilter();
+}
+
+function clearSearch() {
+  document.getElementById('ca-search-input').value = '';
+  document.getElementById('ca-search-clear').classList.remove('show');
+  currentSearch = '';
+  applyFilter();
+}
+
+// ─── 一覧レンダリング ─────────────────────────────────────────────────────────
+function tagClass(kanri) {
+  const m = {'F.o.o':'foo','TOYO':'toyo','BS':'bs','ふそう東':'fe','ふそう西':'fw'};
+  return m[kanri] || 'def';
+}
+
+function customerRow(c) {
+  const kanriLabel = c.kanri || 'F.o.o';
+  const tc = tagClass(kanriLabel);
+  return `<div class="ca-row" onclick="openCustDetail('${c.id}')">
+    <div class="ca-row-info">
+      <div class="ca-row-name">${esc(c.name)}</div>
+      ${c.yomi ? `<div class="ca-row-yomi">${esc(c.yomi)}</div>` : ''}
+      <div class="ca-row-tags"><span class="ca-tag ${tc}">${esc(kanriLabel)}</span></div>
+    </div>
+    <div class="ca-row-arrow">›</div>
+  </div>`;
+}
+
+function renderList(data) {
+  const listEl = document.getElementById('ca-list');
+  const badge = document.getElementById('ca-count-badge');
+  if (badge) {
+    const total = custAllData.length;
+    if (total > 0) {
+      badge.style.display = '';
+      badge.textContent = data.length < total ? `${data.length} / ${total}社` : `${total}社`;
+    }
+  }
+  if (!data.length) { listEl.innerHTML = '<div class="ca-empty">該当する顧客が見つかりません</div>'; return; }
+  let html = '';
+  if (currentSearch) {
+    data.forEach(c => { html += customerRow(c); });
+  } else {
+    const groups = {};
+    data.forEach(c => { const k = c.row || '—'; if (!groups[k]) groups[k] = []; groups[k].push(c); });
+    const order = ['ア行','カ行','サ行','タ行','ナ行','ハ行','マ行','ヤ・ラ・ワ行','—'];
+    order.forEach(k => {
+      if (!groups[k]) return;
+      html += `<div class="ca-section-head">【${k}】</div>`;
+      groups[k].forEach(c => { html += customerRow(c); });
+    });
+  }
+  listEl.innerHTML = html;
+}
+
+async function loadCustomers() {
+  document.getElementById('ca-list').innerHTML = '<div class="ca-loading"><div class="ca-spinner"></div><div>読み込み中...</div></div>';
+  try {
+    const pages = await fetchAllCustomers();
+    custAllData = pages.map(parseCustomer).sort((a,b) => a.name.localeCompare(b.name, 'ja'));
+    applyFilter();
+  } catch(e) {
+    document.getElementById('ca-list').innerHTML = `<div class="ca-empty">読み込みエラー: ${e.message}</div>`;
+  }
+}
+
+// ─── 詳細画面 ─────────────────────────────────────────────────────────────────
+function openCustDetail(id) {
+  const c = custAllData.find(x => x.id === id);
+  if (!c) return;
+  currentCustPage = c;
+  document.getElementById('cd-title').textContent = c.name;
+  let html = '';
+
+  // 連絡先（会社代表を最上部）
+  html += `<div class="cd-section"><div class="cd-section-label">📞 連絡先</div><table class="cd-table">`;
+  if (c.telCompany) html += `<tr><td>会社代表</td><td><a class="cd-tel-link" href="tel:${c.telCompany.replace(/[-\s]/g,'')}">${esc(c.telCompany)}</a></td></tr>`;
+  if (c.role1)   html += `<tr><td>役職①</td><td>${esc(c.role1)}</td></tr>`;
+  if (c.person1) html += `<tr><td>担当者①</td><td>${esc(c.person1)}</td></tr>`;
+  if (c.tel1)    html += `<tr><td>連絡先①</td><td><a class="cd-tel-link" href="tel:${c.tel1.replace(/[-\s]/g,'')}">${esc(c.tel1)}</a></td></tr>`;
+  if (c.role2)   html += `<tr><td>役職②</td><td>${esc(c.role2)}</td></tr>`;
+  if (c.person2) html += `<tr><td>担当者②</td><td>${esc(c.person2)}</td></tr>`;
+  if (c.tel2)    html += `<tr><td>連絡先②</td><td><a class="cd-tel-link" href="tel:${c.tel2.replace(/[-\s]/g,'')}">${esc(c.tel2)}</a></td></tr>`;
+  if (!c.telCompany && !c.person1 && !c.person2) html += `<tr><td colspan="2" style="color:var(--muted)">未登録</td></tr>`;
+  html += `</table></div>`;
+
+  // 中間管理会社（リレーションIDで特定）
+  const kanriLabel = c.kanri || 'F.o.o';
+  const byId = mgmtPersonsCache['_byId'] || {};
+  let mgmtList = c.mgmtRelIds?.length ? c.mgmtRelIds.map(id => byId[id]).filter(Boolean) : [];
+  html += `<div class="cd-section"><div class="cd-section-label">🏢 中間管理会社</div>
+    <div class="cd-mgmt-card">
+      <div class="cd-mgmt-card-hdr"><span class="cd-mgmt-lbl">中間管理会社</span><span class="cd-mgmt-company">${esc(kanriLabel)}</span></div>
+      <table class="cd-table" style="padding:0 12px;">`;
+  if (mgmtList.length) {
+    mgmtList.forEach(mp => {
+      html += `<tr><td style="padding:5px 12px;">${esc(mp.role||'担当')}</td><td style="padding:5px 12px;">${esc(mp.name)}</td></tr>`;
+      if (mp.tel) html += `<tr><td style="padding:2px 12px 6px;"></td><td style="padding:2px 12px 6px;"><a class="cd-tel-link" href="tel:${mp.tel.replace(/[-\s]/g,'')}">${esc(mp.tel)}</a></td></tr>`;
+    });
+  } else if (kanriLabel === 'F.o.o') {
+    html += `<tr><td colspan="2" style="padding:8px 12px;color:var(--muted);font-size:12px;">自社管理</td></tr>`;
+  } else if (!c.mgmtRelIds?.length) {
+    html += `<tr><td colspan="2" style="padding:8px 12px;color:var(--muted);font-size:12px;">中間担当者未設定</td></tr>`;
+  } else {
+    html += `<tr><td colspan="2" style="padding:8px 12px;color:var(--muted);font-size:12px;">担当者情報を読み込めませんでした</td></tr>`;
+  }
+  html += `</table></div></div>`;
+
+  // タイヤ情報
+  html += `<div class="cd-section"><div class="cd-section-label">🔧 タイヤ情報</div>`;
+  if (c.makers.length) {
+    html += `<div style="margin-bottom:8px;"><div class="cd-tags-wrap">`;
+    c.makers.forEach(m => { html += `<span class="cd-badge">${esc(m)}</span>`; });
+    html += `</div></div>`;
+  }
+  html += `<table class="cd-table">`;
+  if (c.studless)  html += `<tr><td>スタッドレス</td><td>${esc(c.studless)}</td></tr>`;
+  if (c.haki)      html += `<tr><td>履きつぶし</td><td>${esc(c.haki)}</td></tr>`;
+  if (c.sensor)    html += `<tr><td>空気圧センサー</td><td>あり</td></tr>`;
+  if (c.pressure)  html += `<tr><td>空気圧</td><td>${esc(c.pressure)}</td></tr>`;
+  if (c.checklink) html += `<tr><td>チェックリンク</td><td>あり</td></tr>`;
+  html += `</table></div>`;
+
+  // 注意事項
+  if (c.notice) html += `<div class="cd-section"><div class="cd-section-label">⚠️ 注意事項</div><div class="cd-notice-box">${esc(c.notice).replace(/\n/g,'<br>')}</div></div>`;
+
+  // 作業場所
+  const workPlaces = [
+    {name:c.work1name,map:c.work1map},{name:c.work2name,map:c.work2map},
+    {name:c.work3name,map:c.work3map},{name:c.work4name,map:c.work4map},
+  ].filter(x => x.map || x.name);
+  if (workPlaces.length) {
+    html += `<div class="cd-section"><div class="cd-section-label">📍 作業場所</div>`;
+    workPlaces.forEach(w => {
+      const label = w.name || 'GoogleMapを開く';
+      if (w.map) html += `<a class="cd-map-btn" href="${esc(w.map)}" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(label)}</a>`;
+      else html += `<div style="font-size:13px;padding:4px 0;">${esc(label)}</div>`;
+    });
+    html += `</div>`;
+  }
+
+  // 保管場所
+  const storagePlaces = [
+    {name:c.storage1name,map:c.storage1map},{name:c.storage2name,map:c.storage2map},
+    {name:c.storage3name,map:c.storage3map},
+  ].filter(x => x.map || x.name);
+  if (storagePlaces.length) {
+    html += `<div class="cd-section"><div class="cd-section-label">🏠 保管場所</div>`;
+    storagePlaces.forEach((w,i) => {
+      const label = w.name || `保管場所${i>0?i+1:''}`;
+      if (w.map) html += `<a class="cd-map-btn" href="${esc(w.map)}" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>${esc(label)}</a>`;
+      else html += `<div style="font-size:13px;padding:4px 0;">${esc(label)}</div>`;
+    });
+    html += `</div>`;
+  }
+
+  // Goodnotes
+  if (c.goodnotes) html += `<div class="cd-section"><div class="cd-section-label">📓 手書きメモ</div><a class="cd-goodn-btn" href="${esc(c.goodnotes)}" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Goodnotesを開く</a></div>`;
+
+  // メモ
+  if (c.memo) html += `<div class="cd-section"><div class="cd-section-label">💬 メモ</div><div style="font-size:13px;line-height:1.7;">${esc(c.memo).replace(/\n/g,'<br>')}</div></div>`;
+
+  html += '<div style="height:32px;"></div>';
+  document.getElementById('cd-body').innerHTML = html;
+  document.getElementById('cust-detail').classList.add('open');
+}
+
+function closeCustDetail() { document.getElementById('cust-detail').classList.remove('open'); currentCustPage = null; }
+function editCurrentCustomer() { if (currentCustPage) openCustForm(currentCustPage); }
+
+// ─── スワイプで戻る ───────────────────────────────────────────────────────────
+function setupSwipeBack(elId, closeFn) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  let startX = 0, startY = 0, dragging = false;
+  el.addEventListener('touchstart', e => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; dragging = false; }, {passive:true});
+  el.addEventListener('touchmove', e => {
+    const dx = e.touches[0].clientX - startX;
+    const dy = Math.abs(e.touches[0].clientY - startY);
+    if (!dragging && dx > 10 && dy < 50) dragging = true;
+    if (dragging && dx > 0) el.style.transform = `translateX(${dx}px)`;
+  }, {passive:true});
+  el.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    if (dragging && dx > 80) {
+      el.classList.add('swipe-transitioning');
+      el.style.transform = 'translateX(100%)';
+      setTimeout(() => { closeFn(); el.style.transform = ''; el.classList.remove('swipe-transitioning'); }, 220);
+    } else {
+      el.classList.add('swipe-transitioning');
+      el.style.transform = '';
+      setTimeout(() => el.classList.remove('swipe-transitioning'), 220);
+    }
+    dragging = false;
+  }, {passive:true});
+}
+
+// ─── フォーム ─────────────────────────────────────────────────────────────────
+function selRole(idx, role) {
+  const wrap = document.getElementById('cf-role-' + idx);
+  if (!wrap) return;
+  wrap.querySelectorAll('.cf-role-btn').forEach(b => b.classList.remove('on'));
+  const btn = [...wrap.querySelectorAll('.cf-role-btn')].find(b => b.textContent === role);
+  if (btn) btn.classList.add('on');
+  const oi = document.getElementById('cf-role-other-' + idx);
+  if (oi) oi.style.display = role === 'その他' ? 'block' : 'none';
+}
+
+function addPersonBlock() {
+  if (personBlockCount >= 3) { alert('担当者は最大3名です'); return; }
+  const idx = personBlockCount; const lbl = idx + 1;
+  const roles = ['代表','専務','常務','部長','課長','センター長','その他'];
+  const wrap = document.getElementById('cf-persons-wrap');
+  const div = document.createElement('div');
+  div.className = 'cf-person-block'; div.id = 'cf-pb-' + idx;
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div class="cf-label" style="margin:0;">担当者${lbl}（任意）</div>
+      <button type="button" style="background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1;" onclick="removePersonBlock(${idx})">×</button>
+    </div>
+    <div class="cf-field"><div class="cf-label">役職</div>
+      <div class="cf-role-wrap" id="cf-role-${idx}">${roles.map(r=>`<button type="button" class="cf-role-btn" onclick="selRole(${idx},'${r}')">${r}</button>`).join('')}</div>
+      <input class="cf-input" id="cf-role-other-${idx}" type="text" placeholder="役職を入力..." style="display:none;margin-top:6px;">
+    </div>
+    <div style="display:flex;gap:8px;">
+      <div class="cf-field" style="flex:1;"><div class="cf-label">名前</div><input class="cf-input" id="cf-person${lbl}" type="text" placeholder="担当者名"></div>
+      <div class="cf-field" style="flex:1;"><div class="cf-label">連絡先</div><input class="cf-input" id="cf-tel${lbl}" type="tel" placeholder="090-0000-0000"></div>
+    </div>`;
+  wrap.appendChild(div);
+  personBlockCount++;
+  if (personBlockCount >= 3) document.getElementById('cf-add-person-btn').style.display = 'none';
+}
+
+function removePersonBlock(idx) {
+  const el = document.getElementById('cf-pb-' + idx);
+  if (el) el.remove();
+  personBlockCount--;
+  document.getElementById('cf-add-person-btn').style.display = '';
+}
+
+function onKanriChange() {
+  const kanri = document.getElementById('cf-kanri').value || 'F.o.o';
+  const wrap  = document.getElementById('cf-mgmt-person-wrap');
+  const listEl = document.getElementById('cf-mgmt-person-list');
+  const persons = mgmtPersonsCache[kanri] || [];
+  if (kanri === '' || kanri === 'F.o.o' || !persons.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  listEl.innerHTML = persons.map(mp => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:0.5px solid var(--border);">
+      <span style="color:var(--text);font-weight:500;">${esc(mp.name)}${mp.role?`<span style="color:var(--muted);font-weight:400;">（${esc(mp.role)}）</span>`:''}</span>
+      ${mp.tel?`<a href="tel:${mp.tel.replace(/[-\s]/g,'')}" style="color:var(--accent);text-decoration:none;font-size:11px;">${esc(mp.tel)}</a>`:''}
+    </div>`).join('') || '<span style="color:var(--muted);">担当者未登録</span>';
+}
+
+function onPressureChange() {
+  const sel = document.getElementById('cf-pressure-sel').value;
+  const inp = document.getElementById('cf-pressure');
+  if (sel === 'その他') { inp.style.display = ''; inp.focus(); }
+  else { inp.style.display = 'none'; inp.value = sel === '規定通り' ? '規定通り' : ''; }
+}
+
+function addMapField(type) {
+  if (type !== 'work') return;
+  if (workMapCount >= 4) { alert('作業場所は最大4件です'); return; }
+  workMapCount++;
+  const n = workMapCount;
+  const wrap = document.getElementById('cf-maps-work');
+  const div = document.createElement('div');
+  div.className = 'cf-map-group'; div.id = `cf-work-group-${n}`;
+  div.innerHTML = `<div class="cf-map-group-header"><div class="cf-map-group-num">作業場所 ${n}</div><button class="cf-map-remove" onclick="removeMapField('work',${n})">×</button></div>
+    <div class="cf-label">場所の名称</div>
+    <input class="cf-input" id="cf-work${n}-name" type="text" placeholder="中央市場、ヤマエ車庫 など" style="margin-bottom:8px;">
+    <div class="cf-label">GoogleMap URL</div>
+    <input class="cf-input" id="cf-work${n}-url" type="url" placeholder="https://maps.app.goo.gl/...">`;
+  wrap.appendChild(div);
+  if (workMapCount >= 4) wrap.nextElementSibling.style.display = 'none';
+}
+
+function removeMapField(type, num) {
+  if (type !== 'work') return;
+  const el = document.getElementById(`cf-work-group-${num}`);
+  if (el) el.remove();
+  document.querySelectorAll('[id^="cf-work-group-"]').forEach((el,i) => {
+    const n = i+1;
+    el.id = `cf-work-group-${n}`;
+    el.querySelector('.cf-map-group-num').textContent = `作業場所 ${n}`;
+    el.querySelector('.cf-map-remove').setAttribute('onclick', `removeMapField('work',${n})`);
+    const ins = el.querySelectorAll('.cf-input');
+    if (ins[0]) ins[0].id = `cf-work${n}-name`;
+    if (ins[1]) ins[1].id = `cf-work${n}-url`;
+  });
+  workMapCount = document.querySelectorAll('[id^="cf-work-group-"]').length;
+  const wrap = document.getElementById('cf-maps-work');
+  if (wrap && workMapCount < 4) wrap.nextElementSibling.style.display = '';
+}
+
+function addStorageField() {
+  if (storageMapCount >= 3) { alert('保管場所は最大3件です'); return; }
+  storageMapCount++;
+  const n = storageMapCount;
+  const wrap = document.getElementById('cf-maps-storage');
+  const div = document.createElement('div');
+  div.className = 'cf-map-group'; div.id = `cf-storage-group-${n}`;
+  div.innerHTML = `<div class="cf-map-group-header"><div class="cf-map-group-num">保管場所 ${n}</div><button class="cf-map-remove" onclick="removeStorageField(${n})">×</button></div>
+    <div class="cf-label">場所の名称</div>
+    <input class="cf-input" id="cf-storage${n}-name" type="text" placeholder="シンヨー車庫、現地 など" style="margin-bottom:8px;">
+    <div class="cf-label">GoogleMap URL</div>
+    <input class="cf-input" id="cf-storage${n}-url" type="url" placeholder="https://maps.app.goo.gl/...">`;
+  wrap.appendChild(div);
+  if (storageMapCount >= 3) document.getElementById('cf-storage-add-btn').style.display = 'none';
+}
+
+function removeStorageField(n) {
+  const el = document.getElementById(`cf-storage-group-${n}`);
+  if (el) el.remove();
+  storageMapCount = Math.max(0, storageMapCount - 1);
+  document.querySelectorAll('[id^="cf-storage-group-"]').forEach((el,i) => {
+    const newN = i+1;
+    el.id = `cf-storage-group-${newN}`;
+    el.querySelector('.cf-map-group-num').textContent = `保管場所 ${newN}`;
+    el.querySelector('.cf-map-remove').setAttribute('onclick', `removeStorageField(${newN})`);
+    const ins = el.querySelectorAll('.cf-input');
+    if (ins[0]) ins[0].id = `cf-storage${newN}-name`;
+    if (ins[1]) ins[1].id = `cf-storage${newN}-url`;
+  });
+  storageMapCount = document.querySelectorAll('[id^="cf-storage-group-"]').length;
+  document.getElementById('cf-storage-add-btn').style.display = '';
+}
+
+function toggleMaker(btn) { btn.classList.toggle('on'); }
+
+function openCustForm(custData) {
+  editingCustId = custData?.id || null;
+  personBlockCount = 1;
+  document.getElementById('cf-title').textContent = custData ? '顧客情報を編集' : '新規顧客登録';
+
+  document.getElementById('cf-name').value        = custData?.name || '';
+  document.getElementById('cf-yomi').value        = custData?.yomi || '';
+  document.getElementById('cf-row').value         = custData?.row || '';
+  document.getElementById('cf-kanri').value       = custData?.kanri || '';
+  document.getElementById('cf-tel-company').value = custData?.telCompany || '';
+  document.getElementById('cf-person1').value     = custData?.person1 || '';
+  document.getElementById('cf-tel1').value        = custData?.tel1 || '';
+  document.getElementById('cf-studless').value    = custData?.studless || '';
+  document.getElementById('cf-hakitsubu').value   = custData?.haki || '';
+
+  // 空気圧
+  const pv = custData?.pressure || '';
+  const psel = document.getElementById('cf-pressure-sel');
+  const pinp = document.getElementById('cf-pressure');
+  if (!pv || pv === '規定通り') { psel.value = pv||''; pinp.style.display='none'; pinp.value=''; }
+  else { psel.value = 'その他'; pinp.style.display=''; pinp.value = pv; }
+
+  document.getElementById('cf-sensor').checked    = custData?.sensor || false;
+  document.getElementById('cf-checklink').checked = custData?.checklink || false;
+  document.getElementById('cf-notice').value      = custData?.notice || '';
+  document.getElementById('cf-goodnotes').value   = custData?.goodnotes || '';
+  document.getElementById('cf-memo').value        = custData?.memo || '';
+
+  // 役職①
+  if (custData?.role1) selRole(0, custData.role1);
+  else document.querySelectorAll('#cf-role-0 .cf-role-btn').forEach(b => b.classList.remove('on'));
+
+  // 担当者②以降のリセット
+  document.querySelectorAll('[id^="cf-pb-"]:not(#cf-pb-0)').forEach(el => el.remove());
+  document.getElementById('cf-add-person-btn').style.display = '';
+  personBlockCount = 1;
+  if (custData?.person2) {
+    addPersonBlock();
+    const el2 = document.getElementById('cf-person2');
+    const tel2el = document.getElementById('cf-tel2');
+    if (el2) el2.value = custData.person2;
+    if (tel2el) tel2el.value = custData.tel2 || '';
+    if (custData.role2) selRole(1, custData.role2);
+  }
+
+  // 中間担当者参照表示
+  onKanriChange();
+  if (Object.keys(mgmtPersonsCache).length === 0) fetchMgmtPersons().then(() => onKanriChange());
+
+  // タイヤメーカー
+  document.querySelectorAll('.cf-multi-btn').forEach(btn => {
+    const val = btn.dataset.val || btn.textContent.trim();
+    btn.classList.toggle('on', !!(custData?.makers?.includes(val)));
+  });
+
+  // Map リセット・復元
+  workMapCount = 0; storageMapCount = 0;
+  document.getElementById('cf-maps-work').innerHTML = '';
+  document.getElementById('cf-maps-storage').innerHTML = '';
+  document.getElementById('cf-storage-add-btn').style.display = '';
+
+  const works = [
+    {name:custData?.work1name,url:custData?.work1map},{name:custData?.work2name,url:custData?.work2map},
+    {name:custData?.work3name,url:custData?.work3map},{name:custData?.work4name,url:custData?.work4map},
+  ].filter(x => x.name || x.url);
+  works.forEach(w => {
+    addMapField('work');
+    if (w.name) document.getElementById(`cf-work${workMapCount}-name`).value = w.name;
+    if (w.url)  document.getElementById(`cf-work${workMapCount}-url`).value  = w.url;
+  });
+
+  const storages = [
+    {name:custData?.storage1name,url:custData?.storage1map},{name:custData?.storage2name,url:custData?.storage2map},
+    {name:custData?.storage3name,url:custData?.storage3map},
+  ].filter(x => x.name || x.url);
+  storages.forEach(s => {
+    addStorageField();
+    const n = storageMapCount;
+    if (s.name) document.getElementById(`cf-storage${n}-name`).value = s.name;
+    if (s.url)  document.getElementById(`cf-storage${n}-url`).value  = s.url;
+  });
+
+  document.getElementById('cf-feedback').className = 'cf-save-feedback';
+  document.getElementById('cf-feedback').textContent = '';
+  document.getElementById('cf-save-btn').disabled = false;
+  document.getElementById('cust-form').classList.add('open');
+  document.getElementById('cust-form').querySelector('.cf-body').scrollTop = 0;
+}
+
+function closeCustForm() { document.getElementById('cust-form').classList.remove('open'); editingCustId = null; }
+
+async function saveCustomer() {
+  const name = document.getElementById('cf-name').value.trim();
+  if (!name) { alert('会社名を入力してください'); return; }
+
+  const btn = document.getElementById('cf-save-btn');
+  btn.disabled = true; btn.textContent = '保存中…';
+
+  const selectedMakers = Array.from(document.querySelectorAll('.cf-multi-btn.on')).map(b => b.dataset.val || b.textContent.trim());
+  const getWorkMap = (n,key) => document.getElementById(`cf-work${n}-${key}`)?.value.trim() || null;
+  const getStorage = (n,key) => document.getElementById(`cf-storage${n}-${key}`)?.value.trim() || null;
+  const session = loadSession();
+
+  const getRole = (idx) => {
+    const onBtn = document.querySelector(`#cf-role-${idx} .cf-role-btn.on`);
+    if (!onBtn) return null;
+    if (onBtn.textContent === 'その他') return document.getElementById(`cf-role-other-${idx}`)?.value.trim() || 'その他';
+    return onBtn.textContent;
+  };
+
+  const properties = {
+    '会社名': name,
+    'フリガナ': document.getElementById('cf-yomi').value.trim() || null,
+    '行': document.getElementById('cf-row').value || null,
+    '中間管理会社': document.getElementById('cf-kanri').value || 'F.o.o',
+    '会社連絡先': document.getElementById('cf-tel-company').value.trim() || null,
+    '担当者①': document.getElementById('cf-person1').value.trim() || null,
+    '役職①': getRole(0),
+    '連絡先①': document.getElementById('cf-tel1').value.trim() || null,
+    '担当者②': document.getElementById('cf-person2')?.value.trim() || null,
+    '役職②': getRole(1),
+    '連絡先②': document.getElementById('cf-tel2')?.value.trim() || null,
+    '取り付けタイヤメーカー': selectedMakers,
+    'スタッドレス': document.getElementById('cf-studless').value || null,
+    '履きつぶし': document.getElementById('cf-hakitsubu').value || null,
+    '空気圧': (() => {
+      const sel = document.getElementById('cf-pressure-sel').value;
+      if (sel === 'その他') return document.getElementById('cf-pressure').value.trim() || null;
+      return sel || null;
+    })(),
+    '空気圧センサー': document.getElementById('cf-sensor').checked,
+    'チェックリンク': document.getElementById('cf-checklink').checked,
+    '注意事項': document.getElementById('cf-notice').value.trim() || null,
+    '作業場所①名称':getWorkMap(1,'name'),'作業場所①Map':getWorkMap(1,'url'),
+    '作業場所②名称':getWorkMap(2,'name'),'作業場所②Map':getWorkMap(2,'url'),
+    '作業場所③名称':getWorkMap(3,'name'),'作業場所③Map':getWorkMap(3,'url'),
+    '作業場所④名称':getWorkMap(4,'name'),'作業場所④Map':getWorkMap(4,'url'),
+    '保管場所①名称':getStorage(1,'name'),'保管場所①Map':getStorage(1,'url'),
+    '保管場所②名称':getStorage(2,'name'),'保管場所②Map':getStorage(2,'url'),
+    '保管場所③名称':getStorage(3,'name'),'保管場所③Map':getStorage(3,'url'),
+    'GoodNotesリンク': document.getElementById('cf-goodnotes').value.trim() || null,
+    'メモ': document.getElementById('cf-memo').value.trim() || null,
+    '最終更新者': session?.name || '',
+  };
+
+  const notionProps = {};
+  for (const [key, val] of Object.entries(properties)) {
+    if (val === null || val === undefined) continue;
+    if (key === '会社名') { notionProps[key] = {title:[{text:{content:val}}]}; }
+    else if (key === '取り付けタイヤメーカー') { notionProps[key] = {multi_select:val.map(n=>({name:n}))}; }
+    else if (['行','中間管理会社','スタッドレス','履きつぶし','役職①','役職②'].includes(key)) { if(val) notionProps[key]={select:{name:val}}; }
+    else if (['空気圧センサー','チェックリンク'].includes(key)) { notionProps[key]={checkbox:val}; }
+    else if (key.includes('Map')||key==='GoodNotesリンク') { if(val) notionProps[key]={url:val}; }
+    else { if(val) notionProps[key]={rich_text:[{text:{content:val}}]}; }
+  }
+
+  try {
+    let res;
+    if (editingCustId) res = await notionAPI('PATCH', `/pages/${editingCustId}`, {properties:notionProps});
+    else res = await notionAPI('POST', '/pages', {parent:{database_id:CUST_DB},properties:notionProps});
+    if (res.object === 'error') throw new Error(res.message);
+
+    const updated = parseCustomer(res);
+    if (editingCustId) {
+      const idx = custAllData.findIndex(c => c.id === editingCustId);
+      if (idx >= 0) custAllData[idx] = updated;
+      currentCustPage = updated;
+      openCustDetail(updated.id);
+    } else {
+      custAllData.push(updated);
+      custAllData.sort((a,b) => a.name.localeCompare(b.name, 'ja'));
+    }
+    applyFilter();
+
+    const fb = document.getElementById('cf-feedback');
+    fb.textContent = editingCustId ? '更新しました ✓' : '登録しました ✓';
+    fb.className = 'cf-save-feedback success';
+    setTimeout(() => { closeCustForm(); }, 1200);
+  } catch(e) {
+    const fb = document.getElementById('cf-feedback');
+    fb.textContent = 'エラー: ' + e.message;
+    fb.className = 'cf-save-feedback error';
+    btn.disabled = false; btn.textContent = '保存';
+  }
+}
+
+// ─── 初期化 ───────────────────────────────────────────────────────────────────
+window.onload = async () => {
+  // テーマ適用
+  applyTheme(localStorage.getItem(THEME_KEY) || 'auto');
+
+  // セッションチェック
+  const session = loadSession();
+  if (!session) {
+    window.location.href = 'index_2.html';
+    return;
+  }
+
+  // 認証OK → アプリ表示
+  document.getElementById('auth-overlay').classList.add('hidden');
+  document.getElementById('main-app').style.display = 'flex';
+
+  // スワイプで戻るをセットアップ
+  setupSwipeBack('cust-detail', closeCustDetail);
+  setupSwipeBack('cust-form', closeCustForm);
+
+  // データ取得（並列）
+  await Promise.all([fetchMgmtPersons(), loadCustomers()]);
+};
+
+</script>
+</body>
+</html>

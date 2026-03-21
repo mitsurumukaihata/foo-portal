@@ -425,10 +425,14 @@ async function loadTab(tab) {
 }
 
 // ─── 支払いデータ取得 ─────────────────────────────────────────────────────────
+// 支払月の判定ルール：
+//   ・支払日がある → 支払日の月
+//   ・支払日なし   → 締め日（月末）の翌月
+// APIでは広めに取得し、クライアント側で正確にフィルタ
 async function fetchPayments() {
   if (cache.payments) return cache.payments;
-  // ルール：締め日（月末）→ 翌月が支払月
-  // 当月に支払うもの ＝ 締め日が前月のレコード
+  const monthStart = `${ym()}-01`;
+  const monthEnd = `${ym()}-31`;
   const prevYm = (() => {
     let m = targetMonth - 1, y = targetYear;
     if (m < 1) { m = 12; y--; }
@@ -437,12 +441,36 @@ async function fetchPayments() {
   const prevStart = `${prevYm}-01`;
   const prevEnd = `${prevYm}-31`;
 
+  // 支払日が当月 OR 締め日が前月 → 広めに取得
   const results = await queryAll(DB.payment, {
-    filter: { property: '締め日（月末）', date: { on_or_after: prevStart, on_or_before: prevEnd } },
+    filter: { or: [
+      { property: '支払日', date: { on_or_after: monthStart, on_or_before: monthEnd } },
+      { property: '締め日（月末）', date: { on_or_after: prevStart, on_or_before: prevEnd } }
+    ]},
     sorts: [{ property: '支払日', direction: 'ascending' }]
   });
-  cache.payments = results;
-  return results;
+
+  // クライアント側で正確にフィルタ
+  const target = ym(); // "YYYY-MM"
+  const filtered = results.filter(r => {
+    const payDate = propStr(r, '支払日');
+    if (payDate) {
+      // 支払日がある → その月で判定
+      return payDate.slice(0, 7) === target;
+    }
+    // 支払日なし → 締め日の翌月が支払月
+    const closeDate = propStr(r, '締め日（月末）');
+    if (closeDate) {
+      const cd = new Date(closeDate);
+      cd.setMonth(cd.getMonth() + 1);
+      const expectedYm = `${cd.getFullYear()}-${String(cd.getMonth() + 1).padStart(2, '0')}`;
+      return expectedYm === target;
+    }
+    return false;
+  });
+
+  cache.payments = filtered;
+  return filtered;
 }
 
 async function fetchIncome() {
@@ -456,11 +484,8 @@ async function fetchIncome() {
 
 async function fetchBanks() {
   if (cache.banks) return cache.banks;
-  // 当月の集計日のみ取得
-  const monthStart = `${ym()}-01`;
-  const monthEnd = `${ym()}-31`;
+  // 全残高を取得（最新順）
   const results = await queryAll(DB.bank, {
-    filter: { property: '集計日', date: { on_or_after: monthStart, on_or_before: monthEnd } },
     sorts: [{ property: '集計日', direction: 'descending' }]
   });
   cache.banks = results;
@@ -533,7 +558,7 @@ async function loadDashboard() {
 
   const netCashflow = totalIncome - totalPayment - totalLoan;
 
-  // 銀行残高合計（当月データのみ）
+  // 銀行残高合計（各銀行の最新残高）
   let totalBalance = 0;
   const latestBanks = {};
   banks.forEach(r => {
@@ -543,7 +568,7 @@ async function loadDashboard() {
   Object.values(latestBanks).forEach(r => {
     totalBalance += Number(propStr(r, '残高')) || 0;
   });
-  const hasBankData = banks.length > 0;
+  const hasBankData = Object.keys(latestBanks).length > 0;
 
   // ── HTML ──
   let html = '';
@@ -608,19 +633,19 @@ async function loadDashboard() {
   });
   html += '</div>';
 
-  // ── 銀行残高一覧（ダッシュ用・当月のみ） ──
-  html += `<div class="chart-wrap"><div class="chart-title">銀行残高（${targetYear}年${targetMonth}月）</div>`;
+  // ── 銀行残高一覧（ダッシュ用・各銀行の最新残高） ──
+  const dashToday = new Date();
+  html += `<div class="chart-wrap"><div class="chart-title">銀行残高（最終更新）</div>`;
   if (!hasBankData) {
-    html += '<div style="text-align:center;padding:12px;font-size:12px;color:var(--muted);">当月の残高データは未登録です</div>';
+    html += '<div style="text-align:center;padding:12px;font-size:12px;color:var(--muted);">残高データが未登録です</div>';
   } else {
-    const bankNames = [...new Set(banks.map(r => propStr(r, '銀行名')))].filter(Boolean);
-    bankNames.forEach(name => {
-      const latest = banks.find(r => propStr(r, '銀行名') === name);
-      const bal = Number(propStr(latest, '残高')) || 0;
-      const date = propStr(latest, '集計日');
-      const cat = propStr(latest, 'カテゴリ');
+    Object.entries(latestBanks).forEach(([name, r]) => {
+      const bal = Number(propStr(r, '残高')) || 0;
+      const date = propStr(r, '集計日');
+      const cat = propStr(r, 'カテゴリ');
+      const stale = date ? Math.floor((dashToday - new Date(date)) / 86400000) >= 15 : false;
       html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border);">
-        <div><div style="font-size:12px;font-weight:600;">${name}</div><div style="font-size:9px;color:var(--muted);">${date || '—'} ${cat}</div></div>
+        <div><div style="font-size:12px;font-weight:600;">${stale ? '⚠️ ' : ''}${name}</div><div style="font-size:9px;color:${stale ? 'var(--yellow)' : 'var(--muted)'};">${date || '—'} ${cat}</div></div>
         <div style="font-family:'DM Mono',monospace;font-size:14px;font-weight:700;${bal >= 0 ? 'color:var(--blue)' : 'color:var(--red)'}">${fmtYen(bal)}</div>
       </div>`;
     });
@@ -760,69 +785,49 @@ async function loadBanks() {
   el.innerHTML = '<div class="loading">データを取得中…</div>';
   const results = await fetchBanks();
 
-  // 銀行名ごとにグルーピング
-  const groups = {};
+  // 銀行名ごとに最新1件を取得
+  const latestByBank = {};
   results.forEach(r => {
     const name = propStr(r, '銀行名');
     if (!name) return;
-    if (!groups[name]) groups[name] = [];
-    groups[name].push(r);
+    if (!latestByBank[name]) latestByBank[name] = r;
   });
 
-  // 全銀行名リスト（データがない銀行も「未登録」で表示）
-  const allBankNames = [...new Set([...BANK_NAMES, ...Object.keys(groups)])];
+  const allBankNames = [...new Set([...BANK_NAMES, ...Object.keys(latestByBank)])];
+  const today = new Date();
 
-  let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">${targetYear}年${targetMonth}月の銀行残高</div>`;
-
-  if (allBankNames.length === 0) {
-    el.innerHTML = '<div class="empty-state">銀行残高データがありません</div>';
-    return;
-  }
+  let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">各銀行の最終残高</div>`;
 
   allBankNames.forEach(name => {
-    const records = groups[name];
-    if (!records || records.length === 0) {
-      // 当月データなし
+    const latest = latestByBank[name];
+    if (!latest) {
       html += `<div class="bank-card">
         <div class="bank-name">${name}</div>
         <div class="bank-balance" style="color:var(--muted);font-size:14px;">（未登録）</div>
-        <div class="bank-meta">当月のデータがありません</div>
       </div>`;
       return;
     }
 
-    // カテゴリ別に表示（15日 / 月末）
-    const byCat = {};
-    records.forEach(r => {
-      const cat = propStr(r, 'カテゴリ') || '—';
-      if (!byCat[cat]) byCat[cat] = r;
-    });
-
-    const latest = records[0];
     const bal = Number(propStr(latest, '残高')) || 0;
     const date = propStr(latest, '集計日');
     const cat = propStr(latest, 'カテゴリ');
 
-    html += `<div class="bank-card">
-      <div class="bank-name">${name}</div>
-      <div class="bank-balance" style="${bal >= 0 ? 'color:var(--blue)' : 'color:var(--red)'}">${fmtYen(bal)}</div>
-      <div class="bank-meta">${date || '—'} ／ ${cat || '—'}</div>`;
-
-    // 同月の他カテゴリ
-    if (Object.keys(byCat).length > 1) {
-      html += '<div style="margin-top:8px;border-top:0.5px solid var(--border);padding-top:6px;">';
-      Object.entries(byCat).forEach(([c, r]) => {
-        if (r === latest) return;
-        const d = propStr(r, '集計日');
-        const b = Number(propStr(r, '残高')) || 0;
-        html += `<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);padding:2px 0;">
-          <span>${d ? d.slice(5) : '—'} ${c}</span>
-          <span style="font-family:'DM Mono',monospace;">${fmtYen(b)}</span>
-        </div>`;
-      });
-      html += '</div>';
+    // 15日以上前かチェック
+    let stale = false;
+    if (date) {
+      const diffDays = Math.floor((today - new Date(date)) / (1000 * 60 * 60 * 24));
+      stale = diffDays >= 15;
     }
-    html += '</div>';
+
+    html += `<div class="bank-card"${stale ? ' style="border-color:var(--yellow);"' : ''}>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="bank-name">${name}</div>
+        ${stale ? '<span style="font-size:16px;" title="15日以上更新されていません">⚠️</span>' : ''}
+      </div>
+      <div class="bank-balance" style="${bal >= 0 ? 'color:var(--blue)' : 'color:var(--red)'}">${fmtYen(bal)}</div>
+      <div class="bank-meta">${date || '—'} ／ ${cat || '—'}</div>
+      ${stale ? '<div style="font-size:10px;color:var(--yellow);margin-top:4px;font-weight:600;">⚠ 残高を更新してください</div>' : ''}
+    </div>`;
   });
 
   el.innerHTML = html;
@@ -853,7 +858,13 @@ async function loadLoans() {
   let totalMonthly = 0;
   let html = '';
 
-  const repaying = allLoans.filter(r => propStr(r, 'ステータス') === '返済中');
+  // 返済中は返済期日が近い順にソート
+  const repaying = allLoans.filter(r => propStr(r, 'ステータス') === '返済中')
+    .sort((a, b) => {
+      const da = propStr(a, '返済期日') || '9999-12-31';
+      const db = propStr(b, '返済期日') || '9999-12-31';
+      return da.localeCompare(db);
+    });
   const completed = allLoans.filter(r => propStr(r, 'ステータス') === '完済');
   const overdue = allLoans.filter(r => propStr(r, 'ステータス') === '延滞中');
 

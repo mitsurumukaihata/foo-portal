@@ -386,23 +386,18 @@ window.onload = () => {
 // Notion API
 // ──────────────────────────────────────
 async function notionAPI(method, path, body) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 20000);
-  try {
-    const res = await fetch(WORKER + path, {
-      method, headers:{'Content-Type':'application/json'},
-      body: body ? JSON.stringify(body) : undefined,
-      signal: ctrl.signal
-    });
-    clearTimeout(timer);
-    const data = await res.json();
-    if (data.object === 'error') throw new Error(data.message);
-    return data;
-  } catch(e) {
-    clearTimeout(timer);
-    if (e.name === 'AbortError') throw new Error('タイムアウト');
-    throw e;
-  }
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('タイムアウト(10秒)')), 10000)
+  );
+  const fetchPromise = fetch(WORKER + path, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  }).then(res => res.json());
+
+  const data = await Promise.race([fetchPromise, timeoutPromise]);
+  if (data.object === 'error') throw new Error(data.message);
+  return data;
 }
 
 // ──────────────────────────────────────
@@ -414,6 +409,7 @@ async function loadAlerts() {
 
   try {
     let allItems = [];
+    const skippedCats = [];
 
     // カテゴリごとに直列処理（並列だとタイムアウト）
     for (const [catName, dbInfo] of Object.entries(KIJUN_DB_MAP)) {
@@ -421,7 +417,10 @@ async function loadAlerts() {
 
       // 1) 在庫基準設定を取得
       const kijunRows = await fetchKijunForCat(catName, dbInfo.kijunId);
-      if (!kijunRows.length) continue;
+      if (!kijunRows.length) {
+        skippedCats.push(catName);
+        continue;
+      }
 
       // 2) 入出庫記録から在庫計算
       const stockMap = {};
@@ -429,12 +428,12 @@ async function loadAlerts() {
 
       // 3) しきい値と在庫を比較
       for (const row of kijunRows) {
-        const key = `${row.パターン名}|${row.サイズコード}|${row.倉庫}`;
-        const orderKey = `${row.パターン名}|${row.サイズコード}|__order__`;
+        const key = `${row.pattern || row.パターン名}|${row.size || row.サイズコード}|${row.warehouse || row.倉庫}`;
+        const orderKey = `${row.pattern || row.パターン名}|${row.size || row.サイズコード}|__order__`;
         const st = stockMap[key] || { actual: 0, prepQty: 0 };
         const orderInFlight = stockMap[orderKey] || 0;
         const realStock = st.actual + orderInFlight;
-        const threshold = row.しきい値;
+        const threshold = row.threshold || row.しきい値;
 
         if (realStock < threshold) {
           const needed = threshold - realStock;
@@ -459,6 +458,7 @@ async function loadAlerts() {
     }
 
     alertItems = allItems;
+    window._skippedCats = skippedCats;
     renderAlertPage();
     renderOrderPage();
 
@@ -468,25 +468,27 @@ async function loadAlerts() {
 }
 
 async function fetchKijunForCat(catName, kijunDbId) {
-  const body = {
-    filter: { or: [
-      { property: '倉庫', select: { equals: '五日市倉庫' } },
-      { property: '倉庫', select: { equals: '志和倉庫' } },
-    ]},
-    page_size: 100
-  };
-  const res = await notionAPI('POST', `/databases/${kijunDbId}/query`, body);
-  if (res.object === 'error') throw new Error(`${catName} 在庫基準取得エラー: ${res.message}`);
-  return (res.results || []).map(page => {
-    const p = page.properties;
-    return {
-      id: page.id,
-      パターン名: p['パターン名']?.select?.name || '',
-      サイズコード: p['サイズコード']?.rich_text?.[0]?.plain_text || '',
-      倉庫: p['倉庫']?.select?.name || '',
-      しきい値: p['しきい値']?.number ?? 0,
-    };
-  }).filter(r => r.パターン名 && r.サイズコード && r.しきい値 > 0);
+  try {
+    const res = await notionAPI('POST', `/databases/${kijunDbId}/query`, { page_size: 100 });
+    if (res.object === 'error') {
+      console.warn('[' + catName + '] スキップ: ' + res.message);
+      return [];
+    }
+    return (res.results || []).map(page => {
+      const p = page.properties;
+      return {
+        id: page.id,
+        pattern: p['パターン名']?.select?.name || '',
+        size: p['サイズコード']?.rich_text?.[0]?.plain_text || '',
+        warehouse: p['倉庫']?.select?.name || '',
+        threshold: p['しきい値']?.number ?? 0,
+      };
+    }).filter(r => r.pattern && r.size && r.threshold > 0
+                && (r.warehouse === '五日市倉庫' || r.warehouse === '志和倉庫'));
+  } catch(e) {
+    console.warn('[' + catName + '] スキップ: ' + e.message);
+    return [];
+  }
 }
 
 async function fetchStockForCat(cat, dbInfo, stockMap) {
@@ -594,6 +596,11 @@ function renderAlertPage() {
   }
 
   html += `<div class="notice-box">準備中・発注中の在庫も加味した<strong style="color:var(--yellow);">実質在庫</strong>で判定しています</div>`;
+
+  // スキップされたカテゴリの警告
+  if (window._skippedCats && window._skippedCats.length > 0) {
+    html += `<div class="notice-box" style="border-color:rgba(239,68,68,0.4);color:var(--red);">⚠️ 取得できなかったカテゴリ: ${window._skippedCats.join(' / ')}<br><small style="opacity:0.8;">Notionの接続設定を確認してください</small></div>`;
+  }
 
   // 倉庫別グルーピング
   WAREHOUSES.forEach(wh => {

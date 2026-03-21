@@ -315,6 +315,7 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 // 設定
 // ──────────────────────────────────────
 const WORKER      = 'https://notion-proxy.33322666666mm.workers.dev';
+const SNAPSHOT_DB  = '1123c46301764238a511114ed59159bd';   // 在庫スナップショットDB
 const HACCHU_DB   = '202a695f8e8880aa92f6f38d9b47b537';   // 発注管理表DB
 const SESSION_KEY = 'foo_portal_session';
 
@@ -406,59 +407,43 @@ async function notionAPI(method, path, body) {
 // ──────────────────────────────────────
 async function loadAlerts() {
   const el = document.getElementById('alert-content');
-  el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">在庫基準をチェック中…</div></div>';
-  await new Promise(r => setTimeout(r, 50)); // DOM描画を待つ
+  el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">在庫スナップショットを取得中…</div></div>';
+  await new Promise(r => setTimeout(r, 30));
 
   try {
-    let allItems = [];
+    // スナップショットDBから全在庫を一括取得（高速）
+    const snapRows = await fetchAllSnapshots();
+
+    // 在庫基準設定DBをカテゴリ別に取得
+    const allItems = [];
     const skippedCats = [];
 
-    // カテゴリごとに直列処理（並列だとタイムアウト）
-    const cats = Object.entries(KIJUN_DB_MAP);
-    for (let ci = 0; ci < cats.length; ci++) {
-      const [catName, dbInfo] = cats[ci];
-      const startMs = Date.now();
-      let timer = setInterval(() => {
-        const sec = ((Date.now() - startMs) / 1000).toFixed(1);
-        el.innerHTML = `<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">${catName} をチェック中… ${sec}秒<br><small style="color:var(--muted);font-size:10px;">${ci+1}/${cats.length} カテゴリ目</small></div></div>`;
-      }, 200);
-      await new Promise(r => setTimeout(r, 30)); // DOM描画を待つ
+    for (const [catName, dbInfo] of Object.entries(KIJUN_DB_MAP)) {
+      el.innerHTML = `<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">${catName} のしきい値を確認中…</div></div>`;
+      await new Promise(r => setTimeout(r, 20));
 
-      // 1) 在庫基準設定を取得
       const kijunRows = await fetchKijunForCat(catName, dbInfo.kijunId);
-      if (!kijunRows.length) {
-        clearInterval(timer);
-        skippedCats.push(catName);
-        continue;
-      }
+      if (!kijunRows.length) { skippedCats.push(catName); continue; }
 
-      // 2) 入出庫記録から在庫計算
-      const stockMap = {};
-      await fetchStockForCat(catName, dbInfo, stockMap);
-      clearInterval(timer);
-
-      // 3) しきい値と在庫を比較
       for (const row of kijunRows) {
-        const key = `${row.pattern || row.パターン名}|${row.size || row.サイズコード}|${row.warehouse || row.倉庫}`;
-        const orderKey = `${row.pattern || row.パターン名}|${row.size || row.サイズコード}|__order__`;
-        const st = stockMap[key] || { actual: 0, prepQty: 0 };
-        const orderInFlight = stockMap[orderKey] || 0;
-        const realStock = st.actual + orderInFlight;
-        const threshold = row.threshold || row.しきい値;
+        const key = `${catName}|${row.pattern}|${row.size}|${row.warehouse}`;
+        const snap = snapRows[key];
+        const realStock = snap ?? 0;
+        const threshold = row.threshold;
 
         if (realStock < threshold) {
           const needed = threshold - realStock;
-          const maker = guessMaker(row.pattern || row.パターン名);
+          const maker = guessMaker(row.pattern);
           allItems.push({
             kijunId: row.id,
-            pattern: row.pattern || row.パターン名,
-            size: row.size || row.サイズコード,
+            pattern: row.pattern,
+            size: row.size,
             category: catName,
-            warehouse: row.warehouse || row.倉庫,
+            warehouse: row.warehouse,
             threshold,
-            actualStock: st.actual,
-            prepQty: st.prepQty,
-            orderInFlight,
+            actualStock: realStock,
+            prepQty: 0,
+            orderInFlight: 0,
             realStock,
             orderQty: needed,
             selected: needed > 0 && maker === 'TOYO',
@@ -477,6 +462,36 @@ async function loadAlerts() {
     el.innerHTML = `<div class="content"><div class="error-box">エラーが発生しました<br><small>${e.message}</small></div><button class="btn-secondary" style="margin-top:8px;" onclick="loadAlerts()">再試行</button></div>`;
   }
 }
+
+// スナップショットDBから全レコードを取得
+// 戻り値: { "カテゴリ|パターン|サイズ|倉庫": 在庫数 }
+async function fetchAllSnapshots() {
+  const map = {};
+  let cursor;
+  let pageNum = 0;
+  while (pageNum < 10) {
+    pageNum++;
+    const body = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    const res = await notionAPI('POST', `/databases/${SNAPSHOT_DB}/query`, body);
+    if (res.object === 'error') throw new Error('スナップショット取得エラー: ' + res.message);
+    for (const page of res.results) {
+      const p = page.properties;
+      const catName  = p['カテゴリ']?.select?.name || '';
+      const pattern  = p['パターン名']?.rich_text?.[0]?.plain_text || '';
+      const size     = p['サイズコード']?.rich_text?.[0]?.plain_text || '';
+      const warehouse= p['倉庫']?.select?.name || '';
+      const stock    = p['在庫数']?.number ?? 0;
+      if (catName && pattern && size && warehouse) {
+        map[`${catName}|${pattern}|${size}|${warehouse}`] = stock;
+      }
+    }
+    if (!res.has_more) break;
+    cursor = res.next_cursor;
+  }
+  return map;
+}
+
 
 async function fetchKijunForCat(catName, kijunDbId) {
   try {

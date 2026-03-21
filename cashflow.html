@@ -180,7 +180,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 <div class="nav">
   <button class="nav-btn active" onclick="switchTab('dash')">ダッシュボード</button>
   <button class="nav-btn" onclick="switchTab('payment')">支払い</button>
-  <button class="nav-btn" onclick="switchTab('income')">入金</button>
+  <button class="nav-btn" onclick="switchTab('income')">入金予定</button>
   <button class="nav-btn" onclick="switchTab('bank')">銀行残高</button>
   <button class="nav-btn" onclick="switchTab('loan')">返済</button>
 </div>
@@ -427,11 +427,8 @@ async function loadTab(tab) {
 // ─── 支払いデータ取得 ─────────────────────────────────────────────────────────
 async function fetchPayments() {
   if (cache.payments) return cache.payments;
-  // 締め年月 = 前月（締め日月末→翌月が支払月）のルール
-  // ただし支払日ベースで当月のものも取得したい
-  // → 支払日が当月 OR 締め日が前月のレコードを取得
-  const monthStart = `${ym()}-01`;
-  const monthEnd = `${ym()}-31`;
+  // ルール：締め日（月末）→ 翌月が支払月
+  // 当月に支払うもの ＝ 締め日が前月のレコード
   const prevYm = (() => {
     let m = targetMonth - 1, y = targetYear;
     if (m < 1) { m = 12; y--; }
@@ -441,10 +438,7 @@ async function fetchPayments() {
   const prevEnd = `${prevYm}-31`;
 
   const results = await queryAll(DB.payment, {
-    filter: { or: [
-      { property: '支払日', date: { on_or_after: monthStart, on_or_before: monthEnd } },
-      { property: '締め日（月末）', date: { on_or_after: prevStart, on_or_before: prevEnd } }
-    ]},
+    filter: { property: '締め日（月末）', date: { on_or_after: prevStart, on_or_before: prevEnd } },
     sorts: [{ property: '支払日', direction: 'ascending' }]
   });
   cache.payments = results;
@@ -462,7 +456,11 @@ async function fetchIncome() {
 
 async function fetchBanks() {
   if (cache.banks) return cache.banks;
+  // 当月の集計日のみ取得
+  const monthStart = `${ym()}-01`;
+  const monthEnd = `${ym()}-31`;
   const results = await queryAll(DB.bank, {
+    filter: { property: '集計日', date: { on_or_after: monthStart, on_or_before: monthEnd } },
     sorts: [{ property: '集計日', direction: 'descending' }]
   });
   cache.banks = results;
@@ -535,7 +533,7 @@ async function loadDashboard() {
 
   const netCashflow = totalIncome - totalPayment - totalLoan;
 
-  // 銀行残高合計（最新の月末）
+  // 銀行残高合計（当月データのみ）
   let totalBalance = 0;
   const latestBanks = {};
   banks.forEach(r => {
@@ -545,6 +543,7 @@ async function loadDashboard() {
   Object.values(latestBanks).forEach(r => {
     totalBalance += Number(propStr(r, '残高')) || 0;
   });
+  const hasBankData = banks.length > 0;
 
   // ── HTML ──
   let html = '';
@@ -554,7 +553,7 @@ async function loadDashboard() {
     <div class="summary-card"><div class="label">入金予定</div><div class="value" style="color:var(--green)">${fmtYen(totalIncome)}</div></div>
     <div class="summary-card"><div class="label">支払い合計</div><div class="value" style="color:var(--red)">${fmtYen(totalPayment)}</div></div>
     <div class="summary-card"><div class="label">銀行返済</div><div class="value" style="color:var(--yellow)">${fmtYen(totalLoan)}</div></div>
-    <div class="summary-card"><div class="label">銀行残高合計</div><div class="value" style="color:var(--blue)">${fmtYen(totalBalance)}</div></div>
+    <div class="summary-card"><div class="label">銀行残高合計</div><div class="value" style="color:var(--blue)">${hasBankData ? fmtYen(totalBalance) : '（未登録）'}</div></div>
   </div>`;
 
   // 差引き
@@ -609,19 +608,23 @@ async function loadDashboard() {
   });
   html += '</div>';
 
-  // ── 銀行残高一覧（ダッシュ用） ──
-  html += `<div class="chart-wrap"><div class="chart-title">銀行残高</div>`;
-  const bankNames = [...new Set(banks.map(r => propStr(r, '銀行名')))].filter(Boolean);
-  bankNames.forEach(name => {
-    const latest = banks.find(r => propStr(r, '銀行名') === name);
-    const bal = Number(propStr(latest, '残高')) || 0;
-    const date = propStr(latest, '集計日');
-    const cat = propStr(latest, 'カテゴリ');
-    html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border);">
-      <div><div style="font-size:12px;font-weight:600;">${name}</div><div style="font-size:9px;color:var(--muted);">${date || '—'} ${cat}</div></div>
-      <div style="font-family:'DM Mono',monospace;font-size:14px;font-weight:700;${bal >= 0 ? 'color:var(--blue)' : 'color:var(--red)'}">${fmtYen(bal)}</div>
-    </div>`;
-  });
+  // ── 銀行残高一覧（ダッシュ用・当月のみ） ──
+  html += `<div class="chart-wrap"><div class="chart-title">銀行残高（${targetYear}年${targetMonth}月）</div>`;
+  if (!hasBankData) {
+    html += '<div style="text-align:center;padding:12px;font-size:12px;color:var(--muted);">当月の残高データは未登録です</div>';
+  } else {
+    const bankNames = [...new Set(banks.map(r => propStr(r, '銀行名')))].filter(Boolean);
+    bankNames.forEach(name => {
+      const latest = banks.find(r => propStr(r, '銀行名') === name);
+      const bal = Number(propStr(latest, '残高')) || 0;
+      const date = propStr(latest, '集計日');
+      const cat = propStr(latest, 'カテゴリ');
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border);">
+        <div><div style="font-size:12px;font-weight:600;">${name}</div><div style="font-size:9px;color:var(--muted);">${date || '—'} ${cat}</div></div>
+        <div style="font-family:'DM Mono',monospace;font-size:14px;font-weight:700;${bal >= 0 ? 'color:var(--blue)' : 'color:var(--red)'}">${fmtYen(bal)}</div>
+      </div>`;
+    });
+  }
   html += '</div>';
 
   // ── 取引先別支払い（円グラフ風 → ランキング） ──
@@ -757,22 +760,44 @@ async function loadBanks() {
   el.innerHTML = '<div class="loading">データを取得中…</div>';
   const results = await fetchBanks();
 
-  if (results.length === 0) {
-    el.innerHTML = '<div class="empty-state">銀行残高データがありません</div>';
-    return;
-  }
-
-  // 銀行名ごとにグルーピング（最新3件ずつ）
+  // 銀行名ごとにグルーピング
   const groups = {};
   results.forEach(r => {
     const name = propStr(r, '銀行名');
     if (!name) return;
     if (!groups[name]) groups[name] = [];
-    if (groups[name].length < 5) groups[name].push(r);
+    groups[name].push(r);
   });
 
-  let html = '';
-  Object.entries(groups).forEach(([name, records]) => {
+  // 全銀行名リスト（データがない銀行も「未登録」で表示）
+  const allBankNames = [...new Set([...BANK_NAMES, ...Object.keys(groups)])];
+
+  let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">${targetYear}年${targetMonth}月の銀行残高</div>`;
+
+  if (allBankNames.length === 0) {
+    el.innerHTML = '<div class="empty-state">銀行残高データがありません</div>';
+    return;
+  }
+
+  allBankNames.forEach(name => {
+    const records = groups[name];
+    if (!records || records.length === 0) {
+      // 当月データなし
+      html += `<div class="bank-card">
+        <div class="bank-name">${name}</div>
+        <div class="bank-balance" style="color:var(--muted);font-size:14px;">（未登録）</div>
+        <div class="bank-meta">当月のデータがありません</div>
+      </div>`;
+      return;
+    }
+
+    // カテゴリ別に表示（15日 / 月末）
+    const byCat = {};
+    records.forEach(r => {
+      const cat = propStr(r, 'カテゴリ') || '—';
+      if (!byCat[cat]) byCat[cat] = r;
+    });
+
     const latest = records[0];
     const bal = Number(propStr(latest, '残高')) || 0;
     const date = propStr(latest, '集計日');
@@ -783,13 +808,13 @@ async function loadBanks() {
       <div class="bank-balance" style="${bal >= 0 ? 'color:var(--blue)' : 'color:var(--red)'}">${fmtYen(bal)}</div>
       <div class="bank-meta">${date || '—'} ／ ${cat || '—'}</div>`;
 
-    // 推移（小さめ）
-    if (records.length > 1) {
+    // 同月の他カテゴリ
+    if (Object.keys(byCat).length > 1) {
       html += '<div style="margin-top:8px;border-top:0.5px solid var(--border);padding-top:6px;">';
-      records.slice(1).forEach(r => {
+      Object.entries(byCat).forEach(([c, r]) => {
+        if (r === latest) return;
         const d = propStr(r, '集計日');
         const b = Number(propStr(r, '残高')) || 0;
-        const c = propStr(r, 'カテゴリ');
         html += `<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);padding:2px 0;">
           <span>${d ? d.slice(5) : '—'} ${c}</span>
           <span style="font-family:'DM Mono',monospace;">${fmtYen(b)}</span>
@@ -828,59 +853,77 @@ async function loadLoans() {
   let totalMonthly = 0;
   let html = '';
 
-  // 返済中を先に
   const repaying = allLoans.filter(r => propStr(r, 'ステータス') === '返済中');
-  const others = allLoans.filter(r => propStr(r, 'ステータス') !== '返済中');
+  const completed = allLoans.filter(r => propStr(r, 'ステータス') === '完済');
+  const overdue = allLoans.filter(r => propStr(r, 'ステータス') === '延滞中');
 
-  [...repaying, ...others].forEach(r => {
-    const name = propStr(r, '名前');
-    const bank = propStr(r, '銀行名');
-    const monthly = Number(propStr(r, '毎月返済額')) || 0;
-    const principal = Number(propStr(r, '借入額')) || 0;
-    const rate = propStr(r, '金利');
-    const debit = propStr(r, '引落日');
-    const endDate = propStr(r, '返済期日');
-    const status = propStr(r, 'ステータス');
-    const purpose = propStr(r, '目的');
-    const remaining = propStr(r, '支払残高（概算）');
-    const paidTotal = propStr(r, '支払済総額');
-    const guarantee = propStr(r, '保証協会');
-    const collateral = propStr(r, '担保');
+  // 返済中の合計
+  repaying.forEach(r => { totalMonthly += Number(propStr(r, '毎月返済額')) || 0; });
 
-    if (status === '返済中') totalMonthly += monthly;
-
-    // 進捗
-    let progressPct = 0;
-    if (principal > 0 && paidTotal !== '') {
-      progressPct = Math.min((Number(paidTotal) / principal) * 100, 100);
-    }
-
-    html += `<div class="loan-card">
-      <div class="loan-top">
-        <div>
-          <div class="loan-name">${name}</div>
-          <div style="font-size:10px;color:var(--muted);">${bank} ／ ${purpose}</div>
-        </div>
-        ${statusTag(status)}
-      </div>
-      <div class="loan-amount" style="color:var(--yellow);">${fmtYen(monthly)}<span style="font-size:10px;color:var(--muted);">／月</span></div>
-      <div class="loan-detail">
-        借入額：${fmtYen(principal)}　金利：${rate !== '' ? (Number(rate) * 100).toFixed(2) + '%' : '—'}<br>
-        引落日：${debit}　期限：${endDate || '—'}<br>
-        ${guarantee ? '保証協会あり' : ''}${collateral ? '　担保あり' : ''}
-        ${remaining !== '' ? `<br>残高概算：${fmtYen(remaining)}` : ''}
-      </div>
-      ${progressPct > 0 ? `<div class="loan-progress"><div class="loan-progress-bar" style="width:${progressPct}%;"></div></div><div style="text-align:right;font-size:9px;color:var(--muted);margin-top:2px;">${progressPct.toFixed(0)}% 返済済み</div>` : ''}
-    </div>`;
-  });
-
-  // 合計ヘッダー挿入
-  html = `<div class="card" style="margin-bottom:12px;">
+  // 合計ヘッダー
+  html += `<div class="card" style="margin-bottom:12px;">
     <div class="card-label">返済中 毎月合計</div>
     <div class="card-value" style="color:var(--yellow);">${fmtYen(totalMonthly)}</div>
-  </div>` + html;
+  </div>`;
+
+  // セクション描画関数
+  const renderSection = (title, tag, items) => {
+    if (items.length === 0) return;
+    html += `<div style="font-size:12px;font-weight:700;color:var(--muted);margin:16px 0 8px;display:flex;align-items:center;gap:6px;">${title} <span class="tag ${tag}">${items.length}件</span></div>`;
+    items.forEach(r => { html += renderLoanCard(r); });
+  };
+
+  renderSection('返済中', 'tag-repaying', repaying);
+  renderSection('延滞中', 'tag-overdue', overdue);
+  renderSection('完済', 'tag-completed', completed);
 
   el.innerHTML = html;
+}
+
+function renderLoanCard(r) {
+  const statusTag = (s) => {
+    if (s === '返済中') return '<span class="tag tag-repaying">返済中</span>';
+    if (s === '完済')   return '<span class="tag tag-completed">完済</span>';
+    if (s === '延滞中') return '<span class="tag tag-overdue">延滞中</span>';
+    return `<span class="tag">${s}</span>`;
+  };
+
+  const name = propStr(r, '名前');
+  const bank = propStr(r, '銀行名');
+  const monthly = Number(propStr(r, '毎月返済額')) || 0;
+  const principal = Number(propStr(r, '借入額')) || 0;
+  const rate = propStr(r, '金利');
+  const debit = propStr(r, '引落日');
+  const endDate = propStr(r, '返済期日');
+  const status = propStr(r, 'ステータス');
+  const purpose = propStr(r, '目的');
+  const remaining = propStr(r, '支払残高（概算）');
+  const paidTotal = propStr(r, '支払済総額');
+  const guarantee = propStr(r, '保証協会');
+  const collateral = propStr(r, '担保');
+
+  let progressPct = 0;
+  if (principal > 0 && paidTotal !== '') {
+    progressPct = Math.min((Number(paidTotal) / principal) * 100, 100);
+  }
+
+  return `<div class="loan-card">
+    <div class="loan-top">
+      <div>
+        <div class="loan-name">${name}</div>
+        <div style="font-size:10px;color:var(--muted);">${bank} ／ ${purpose}</div>
+      </div>
+      ${statusTag(status)}
+    </div>
+    <div class="loan-amount" style="color:var(--yellow);">${fmtYen(monthly)}<span style="font-size:10px;color:var(--muted);">／月</span></div>
+    <div class="loan-detail">
+      借入額：${fmtYen(principal)}　金利：${rate !== '' ? (Number(rate) * 100).toFixed(2) + '%' : '—'}<br>
+      引落日：${debit}　期限：${endDate || '—'}<br>
+      ${guarantee ? '保証協会あり' : ''}${collateral ? '　担保あり' : ''}
+      ${remaining !== '' ? `<br>残高概算：${fmtYen(remaining)}` : ''}
+    </div>
+    ${progressPct > 0 ? `<div class="loan-progress"><div class="loan-progress-bar" style="width:${progressPct}%;"></div></div><div style="text-align:right;font-size:9px;color:var(--muted);margin-top:2px;">${progressPct.toFixed(0)}% 返済済み</div>` : ''}
+  </div>`;
 }
 
 // ─── フォーム初期化 ──────────────────────────────────────────────────────────

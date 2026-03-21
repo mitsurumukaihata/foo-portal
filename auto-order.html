@@ -125,7 +125,7 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 .order-pattern { font-size:13px; font-weight:700; font-family:'DM Mono',monospace; }
 .order-detail { font-size:13px; color:var(--text); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:700; font-family:'DM Mono',monospace; }
 .qty-wrap { display:flex; align-items:center; gap:6px; }
-.qty-btn { width:26px; height:26px; border-radius:6px; border:1px solid var(--border2); background:var(--s3); color:var(--text); font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:'Noto Sans JP',sans-serif; flex-shrink:0; }
+.qty-btn { width:26px; height:26px; bohrder-radius:6px; border:1px solid var(--border2); background:var(--s3); color:var(--text); font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:'Noto Sans JP',sans-serif; flex-shrink:0; }
 .qty-num { font-size:16px; font-weight:700; font-family:'DM Mono',monospace; color:var(--accent); width:30px; text-align:center; }
 
 /* ── PDF options ── */
@@ -918,7 +918,7 @@ function previewOrderPdf() {
   const ds = `${now2.getFullYear()}-${String(now2.getMonth()+1).padStart(2,'0')}-${String(now2.getDate()).padStart(2,'0')}`;
   const defaultFilename = `TMFoo_発注書_自動発注_${MAKER_SHORT[mm]||mm}_${ds}`;
   document.getElementById('pdf-filename-input').value = defaultFilename;
-  window._pdfFilename = defaultFilename;
+  window.// ファイル名はpreviewOrderPdfで設定済み;
 
   // PDF生成
   buildPrintSheet(selectedItems, tantou, nouki, biko);

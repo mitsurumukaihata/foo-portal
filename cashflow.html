@@ -1020,10 +1020,32 @@ async function submitLoan() {
   }
 }
 
+// ─── アクセス制御 ──────────────────────────────────────────────────────────────
+function checkAccess() {
+  try {
+    const raw = localStorage.getItem('foo_portal_session');
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (new Date(data.expires) < new Date()) return false;
+    // 資金繰り権限チェック
+    if (data.apps && data.apps.cashflow === true) return true;
+    return false;
+  } catch(e) { return false; }
+}
+
 // ─── 初期化 ──────────────────────────────────────────────────────────────────
-initMonth();
-initForms();
-loadTab('dash');
+if (!checkAccess()) {
+  document.body.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:32px;text-align:center;">
+    <div style="font-size:40px;margin-bottom:16px;">🔒</div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:8px;">アクセス権限がありません</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.6;">このアプリは許可されたユーザーのみ利用できます。<br>ポータルからログインしてください。</div>
+    <a href="https://mitsurumukaihata.github.io/foo-portal/" style="background:var(--accent);color:#fff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px;">ポータルへ戻る</a>
+  </div>`;
+} else {
+  initMonth();
+  initForms();
+  loadTab('dash');
+}
 </script>
 </body>
 </html>

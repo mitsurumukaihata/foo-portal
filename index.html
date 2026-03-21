@@ -1591,13 +1591,20 @@ function renderPortalApps(user) {
     html += `<div class="sec"><div class="sec-label">給与</div>`;
 
     if (isAdmin || isKeiri) {
-      // 管理者・経理：全員分のリストを表示
+      // 管理者・経理：折りたたみ式で全員分を表示
       html += `<div id="payslip-all-list">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <div style="font-size:12px;color:var(--muted);">全スタッフの給与明細</div>
+        <div class="app-row" onclick="togglePayslipList(this)" style="cursor:pointer;user-select:none;">
+          <div class="app-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+          </div>
+          <div class="app-text">
+            <div class="app-name">全スタッフの給与明細</div>
+            <div class="app-sub">タップして展開</div>
+          </div>
+          <div id="payslip-toggle-icon" style="color:var(--muted);font-size:18px;transition:transform 0.2s;">›</div>
         </div>
-        <div id="payslip-list-inner">
-          <div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">読み込み中...</div>
+        <div id="payslip-list-inner" style="display:none;margin-top:6px;">
+          <div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;"><span class="ca-spinner" style="display:inline-block;"></span></div>
         </div>
       </div>`;
     } else {
@@ -1632,9 +1639,9 @@ function renderPortalApps(user) {
 
   document.getElementById('portal-body').innerHTML = html;
 
-  // 管理者・経理の場合は給与明細リストを非同期ロード
+  // 管理者・経理の場合は給与明細リストを折りたたみで表示（展開時にロード）
   if (showPayslip && (isAdmin || isKeiri)) {
-    loadAllPayslips();
+    window._payslipLoaded = false; // 展開時に初回ロード
   }
 }
 
@@ -1665,6 +1672,28 @@ function appCardHTML(def, encodedUser) {
     <div class="app-name">${def.label}</div>
     <div class="app-sub">${def.sub}</div>
   </${tag}>`;
+}
+
+// 給与明細リストの折りたたみ切り替え
+function togglePayslipList(btn) {
+  const inner = document.getElementById('payslip-list-inner');
+  const icon  = document.getElementById('payslip-toggle-icon');
+  if (!inner) return;
+  const isOpen = inner.style.display !== 'none';
+  if (isOpen) {
+    inner.style.display = 'none';
+    if (icon) { icon.textContent = '›'; icon.style.transform = 'rotate(0deg)'; }
+    btn.querySelector('.app-sub').textContent = 'タップして展開';
+  } else {
+    inner.style.display = 'block';
+    if (icon) { icon.textContent = '›'; icon.style.transform = 'rotate(90deg)'; }
+    btn.querySelector('.app-sub').textContent = 'タップして閉じる';
+    // まだ読み込んでいなければロード
+    if (!window._payslipLoaded) {
+      window._payslipLoaded = true;
+      loadAllPayslips();
+    }
+  }
 }
 
 // 全スタッフの給与明細リストを読み込む（管理者・経理用）

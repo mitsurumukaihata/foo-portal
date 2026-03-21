@@ -771,32 +771,33 @@ function goToOrderTab() {
 // 発注確認ページ描画
 // ──────────────────────────────────────
 function renderOrderPage() {
-  const toyoItems = alertItems.filter(i => i.maker === 'TOYO' && i.orderQty > 0);
   const el = document.getElementById('order-list-content');
   const actEl = document.getElementById('order-actions');
-
-  if (!toyoItems.length) {
-    el.innerHTML = '<div style="text-align:center;padding:32px 0;color:var(--muted);font-size:13px;">TOYO発注対象はありません</div>';
+  const allItems = alertItems.filter(i => i.orderQty > 0);
+  if (!allItems.length) {
+    el.innerHTML = '<div style="text-align:center;padding:32px 0;color:var(--muted);font-size:13px;">発注対象はありません</div>';
     actEl.style.display = 'none';
     return;
   }
-
   actEl.style.display = 'block';
 
-  // 倉庫別グルーピング
-  let html = '';
-  WAREHOUSES.forEach(wh => {
-    const items = toyoItems.filter(i => i.warehouse === wh);
-    if (!items.length) return;
-    const dotColor = wh === '五日市倉庫' ? 'var(--green)' : 'var(--blue)';
-    html += `<div class="order-section-head">
-      <div class="order-section-lbl" style="display:flex;align-items:center;gap:6px;">
-        <div style="width:6px;height:6px;border-radius:50%;background:${dotColor};flex-shrink:0;"></div>${wh}
-      </div>
-      <span class="order-count-badge tag-toyo">${items.length}品目</span>
-    </div>`;
+  const MAKER_CONFIG = [
+    { maker:'TOYO',       label:'TOYO TIRE',   color:'var(--accent)',  tagCls:'tag-toyo' },
+    { maker:'BS',         label:'BRIDGESTONE', color:'var(--blue)',    tagCls:'tag-bs' },
+    { maker:'DUNLOP',     label:'DUNLOP',      color:'var(--purple)',  tagCls:'tag-cat' },
+    { maker:'MICHELIN',   label:'MICHELIN',    color:'var(--green)',   tagCls:'tag-cat' },
+  ];
 
-    items.forEach((item, idx) => {
+  let html = '';
+  MAKER_CONFIG.forEach(mc => {
+    const makerItems = allItems.filter(i => i.maker === mc.maker);
+    if (!makerItems.length) return;
+    html += `<div style="display:flex;align-items:center;gap:6px;padding:8px 0 5px;border-top:0.5px solid var(--border);margin-top:4px;">
+      <div style="width:7px;height:7px;border-radius:50%;background:${mc.color};flex-shrink:0;"></div>
+      <span style="font-size:10px;font-weight:700;color:${mc.color};letter-spacing:.06em;text-transform:uppercase;">${mc.label}</span>
+      <span style="margin-left:auto;font-size:10px;color:${mc.color};">${makerItems.length}品目</span>
+    </div>`;
+    makerItems.forEach(item => {
       const globalIdx = alertItems.indexOf(item);
       const chkCls = item.selected ? '' : 'off';
       const chkIcon = item.selected ? '<div class="order-check-icon"></div>' : '';
@@ -805,7 +806,7 @@ function renderOrderPage() {
         <div class="order-checkbox ${chkCls}" onclick="toggleOrderItem(${globalIdx})">${chkIcon}</div>
         <div class="order-info">
           <div class="order-pattern">${item.pattern}</div>
-          <div class="order-detail">${item.size} ／ <span style="color:var(--accent);font-weight:700;">${wh.replace('倉庫','')}</span></div>
+          <div class="order-detail">${item.size} ／ <span style="color:var(--accent);font-weight:700;">${item.warehouse.replace('倉庫','')}</span></div>
         </div>
         <div class="qty-wrap">
           <div class="qty-btn" onclick="changeQty(${globalIdx},-1)">−</div>
@@ -816,16 +817,13 @@ function renderOrderPage() {
     });
   });
 
-  const selectedCount = toyoItems.filter(i => i.selected).length;
-  const totalQty = toyoItems.filter(i => i.selected).reduce((s,i) => s+i.orderQty, 0);
-
-  html += `<div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+  const selectedCount = allItems.filter(i => i.selected).length;
+  const totalQty = allItems.filter(i => i.selected).reduce((s,i) => s+i.orderQty, 0);
+  html += `<div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
     <div style="font-size:12px;color:var(--muted);">選択中 ${selectedCount}品目</div>
     <div style="font-size:18px;font-weight:900;font-family:'DM Mono',monospace;color:var(--accent);">計 ${totalQty}本</div>
   </div>`;
-
   el.innerHTML = html;
-
   const btn = document.getElementById('order-submit-btn');
   if (btn) btn.disabled = selectedCount === 0;
 }
@@ -844,48 +842,117 @@ function changeQty(idx, delta) {
 // ──────────────────────────────────────
 // 発注処理
 // ──────────────────────────────────────
-async function submitOrders() {
+// PDFプレビュー表示（Notionへの保存はまだしない）
+function previewOrderPdf() {
   const tantou = document.getElementById('order-tantou').value;
   const nouki  = document.getElementById('order-nouki').value;
   const biko   = document.getElementById('order-biko').value.trim();
-
   if (!tantou) { alert('担当者を選択してください'); return; }
   if (!nouki)  { alert('希望納期を入力してください'); return; }
-
-  const selectedItems = alertItems.filter(i => i.selected && i.maker === 'TOYO' && i.orderQty > 0);
+  const selectedItems = alertItems.filter(i => i.selected && i.orderQty > 0);
   if (!selectedItems.length) { alert('発注対象を選択してください'); return; }
 
-  const btn = document.getElementById('order-submit-btn');
-  btn.disabled = true;
-  btn.textContent = '処理中…';
-  document.getElementById('order-error').innerHTML = '';
+  // PDFオーバーレイを表示（Notionには保存しない）
+  buildPrintSheet(selectedItems, tantou, nouki, biko);
+
+  // 確認ボタン付きオーバーレイを開く
+  openOrderPreviewOverlay(selectedItems, tantou, nouki, biko);
+}
+
+function openOrderPreviewOverlay(selectedItems, tantou, nouki, biko) {
+  const existing = document.getElementById('order-preview-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'order-preview-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:500;background:var(--bg);display:flex;flex-direction:column;max-width:480px;margin:0 auto;';
+
+  const totalQty = selectedItems.reduce((s,i) => s+i.orderQty, 0);
+
+  overlay.innerHTML = `
+    <div style="background:var(--s1);border-bottom:0.5px solid var(--border);padding:13px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;">
+      <button onclick="closeOrderPreviewOverlay()" style="background:transparent;border:none;color:var(--accent);font-size:22px;cursor:pointer;line-height:1;padding:0 4px;font-family:inherit;">‹</button>
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:900;">発注書プレビュー</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:1px;">${selectedItems.length}品目 / 計${totalQty}本 — 内容を確認してください</div>
+      </div>
+    </div>
+    <iframe id="order-preview-frame" style="flex:1;border:none;width:100%;background:#fff;" title="発注書プレビュー"></iframe>
+    <div style="background:var(--s1);border-top:0.5px solid var(--border);padding:12px 16px;flex-shrink:0;">
+      <div id="order-preview-error"></div>
+      <button id="order-confirm-btn" onclick="confirmAndSaveOrder()" style="width:100%;background:var(--green);border:none;border-radius:10px;padding:13px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:6px;">
+        この内容で発注確定 → Notionに保存する
+      </button>
+      <button onclick="closeOrderPreviewOverlay()" style="width:100%;background:transparent;border:1px solid var(--border2);border-radius:10px;padding:11px;color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit;">
+        修正する
+      </button>
+    </div>`;
+
+  document.body.appendChild(overlay);
+
+  const frame = document.getElementById('order-preview-frame');
+  const sheet = document.getElementById('print-sheet');
+  if (sheet) {
+    frame.srcdoc = sheet.querySelector('#print-content')?.innerHTML
+      ? `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+          body{font-family:'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;padding:8mm 10mm;font-size:6pt;color:#1a1a18;}
+          *{box-sizing:border-box;margin:0;padding:0;}
+        </style></head><body>${sheet.querySelector('#print-content').innerHTML}</body></html>`
+      : '<p style="padding:20px;">プレビューを生成中…</p>';
+  }
+
+  // 発注データを保持
+  window._pendingOrder = { selectedItems, tantou, nouki, biko };
+
+  history.pushState({ orderPreview: true }, '', location.href);
+  window.addEventListener('popstate', _onPopStateOrder, { once: true });
+}
+
+function _onPopStateOrder(e) {
+  if (e.state?.orderPreview) closeOrderPreviewOverlay();
+}
+
+function closeOrderPreviewOverlay() {
+  const overlay = document.getElementById('order-preview-overlay');
+  if (overlay) overlay.remove();
+  window._pendingOrder = null;
+  window.removeEventListener('popstate', _onPopStateOrder);
+}
+
+// 確認後にNotionへ保存
+async function confirmAndSaveOrder() {
+  const pending = window._pendingOrder;
+  if (!pending) return;
+  const { selectedItems, tantou, nouki, biko } = pending;
+
+  const btn = document.getElementById('order-confirm-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '保存中…'; }
+  const errEl = document.getElementById('order-preview-error');
 
   try {
-    // 1) 発注管理表DBにレコード作成
     await createHacchuRecords(selectedItems, tantou, nouki, biko);
 
-    // 2) PDF発行（印刷ダイアログを開く）
-    buildPrintSheet(selectedItems, tantou, nouki, biko);
-    setTimeout(() => window.print(), 300);
+    closeOrderPreviewOverlay();
 
-    // 3) 成功表示
     const actEl = document.getElementById('order-actions');
     actEl.innerHTML = `<div class="success-box">
-      ✓ 発注管理表に ${selectedItems.length}件 を記録しました（ステータス：新規発注）<br>
-      ✓ PDF発注書の印刷ダイアログを開きました
+      ✓ 発注管理表に ${selectedItems.length}件 を記録しました<br>
+      ✓ PDFは確認済みです
     </div>
     <button class="btn-secondary" onclick="switchTab('history');loadHistory();">発注履歴を確認する</button>
     <button class="btn-secondary" onclick="loadAlerts();">在庫アラートを再チェック</button>`;
 
-    // 発注済みアイテムをアラートから除外
     alertItems = alertItems.filter(i => !selectedItems.includes(i));
     renderAlertPage();
 
   } catch(e) {
-    document.getElementById('order-error').innerHTML = `<div class="error-box">エラーが発生しました：${e.message}</div>`;
-    btn.disabled = false;
-    btn.textContent = 'PDF発行 ＋ Notionに記録する';
+    if (errEl) errEl.innerHTML = `<div class="error-box" style="margin-bottom:8px;">エラー：${e.message}</div>`;
+    if (btn) { btn.disabled = false; btn.textContent = 'この内容で発注確定 → Notionに保存する'; }
   }
+}
+
+async function submitOrders() {
+  previewOrderPdf();
 }
 
 async function createHacchuRecords(items, tantou, nouki, biko) {
@@ -1046,37 +1113,56 @@ function renderHistory(records) {
     el.innerHTML = '<div style="text-align:center;padding:48px 20px;color:var(--muted);font-size:14px;">発注履歴がありません</div>';
     return;
   }
-
   const STATUS_CLASS = {
     '新規発注': 'st-new', '発注済': 'st-ordered', '納入済': 'st-done', 'キャンセル': 'st-cancel'
   };
+  const MAKER_GROUPS = [
+    { key:'TOYO',       label:'TOYO TIRE',   color:'var(--accent)' },
+    { key:'BRIDGESTONE',label:'BRIDGESTONE', color:'var(--blue)' },
+    { key:'DUNLOP',     label:'DUNLOP',      color:'var(--purple)' },
+    { key:'その他',     label:'その他',      color:'var(--muted)' },
+  ];
+  const grouped = {};
+  records.forEach(r => {
+    const sup = r.properties['仕入先']?.select?.name || 'その他';
+    const g = MAKER_GROUPS.find(m => m.key === sup) ? sup : 'その他';
+    if (!grouped[g]) grouped[g] = [];
+    grouped[g].push(r);
+  });
 
   let html = '<div style="padding:12px 0 0;">';
-  records.forEach(r => {
-    const p = r.properties;
-    const title    = p['タイヤサイズ']?.title?.[0]?.plain_text || '—';
-    const status   = p['ステータス']?.select?.name || '—';
-    const qty      = p['数量']?.number ?? '—';
-    const nouki    = p['納期予定日']?.date?.start || '';
-    const place    = p['納入予定場所']?.select?.name || '—';
-    const tantou   = p['注文担当']?.select?.name || '—';
-    const pattern  = p['パターン']?.select?.name || '';
-    const dateStr  = r.created_time ? new Date(r.created_time).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}) : '—';
-    const stCls    = STATUS_CLASS[status] || 'st-new';
-    const noukiStr = nouki ? new Date(nouki).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}) : '—';
-
-    html += `<div class="history-row">
-      <div class="history-row-head">
-        <div class="history-date">${dateStr} 登録</div>
-        <span class="history-status ${stCls}">${status}</span>
-      </div>
-      <div class="history-row-body">
-        ${pattern ? `<span style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text);margin-right:6px;">${escHtml(pattern)}</span>` : ''}
-        <strong style="font-family:'DM Mono',monospace;">${escHtml(title)}</strong>
-        &nbsp; <strong style="color:var(--accent);">${qty}本</strong>
-      </div>
-      <div class="history-row-meta">納入先：${place} ／ 担当：${tantou} ／ 希望納期：${noukiStr}</div>
+  MAKER_GROUPS.forEach(mg => {
+    const rows = grouped[mg.key];
+    if (!rows || !rows.length) return;
+    html += `<div style="display:flex;align-items:center;gap:6px;padding:8px 0 5px;border-top:0.5px solid var(--border);margin-top:2px;">
+      <div style="width:7px;height:7px;border-radius:50%;background:${mg.color};flex-shrink:0;"></div>
+      <span style="font-size:10px;font-weight:700;color:${mg.color};letter-spacing:.06em;text-transform:uppercase;">${mg.label}</span>
     </div>`;
+    rows.forEach(r => {
+      const p = r.properties;
+      const title   = p['タイヤサイズ']?.title?.[0]?.plain_text || '—';
+      const status  = p['ステータス']?.select?.name || '—';
+      const qty     = p['数量']?.number ?? '—';
+      const nouki   = p['納期予定日']?.date?.start || '';
+      const place   = p['納入予定場所']?.select?.name || '—';
+      const tantou  = p['注文担当']?.select?.name || '—';
+      const pattern = p['パターン']?.select?.name || '';
+      const dateStr = r.created_time ? new Date(r.created_time).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}) : '—';
+      const stCls   = STATUS_CLASS[status] || 'st-new';
+      const noukiStr= nouki ? new Date(nouki).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}) : '—';
+      html += `<div class="history-row">
+        <div class="history-row-head">
+          <div class="history-date">${dateStr} 登録</div>
+          <span class="history-status ${stCls}">${status}</span>
+        </div>
+        <div class="history-row-body">
+          ${pattern ? `<span style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text);margin-right:6px;">${escHtml(pattern)}</span>` : ''}
+          <strong style="font-family:'DM Mono',monospace;">${escHtml(title)}</strong>
+          &nbsp; <strong style="color:var(--accent);">${qty}本</strong>
+        </div>
+        <div class="history-row-meta">納入先：${place} ／ 担当：${tantou} ／ 希望納期：${noukiStr}</div>
+      </div>`;
+    });
   });
   html += '</div>';
   el.innerHTML = html;
@@ -1140,90 +1226,36 @@ async function loadThresholdPage() {
 
 function renderThresholdPage() {
   const el = document.getElementById('threshold-content');
-  const entries = Object.entries(snapshotCache)
-    .filter(([,v]) => v.threshold > 0)
-    .sort(([a],[b]) => a.localeCompare(b, 'ja'));
-
-  const unset = Object.entries(snapshotCache)
-    .filter(([,v]) => !v.threshold || v.threshold <= 0)
-    .length;
 
   let html = '<div style="padding:12px 0 0;">';
 
-  if (unset > 0) {
-    html += `<div class="notice-box" style="border-color:rgba(59,130,246,0.4);color:var(--blue);">しきい値未設定: ${unset}件　（下のフォームから追加できます）</div>`;
-  }
-
-  if (entries.length) {
-    html += `<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:8px;">設定済み ${entries.length}件</div>`;
-
-    // パターン＋サイズでグルーピング（倉庫を横並びに）
-    const grouped = {};
-    entries.forEach(([key, snap]) => {
-      const [cat, pattern, size, wh] = key.split('|');
-      const groupKey = `${cat}|${pattern}|${size}`;
-      if (!grouped[groupKey]) grouped[groupKey] = { cat, pattern, size, items: {} };
-      grouped[groupKey].items[wh] = { key, snap };
-    });
-
-    Object.entries(grouped).sort(([a],[b]) => a.localeCompare(b,'ja')).forEach(([, g]) => {
-      const itsuka = g.items['五日市倉庫'];
-      const shiwa  = g.items['志和倉庫'];
-      html += `<div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:9px 12px;margin-bottom:6px;">
-        <div style="background:var(--s3);border-radius:7px;padding:7px 10px;margin-bottom:8px;">
-          <div style="display:flex;align-items:baseline;gap:8px;">
-            <span style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text);">${g.pattern}</span>
-            <span style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text);">${g.size}</span>
-          </div>
-          <div style="font-size:10px;color:var(--muted);margin-top:2px;">${g.cat}</div>
-        </div>
-        <div style="display:flex;gap:8px;">
-          ${itsuka ? `<div style="flex:1;display:flex;flex-direction:column;gap:4px;">
-            <div style="font-size:10px;font-weight:700;color:var(--green);">五日市倉庫</div>
-            <div style="display:flex;align-items:center;gap:0;">
-              <button onclick="changeThreshold('${itsuka.key}',-1)" style="width:28px;height:28px;border-radius:6px 0 0 6px;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:15px;cursor:pointer;">−</button>
-              <div id="th-num-${keyToSafeId(itsuka.key)}" style="flex:1;font-size:15px;font-weight:700;color:var(--accent);text-align:center;border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);height:28px;line-height:28px;font-family:'DM Mono',monospace;">${itsuka.snap.threshold}</div>
-              <button onclick="changeThreshold('${itsuka.key}',+1)" style="width:28px;height:28px;border-radius:0 6px 6px 0;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:15px;cursor:pointer;">＋</button>
-            </div>
-          </div>` : `<div style="flex:1;display:flex;flex-direction:column;gap:4px;opacity:0.3;">
-            <div style="font-size:10px;color:var(--muted);">五日市倉庫</div>
-            <div style="height:28px;border-radius:6px;border:1px dashed var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);">未設定</div>
-          </div>`}
-          ${shiwa ? `<div style="flex:1;display:flex;flex-direction:column;gap:4px;">
-            <div style="font-size:10px;font-weight:700;color:var(--blue);">志和倉庫</div>
-            <div style="display:flex;align-items:center;gap:0;">
-              <button onclick="changeThreshold('${shiwa.key}',-1)" style="width:28px;height:28px;border-radius:6px 0 0 6px;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:15px;cursor:pointer;">−</button>
-              <div id="th-num-${keyToSafeId(shiwa.key)}" style="flex:1;font-size:15px;font-weight:700;color:var(--accent);text-align:center;border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);height:28px;line-height:28px;font-family:'DM Mono',monospace;">${shiwa.snap.threshold}</div>
-              <button onclick="changeThreshold('${shiwa.key}',+1)" style="width:28px;height:28px;border-radius:0 6px 6px 0;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:15px;cursor:pointer;">＋</button>
-            </div>
-          </div>` : `<div style="flex:1;display:flex;flex-direction:column;gap:4px;opacity:0.3;">
-            <div style="font-size:10px;color:var(--muted);">志和倉庫</div>
-            <div style="height:28px;border-radius:6px;border:1px dashed var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);">未設定</div>
-          </div>`}
-        </div>
-      </div>`;
-    });
-  }
-
-  // 新規追加フォーム
+  // 上部：サイズ検索窓（設定済みしきい値の確認・変更）
   html += `
-  <div style="border-top:0.5px solid var(--border);margin-top:12px;padding-top:14px;">
-    <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:10px;letter-spacing:.04em;">しきい値を新規追加</div>
+  <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:8px;letter-spacing:.04em;">しきい値を確認・変更</div>
+  <div style="position:relative;margin-bottom:6px;">
+    <input id="th-view-input" type="text" inputmode="decimal"
+      placeholder="サイズを検索（例: 225 または 22580）"
+      oninput="onThViewInput(this.value)"
+      onblur="setTimeout(()=>{const d=document.getElementById('th-view-drop');if(d)d.style.display='none'},200)"
+      style="width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;font-size:13px;font-family:'Noto Sans JP',sans-serif;color:var(--text);outline:none;box-sizing:border-box;">
+    <div id="th-view-drop" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:var(--s2);border:1px solid var(--border2);border-radius:8px;max-height:180px;overflow-y:auto;margin-top:2px;"></div>
+  </div>
+  <div id="th-view-results"></div>
 
-    <div style="margin-bottom:8px;">
-      <div style="font-size:10px;color:var(--muted);margin-bottom:3px;">サイズ検索</div>
-      <div style="position:relative;">
-        <input class="df-input" id="th-size-input" type="text" inputmode="decimal"
-          placeholder="例: 225 または 22580"
-          oninput="onThSizeInput(this.value)"
-          onblur="setTimeout(()=>document.getElementById('th-size-drop').style.display='none',200)"
-          style="width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;font-size:13px;font-family:'Noto Sans JP',sans-serif;color:var(--text);outline:none;">
-        <div id="th-size-drop" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:var(--s2);border:1px solid var(--border2);border-radius:8px;max-height:180px;overflow-y:auto;margin-top:2px;"></div>
-      </div>
-      <div id="th-size-chosen" style="display:none;margin-top:5px;background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.3);border-radius:8px;padding:7px 12px;display:flex;align-items:center;justify-content:space-between;">
-        <span id="th-size-val" style="font-size:13px;font-weight:700;color:var(--accent);"></span>
-        <button onclick="thClearSize()" style="background:none;border:none;color:var(--muted);font-size:15px;cursor:pointer;line-height:1;">✕</button>
-      </div>
+  <div style="border-top:0.5px solid var(--border);margin-top:14px;padding-top:14px;">
+    <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:8px;letter-spacing:.04em;">新規しきい値を追加</div>
+
+    <div style="position:relative;margin-bottom:8px;">
+      <input class="df-input" id="th-size-input" type="text" inputmode="decimal"
+        placeholder="サイズを検索（例: 145 または 14580）"
+        oninput="onThSizeInput(this.value)"
+        onblur="setTimeout(()=>document.getElementById('th-size-drop').style.display='none',200)"
+        style="width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;font-size:13px;font-family:'Noto Sans JP',sans-serif;color:var(--text);outline:none;box-sizing:border-box;">
+      <div id="th-size-drop" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:var(--s2);border:1px solid var(--border2);border-radius:8px;max-height:180px;overflow-y:auto;margin-top:2px;"></div>
+    </div>
+    <div id="th-size-chosen" style="display:none;margin-top:5px;background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.3);border-radius:8px;padding:7px 12px;display:flex;align-items:center;justify-content:space-between;">
+      <span id="th-size-val" style="font-size:13px;font-weight:700;color:var(--accent);"></span>
+      <button onclick="thClearSize()" style="background:none;border:none;color:var(--muted);font-size:15px;cursor:pointer;line-height:1;">✕</button>
     </div>
 
     <div id="th-cat-wrap" style="display:none;margin-bottom:8px;">
@@ -1238,7 +1270,7 @@ function renderThresholdPage() {
           placeholder="例: M646"
           oninput="onThPatternInput(this.value)"
           onblur="setTimeout(()=>document.getElementById('th-pattern-drop').style.display='none',200)"
-          style="width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;font-size:13px;font-family:'DM Mono',monospace;color:var(--text);outline:none;">
+          style="width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;font-size:13px;font-family:'DM Mono',monospace;color:var(--text);outline:none;box-sizing:border-box;">
         <div id="th-pattern-drop" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:var(--s2);border:1px solid var(--border2);border-radius:8px;max-height:180px;overflow-y:auto;margin-top:2px;"></div>
       </div>
     </div>
@@ -1271,6 +1303,90 @@ function renderThresholdPage() {
 
   el.innerHTML = html;
 }
+
+// サイズ検索→既存しきい値を表示
+function onThViewInput(v) {
+  const dd = document.getElementById('th-view-drop');
+  const q = v.trim();
+  if (!q) { dd.style.display='none'; document.getElementById('th-view-results').innerHTML=''; return; }
+  const dq = q.replace(/[^\d]/g,'');
+  const allSizes = new Set();
+  Object.values(CAT_SIZES).forEach(arr => arr.forEach(s => allSizes.add(s)));
+  const hits = [...allSizes].filter(s => {
+    const ds = s.replace(/[^\d]/g,'');
+    return s.toLowerCase().includes(q.toLowerCase()) || (dq.length >= 3 && ds.startsWith(dq));
+  }).slice(0,10);
+  if (!hits.length) { dd.style.display='none'; return; }
+  dd.innerHTML = hits.map(s =>
+    `<div onclick="thViewPickSize('${s.replace(/'/g,"\\'")}');document.getElementById('th-view-drop').style.display='none';"
+     style="padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:0.5px solid var(--border);color:var(--text);">${s}</div>`
+  ).join('');
+  dd.style.display = 'block';
+}
+
+function thViewPickSize(size) {
+  const inp = document.getElementById('th-view-input');
+  if (inp) inp.value = size;
+  document.getElementById('th-view-drop').style.display = 'none';
+
+  if (!snapshotCache) { document.getElementById('th-view-results').innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0;">読み込み中…</div>'; return; }
+
+  // このサイズのスナップショットレコードを全件抽出
+  const matches = Object.entries(snapshotCache).filter(([key]) => {
+    const [,,sz] = key.split('|');
+    // 全角・半角スペース正規化して比較
+    return sz.replace(/[　 ]/g,' ') === size.replace(/[　 ]/g,' ');
+  });
+
+  if (!matches.length) {
+    document.getElementById('th-view-results').innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0;">このサイズのレコードが見つかりません</div>';
+    return;
+  }
+
+  // パターン別にグルーピング
+  const byPattern = {};
+  matches.forEach(([key, snap]) => {
+    const [cat, pattern, sz, wh] = key.split('|');
+    const pKey = `${cat}|${pattern}|${sz}`;
+    if (!byPattern[pKey]) byPattern[pKey] = { cat, pattern, size: sz, items: {} };
+    byPattern[pKey].items[wh] = { key, snap };
+  });
+
+  let html = `<div style="font-size:10px;color:var(--muted);margin-bottom:6px;">${size} の設定済みしきい値</div>`;
+  Object.values(byPattern).forEach(g => {
+    const itsuka = g.items['五日市倉庫'];
+    const shiwa  = g.items['志和倉庫'];
+    html += `<div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:9px 10px;margin-bottom:6px;">
+      <div style="background:var(--s3);border-radius:7px;padding:7px 10px;margin-bottom:8px;">
+        <div style="display:flex;align-items:baseline;gap:8px;">
+          <span style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text);">${g.pattern}</span>
+          <span style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text);">${g.size}</span>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;">${g.cat}</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        ${itsuka ? `<div style="flex:1;">
+          <div style="font-size:10px;font-weight:700;color:var(--green);margin-bottom:4px;">五日市倉庫</div>
+          <div style="display:flex;align-items:center;gap:0;">
+            <button onclick="changeThreshold('${itsuka.key}',-1)" style="width:28px;height:28px;border-radius:6px 0 0 6px;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:15px;cursor:pointer;">−</button>
+            <div id="th-num-${keyToSafeId(itsuka.key)}" style="flex:1;font-size:15px;font-weight:700;color:var(--accent);text-align:center;border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);height:28px;line-height:28px;font-family:'DM Mono',monospace;">${itsuka.snap.threshold||0}</div>
+            <button onclick="changeThreshold('${itsuka.key}',+1)" style="width:28px;height:28px;border-radius:0 6px 6px 0;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:15px;cursor:pointer;">＋</button>
+          </div>
+        </div>` : `<div style="flex:1;opacity:0.3;"><div style="font-size:10px;color:var(--muted);">五日市倉庫</div><div style="height:28px;border-radius:6px;border:1px dashed var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);">未設定</div></div>`}
+        ${shiwa ? `<div style="flex:1;">
+          <div style="font-size:10px;font-weight:700;color:var(--blue);margin-bottom:4px;">志和倉庫</div>
+          <div style="display:flex;align-items:center;gap:0;">
+            <button onclick="changeThreshold('${shiwa.key}',-1)" style="width:28px;height:28px;border-radius:6px 0 0 6px;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:15px;cursor:pointer;">−</button>
+            <div id="th-num-${keyToSafeId(shiwa.key)}" style="flex:1;font-size:15px;font-weight:700;color:var(--accent);text-align:center;border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);height:28px;line-height:28px;font-family:'DM Mono',monospace;">${shiwa.snap.threshold||0}</div>
+            <button onclick="changeThreshold('${shiwa.key}',+1)" style="width:28px;height:28px;border-radius:0 6px 6px 0;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:15px;cursor:pointer;">＋</button>
+          </div>
+        </div>` : `<div style="flex:1;opacity:0.3;"><div style="font-size:10px;color:var(--muted);">志和倉庫</div><div style="height:28px;border-radius:6px;border:1px dashed var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);">未設定</div></div>`}
+      </div>
+    </div>`;
+  });
+  document.getElementById('th-view-results').innerHTML = html;
+}
+
 
 // しきい値変更（±ボタン）→ 即座にNotionに保存
 async function changeThreshold(key, delta) {
@@ -1407,7 +1523,10 @@ async function saveNewThreshold() {
   const errEl   = document.getElementById('th-save-error');
   const btn     = document.getElementById('th-save-btn');
 
-  if (!size || !cat) { errEl.textContent='サイズとカテゴリを選択してください'; errEl.style.display='block'; return; }
+  // サイズが未選択の場合、入力欄の値をそのまま使う
+  const sizeVal = size || document.getElementById('th-size-input')?.value.trim();
+  if (!sizeVal || !cat) { errEl.textContent='サイズとカテゴリを選択してください'; errEl.style.display='block'; return; }
+  if (!size) thSelSize = sizeVal;
   errEl.style.display = 'none';
   btn.disabled = true; btn.textContent = '保存中…';
 

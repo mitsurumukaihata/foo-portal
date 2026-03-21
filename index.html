@@ -997,8 +997,10 @@ body {
         <div class="pin-dot" id="d1"></div>
         <div class="pin-dot" id="d2"></div>
         <div class="pin-dot" id="d3"></div>
+        <div class="pin-dot" id="d4"></div>
+        <div class="pin-dot" id="d5"></div>
       </div>
-      <div class="pin-hint" id="pin-hint">4桁のPINを入力してください</div>
+      <div class="pin-hint" id="pin-hint">6桁のPINを入力してください</div>
     </div>
     <div class="pin-numpad">
       <div class="pin-key" onclick="pinInput('1')">1</div>
@@ -1457,7 +1459,7 @@ function selectStaff(name) {
   pinArea.classList.add('visible');
   pinDigits = []; failCount = 0; pinLocked = false;
   renderPinDots();
-  showPinHint('4桁のPINを入力してください', false);
+  showPinHint('6桁のPINを入力してください', false);
 }
 
 function backToStaff() {
@@ -1470,13 +1472,13 @@ function backToStaff() {
 }
 
 function pinInput(digit) {
-  if (pinLocked || pinDigits.length >= 4) return;
+  if (pinLocked || pinDigits.length >= 6) return;
   pinDigits.push(digit);
   renderPinDots();
   document.getElementById('pin-display').classList.add('focus');
   document.getElementById('pin-display').classList.remove('error');
-  showPinHint('4桁のPINを入力してください', false);
-  if (pinDigits.length === 4) { document.getElementById('pin-submit-btn').disabled = false; setTimeout(submitPin, 120); }
+  showPinHint('6桁のPINを入力してください', false);
+  if (pinDigits.length === 6) { document.getElementById('pin-submit-btn').disabled = false; setTimeout(submitPin, 120); }
   else { document.getElementById('pin-submit-btn').disabled = true; }
 }
 
@@ -1487,7 +1489,7 @@ function pinDel() {
 }
 
 function renderPinDots() {
-  for (let i = 0; i < 4; i++) document.getElementById('d' + i).classList.toggle('filled', i < pinDigits.length);
+  for (let i = 0; i < 6; i++) document.getElementById('d' + i).classList.toggle('filled', i < pinDigits.length);
 }
 
 function showPinHint(msg, isError) {
@@ -1498,7 +1500,7 @@ function showPinHint(msg, isError) {
 }
 
 async function submitPin() {
-  if (pinLocked || pinDigits.length < 4) return;
+  if (pinLocked || pinDigits.length < 6) return;
   pinLocked = true;
   const btn = document.getElementById('pin-submit-btn');
   btn.disabled = true;

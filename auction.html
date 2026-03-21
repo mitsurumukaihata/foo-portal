@@ -162,10 +162,8 @@ select.fi:focus{border-color:var(--amber);}
 .detail-thumb-empty svg{opacity:.2;}
 .detail-status-badge{position:absolute;top:10px;right:10px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:8px;}
 .detail-info{padding:14px 16px;}
-.detail-price{font-size:22px;font-weight:600;color:var(--amber);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.detail-price{font-size:22px;font-weight:600;color:var(--amber);margin-bottom:12px;}
 .detail-price span{font-size:12px;color:var(--text3);margin-left:6px;}
-.btn-copy-price{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--amber);color:var(--amber);background:transparent;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .15s;}
-.btn-copy-price.copied{background:var(--amber);color:#1a1a1a;}
 .detail-grid{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:12px;margin-bottom:12px;}
 .dl{color:var(--amber);font-size:11px;}
 .dv{color:var(--text);font-weight:500;}
@@ -221,7 +219,7 @@ select.fi:focus{border-color:var(--amber);}
 /* ===== FORM TAB ===== */
 .form-wrap{max-width:600px;margin:0 auto;width:100%;}
 /* フォームカテゴリタブ */
-.form-type-bar{display:flex;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;overflow-x:auto;}
+.form-type-bar{display:flex;border-bottom:1px solid var(--border);background:var(--bg2);overflow-x:auto;flex-shrink:0;}
 .ftype-btn{flex:1;min-width:64px;padding:9px 4px;text-align:center;font-size:11px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--text3);border-bottom:2px solid transparent;white-space:nowrap;font-family:inherit;transition:all .15s;}
 .ftype-btn.active{color:var(--amber);border-bottom-color:var(--amber);background:var(--bg);}
 .fform-section{padding-top:4px;}
@@ -242,6 +240,127 @@ select.fg-sel{appearance:none;-webkit-appearance:none;background-image:url("data
 .submit-btn:disabled{opacity:.5;cursor:not-allowed;}
 .form-msg{font-size:12px;text-align:center;margin-top:8px;min-height:18px;color:var(--green);}
 .form-msg.err{color:var(--red);}
+
+/* ===== 出品手続きタブ ===== */
+.ship-list { display: flex; flex-direction: column; gap: 8px; padding-bottom: 16px; }
+.ship-card {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px 14px; transition: border-color .15s;
+}
+.ship-card-top { display: flex; align-items: center; gap: 10px; }
+.ship-card-info { flex: 1; min-width: 0; }
+.ship-card-mgmt { font-size: 13px; font-weight: 700; color: var(--amber); margin-bottom: 3px; }
+.ship-card-sub { font-size: 11px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ship-card-btns { display: flex; gap: 6px; margin-top: 8px; }
+.ship-card-btn {
+  flex: 1; padding: 7px 6px; border-radius: 7px; font-size: 11px; font-weight: 600;
+  cursor: pointer; border: 1px solid; text-align: center; white-space: nowrap;
+  font-family: inherit; background: transparent; transition: all .15s;
+}
+.ship-card-btn-edit { border-color: rgba(239,68,68,.5); color: var(--red); }
+.ship-card-btn-edit:hover { background: rgba(239,68,68,.1); }
+.ship-card-btn-code { border-color: var(--amber); color: var(--amber); }
+.ship-card-btn-code:hover { background: var(--amber3); }
+
+/* 編集パネル */
+.ship-edit-panel {
+  display: none; margin-top: 12px; padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.ship-edit-panel.open { display: block; }
+.sep-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sep-fg { display: flex; flex-direction: column; gap: 3px; }
+.sep-fg.full { grid-column: 1/-1; }
+.sep-fg label { font-size: 10px; color: var(--text3); letter-spacing: .04em; }
+.sep-fg label.err { color: var(--red); font-weight: 700; }
+.sep-input {
+  padding: 7px 9px; border-radius: 7px; font-size: 12px;
+  background: var(--bg3); border: 1px solid var(--border2);
+  color: var(--text); outline: none; width: 100%; font-family: inherit;
+}
+.sep-input:focus { border-color: var(--amber); }
+.sep-input.err { border-color: rgba(239,68,68,.6); }
+select.sep-input { appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23777'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 8px center;
+}
+.sep-save-btn {
+  width: 100%; margin-top: 10px; padding: 10px; background: var(--amber);
+  color: #1a1a1a; border: none; border-radius: 8px; font-size: 13px;
+  font-weight: 700; cursor: pointer; font-family: inherit;
+}
+.sep-save-btn:disabled { opacity: .5; cursor: not-allowed; }
+.sep-msg { font-size: 11px; text-align: center; margin-top: 6px; min-height: 16px; }
+.sep-msg.ok { color: var(--green); }
+.sep-msg.ng { color: var(--red); }
+.ship-warn-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.ship-warn-badge {
+  font-size: 10px; padding: 2px 7px; border-radius: 8px;
+  background: rgba(239,68,68,.12); color: var(--red);
+  border: 1px solid rgba(239,68,68,.3); white-space: nowrap;
+}
+.ship-warn-badge.warn {
+  background: rgba(240,165,0,.12); color: var(--amber);
+  border: 1px solid rgba(240,165,0,.3);
+}
+.ship-empty { text-align: center; color: var(--text3); padding: 40px 20px; font-size: 13px; }
+
+/* 出品詳細モーダル */
+.ship-detail-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.8); z-index: 300;
+  display: none; flex-direction: column;
+}
+.ship-detail-overlay.open { display: flex; }
+.ship-detail-inner {
+  background: var(--bg2); flex: 1; display: flex; flex-direction: column;
+  max-width: 640px; margin: 0 auto; width: 100%; overflow: hidden;
+}
+.ship-detail-header {
+  background: var(--bg); border-bottom: 1px solid var(--amber);
+  padding: 12px 16px; display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+}
+.ship-detail-back { background: transparent; border: none; color: var(--amber); font-size: 20px; cursor: pointer; padding: 0 4px; line-height: 1; }
+.ship-detail-title { font-size: 14px; font-weight: 600; color: var(--amber); flex: 1; }
+.ship-detail-body { flex: 1; overflow-y: auto; padding: 14px 16px; }
+.ship-section-lbl {
+  font-size: 10px; font-weight: 700; letter-spacing: .08em; color: var(--amber);
+  text-transform: uppercase; margin: 14px 0 6px; border-bottom: 1px solid var(--border); padding-bottom: 4px;
+}
+/* サムネ共通 */
+.ship-thumb {
+  width: 100%; height: 180px; overflow: hidden;
+  background: var(--bg3); border-radius: 8px; margin-bottom: 12px;
+  display: flex; align-items: center; justify-content: center; position: relative;
+}
+.ship-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 8px; }
+.ship-thumb-empty { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 6px; opacity: .25; }
+.ship-thumb-empty span { font-size: 11px; color: var(--text3); }
+.ship-info-grid { display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; font-size: 12px; margin-bottom: 10px; }
+.ship-info-key { color: var(--text3); white-space: nowrap; }
+.ship-info-val { color: var(--text); font-weight: 500; }
+.ship-html-box {
+  background: var(--bg); border: 1px solid var(--border2); border-radius: 8px;
+  padding: 10px 12px; font-size: 10px; font-family: monospace; color: var(--text3);
+  white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow-y: auto;
+  line-height: 1.5;
+}
+.ship-copy-btn {
+  width: 100%; padding: 12px; background: var(--amber); color: #1a1a1a;
+  border: none; border-radius: 8px; font-size: 14px; font-weight: 700;
+  cursor: pointer; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.ship-copy-btn.copied { background: var(--green); color: #fff; }
+.ship-warn {
+  background: rgba(240,165,0,.08); border: 1px solid rgba(240,165,0,.3);
+  border-radius: 8px; padding: 8px 12px; font-size: 11px; color: var(--amber); margin-bottom: 10px;
+  line-height: 1.6;
+}
+.ship-status-btn {
+  width: 100%; padding: 10px; background: transparent; color: var(--text3);
+  border: 1px solid var(--border2); border-radius: 8px; font-size: 13px;
+  cursor: pointer; margin-top: 8px;
+}
+.ship-status-btn:hover { border-color: var(--amber); color: var(--amber); }
 
 /* ===== LOADING & TOAST ===== */
 .loading{text-align:center;padding:40px;color:var(--text3);}
@@ -274,6 +393,7 @@ select.fg-sel{appearance:none;-webkit-appearance:none;background-image:url("data
   <div class="tab-bar">
     <button class="tab-btn active" onclick="switchTab('list')">一覧・進捗</button>
     <button class="tab-btn" onclick="switchTab('form')">新規登録</button>
+    <button class="tab-btn" onclick="switchTab('ship')">出品手続き</button>
   </div>
 
   <!-- 一覧タブ -->
@@ -349,344 +469,125 @@ select.fg-sel{appearance:none;-webkit-appearance:none;background-image:url("data
     <div class="foot-note" id="foot-note"></div>
   </div>
 
+  <!-- 出品手続きタブ -->
+  <div id="tab-ship" class="tab-content">
+    <div id="ship-list-wrap">
+      <div class="loading"><div class="spinner"></div><br>読み込み中…</div>
+    </div>
+  </div>
+
+  <!-- 出品詳細オーバーレイ -->
+  <div class="ship-detail-overlay" id="ship-detail-overlay" style="display:none;">
+    <div class="ship-detail-inner">
+      <div class="ship-detail-header">
+        <button class="ship-detail-back" onclick="closeShipDetail()">←</button>
+        <div class="ship-detail-title" id="ship-detail-title">出品手続き</div>
+      </div>
+      <div class="ship-detail-body" id="ship-detail-body"></div>
+    </div>
+  </div>
+
   <!-- 新規登録タブ -->
   <div id="tab-form" class="tab-content">
     <div class="form-wrap">
-
       <!-- カテゴリ別タブ -->
       <div class="form-type-bar">
-        <button class="ftype-btn active" data-ftype="tire"    onclick="switchFormType('tire')">🚛 タイヤ</button>
-        <button class="ftype-btn"        data-ftype="wheel"   onclick="switchFormType('wheel')">🔧 ホイール付</button>
-        <button class="ftype-btn"        data-ftype="k"       onclick="switchFormType('k')">📦 K小物</button>
-        <button class="ftype-btn"        data-ftype="s"       onclick="switchFormType('s')">📁 Sその他</button>
+        <button class="ftype-btn active" data-ftype="tire"  onclick="switchFormType('tire')">🚛 タイヤ</button>
+        <button class="ftype-btn"        data-ftype="wheel" onclick="switchFormType('wheel')">🔧 ホイール付</button>
+        <button class="ftype-btn"        data-ftype="k"     onclick="switchFormType('k')">📦 K小物</button>
+        <button class="ftype-btn"        data-ftype="s"     onclick="switchFormType('s')">📁 Sその他</button>
       </div>
 
       <!-- ===== タイヤ ===== -->
       <div id="fform-tire" class="fform-section">
         <div class="sec-lbl">基本情報</div>
         <div class="form-grid">
-          <div class="fg">
-            <label>管理番号</label>
-            <input type="text" id="f-mgmt" inputmode="text" lang="en" placeholder="例: T44">
-            <div class="mgmt-hint" id="mgmt-hint"></div>
-          </div>
-          <div class="fg">
-            <label>メーカー</label>
-            <select id="f-maker-form" class="fg-sel">
-              <option value="">選択してください</option>
-              <option>PIRELLI</option><option>TOYO</option><option>BRIDGESTONE</option>
-              <option>DUNLOP</option><option>YOKOHAMA</option><option>AEOLUS</option>
-              <option>WINDPOWER</option><option>ミシュラン</option><option>ファルケン</option>
-              <option>Good Year</option><option>林電機</option><option>その他</option>
-            </select>
-          </div>
-          <div class="fg">
-            <label>サイズ（正式）</label>
-            <input type="text" id="f-size" inputmode="text" lang="en" placeholder="205/55R16">
-          </div>
-          <div class="fg">
-            <label>パターン</label>
-            <input type="text" id="f-pattern" placeholder="自由入力">
-          </div>
-          <div class="fg">
-            <label>カテゴリ</label>
-            <select id="f-cat-form" class="fg-sel">
-              <option value="">選択してください</option>
-              <option>ノーマル</option><option>ミックス</option><option>ダンプ用</option>
-              <option>たて溝</option><option>スタッドレス</option>
-              <option>ノーマル　再生</option><option>スタッドレス　再生</option>
-            </select>
-          </div>
-          <div class="fg">
-            <label>本数</label>
-            <select id="f-num" class="fg-sel">
-              <option value="">選択</option>
-              <option>1</option><option>2</option><option>3</option><option>4</option>
-              <option>5</option><option>6</option><option>7</option><option>8</option>
-              <option>9</option><option>10</option><option>11</option><option>12</option>
-            </select>
-          </div>
+          <div class="fg"><label>管理番号</label><input type="text" id="f-mgmt" inputmode="text" lang="en" placeholder="例: T44"><div class="mgmt-hint" id="mgmt-hint"></div></div>
+          <div class="fg"><label>メーカー</label><select id="f-maker-form" class="fg-sel"><option value="">選択してください</option><option>PIRELLI</option><option>TOYO</option><option>BRIDGESTONE</option><option>DUNLOP</option><option>YOKOHAMA</option><option>AEOLUS</option><option>WINDPOWER</option><option>ミシュラン</option><option>ファルケン</option><option>Good Year</option><option>林電機</option><option>その他</option></select></div>
+          <div class="fg"><label>サイズ（正式）</label><input type="text" id="f-size" inputmode="text" lang="en" placeholder="205/55R16"></div>
+          <div class="fg"><label>パターン</label><input type="text" id="f-pattern" placeholder="自由入力"></div>
+          <div class="fg"><label>カテゴリ</label><select id="f-cat-form" class="fg-sel"><option value="">選択してください</option><option>ノーマル</option><option>ミックス</option><option>ダンプ用</option><option>たて溝</option><option>スタッドレス</option><option>ノーマル　再生</option><option>スタッドレス　再生</option></select></div>
+          <div class="fg"><label>本数</label><select id="f-num" class="fg-sel"><option value="">選択</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option></select></div>
         </div>
         <div class="sec-lbl">状態</div>
         <div class="form-grid">
-          <div class="fg">
-            <label>残溝</label>
-            <input type="text" id="f-tread" inputmode="decimal" placeholder="例: 7.0">
-          </div>
-          <div class="fg">
-            <label>製造年週（セリアル）</label>
-            <input type="text" id="f-serial" inputmode="numeric" lang="en" placeholder="例: 2352">
-          </div>
-          <div class="fg">
-            <label>新車外し？</label>
-            <select id="f-newcar" class="fg-sel">
-              <option value="">—</option>
-              <option>新車外し</option><option>新品溝</option><option>バリ溝</option><option>良品溝</option>
-            </select>
-          </div>
-          <div class="fg">
-            <label>タイヤ状態</label>
-            <select id="f-cond" class="fg-sel">
-              <option value="">選択してください</option>
-              <option>新品</option>
-              <option>イボ残り（新品溝寄り）</option>
-              <option>良好（目立つヒビなし）</option>
-              <option>軽微なヒビあり</option>
-              <option>ヒビあり（要写真確認）</option>
-              <option>小傷・汚れあり（中古相当）</option>
-              <option>パンク修理痕あり（漏れなし確認済）</option>
-              <option>ビード傷あり</option>
-              <option>要現物確認</option>
-              <option>その他（要記載）</option>
-            </select>
-          </div>
-          <div class="fg">
-            <label>トラック？</label>
-            <select id="f-truck" class="fg-sel">
-              <option value="">—</option>
-              <option>トラック</option><option>乗用車</option>
-            </select>
-          </div>
-          <!-- ホイールなし固定（hidden） -->
+          <div class="fg"><label>残溝</label><input type="text" id="f-tread" inputmode="decimal" placeholder="例: 7.0"></div>
+          <div class="fg"><label>製造年週（セリアル）</label><input type="text" id="f-serial" inputmode="numeric" lang="en" placeholder="例: 2352"></div>
+          <div class="fg"><label>新車外し？</label><select id="f-newcar" class="fg-sel"><option value="">—</option><option>新車外し</option><option>新品溝</option><option>バリ溝</option><option>良品溝</option></select></div>
+          <div class="fg"><label>タイヤ状態</label><select id="f-cond" class="fg-sel"><option value="">選択してください</option><option>新品</option><option>イボ残り（新品溝寄り）</option><option>良好（目立つヒビなし）</option><option>軽微なヒビあり</option><option>ヒビあり（要写真確認）</option><option>小傷・汚れあり（中古相当）</option><option>パンク修理痕あり（漏れなし確認済）</option><option>ビード傷あり</option><option>要現物確認</option><option>その他（要記載）</option></select></div>
+          <div class="fg"><label>トラック？</label><select id="f-truck" class="fg-sel"><option value="">—</option><option>トラック</option><option>乗用車</option></select></div>
           <input type="hidden" id="f-wheel" value="__NO__">
         </div>
         <div class="sec-lbl">保管・出品</div>
         <div class="form-grid">
-          <div class="fg">
-            <label>保管場所</label>
-            <select id="f-storage" class="fg-sel">
-              <option value="">—</option>
-              <option>１F</option><option>２F</option><option>３F</option>
-              <option>外１F</option><option>外２F</option><option>外３F</option>
-              <option>コンテナ</option><option>五Ｓ下</option>
-            </select>
-          </div>
-          <div class="fg">
-            <label>保管場所詳細</label>
-            <input type="text" id="f-storage-detail" placeholder="例: 棚B-3">
-          </div>
-          <div class="fg">
-            <label>出品価格（円）</label>
-            <input type="number" id="f-price" inputmode="numeric" placeholder="0">
-          </div>
-          <div class="fg">
-            <label>進捗</label>
-            <select id="f-status" class="fg-sel">
-              <option>未掲載</option><option>掲載中</option><option>交渉中</option>
-            </select>
-          </div>
-          <div class="fg full">
-            <label>商品説明</label>
-            <textarea id="f-desc" placeholder="ヤフオク掲載用の説明文"></textarea>
-          </div>
-          <div class="fg full">
-            <label>備考欄</label>
-            <textarea id="f-note" placeholder="内部メモ"></textarea>
-          </div>
+          <div class="fg"><label>保管場所</label><select id="f-storage" class="fg-sel"><option value="">—</option><option>１F</option><option>２F</option><option>３F</option><option>外１F</option><option>外２F</option><option>外３F</option><option>コンテナ</option><option>五Ｓ下</option></select></div>
+          <div class="fg"><label>保管場所詳細</label><input type="text" id="f-storage-detail" placeholder="例: 棚B-3"></div>
+          <div class="fg"><label>出品価格（円）</label><input type="number" id="f-price" inputmode="numeric" placeholder="0"></div>
+          <div class="fg"><label>進捗</label><select id="f-status" class="fg-sel"><option>未掲載</option><option>掲載中</option><option>交渉中</option></select></div>
+          <div class="fg full"><label>商品説明</label><textarea id="f-desc" placeholder="ヤフオク掲載用の説明文"></textarea></div>
+          <div class="fg full"><label>備考欄</label><textarea id="f-note" placeholder="内部メモ"></textarea></div>
         </div>
+        <div class="fform-note">ホイールなしで自動登録されます</div>
       </div>
 
-      <!-- ===== タイヤ（ホイール付き） ===== -->
+      <!-- ===== タイヤ（ホイール付き）===== -->
       <div id="fform-wheel" class="fform-section" style="display:none;">
         <div class="sec-lbl">基本情報</div>
         <div class="form-grid">
-          <div class="fg">
-            <label>管理番号</label>
-            <input type="text" id="fw-mgmt" inputmode="text" lang="en" placeholder="例: T44">
-            <div class="mgmt-hint" id="mgmt-hint-w"></div>
-          </div>
-          <div class="fg">
-            <label>メーカー</label>
-            <select id="fw-maker" class="fg-sel">
-              <option value="">選択してください</option>
-              <option>PIRELLI</option><option>TOYO</option><option>BRIDGESTONE</option>
-              <option>DUNLOP</option><option>YOKOHAMA</option><option>AEOLUS</option>
-              <option>WINDPOWER</option><option>ミシュラン</option><option>ファルケン</option>
-              <option>Good Year</option><option>林電機</option><option>その他</option>
-            </select>
-          </div>
-          <div class="fg">
-            <label>サイズ（正式）</label>
-            <input type="text" id="fw-size" inputmode="text" lang="en" placeholder="205/55R16">
-          </div>
-          <div class="fg">
-            <label>パターン</label>
-            <input type="text" id="fw-pattern" placeholder="自由入力">
-          </div>
-          <div class="fg">
-            <label>カテゴリ</label>
-            <select id="fw-cat" class="fg-sel">
-              <option value="">選択してください</option>
-              <option>ノーマル</option><option>ミックス</option><option>ダンプ用</option>
-              <option>たて溝</option><option>スタッドレス</option>
-              <option>ノーマル　再生</option><option>スタッドレス　再生</option>
-            </select>
-          </div>
-          <div class="fg">
-            <label>本数</label>
-            <select id="fw-num" class="fg-sel">
-              <option value="">選択</option>
-              <option>1</option><option>2</option><option>3</option><option>4</option>
-              <option>5</option><option>6</option><option>7</option><option>8</option>
-            </select>
-          </div>
+          <div class="fg"><label>管理番号</label><input type="text" id="fw-mgmt" inputmode="text" lang="en" placeholder="例: T44"><div class="mgmt-hint" id="mgmt-hint-w"></div></div>
+          <div class="fg"><label>メーカー</label><select id="fw-maker" class="fg-sel"><option value="">選択してください</option><option>PIRELLI</option><option>TOYO</option><option>BRIDGESTONE</option><option>DUNLOP</option><option>YOKOHAMA</option><option>AEOLUS</option><option>WINDPOWER</option><option>ミシュラン</option><option>ファルケン</option><option>Good Year</option><option>林電機</option><option>その他</option></select></div>
+          <div class="fg"><label>サイズ（正式）</label><input type="text" id="fw-size" inputmode="text" lang="en" placeholder="205/55R16"></div>
+          <div class="fg"><label>パターン</label><input type="text" id="fw-pattern" placeholder="自由入力"></div>
+          <div class="fg"><label>カテゴリ</label><select id="fw-cat" class="fg-sel"><option value="">選択してください</option><option>ノーマル</option><option>ミックス</option><option>ダンプ用</option><option>たて溝</option><option>スタッドレス</option><option>ノーマル　再生</option><option>スタッドレス　再生</option></select></div>
+          <div class="fg"><label>本数</label><select id="fw-num" class="fg-sel"><option value="">選択</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></div>
         </div>
         <div class="sec-lbl">状態</div>
         <div class="form-grid">
-          <div class="fg">
-            <label>残溝</label>
-            <input type="text" id="fw-tread" inputmode="decimal" placeholder="例: 7.0">
-          </div>
-          <div class="fg">
-            <label>製造年週（セリアル）</label>
-            <input type="text" id="fw-serial" inputmode="numeric" lang="en" placeholder="例: 2352">
-          </div>
-          <div class="fg">
-            <label>タイヤ状態</label>
-            <select id="fw-cond" class="fg-sel">
-              <option value="">選択してください</option>
-              <option>新品</option><option>イボ残り（新品溝寄り）</option>
-              <option>良好（目立つヒビなし）</option><option>軽微なヒビあり</option>
-              <option>その他（要記載）</option>
-            </select>
-          </div>
-          <div class="fg">
-            <label>トラック？</label>
-            <select id="fw-truck" class="fg-sel">
-              <option value="">—</option>
-              <option>トラック</option><option>乗用車</option>
-            </select>
-          </div>
+          <div class="fg"><label>残溝</label><input type="text" id="fw-tread" inputmode="decimal" placeholder="例: 7.0"></div>
+          <div class="fg"><label>製造年週（セリアル）</label><input type="text" id="fw-serial" inputmode="numeric" lang="en" placeholder="例: 2352"></div>
+          <div class="fg"><label>タイヤ状態</label><select id="fw-cond" class="fg-sel"><option value="">選択してください</option><option>新品</option><option>イボ残り（新品溝寄り）</option><option>良好（目立つヒビなし）</option><option>軽微なヒビあり</option><option>その他（要記載）</option></select></div>
+          <div class="fg"><label>トラック？</label><select id="fw-truck" class="fg-sel"><option value="">—</option><option>トラック</option><option>乗用車</option></select></div>
         </div>
         <div class="sec-lbl">保管・出品</div>
         <div class="form-grid">
-          <div class="fg">
-            <label>保管場所</label>
-            <select id="fw-storage" class="fg-sel">
-              <option value="">—</option>
-              <option>１F</option><option>２F</option><option>３F</option>
-              <option>外１F</option><option>外２F</option><option>外３F</option>
-              <option>コンテナ</option><option>五Ｓ下</option>
-            </select>
-          </div>
-          <div class="fg">
-            <label>保管場所詳細</label>
-            <input type="text" id="fw-storage-detail" placeholder="例: 棚B-3">
-          </div>
-          <div class="fg">
-            <label>出品価格（円）</label>
-            <input type="number" id="fw-price" inputmode="numeric" placeholder="0">
-          </div>
-          <div class="fg">
-            <label>進捗</label>
-            <select id="fw-status" class="fg-sel">
-              <option>未掲載</option><option>掲載中</option><option>交渉中</option>
-            </select>
-          </div>
-          <div class="fg full">
-            <label>商品説明</label>
-            <textarea id="fw-desc" placeholder="ヤフオク掲載用の説明文"></textarea>
-          </div>
-          <div class="fg full">
-            <label>備考欄</label>
-            <textarea id="fw-note" placeholder="内部メモ"></textarea>
-          </div>
+          <div class="fg"><label>保管場所</label><select id="fw-storage" class="fg-sel"><option value="">—</option><option>１F</option><option>２F</option><option>３F</option><option>外１F</option><option>外２F</option><option>外３F</option><option>コンテナ</option><option>五Ｓ下</option></select></div>
+          <div class="fg"><label>保管場所詳細</label><input type="text" id="fw-storage-detail" placeholder="例: 棚B-3"></div>
+          <div class="fg"><label>出品価格（円）</label><input type="number" id="fw-price" inputmode="numeric" placeholder="0"></div>
+          <div class="fg"><label>進捗</label><select id="fw-status" class="fg-sel"><option>未掲載</option><option>掲載中</option><option>交渉中</option></select></div>
+          <div class="fg full"><label>商品説明</label><textarea id="fw-desc" placeholder="ヤフオク掲載用の説明文"></textarea></div>
+          <div class="fg full"><label>備考欄</label><textarea id="fw-note" placeholder="内部メモ"></textarea></div>
         </div>
-        <div class="fform-note">ホイール付き・自動で「あり」で登録されます</div>
+        <div class="fform-note">ホイール付きで自動登録されます</div>
       </div>
 
-      <!-- ===== K（小物） ===== -->
+      <!-- ===== K（小物）===== -->
       <div id="fform-k" class="fform-section" style="display:none;">
         <div class="sec-lbl">基本情報</div>
         <div class="form-grid">
-          <div class="fg">
-            <label>管理番号</label>
-            <input type="text" id="fk-mgmt" inputmode="text" lang="en" placeholder="例: K13">
-            <div class="mgmt-hint" id="mgmt-hint-k"></div>
-          </div>
-          <div class="fg">
-            <label>出品価格（円）</label>
-            <input type="number" id="fk-price" inputmode="numeric" placeholder="0">
-          </div>
-          <div class="fg full">
-            <label>商品名（タイトル用）</label>
-            <input type="text" id="fk-name" placeholder="例: ホイールナット 20個セット">
-          </div>
-          <div class="fg">
-            <label>保管場所</label>
-            <select id="fk-storage" class="fg-sel">
-              <option value="">—</option>
-              <option>１F</option><option>２F</option><option>３F</option>
-              <option>外１F</option><option>外２F</option><option>外３F</option>
-              <option>コンテナ</option><option>五Ｓ下</option>
-            </select>
-          </div>
-          <div class="fg">
-            <label>保管場所詳細</label>
-            <input type="text" id="fk-storage-detail" placeholder="例: 棚B-3">
-          </div>
-          <div class="fg">
-            <label>進捗</label>
-            <select id="fk-status" class="fg-sel">
-              <option>未掲載</option><option>掲載中</option><option>交渉中</option>
-            </select>
-          </div>
-          <div class="fg full">
-            <label>商品説明</label>
-            <textarea id="fk-desc" placeholder="ヤフオク掲載用の説明文"></textarea>
-          </div>
-          <div class="fg full">
-            <label>備考欄</label>
-            <textarea id="fk-note" placeholder="内部メモ"></textarea>
-          </div>
+          <div class="fg"><label>管理番号</label><input type="text" id="fk-mgmt" inputmode="text" lang="en" placeholder="例: K13"><div class="mgmt-hint" id="mgmt-hint-k"></div></div>
+          <div class="fg"><label>出品価格（円）</label><input type="number" id="fk-price" inputmode="numeric" placeholder="0"></div>
+          <div class="fg full"><label>商品名（タイトル用）</label><input type="text" id="fk-name" placeholder="例: ホイールナット 20個セット"></div>
+          <div class="fg"><label>保管場所</label><select id="fk-storage" class="fg-sel"><option value="">—</option><option>１F</option><option>２F</option><option>３F</option><option>外１F</option><option>外２F</option><option>外３F</option><option>コンテナ</option><option>五Ｓ下</option></select></div>
+          <div class="fg"><label>保管場所詳細</label><input type="text" id="fk-storage-detail" placeholder="例: 棚B-3"></div>
+          <div class="fg"><label>進捗</label><select id="fk-status" class="fg-sel"><option>未掲載</option><option>掲載中</option><option>交渉中</option></select></div>
+          <div class="fg full"><label>商品説明</label><textarea id="fk-desc" placeholder="ヤフオク掲載用の説明文"></textarea></div>
+          <div class="fg full"><label>備考欄</label><textarea id="fk-note" placeholder="内部メモ"></textarea></div>
         </div>
         <div class="fform-note">タイヤ情報（サイズ・残溝等）の入力欄は省略しています</div>
       </div>
 
-      <!-- ===== S（その他） ===== -->
+      <!-- ===== S（その他）===== -->
       <div id="fform-s" class="fform-section" style="display:none;">
         <div class="sec-lbl">基本情報</div>
         <div class="form-grid">
-          <div class="fg">
-            <label>管理番号</label>
-            <input type="text" id="fs-mgmt" inputmode="text" lang="en" placeholder="例: S05">
-            <div class="mgmt-hint" id="mgmt-hint-s"></div>
-          </div>
-          <div class="fg">
-            <label>出品価格（円）</label>
-            <input type="number" id="fs-price" inputmode="numeric" placeholder="0">
-          </div>
-          <div class="fg full">
-            <label>商品名（タイトル用）</label>
-            <input type="text" id="fs-name" placeholder="例: 工具セット">
-          </div>
-          <div class="fg">
-            <label>保管場所</label>
-            <select id="fs-storage" class="fg-sel">
-              <option value="">—</option>
-              <option>１F</option><option>２F</option><option>３F</option>
-              <option>外１F</option><option>外２F</option><option>外３F</option>
-              <option>コンテナ</option><option>五Ｓ下</option>
-            </select>
-          </div>
-          <div class="fg">
-            <label>保管場所詳細</label>
-            <input type="text" id="fs-storage-detail" placeholder="例: 棚B-3">
-          </div>
-          <div class="fg">
-            <label>進捗</label>
-            <select id="fs-status" class="fg-sel">
-              <option>未掲載</option><option>掲載中</option><option>交渉中</option>
-            </select>
-          </div>
-          <div class="fg full">
-            <label>商品説明</label>
-            <textarea id="fs-desc" placeholder="ヤフオク掲載用の説明文"></textarea>
-          </div>
-          <div class="fg full">
-            <label>備考欄</label>
-            <textarea id="fs-note" placeholder="内部メモ"></textarea>
-          </div>
+          <div class="fg"><label>管理番号</label><input type="text" id="fs-mgmt" inputmode="text" lang="en" placeholder="例: S05"><div class="mgmt-hint" id="mgmt-hint-s"></div></div>
+          <div class="fg"><label>出品価格（円）</label><input type="number" id="fs-price" inputmode="numeric" placeholder="0"></div>
+          <div class="fg full"><label>商品名（タイトル用）</label><input type="text" id="fs-name" placeholder="例: 工具セット"></div>
+          <div class="fg"><label>保管場所</label><select id="fs-storage" class="fg-sel"><option value="">—</option><option>１F</option><option>２F</option><option>３F</option><option>外１F</option><option>外２F</option><option>外３F</option><option>コンテナ</option><option>五Ｓ下</option></select></div>
+          <div class="fg"><label>保管場所詳細</label><input type="text" id="fs-storage-detail" placeholder="例: 棚B-3"></div>
+          <div class="fg"><label>進捗</label><select id="fs-status" class="fg-sel"><option>未掲載</option><option>掲載中</option><option>交渉中</option></select></div>
+          <div class="fg full"><label>商品説明</label><textarea id="fs-desc" placeholder="ヤフオク掲載用の説明文"></textarea></div>
+          <div class="fg full"><label>備考欄</label><textarea id="fs-note" placeholder="内部メモ"></textarea></div>
         </div>
       </div>
 
@@ -694,7 +595,6 @@ select.fg-sel{appearance:none;-webkit-appearance:none;background-image:url("data
       <div class="form-msg" id="form-msg"></div>
     </div>
   </div>
-
 </div>
 
 <!-- ステータス変更モーダル -->
@@ -801,36 +701,35 @@ function setUser(name) {
   document.getElementById('user-badge').textContent = name;
 }
 
-let currentFormType = 'tire'; // tire / wheel / k / s
-
-function switchFormType(type) {
-  currentFormType = type;
-  document.querySelectorAll('.ftype-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.ftype === type);
-  });
-  document.querySelectorAll('.fform-section').forEach(s => s.style.display = 'none');
-  document.getElementById('fform-' + type).style.display = '';
-  // 管理番号ヒント更新
-  suggestNextMgmt();
-}
-
 function switchTab(name) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
-  document.querySelectorAll('.tab-btn')[name === 'list' ? 0 : 1].classList.add('active');
+  const idx = { list: 0, form: 1, ship: 2 }[name] ?? 0;
+  document.querySelectorAll('.tab-btn')[idx].classList.add('active');
   if (name === 'form') suggestNextMgmt();
+  if (name === 'ship') renderShipList();
 }
 
 // ===== API =====
 async function notionQuery(payload) {
-  const res = await fetch(`${WORKER}/databases/${DB_ID}/query`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
-  return res.json();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const res = await fetch(`${WORKER}/databases/${DB_ID}/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    return res.json();
+  } catch(e) {
+    clearTimeout(timer);
+    if (e.name === 'AbortError') throw new Error('タイムアウト（15秒）。Worker/ネットワークを確認してください');
+    throw e;
+  }
 }
 
 async function notionPatch(pageId, props) {
@@ -860,19 +759,20 @@ async function notionCreate(props) {
 async function loadAllRecords() {
   allRecords = [];
   let cursor = undefined;
+  let pageCount = 0;
+  const MAX_PAGES = 20;
   try {
     while (true) {
+      if (pageCount >= MAX_PAGES) break;
+      pageCount++;
       const payload = {
         page_size: 100,
-        filter: {
-          and: [
-            { property: '進捗', select: { does_not_equal: '受取連絡' } }
-          ]
-        },
+        filter: { and: [{ property: '進捗', select: { does_not_equal: '受取連絡' } }] },
         sorts: [{ property: '作成日時', direction: 'descending' }]
       };
       if (cursor) payload.start_cursor = cursor;
       const data = await notionQuery(payload);
+      if (!data || !Array.isArray(data.results)) throw new Error('APIレスポンスが不正です');
       allRecords = allRecords.concat(data.results);
       if (!data.has_more) break;
       cursor = data.next_cursor;
@@ -882,8 +782,12 @@ async function loadAllRecords() {
     applyFilters();
     updateStats();
   } catch(e) {
+    const errMsg = `読み込みエラー: ${e.message}`;
     document.getElementById('list-body').innerHTML =
-      `<tr><td colspan="10" style="text-align:center;color:var(--red);padding:30px;">読み込みエラー: ${e.message}</td></tr>`;
+      `<tr><td colspan="10" style="text-align:center;color:var(--red);padding:30px;">${errMsg}</td></tr>`;
+    const sw = document.getElementById('ship-list-wrap');
+    if (sw) sw.innerHTML = `<div class="ship-empty" style="color:var(--red);">${errMsg}</div>`;
+    showToast(errMsg, true);
   }
 }
 
@@ -1122,6 +1026,7 @@ function clearAllFilters() {
   // ステータスフィルター解除
   statusFilter = '';
   document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active'));
+  document.querySelector('[data-status=""]').classList.add('active');
   // ドロップダウン解除
   document.getElementById('f-prefix').selectedIndex = 0;
   document.getElementById('f-maker').selectedIndex = 0;
@@ -1264,13 +1169,9 @@ function openDetail(id) {
 
   // 価格
   const priceEl = document.getElementById('detail-price');
-  if (price) {
-    priceEl.innerHTML = `
-      <span>¥${Number(price).toLocaleString()} <span style="font-size:12px;color:var(--text3);">（出品価格）</span></span>
-      <button class="btn-copy-price" id="btn-copy-price" onclick="copyPrice(${price})">価格コピー</button>`;
-  } else {
-    priceEl.innerHTML = `<span style="font-size:12px;color:var(--text3);">価格未設定</span>`;
-  }
+  priceEl.innerHTML = price
+    ? `¥${Number(price).toLocaleString()} <span>（出品価格）</span>`
+    : `<span>価格未設定</span>`;
 
   // グリッド
   const rows = [
@@ -1296,22 +1197,6 @@ function openDetail(id) {
   };
 
   document.getElementById('modal-detail').style.display = 'flex';
-}
-
-// ===== COPY PRICE =====
-function copyPrice(price) {
-  navigator.clipboard.writeText(String(price)).then(() => {
-    const btn = document.getElementById('btn-copy-price');
-    if (!btn) return;
-    btn.textContent = '✓ コピー済';
-    btn.classList.add('copied');
-    setTimeout(() => {
-      btn.textContent = '価格コピー';
-      btn.classList.remove('copied');
-    }, 1500);
-  }).catch(() => {
-    showToast('コピーに失敗しました', true);
-  });
 }
 
 function statusBadgeClass(s) {
@@ -1408,6 +1293,21 @@ function setupFormHints() {
   });
 }
 
+// ===== フォームタイプ切り替え =====
+let currentFormType = 'tire';
+
+function switchFormType(type) {
+  currentFormType = type;
+  document.querySelectorAll('.ftype-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.ftype === type);
+  });
+  ['tire','wheel','k','s'].forEach(t => {
+    const el = document.getElementById('fform-' + t);
+    if (el) el.style.display = t === type ? '' : 'none';
+  });
+  suggestNextMgmt();
+}
+
 function suggestNextMgmt() {
   if (!allRecords.length) return;
   const prefixes = {};
@@ -1423,82 +1323,258 @@ function suggestNextMgmt() {
   });
   const hints = Object.entries(prefixes).sort().map(([pr, max]) => `${pr}${max + 1}`);
   const hintText = hints.length ? `次の番号候補: ${hints.join(' / ')}` : '';
-  // 表示中のタイプのhintに反映
   ['mgmt-hint','mgmt-hint-w','mgmt-hint-k','mgmt-hint-s'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = hintText;
   });
 }
 
-function g(id) { const el = document.getElementById(id); return el ? el.value : ''; }
-
 async function submitForm() {
+  // ── タイプ別に入力値を取得 ──
+  const gv = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  const gt = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  let mgmt, maker, size, pattern, cat, num, tread, serial, newcar, cond, truck, wheel, storage, storDet, price, status, desc, note;
+
   const type = currentFormType;
-  let mgmt, maker, size, pattern, cat, num, tread, serial, newcar, cond, truck, wheel, storage, storDet, price, status, desc, note, name;
-
   if (type === 'tire') {
-    mgmt = g('f-mgmt'); maker = g('f-maker-form'); size = g('f-size'); pattern = g('f-pattern');
-    cat = g('f-cat-form'); num = g('f-num'); tread = g('f-tread'); serial = g('f-serial');
-    newcar = g('f-newcar'); cond = g('f-cond'); truck = g('f-truck'); wheel = '__NO__';
-    storage = g('f-storage'); storDet = g('f-storage-detail');
-    price = g('f-price'); status = g('f-status'); desc = g('f-desc'); note = g('f-note');
-    if (!maker) { showFormMsg('メーカーを選択してください', true); return; }
-    if (!size)  { showFormMsg('サイズを入力してください', true); return; }
-    name = [maker, size, pattern].filter(Boolean).join(' ');
-
+    mgmt = gt('f-mgmt'); maker = gv('f-maker-form'); size = gt('f-size'); pattern = gt('f-pattern');
+    cat = gv('f-cat-form'); num = gv('f-num'); tread = gt('f-tread'); serial = gt('f-serial');
+    newcar = gv('f-newcar'); cond = gv('f-cond'); truck = gv('f-truck'); wheel = '__NO__';
+    storage = gv('f-storage'); storDet = gt('f-storage-detail');
+    price = gv('f-price'); status = gv('f-status'); desc = gt('f-desc'); note = gt('f-note');
   } else if (type === 'wheel') {
-    mgmt = g('fw-mgmt'); maker = g('fw-maker'); size = g('fw-size'); pattern = g('fw-pattern');
-    cat = g('fw-cat'); num = g('fw-num'); tread = g('fw-tread'); serial = g('fw-serial');
-    newcar = ''; cond = g('fw-cond'); truck = g('fw-truck'); wheel = '__YES__';
-    storage = g('fw-storage'); storDet = g('fw-storage-detail');
-    price = g('fw-price'); status = g('fw-status'); desc = g('fw-desc'); note = g('fw-note');
-    if (!maker) { showFormMsg('メーカーを選択してください', true); return; }
-    if (!size)  { showFormMsg('サイズを入力してください', true); return; }
-    name = [maker, size, pattern, 'ホイール付き'].filter(Boolean).join(' ');
-
+    mgmt = gt('fw-mgmt'); maker = gv('fw-maker'); size = gt('fw-size'); pattern = gt('fw-pattern');
+    cat = gv('fw-cat'); num = gv('fw-num'); tread = gt('fw-tread'); serial = gt('fw-serial');
+    newcar = ''; cond = gv('fw-cond'); truck = gv('fw-truck'); wheel = '__YES__';
+    storage = gv('fw-storage'); storDet = gt('fw-storage-detail');
+    price = gv('fw-price'); status = gv('fw-status'); desc = gt('fw-desc'); note = gt('fw-note');
   } else if (type === 'k') {
-    mgmt = g('fk-mgmt'); maker = ''; size = ''; pattern = ''; cat = ''; num = ''; tread = '';
+    mgmt = gt('fk-mgmt'); maker = ''; size = gt('fk-name'); pattern = ''; cat = ''; num = ''; tread = '';
     serial = ''; newcar = ''; cond = ''; truck = ''; wheel = '__NO__';
-    storage = g('fk-storage'); storDet = g('fk-storage-detail');
-    price = g('fk-price'); status = g('fk-status'); desc = g('fk-desc'); note = g('fk-note');
-    name = g('fk-name');
-    if (!name) { showFormMsg('商品名を入力してください', true); return; }
-
+    storage = gv('fk-storage'); storDet = gt('fk-storage-detail');
+    price = gv('fk-price'); status = gv('fk-status'); desc = gt('fk-desc'); note = gt('fk-note');
+    if (!size) { showFormMsg('商品名を入力してください', true); return; }
   } else if (type === 's') {
-    mgmt = g('fs-mgmt'); maker = ''; size = ''; pattern = ''; cat = ''; num = ''; tread = '';
+    mgmt = gt('fs-mgmt'); maker = ''; size = gt('fs-name'); pattern = ''; cat = ''; num = ''; tread = '';
     serial = ''; newcar = ''; cond = ''; truck = ''; wheel = '__NO__';
-    storage = g('fs-storage'); storDet = g('fs-storage-detail');
-    price = g('fs-price'); status = g('fs-status'); desc = g('fs-desc'); note = g('fs-note');
-    name = g('fs-name');
-    if (!name) { showFormMsg('商品名を入力してください', true); return; }
+    storage = gv('fs-storage'); storDet = gt('fs-storage-detail');
+    price = gv('fs-price'); status = gv('fs-status'); desc = gt('fs-desc'); note = gt('fs-note');
+    if (!size) { showFormMsg('商品名を入力してください', true); return; }
   }
+
+  // バリデーション（タイヤ系のみ）
+  if ((type === 'tire' || type === 'wheel') && !maker) { showFormMsg('メーカーを選択してください', true); return; }
+  if ((type === 'tire' || type === 'wheel') && !size)  { showFormMsg('サイズを入力してください', true); return; }
 
   const btn = document.getElementById('submit-btn');
   btn.disabled = true;
   btn.textContent = '登録中…';
   showFormMsg('');
 
+  // ── 固定文：管理番号の頭文字で自動判定 ──────────────────
+  const FIXED_T = `<!-- 固定文（テンプレ本文）: 720幅を強制的に中央寄せ + セクション間に余白行 -->
+
+<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td align="center">
+
+<!-- ★ ご確認ください（重要）【1〜8】 ※確定版（崩さない） -->
+
+<table width="720" border="1" cellpadding="15" cellspacing="0" bordercolor="#cccccc" bgcolor="#FFFEF5" style="border-collapse:collapse;">
+<tr><td bgcolor="#F7F9FC" style="padding:10px;"><b>★ ご確認ください（重要）【1〜8】</b></td></tr>
+<tr><td><b>① 適合（最重要）</b><br>
+・適合（サイズ・負荷能力・リム等）は落札者様にてご確認ください。<br>
+・適合違いによる返品はお受けできません。<br>
+
+<br>
+<b>② 状態の見方</b><br>
+・状態表現は主観を含みます。最終判断は写真優先でお願いいたします。<br>
+・中古品のため、小傷・汚れ等がある場合があります。<br>
+
+<br>
+<b>③ 残溝（目安）</b><br>
+・残溝は目安です（測定位置により差が出ます）。<br>
+・写真も併せてご確認ください。<br>
+
+<br>
+<b>④ 返品・返金（対応範囲）</b><br>
+・当方の記載ミス（サイズ・製造年・本数等）があった場合は、返品/返金対応します。<br>
+・落札者様都合（適合違い・イメージ違い等）は返品不可です。<br>
+
+<br>
+<b>⑤ 配送（西濃運輸）</b><br>
+・個人宅への配送はできません。<br>
+・個人の方でも 支店・ターミナル止め は対応可能です。<br>
+
+<br>
+<b>⑥ 発送の目安</b><br>
+・ご入金確認後、通常 1〜3営業日以内 に発送します。<br>
+・繁忙期は前後する場合があります。<br>
+
+<br>
+<b>⑦ 到着後の確認</b><br>
+・到着後はお早めに状態をご確認ください。<br>
+・万一問題がある場合は、受取後 2〜3日以内を目安 にご連絡ください。<br>
+
+<br>
+<b>⑧ マーキング（クレヨン/チョーク）</b><br>
+・管理番号を クレヨン（チョーク） で記入しているため、書き込み跡・汚れがある場合があります。<br>
+・あらかじめご了承ください。</td></tr>
+</table>
+
+<table width="720" border="0" cellspacing="0" cellpadding="0"><tr><td height="14"></td></tr></table>
+
+<!-- ★ 事務連絡 -->
+
+<table width="720" border="1" bordercolor="#cccccc" cellpadding="10" cellspacing="0" style="background-color:#FFFFFF; border-collapse:collapse;">
+<tr><td bgcolor="#F2F2F2"><b>★ 事務連絡（スムーズなお取引のために）</b></td></tr>
+<tr><td>
+・ご連絡は <b>取引ナビ（取引メッセージ）</b> でお願いいたします（記録が残るためスムーズです）。<br>
+
+・支店・ターミナル止めをご希望の場合、<b>支店名は正式名称</b>でお知らせください（こちらでも復唱確認いたします）。<br>
+
+・領収書をご希望の方は、<b>宛名・但し書き</b>を落札後にお知らせください（発行後の修正は難しいため）。</td></tr>
+</table>
+
+<table width="720" border="0" cellspacing="0" cellpadding="0"><tr><td height="14"></td></tr></table>
+
+<!-- ★ 発送詳細 -->
+
+<table width="720" border="1" bordercolor="#cccccc" cellpadding="10" cellspacing="0" style="background-color:#FFFFFF; border-collapse:collapse;">
+<tr><td bgcolor="#E9FFF2"><b>★ 発送詳細</b></td></tr>
+<tr><td>
+<b>【配送会社】西濃運輸</b><br>
+
+・北海道・離島への発送はできません。ご了承ください。<br>
+
+・<b>個人宅への配送はお断りしております。</b><br>
+
+・個人の方でも <b>西濃運輸の支店・ターミナル止め</b> であれば対応可能です。<br>
+
+・タイヤ交換業者様／会社など 法人宛 の場合は会社への発送が可能です。<br>
+
+<br>
+<br>
+<b>【直接引取り】</b><br>
+
+・直接引取り対応可能です。<br>
+
+・引取り場所：広島県東広島市志和町<br>
+
+・日時は事前に「取引メッセージ」でご相談ください（当日対応は難しい場合があります）。<br>
+
+・落札後7日以内を目安にお引取りをお願いいたします。<br>
+
+・引取り時に「管理番号」を現物で確認お願いいたします（取り違え防止）。<br>
+
+・積込は落札者様にてお願いいたします（必要に応じてお手伝いはします）。<br>
+
+・受渡し後のキャンセル／返品はお受けできません。<br>
+
+<br>
+<b>【支店・ターミナル止めをご希望の場合（取引メッセージでご連絡ください）】</b><br>
+
+・希望の支店・ターミナル名（正式名称）<br>
+
+・受取人氏名<br>
+
+・電話番号</td></tr>
+</table>
+
+<table width="720" border="0" cellspacing="0" cellpadding="0"><tr><td height="14"></td></tr></table>
+
+<!-- ★ お電話番号 -->
+
+<table width="720" border="1" bordercolor="#cccccc" cellpadding="10" cellspacing="0" style="background-color:#FFFFFF; border-collapse:collapse;">
+<tr><td bgcolor="#FFF0F0"><b>★ お電話番号のお願い（重要）</b></td></tr>
+<tr><td>
+ヤフオクの仕様により、出品者側に落札者様のお電話番号が表示されない場合があります。<br>
+
+西濃運輸の発送手続きに必要なため、落札後に <b>取引メッセージ</b> でお電話番号をお知らせください。<br>
+
+<font size="2" color="#666666">※お電話番号は発送手続きにのみ使用します。</font></td></tr>
+</table>
+
+<table width="720" border="0" cellspacing="0" cellpadding="0"><tr><td height="14"></td></tr></table>
+
+<!-- ★ 領収書 -->
+
+<table width="720" border="1" bordercolor="#cccccc" cellpadding="10" cellspacing="0" style="background-color:#FFFFFF; border-collapse:collapse;">
+<tr><td bgcolor="#EEF6FF"><b>★ 領収書について（電子発行）</b></td></tr>
+<tr><td>
+領収書をご希望の場合、<b>PDF（電子領収書）</b>で発行し、取引メッセージでご案内します。<br>
+
+PDF送付先としてメールアドレスが必要な場合は、取引メッセージでお知らせください。<br>
+
+<font size="2" color="#666666">※メールアドレスは領収書送付の目的にのみ使用します。</font></td></tr>
+</table>
+
+<table width="720" border="0" cellspacing="0" cellpadding="0"><tr><td height="14"></td></tr></table>
+
+<!-- ★ 支払方法 -->
+
+<table width="720" border="1" bordercolor="#cccccc" cellpadding="10" cellspacing="0" style="background-color:#FFFFFF; border-collapse:collapse;">
+<tr><td bgcolor="#F7F9FC"><b>★ 支払方法</b></td></tr>
+<tr><td>
+■ Yahoo!かんたん決済<br>
+
+※商品の発送は、ご入金確認後の発送になります。</td></tr>
+</table>
+
+<table width="720" border="0" cellspacing="0" cellpadding="0"><tr><td height="14"></td></tr></table>
+
+<div align="center"><font size="2" color="#666666">※中古品をご理解いただける方のみご入札ください。気になる点は事前にご質問ください。</font></div>
+
+</td></tr></table>
+</table>
+</table>`;
+
+  // K・S・小物の固定文は受け取り次第ここに追加予定
+  const FIXED_K = ''; // TODO: K用固定文
+  const FIXED_S = ''; // TODO: S用固定文
+  const FIXED_KOBUTSU = ''; // TODO: 小物用固定文
+
+  // 管理番号頭文字で振り分け
+  const prefix = mgmt ? mgmt[0].toUpperCase() : 'T';
+  let fixedText = '';
+  let fixedPropKey = '';
+  if (prefix === 'K') {
+    fixedText = FIXED_K;
+    fixedPropKey = '固定文（Kテンプレ本文）';
+  } else if (prefix === 'S') {
+    fixedText = FIXED_S;
+    fixedPropKey = '固定文（Sテンプレ本文）';
+  } else {
+    // T系・その他はデフォルト通常版
+    fixedText = FIXED_T;
+    fixedPropKey = '固定文（テンプレ本文）';
+  }
+  // ────────────────────────────────────────────────
+
+  const titleText = [maker, size, pattern].filter(Boolean).join(' ');
   const props = {
-    '名前':          { title: [{ text: { content: name || '' } }] },
-    '管理番号':       { rich_text: [{ text: { content: mgmt || '' } }] },
-    'サイズ（正式）':  { rich_text: [{ text: { content: size || '' } }] },
-    'パターン':       { rich_text: [{ text: { content: pattern || '' } }] },
-    '残溝':          { rich_text: [{ text: { content: tread || '' } }] },
-    'セリアル':       { rich_text: [{ text: { content: serial || '' } }] },
-    '保管場所詳細':   { rich_text: [{ text: { content: storDet || '' } }] },
-    '備考欄':        { rich_text: [{ text: { content: note || '' } }] },
-    '商品説明':       { rich_text: [{ text: { content: desc || '' } }] },
+    '名前':          { title: [{ text: { content: titleText } }] },
+    '管理番号':       { rich_text: [{ text: { content: mgmt } }] },
+    'サイズ（正式）':  { rich_text: [{ text: { content: size } }] },
+    'パターン':       { rich_text: [{ text: { content: pattern } }] },
+    '残溝':          { rich_text: [{ text: { content: tread } }] },
+    'セリアル':       { rich_text: [{ text: { content: serial } }] },
+    '保管場所詳細':   { rich_text: [{ text: { content: storDet } }] },
+    '備考欄':        { rich_text: [{ text: { content: note } }] },
+    '商品説明':       { rich_text: [{ text: { content: desc } }] },
     'ホイール付き？':  { checkbox: wheel === '__YES__' },
   };
-  if (maker)   props['メーカー']           = { select: { name: maker } };
-  if (cat)     props['カテゴリ']           = { select: { name: cat } };
-  if (num)     props['本数']               = { select: { name: num } };
-  if (newcar)  props['新車外し？']         = { select: { name: newcar } };
-  if (cond)    props['状態タイヤ（選択）']  = { select: { name: cond } };
-  if (truck)   props['トラック？']         = { select: { name: truck } };
-  if (storage) props['保管場所']           = { select: { name: storage } };
-  if (status)  props['進捗']               = { select: { name: status } };
-  if (price)   props['値段']               = { number: parseFloat(price) };
+  // 固定文をプロパティに追加（テキストが空でなければ）
+  if (fixedText && fixedPropKey) {
+    props[fixedPropKey] = { rich_text: [{ text: { content: fixedText } }] };
+  }
+  if (maker)   props['メーカー']         = { select: { name: maker } };
+  if (cat)     props['カテゴリ']         = { select: { name: cat } };
+  if (num)     props['本数']             = { select: { name: num } };
+  if (newcar)  props['新車外し？']       = { select: { name: newcar } };
+  if (cond)    props['状態タイヤ（選択）'] = { select: { name: cond } };
+  if (truck)   props['トラック？']       = { select: { name: truck } };
+  if (storage) props['保管場所']         = { select: { name: storage } };
+  if (status)  props['進捗']             = { select: { name: status } };
+  if (price)   props['値段']             = { number: parseFloat(price) };
 
   try {
     await notionCreate(props);
@@ -1514,16 +1590,509 @@ async function submitForm() {
   }
 }
 
+// ===== 出品手続き =====
+
+// ===== 編集パネル =====
+
+function buildEditPanel(r) {
+  const mgmt    = p(r, '管理番号') || '';
+  const isWheel = p(r, 'ホイール付き？') === true;
+  const warnings= checkMissingFields(r);
+  const errKeys = warnings.filter(w => w.level === 'error').map(w => w.text);
+
+  const hasErr = (label) => errKeys.some(e => e.includes(label)) ? 'err' : '';
+
+  // サムネ
+  const thumbUrl = getThumbUrl(r);
+  const thumbHtml = thumbUrl
+    ? `<div class="ship-thumb"><img src="${thumbUrl}" alt="サムネ" onerror="this.parentElement.classList.add('ship-thumb-empty');this.outerHTML='<div class=ship-thumb-empty><svg width=48 height=48 viewBox=\\"0 0 56 56\\" fill=none><circle cx=28 cy=28 r=24 stroke=currentColor stroke-width=2.5/><circle cx=28 cy=28 r=12 stroke=currentColor stroke-width=2.5/><circle cx=28 cy=28 r=4 fill=currentColor/></svg><span>サムネ未登録</span></div>'"></div>`
+    : `<div class="ship-thumb"><div class="ship-thumb-empty"><svg width="48" height="48" viewBox="0 0 56 56" fill="none"><circle cx="28" cy="28" r="24" stroke="currentColor" stroke-width="2.5"/><circle cx="28" cy="28" r="12" stroke="currentColor" stroke-width="2.5"/><circle cx="28" cy="28" r="4" fill="currentColor"/></svg><span>サムネ未登録</span></div></div>`;
+
+  // selectオプション生成ヘルパー
+  const opt = (val, cur) => `<option value="${val}" ${cur === val ? 'selected' : ''}>${val || '—'}</option>`;
+
+  return `
+    ${thumbHtml}
+    <div class="sep-grid">
+      <div class="sep-fg ${hasErr('管理番号')}">
+        <label class="${hasErr('管理番号')}">管理番号</label>
+        <input class="sep-input ${hasErr('管理番号')}" id="sep-mgmt-${r.id}" value="${esc(p(r,'管理番号'))}">
+      </div>
+      <div class="sep-fg ${hasErr('メーカー')}">
+        <label class="${hasErr('メーカー')}">メーカー</label>
+        <select class="sep-input ${hasErr('メーカー')}" id="sep-maker-${r.id}">
+          ${['','PIRELLI','TOYO','BRIDGESTONE','DUNLOP','YOKOHAMA','AEOLUS','WINDPOWER','ミシュラン','ファルケン','Good Year','その他','林電機'].map(v=>opt(v,p(r,'メーカー'))).join('')}
+        </select>
+      </div>
+      <div class="sep-fg full">
+        <label>サイズ（名前）</label>
+        <input class="sep-input" id="sep-name-${r.id}" value="${esc(p(r,'名前'))}">
+      </div>
+      <div class="sep-fg">
+        <label>パターン</label>
+        <input class="sep-input" id="sep-pattern-${r.id}" value="${esc(p(r,'パターン'))}">
+      </div>
+      <div class="sep-fg ${hasErr('本数')}">
+        <label class="${hasErr('本数')}">本数</label>
+        <select class="sep-input ${hasErr('本数')}" id="sep-num-${r.id}">
+          ${['','1','2','3','4','5','6','7','8','9','10','11','12'].map(v=>opt(v,p(r,'本数'))).join('')}
+        </select>
+      </div>
+      <div class="sep-fg ${hasErr('残溝')}">
+        <label class="${hasErr('残溝')}">残溝</label>
+        <input class="sep-input ${hasErr('残溝')}" id="sep-tread-${r.id}" value="${esc(p(r,'残溝'))}">
+      </div>
+      <div class="sep-fg">
+        <label>セリアル（製造年）</label>
+        <input class="sep-input" id="sep-serial-${r.id}" value="${esc(p(r,'セリアル'))}">
+      </div>
+      <div class="sep-fg ${hasErr('状態')}">
+        <label class="${hasErr('状態')}">状態</label>
+        <select class="sep-input ${hasErr('状態')}" id="sep-cond-${r.id}">
+          ${['','新品','イボ残り（新品溝寄り）','良好（目立つヒビなし）','軽微なヒビあり','ヒビあり（要写真確認）','小傷・汚れあり（中古相当）','パンク修理痕あり（漏れなし確認済）','ビード傷あり','要現物確認','その他（要記載）'].map(v=>opt(v,p(r,'状態タイヤ（選択）'))).join('')}
+        </select>
+      </div>
+      <div class="sep-fg ${hasErr('カテゴリ')}">
+        <label class="${hasErr('カテゴリ')}">カテゴリ</label>
+        <select class="sep-input ${hasErr('カテゴリ')}" id="sep-cat-${r.id}">
+          ${['','ノーマル','ミックス','ダンプ用','たて溝','スタッドレス','ノーマル　再生','スタッドレス　再生'].map(v=>opt(v,p(r,'カテゴリ'))).join('')}
+        </select>
+      </div>
+      <div class="sep-fg">
+        <label>新車外し？</label>
+        <select class="sep-input" id="sep-newcar-${r.id}">
+          ${['','新車外し','新品溝','バリ溝','良品溝'].map(v=>opt(v,p(r,'新車外し？'))).join('')}
+        </select>
+      </div>
+      <div class="sep-fg ${hasErr('価格')}">
+        <label class="${hasErr('価格')}">価格（円）</label>
+        <input class="sep-input ${hasErr('価格')}" type="number" id="sep-price-${r.id}" value="${p(r,'値段') || ''}">
+      </div>
+      <div class="sep-fg">
+        <label>保管場所</label>
+        <select class="sep-input" id="sep-storage-${r.id}">
+          ${['','１F','２F','３F','外１F','外２F','外３F','コンテナ','五Ｓ下'].map(v=>opt(v,p(r,'保管場所'))).join('')}
+        </select>
+      </div>
+      <div class="sep-fg">
+        <label>ホイール付き？</label>
+        <select class="sep-input" id="sep-wheel-${r.id}">
+          <option value="__NO__" ${!isWheel?'selected':''}>なし</option>
+          <option value="__YES__" ${isWheel?'selected':''}>あり</option>
+        </select>
+      </div>
+      <div class="sep-fg ${hasErr('ホイールサイズ')}">
+        <label class="${hasErr('ホイールサイズ')}">ホイールサイズ</label>
+        <input class="sep-input ${hasErr('ホイールサイズ')}" id="sep-wsize-${r.id}" value="${esc(p(r,'ホイールサイズ'))}">
+      </div>
+      <div class="sep-fg full ${hasErr('ホイール状態')}">
+        <label class="${hasErr('ホイール状態')}">ホイール状態</label>
+        <select class="sep-input ${hasErr('ホイール状態')}" id="sep-wcond-${r.id}">
+          ${['','良好（目立つ傷なし）','小傷あり（使用感あり）','ガリ傷あり（リム周り）','塗装剥げ／腐食あり','曲がり疑い（要確認）','歪みあり（確定）','クラック疑い（要確認）','クラックあり（危険）','補修歴あり（塗装／修理跡）','要現物確認'].map(v=>opt(v,p(r,'ホイール状態'))).join('')}
+        </select>
+      </div>
+      <div class="sep-fg full ${hasErr('固定文')}">
+        <label class="${hasErr('固定文')}">商品説明（任意）</label>
+        <textarea class="sep-input" id="sep-desc-${r.id}" rows="2" style="resize:vertical">${esc(p(r,'商品説明'))}</textarea>
+      </div>
+    </div>
+    <button class="sep-save-btn" id="sep-btn-${r.id}" onclick="saveEditPanel('${r.id}')">保存してNotionに反映</button>
+    <div class="sep-msg" id="sep-msg-${r.id}"></div>
+  `;
+}
+
+function toggleEditPanel(pageId) {
+  const pid = pageId.replace(/-/g, '');
+  const panel = document.getElementById(`panel-${pid}`);
+  if (!panel) return;
+  panel.classList.toggle('open');
+}
+
+async function saveEditPanel(pageId) {
+  const pid = pageId.replace(/-/g, '');
+  const btn = document.getElementById(`sep-btn-${pid}`);
+  const msg = document.getElementById(`sep-msg-${pid}`);
+  btn.disabled = true;
+  btn.textContent = '保存中…';
+  msg.textContent = '';
+  msg.className = 'sep-msg';
+
+  const g = (id) => document.getElementById(`${id}-${pid}`)?.value?.trim() || '';
+  const gn = (id) => { const v = document.getElementById(`${id}-${pid}`)?.value; return v ? parseFloat(v) : null; };
+
+  const props = {};
+  const mgmt = g('sep-mgmt');
+  if (mgmt) props['管理番号'] = { rich_text: [{ text: { content: mgmt } }] };
+  const maker = g('sep-maker');
+  if (maker) props['メーカー'] = { select: { name: maker } };
+  const name = g('sep-name');
+  if (name) props['名前'] = { title: [{ text: { content: name } }] };
+  const pattern = g('sep-pattern');
+  props['パターン'] = { rich_text: [{ text: { content: pattern } }] };
+  const num = g('sep-num');
+  if (num) props['本数'] = { select: { name: num } };
+  const tread = g('sep-tread');
+  props['残溝'] = { rich_text: [{ text: { content: tread } }] };
+  const serial = g('sep-serial');
+  props['セリアル'] = { rich_text: [{ text: { content: serial } }] };
+  const cond = g('sep-cond');
+  if (cond) props['状態タイヤ（選択）'] = { select: { name: cond } };
+  const cat = g('sep-cat');
+  if (cat) props['カテゴリ'] = { select: { name: cat } };
+  const newcar = g('sep-newcar');
+  if (newcar) props['新車外し？'] = { select: { name: newcar } };
+  const price = gn('sep-price');
+  if (price !== null) props['値段'] = { number: price };
+  const storage = g('sep-storage');
+  if (storage) props['保管場所'] = { select: { name: storage } };
+  const wheel = document.getElementById(`sep-wheel-${pid}`)?.value;
+  if (wheel) props['ホイール付き？'] = { checkbox: wheel === '__YES__' };
+  const wsize = g('sep-wsize');
+  props['ホイールサイズ'] = { rich_text: [{ text: { content: wsize } }] };
+  const wcond = g('sep-wcond');
+  if (wcond) props['ホイール状態'] = { select: { name: wcond } };
+  const desc = g('sep-desc');
+  props['商品説明'] = { rich_text: [{ text: { content: desc } }] };
+
+  try {
+    const res = await notionPatch(pageId, props);
+    if (res.object === 'error') throw new Error(res.message);
+
+    // ローカルデータ更新
+    const rec = allRecords.find(r => r.id === pageId);
+    if (rec) {
+      const setProp = (key, val) => { rec.properties[key] = val; };
+      if (mgmt)    setProp('管理番号', { type:'rich_text', rich_text:[{plain_text:mgmt}] });
+      if (maker)   setProp('メーカー', { type:'select', select:{name:maker} });
+      if (name)    setProp('名前', { type:'title', title:[{plain_text:name}] });
+      if (pattern !== undefined) setProp('パターン', { type:'rich_text', rich_text:[{plain_text:pattern}] });
+      if (num)     setProp('本数', { type:'select', select:{name:num} });
+      if (tread !== undefined) setProp('残溝', { type:'rich_text', rich_text:[{plain_text:tread}] });
+      if (serial !== undefined) setProp('セリアル', { type:'rich_text', rich_text:[{plain_text:serial}] });
+      if (cond)    setProp('状態タイヤ（選択）', { type:'select', select:{name:cond} });
+      if (cat)     setProp('カテゴリ', { type:'select', select:{name:cat} });
+      if (newcar)  setProp('新車外し？', { type:'select', select:{name:newcar} });
+      if (price !== null) setProp('値段', { type:'number', number:price });
+      if (storage) setProp('保管場所', { type:'select', select:{name:storage} });
+      setProp('ホイール付き？', { type:'checkbox', checkbox: wheel === '__YES__' });
+      setProp('ホイールサイズ', { type:'rich_text', rich_text:[{plain_text:wsize}] });
+      if (wcond)   setProp('ホイール状態', { type:'select', select:{name:wcond} });
+      setProp('商品説明', { type:'rich_text', rich_text:[{plain_text:desc}] });
+    }
+
+    msg.textContent = '✅ 保存しました';
+    msg.className = 'sep-msg ok';
+    showToast('Notionに保存しました');
+
+    // カードの入力漏れバッジを再描画
+    renderShipList();
+
+  } catch(e) {
+    msg.textContent = 'エラー: ' + e.message;
+    msg.className = 'sep-msg ng';
+    btn.disabled = false;
+    btn.textContent = '保存してNotionに反映';
+  }
+}
+
+// ===== 入力漏れチェック =====
+function checkMissingFields(record) {
+  const warnings = [];
+  const mgmt    = p(record, '管理番号') || '';
+  const prefix  = mgmt ? mgmt[0].toUpperCase() : '';
+  const isWheel = p(record, 'ホイール付き？') === true;
+
+  if (!mgmt)                              warnings.push({ text: '管理番号未入力', level: 'error' });
+  if (!p(record, 'メーカー'))             warnings.push({ text: 'メーカー未選択', level: 'error' });
+  if (!p(record, 'サイズ（正式）') && !p(record, '名前')) warnings.push({ text: 'サイズ未入力', level: 'error' });
+  if (!p(record, '値段'))                 warnings.push({ text: '価格未設定',     level: 'warn'  });
+  if (!p(record, '本数'))                 warnings.push({ text: '本数未選択',     level: 'warn'  });
+  if (!p(record, '残溝'))                 warnings.push({ text: '残溝未入力',     level: 'warn'  });
+  if (!p(record, '状態タイヤ（選択）'))   warnings.push({ text: '状態未選択',     level: 'warn'  });
+  if (!p(record, 'カテゴリ'))             warnings.push({ text: 'カテゴリ未選択', level: 'warn'  });
+
+  // ホイール付きの場合の追加チェック
+  if (isWheel) {
+    if (!p(record, 'ホイールサイズ'))  warnings.push({ text: 'ホイールサイズ未入力', level: 'error' });
+    if (!p(record, 'ホイール状態'))    warnings.push({ text: 'ホイール状態未選択',   level: 'error' });
+  }
+
+  // 固定文チェック（管理番号の種類に応じて）
+  if (prefix === 'K' && !p(record, '固定文（Kテンプレ本文）'))         warnings.push({ text: 'K固定文未入力', level: 'error' });
+  else if (prefix === 'S' && !p(record, '固定文（Sテンプレ本文）'))    warnings.push({ text: 'S固定文未入力', level: 'error' });
+  else if (prefix && prefix !== 'K' && prefix !== 'S' && !p(record, '固定文（テンプレ本文）')) {
+    warnings.push({ text: '固定文未入力', level: 'error' });
+  }
+
+  // セリアル（製造年）チェック
+  if (!p(record, 'セリアル')) warnings.push({ text: 'セリアル未入力', level: 'warn' });
+
+  return warnings;
+}
+
+function renderShipList() {
+  const wrap = document.getElementById('ship-list-wrap');
+  // 未掲載のみ・管理番号順
+  const unposted = allRecords
+    .filter(r => p(r, '進捗') === '未掲載')
+    .sort((a, b) => {
+      const ma = p(a, '管理番号') || '';
+      const mb = p(b, '管理番号') || '';
+      const pa = ma.match(/^([A-Za-z]+)(\d+)$/);
+      const pb = mb.match(/^([A-Za-z]+)(\d+)$/);
+      if (pa && pb) {
+        if (pa[1] !== pb[1]) return pa[1].localeCompare(pb[1]);
+        return parseInt(pa[2]) - parseInt(pb[2]);
+      }
+      return ma.localeCompare(mb, 'ja');
+    });
+
+  if (!unposted.length) {
+    wrap.innerHTML = '<div class="ship-empty">未掲載の出品物はありません</div>';
+    return;
+  }
+
+  const items = unposted.map(r => {
+    const mgmt     = p(r, '管理番号') || '—';
+    const maker    = p(r, 'メーカー') || '';
+    const size     = p(r, 'サイズ（正式）') || p(r, '名前') || '—';
+    const pattern  = p(r, 'パターン') || '';
+    const num      = p(r, '本数') || '';
+    const sub      = [maker, size, pattern, num ? num + '本' : ''].filter(Boolean).join(' ');
+    const warnings = checkMissingFields(r);
+    const hasError = warnings.length > 0; // エラー・警告どちらでも編集ボタンを表示
+    const badgesHtml = warnings.length
+      ? `<div class="ship-warn-badges">${warnings.map(w =>
+          `<span class="ship-warn-badge ${w.level === 'warn' ? 'warn' : ''}">${w.text}</span>`
+        ).join('')}</div>`
+      : '';
+    const cardId = `card-${r.id.replace(/-/g,'')}`;
+    const panelId = `panel-${r.id.replace(/-/g,'')}`;
+    return `<div class="ship-card" id="${cardId}" style="${hasError ? 'border-color:rgba(239,68,68,.4);' : ''}">
+      <div class="ship-card-top">
+        <div class="ship-card-info">
+          <div class="ship-card-mgmt">${esc(mgmt)}${hasError ? ' <span style="color:var(--red);font-size:11px;">⚠</span>' : ''}</div>
+          <div class="ship-card-sub">${esc(sub)}</div>
+          ${badgesHtml}
+        </div>
+      </div>
+      <div class="ship-card-btns">
+        ${hasError ? `<button class="ship-card-btn ship-card-btn-edit" onclick="toggleEditPanel('${r.id}')">✏️ 編集</button>` : ''}
+        <button class="ship-card-btn ship-card-btn-code" onclick="openShipDetail('${r.id}')">📋 出品コード</button>
+      </div>
+      ${hasError ? `<div class="ship-edit-panel" id="${panelId}">${buildEditPanel(r)}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  wrap.innerHTML = `<div class="ship-list">${items}</div>`;
+}
+
+function pFormula(rec, key) {
+  const prop = rec.properties[key];
+  if (!prop) return '';
+  if (prop.type === 'formula') {
+    const f = prop.formula;
+    if (f.type === 'string') return f.string || '';
+    if (f.type === 'boolean') return f.boolean;
+  }
+  if (prop.type === 'rich_text') return prop.rich_text?.map(t => t.plain_text).join('') || '';
+  return '';
+}
+
+function getShipHtml(record) {
+  // 【設計確認済み】
+  // HTML / HTML（K）/ HTML（S）       → 商品概要＋固定文込みの完成品
+  // ホイール付き時のHTML              → ホイール情報入り商品概要＋固定文込みの完成品（単独で使う）
+  // → ホイール付き？がONなら「ホイール付き時のHTML」だけを使う。他と結合しない。
+  const mgmt    = p(record, '管理番号') || '';
+  const prefix  = mgmt ? mgmt[0].toUpperCase() : 'T';
+  const isWheel = p(record, 'ホイール付き？') === true || p(record, 'ホイール付き？') === '__YES__';
+
+  if (isWheel) return pFormula(record, 'ホイール付き時のHTML');
+
+  if (prefix === 'K')      return pFormula(record, 'HTML（K）');
+  if (prefix === 'S')      return pFormula(record, 'HTML（S）');
+  return pFormula(record, 'HTML');
+}
+
+async function openShipDetail(pageId) {
+  const record = allRecords.find(r => r.id === pageId);
+  if (!record) return;
+
+  const mgmt    = p(record, '管理番号') || '—';
+  const maker   = p(record, 'メーカー') || '—';
+  const size    = p(record, 'サイズ（正式）') || p(record, '名前') || '—';
+  const pattern = p(record, 'パターン') || '—';
+  const num     = p(record, '本数') || '—';
+  const tread   = p(record, '残溝') || '—';
+  const serial  = p(record, 'セリアル') || '—';
+  const cat     = p(record, 'カテゴリ') || '—';
+  const storage = p(record, '保管場所') || '—';
+  const storDet = p(record, '保管場所詳細') || '';
+  const price    = p(record, '値段');
+  const isWheel  = p(record, 'ホイール付き？') === true;
+  const wheelSize= p(record, 'ホイールサイズ') || '';
+  const wheelCond= p(record, 'ホイール状態') || '';
+
+  const yTitle = pFormula(record, 'タイトル');
+  const thumbUrl = getThumbUrl(record);
+  const thumbHtml = thumbUrl
+    ? `<div class="ship-thumb"><img src="${thumbUrl}" alt="サムネ" onerror="this.parentElement.innerHTML='<div class=ship-thumb-empty><svg width=48 height=48 viewBox=\\"0 0 56 56\\" fill=none><circle cx=28 cy=28 r=24 stroke=currentColor stroke-width=2.5/><circle cx=28 cy=28 r=12 stroke=currentColor stroke-width=2.5/><circle cx=28 cy=28 r=4 fill=currentColor/></svg><span>サムネ未登録</span></div>'"></div>`
+    : `<div class="ship-thumb"><div class="ship-thumb-empty"><svg width="48" height="48" viewBox="0 0 56 56" fill="none"><circle cx="28" cy="28" r="24" stroke="currentColor" stroke-width="2.5"/><circle cx="28" cy="28" r="12" stroke="currentColor" stroke-width="2.5"/><circle cx="28" cy="28" r="4" fill="currentColor"/></svg><span>サムネ未登録</span></div></div>`;
+
+  const combinedHtml = getShipHtml(record);
+  const hasHtml = !!combinedHtml;
+
+  document.getElementById('ship-detail-title').textContent = `出品手続き：${mgmt}`;
+
+  const priceStr = price ? `¥${Number(price).toLocaleString()}` : '未設定';
+  const storageStr = [storage !== '—' ? storage : '', storDet].filter(Boolean).join(' ');
+
+  const warnings = checkMissingFields(record);
+  const warnBlock = warnings.length ? `
+    <div style="margin-bottom:10px;">
+      ${warnings.filter(w => w.level === 'error').length ? `
+      <div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--red);margin-bottom:6px;line-height:1.7;">
+        ⚠️ <b>入力漏れ（要確認）</b><br>
+        ${warnings.filter(w => w.level === 'error').map(w => '・' + w.text).join('<br>')}
+      </div>` : ''}
+      ${warnings.filter(w => w.level === 'warn').length ? `
+      <div style="background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.3);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--amber);line-height:1.7;">
+        📝 <b>未入力項目</b><br>
+        ${warnings.filter(w => w.level === 'warn').map(w => '・' + w.text).join('<br>')}
+      </div>` : ''}
+    </div>` : '';
+
+  document.getElementById('ship-detail-body').innerHTML = warnBlock + thumbHtml + `
+    <div class="ship-section-lbl">商品情報</div>
+    <div class="ship-info-grid">
+      <div class="ship-info-key">管理番号</div><div class="ship-info-val">${esc(mgmt)}</div>
+      <div class="ship-info-key">メーカー</div><div class="ship-info-val">${esc(maker)}</div>
+      <div class="ship-info-key">サイズ</div><div class="ship-info-val">${esc(size)}</div>
+      <div class="ship-info-key">パターン</div><div class="ship-info-val">${esc(pattern)}</div>
+      <div class="ship-info-key">本数</div><div class="ship-info-val">${esc(num)}${num !== '—' ? '本' : ''}</div>
+      <div class="ship-info-key">残溝</div><div class="ship-info-val">${esc(tread)}${tread !== '—' ? 'mm' : ''}</div>
+      <div class="ship-info-key">セリアル</div><div class="ship-info-val">${esc(serial)}</div>
+      <div class="ship-info-key">カテゴリ</div><div class="ship-info-val">${esc(cat)}</div>
+      <div class="ship-info-key">保管場所</div><div class="ship-info-val">${esc(storageStr || '—')}</div>
+      <div class="ship-info-key">開始価格</div><div class="ship-info-val" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">${priceStr}${price ? `<button class="ship-copy-btn" id="ship-price-copy-btn" style="font-size:11px;padding:4px 10px;margin:0;" onclick="copyPriceText(${price},'ship-price-copy-btn')">📋 価格コピー</button>` : ''}</div>
+      ${isWheel ? `<div class="ship-info-key" style="color:var(--teal)">ホイール</div><div class="ship-info-val" style="color:var(--teal)">付き ${wheelSize ? '(' + esc(wheelSize) + ')' : ''} ${wheelCond ? '/ ' + esc(wheelCond) : ''}</div>` : ''}
+    </div>
+
+    ${yTitle ? `
+    <div class="ship-section-lbl">ヤフオクタイトル</div>
+    <div class="ship-warn">📋 以下をヤフオクの「商品名」欄にコピーしてください</div>
+    <div class="ship-html-box" id="ship-title-box">${esc(yTitle)}</div>
+    <button class="ship-copy-btn" id="ship-title-copy-btn" onclick="copyShipText('ship-title-box','ship-title-copy-btn')">
+      📋 タイトルをコピー
+    </button>` : ''}
+
+    <div class="ship-section-lbl">商品説明HTML（ヤフオク貼り付け用）</div>
+    ${hasHtml
+      ? `<div class="ship-warn">📋 以下をヤフオクの「商品説明」欄にコピーして貼り付けてください</div>
+         <div class="ship-html-box" id="ship-html-box">${esc(combinedHtml)}</div>
+         <button class="ship-copy-btn" id="ship-html-copy-btn" onclick="copyShipText('ship-html-box','ship-html-copy-btn')">
+           📋 商品説明HTMLをコピー
+         </button>`
+      : `<div class="ship-warn" style="color:var(--red);border-color:rgba(239,68,68,.4)">
+           ⚠️ HTMLが生成されていません。必須項目（メーカー・サイズ・管理番号・固定文）を確認してください。
+         </div>`
+    }
+
+    <div class="ship-section-lbl">出品後の処理</div>
+    <button class="ship-status-btn" onclick="markAsPosted('${pageId}')">
+      ✅ ヤフオクに出品済みにする（進捗→掲載中）
+    </button>
+  `;
+
+  const overlay = document.getElementById('ship-detail-overlay');
+  overlay.style.display = 'flex';
+  overlay.classList.add('open');
+}
+
+function closeShipDetail() {
+  const el = document.getElementById('ship-detail-overlay');
+  el.classList.remove('open');
+  el.style.display = 'none';
+}
+
+function copyShipText(boxId, btnId) {
+  const box = document.getElementById(boxId);
+  const text = box.textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById(btnId);
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✅ コピーしました！';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('copied'); }, 2000);
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('コピーしました');
+  });
+}
+
+function copyPriceText(price, btnId) {
+  navigator.clipboard.writeText(String(price)).then(() => {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✅ コピー済';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('copied'); }, 2000);
+  }).catch(() => { showToast('コピーしました'); });
+}
+
+async function markAsPosted(pageId) {
+  if (!confirm('この商品を「掲載中」に変更しますか？')) return;
+  try {
+    await notionPatch(pageId, { '進捗': { select: { name: '掲載中' } } });
+    // ローカルデータも更新
+    const rec = allRecords.find(r => r.id === pageId);
+    if (rec) rec.properties['進捗'] = { type: 'select', select: { name: '掲載中' } };
+    showToast('掲載中に変更しました');
+    closeShipDetail();
+    renderShipList();
+    updateStats();
+  } catch(e) {
+    showToast('更新エラー: ' + e.message, true);
+  }
+}
+
 function resetForm() {
-  const ids = ['f-mgmt','f-size','f-pattern','f-tread','f-serial','f-storage-detail','f-price','f-desc','f-note',
-               'fw-mgmt','fw-size','fw-pattern','fw-tread','fw-serial','fw-storage-detail','fw-price','fw-desc','fw-note',
-               'fk-mgmt','fk-name','fk-storage-detail','fk-price','fk-desc','fk-note',
-               'fs-mgmt','fs-name','fs-storage-detail','fs-price','fs-desc','fs-note'];
-  ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  const selIds = ['f-maker-form','f-cat-form','f-num','f-newcar','f-cond','f-truck','f-storage','f-status',
-                  'fw-maker','fw-cat','fw-num','fw-cond','fw-truck','fw-storage','fw-status',
-                  'fk-storage','fk-status','fs-storage','fs-status'];
-  selIds.forEach(id => { const el = document.getElementById(id); if (el) el.selectedIndex = 0; });
+  // タイヤ
+  ['f-mgmt','f-size','f-pattern','f-tread','f-serial','f-storage-detail','f-price','f-desc','f-note'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  ['f-maker-form','f-cat-form','f-num','f-newcar','f-cond','f-truck','f-storage','f-status'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.selectedIndex = 0;
+  });
+  // ホイール付き
+  ['fw-mgmt','fw-size','fw-pattern','fw-tread','fw-serial','fw-storage-detail','fw-price','fw-desc','fw-note'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  ['fw-maker','fw-cat','fw-num','fw-cond','fw-truck','fw-storage','fw-status'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.selectedIndex = 0;
+  });
+  // K小物
+  ['fk-mgmt','fk-name','fk-storage-detail','fk-price','fk-desc','fk-note'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  ['fk-storage','fk-status'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.selectedIndex = 0;
+  });
+  // Sその他
+  ['fs-mgmt','fs-name','fs-storage-detail','fs-price','fs-desc','fs-note'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  ['fs-storage','fs-status'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.selectedIndex = 0;
+  });
+  // hint全消し
   ['mgmt-hint','mgmt-hint-w','mgmt-hint-k','mgmt-hint-s'].forEach(id => {
     const el = document.getElementById(id); if (el) el.textContent = '';
   });

@@ -386,18 +386,17 @@ window.onload = () => {
 // Notion API
 // ──────────────────────────────────────
 async function notionAPI(method, path, body) {
-  const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('タイムアウト(10秒)')), 10000)
-  );
-  const fetchPromise = fetch(WORKER + path, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  }).then(res => res.json());
-
-  const data = await Promise.race([fetchPromise, timeoutPromise]);
-  if (data.object === 'error') throw new Error(data.message);
-  return data;
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('タイムアウト(8秒): ' + path)), 8000);
+    fetch(WORKER + path, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+    })
+    .then(r => r.json())
+    .then(data => { clearTimeout(timer); resolve(data); })
+    .catch(e => { clearTimeout(timer); reject(e); });
+  });
 }
 
 // ──────────────────────────────────────
@@ -406,6 +405,7 @@ async function notionAPI(method, path, body) {
 async function loadAlerts() {
   const el = document.getElementById('alert-content');
   el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">在庫基準をチェック中…</div></div>';
+  await new Promise(r => setTimeout(r, 50)); // DOM描画を待つ
 
   try {
     let allItems = [];
@@ -414,6 +414,7 @@ async function loadAlerts() {
     // カテゴリごとに直列処理（並列だとタイムアウト）
     for (const [catName, dbInfo] of Object.entries(KIJUN_DB_MAP)) {
       el.innerHTML = `<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">${catName} をチェック中…</div></div>`;
+      await new Promise(r => setTimeout(r, 30)); // DOM描画を待つ
 
       // 1) 在庫基準設定を取得
       const kijunRows = await fetchKijunForCat(catName, dbInfo.kijunId);
@@ -437,13 +438,13 @@ async function loadAlerts() {
 
         if (realStock < threshold) {
           const needed = threshold - realStock;
-          const maker = guessMaker(row.パターン名);
+          const maker = guessMaker(row.pattern || row.パターン名);
           allItems.push({
             kijunId: row.id,
-            pattern: row.パターン名,
-            size: row.サイズコード,
+            pattern: row.pattern || row.パターン名,
+            size: row.size || row.サイズコード,
             category: catName,
-            warehouse: row.倉庫,
+            warehouse: row.warehouse || row.倉庫,
             threshold,
             actualStock: st.actual,
             prepQty: st.prepQty,

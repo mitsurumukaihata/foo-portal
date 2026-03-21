@@ -1102,9 +1102,6 @@ window.onload = () => {
   const n = localStorage.getItem('tire_name');
   if (n) { _selectedStaff = n; }
 };
-</script>
-</body>
-</html>
 
 // ─── Notion API ──────────────────────────────────────────────────────────────
 async function notionAPI(method, path, body) {
@@ -1182,3 +1179,6 @@ async function submitEntry() {
     if (btn) { btn.disabled = false; btn.textContent = 'この内容で送信する'; }
   }
 }
+</script>
+</body>
+</html>

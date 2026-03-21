@@ -1612,7 +1612,6 @@ function buildEditPanel(r) {
   // サムネ
   const thumbUrl = getThumbUrl(r);
   const thumbHtml = thumbUrl
-  const thumbHtml = thumbUrl
     ? `<div class="ship-thumb"><img src="${thumbUrl}" alt="サムネ" onerror="onThumbError(this)"></div>`
     : `<div class="ship-thumb"><div class="ship-thumb-empty"><svg width="48" height="48" viewBox="0 0 56 56" fill="none"><circle cx="28" cy="28" r="24" stroke="currentColor" stroke-width="2.5"/><circle cx="28" cy="28" r="12" stroke="currentColor" stroke-width="2.5"/><circle cx="28" cy="28" r="4" fill="currentColor"/></svg><span>サムネ未登録</span></div></div>`;
   // selectオプション生成ヘルパー
@@ -1943,7 +1942,6 @@ async function openShipDetail(pageId) {
 
   const yTitle = pFormula(record, 'タイトル');
   const thumbUrl = getThumbUrl(record);
-  const thumbHtml = thumbUrl
   const thumbHtml = thumbUrl
     ? `<div class="ship-thumb"><img src="${thumbUrl}" alt="サムネ" onerror="onThumbError(this)"></div>`
     : `<div class="ship-thumb"><div class="ship-thumb-empty"><svg width="48" height="48" viewBox="0 0 56 56" fill="none"><circle cx="28" cy="28" r="24" stroke="currentColor" stroke-width="2.5"/><circle cx="28" cy="28" r="12" stroke="currentColor" stroke-width="2.5"/><circle cx="28" cy="28" r="4" fill="currentColor"/></svg><span>サムネ未登録</span></div></div>`;

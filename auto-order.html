@@ -259,9 +259,9 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
   <div class="header">
     <div class="header-top">
       <div class="header-brand">Tire Manager f.o.o</div>
-      <a href="https://mitsurumukaihata.github.io/foo-portal/"
-        style="font-size:11px;color:var(--muted);text-decoration:none;padding:3px 8px;border:0.5px solid var(--border);border-radius:20px;">
-        ← ポータル
+      <a href="https://mitsurumukaihata.github.io/foo-portal/" style="display:flex;align-items:center;gap:4px;color:var(--accent);font-size:14px;font-weight:700;text-decoration:none;padding:4px 0;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        ポータル
       </a>
     </div>
     <div class="header-title">自動<span>発注</span></div>
@@ -921,7 +921,7 @@ function previewOrderPdf() {
   const frame = document.getElementById('order-inline-frame');
   const printContent = document.getElementById('print-content');
   if (frame && printContent && printContent.innerHTML.trim()) {
-    frame.srcdoc = printContent.innerHTML.replace('<title></title>', `<title>${defaultFilename}</title>`);
+    frame.srcdoc = printContent.innerHTML.replace(/<title>[^<]*<\/title>/, `<title>${defaultFilename}</title>`);
   }
 
   // プレビューエリアを表示、通常ボタンを非表示
@@ -1134,7 +1134,7 @@ function buildPrintSheet(items, tantou, nouki, biko) {
 
   // iframeに書き込む完全HTML（pending-sectionはdivのまま残す）
   const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-<title></title>
+<title>${window._pdfFilename || 'TMFoo_発注書_自動'}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Hiragino Kaku Gothic ProN','IPAGothic',sans-serif;padding:8mm 6mm;font-size:5pt;color:#1a1a18;}

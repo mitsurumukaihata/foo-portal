@@ -260,7 +260,10 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
   <div class="header">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
       <div class="header-brand">Tire Manager f.o.o</div>
-      <a href="https://mitsurumukaihata.github.io/foo-portal/" style="font-size:11px;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:3px;padding:3px 8px;border:0.5px solid var(--border);border-radius:20px;">← ポータル</a>
+      <a href="https://mitsurumukaihata.github.io/foo-portal/" style="display:flex;align-items:center;gap:4px;color:var(--accent);font-size:14px;font-weight:700;text-decoration:none;padding:4px 0;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        ポータル
+      </a>
     </div>
     <div class="header-title">タイヤ<span>入出庫</span></div>
   </div>
@@ -268,6 +271,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
     <button class="nav-btn active" onclick="switchTab('entry')">入出庫</button>
     <button class="nav-btn" onclick="switchTab('stock')">在庫確認</button>
     <button class="nav-btn" onclick="switchTab('price')">価格検索</button>
+    <button class="nav-btn" onclick="switchTab('history')">履歴</button>
   </div>
   <div class="page active" id="page-entry">
     <div class="step-bar" id="step-bar"></div>
@@ -275,6 +279,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
   </div>
   <div class="page" id="page-stock"><div id="stock-content"></div></div>
   <div class="page" id="page-price"><div id="price-content"></div></div>
+  <div class="page" id="page-history"><div id="history-content"></div></div>
 </div>
 
 <script>
@@ -409,11 +414,12 @@ function launchApp() {
 function logout() { localStorage.removeItem('tire_name'); location.reload(); }
 
 function switchTab(tab) {
-  const tabs = ['entry','stock','price'];
+  const tabs = ['entry','stock','price','history'];
   document.querySelectorAll('.nav-btn').forEach((b,i) => b.classList.toggle('active', tabs[i] === tab));
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + tab).classList.add('active');
   if (tab === 'price' && !priceState.initialized) renderPriceHome();
+  if (tab === 'history') loadHistory();
 }
 
 function renderStepBar() {
@@ -1177,6 +1183,215 @@ async function submitEntry() {
     const errEl = document.getElementById('confirm-error');
     if (errEl) errEl.innerHTML = `<div class="error-box">送信に失敗しました。<br><small>${e.message}</small></div>`;
     if (btn) { btn.disabled = false; btn.textContent = 'この内容で送信する'; }
+  }
+}
+
+// ─── 入出庫履歴 ──────────────────────────────────────────────────────────────
+let historyLoaded = false;
+let historyRecords = [];
+
+async function loadHistory() {
+  const el = document.getElementById('history-content');
+  if (historyLoaded && historyRecords.length) {
+    // 再描画のみ
+    return;
+  }
+  el.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--muted);font-size:14px;">履歴を読み込み中...</div>';
+
+  try {
+    // 全カテゴリDBから直近レコードを取得
+    const allRecords = [];
+    const catKeys = Object.keys(DB_MAP);
+    const fetches = catKeys.map(async (key) => {
+      const db = DB_MAP[key];
+      const res = await notionAPI('POST', `/databases/${db.id}/query`, {
+        sorts: [{ timestamp: 'created_time', direction: 'descending' }],
+        page_size: 30,
+      });
+      (res.results || []).forEach(r => {
+        r._catKey = key;
+        r._catName = db.name;
+        allRecords.push(r);
+      });
+    });
+    await Promise.all(fetches);
+
+    // 作成日時で降順ソート
+    allRecords.sort((a, b) => (b.created_time || '').localeCompare(a.created_time || ''));
+    historyRecords = allRecords.slice(0, 100);
+    historyLoaded = true;
+    renderHistory();
+  } catch(e) {
+    el.innerHTML = `<div class="error-box">履歴の取得に失敗しました。<br><small>${e.message}</small></div>`;
+  }
+}
+
+function renderHistory() {
+  const el = document.getElementById('history-content');
+  if (!historyRecords.length) {
+    el.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--muted);font-size:14px;">履歴がありません</div>';
+    return;
+  }
+
+  const fmt = (s) => {
+    if (!s) return '—';
+    const d = new Date(s);
+    return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  };
+
+  const propStr = (r, name) => {
+    const p = r.properties?.[name];
+    if (!p) return '';
+    if (p.type === 'title') return p.title?.[0]?.plain_text || '';
+    if (p.type === 'rich_text') return p.rich_text?.[0]?.plain_text || '';
+    if (p.type === 'select') return p.select?.name || '';
+    if (p.type === 'number') return p.number != null ? String(p.number) : '';
+    if (p.type === 'date') return p.date?.start || '';
+    return '';
+  };
+
+  const kubunColor = (k) => {
+    if (k.includes('入庫') || k.includes('返品（倉庫')) return 'var(--green)';
+    if (k.includes('出庫') || k.includes('準備')) return 'var(--red)';
+    if (k.includes('返品（メーカー')) return 'var(--purple)';
+    if (k === '発注中') return 'var(--blue)';
+    return 'var(--muted)';
+  };
+
+  let html = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div style="font-size:12px;color:var(--muted);">直近の入出庫履歴（最新100件）</div>
+      <button onclick="historyLoaded=false;loadHistory()" style="background:var(--s3);border:1px solid var(--border2);border-radius:6px;padding:5px 10px;font-size:11px;color:var(--text);cursor:pointer;font-family:inherit;">↻ 更新</button>
+    </div>`;
+
+  historyRecords.forEach((r, idx) => {
+    const kubun = propStr(r, '区分');
+    const size = propStr(r, 'サイズコード');
+    const pattern = propStr(r, 'パターン名');
+    const qty = propStr(r, '数量');
+    const creator = propStr(r, '作成者');
+    const memo = propStr(r, 'メモ') || propStr(r, '出庫先');
+    const warehouse = propStr(r, '倉庫') || propStr(r, '出庫倉庫');
+    const catIcon = DB_MAP[r._catKey]?.icon || '';
+
+    html += `
+    <div style="background:var(--s2);border:0.5px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;" id="hist-${idx}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:14px;">${catIcon}</span>
+          <span style="font-size:13px;font-weight:700;">${pattern || '—'}</span>
+          <span style="font-size:12px;color:var(--muted);">${size}</span>
+        </div>
+        <span style="font-size:10px;color:var(--muted);">${fmt(r.created_time)}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span style="font-size:11px;font-weight:600;color:${kubunColor(kubun)};background:color-mix(in srgb,${kubunColor(kubun)} 12%,transparent);padding:2px 8px;border-radius:4px;">${kubun || '—'}</span>
+        <span style="font-size:13px;font-weight:700;color:var(--accent);">${qty}本</span>
+        <span style="font-size:11px;color:var(--muted);">${warehouse}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:10px;color:var(--muted);">${creator ? '担当:'+creator : ''}${memo ? '　'+memo : ''}</div>
+        <button onclick="openHistoryEdit(${idx})" style="background:var(--accent);border:none;border-radius:6px;padding:4px 12px;font-size:10px;font-weight:600;color:#fff;cursor:pointer;font-family:inherit;">編集</button>
+      </div>
+    </div>`;
+  });
+
+  el.innerHTML = html;
+}
+
+// ─── 履歴レコード編集 ─────────────────────────────────────────────────────────
+function openHistoryEdit(idx) {
+  const r = historyRecords[idx];
+  if (!r) return;
+  const propStr = (name) => {
+    const p = r.properties?.[name];
+    if (!p) return '';
+    if (p.type === 'title') return p.title?.[0]?.plain_text || '';
+    if (p.type === 'rich_text') return p.rich_text?.[0]?.plain_text || '';
+    if (p.type === 'select') return p.select?.name || '';
+    if (p.type === 'number') return p.number != null ? String(p.number) : '';
+    return '';
+  };
+
+  const db = DB_MAP[r._catKey];
+  const kubunList = db?.kubun || ['入庫','出庫','準備','返品（倉庫へ）','返品（メーカーへ）'];
+  const currentKubun = propStr('区分');
+  const currentQty = propStr('数量');
+  const currentMemo = propStr('メモ') || propStr('出庫先');
+
+  const kubunOpts = kubunList.map(k => `<option value="${k}" ${k===currentKubun?'selected':''}>${k}</option>`).join('');
+
+  const overlay = document.createElement('div');
+  overlay.id = 'history-edit-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;padding:20px;';
+  overlay.innerHTML = `
+    <div style="background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:20px;max-width:380px;width:100%;">
+      <div style="font-size:15px;font-weight:700;margin-bottom:14px;">履歴の編集</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">${db?.icon || ''} ${propStr('パターン名')} ${propStr('サイズコード')}</div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">区分</label>
+        <select id="edit-kubun" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:13px;font-family:inherit;">
+          ${kubunOpts}
+        </select>
+      </div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">数量</label>
+        <input id="edit-qty" type="number" value="${currentQty}" min="1" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:13px;font-family:inherit;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">メモ</label>
+        <input id="edit-memo" type="text" value="${currentMemo}" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:13px;font-family:inherit;box-sizing:border-box;">
+      </div>
+      <div id="edit-error" style="margin-bottom:8px;"></div>
+      <div style="display:flex;gap:8px;">
+        <button id="edit-save-btn" onclick="saveHistoryEdit('${r.id}',${idx})" style="flex:2;background:var(--green);border:none;border-radius:10px;padding:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">保存</button>
+        <button onclick="closeHistoryEdit()" style="flex:1;background:transparent;border:1.5px solid var(--border2);border-radius:10px;padding:12px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">閉じる</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function closeHistoryEdit() {
+  const ov = document.getElementById('history-edit-overlay');
+  if (ov) ov.remove();
+}
+
+async function saveHistoryEdit(pageId, idx) {
+  const kubun = document.getElementById('edit-kubun').value;
+  const qty = parseInt(document.getElementById('edit-qty').value) || 1;
+  const memo = document.getElementById('edit-memo').value.trim();
+  const btn = document.getElementById('edit-save-btn');
+  btn.disabled = true; btn.textContent = '保存中...';
+
+  try {
+    const processType = KUBUN_TO_SHORIYTYPE[kubun] || kubun;
+    const props = {
+      '区分': { select: { name: kubun } },
+      '数量': { number: qty },
+      '処理タイプ': { select: { name: processType } },
+    };
+    // メモフィールド更新（リッチテキストの場合）
+    const r = historyRecords[idx];
+    if (r.properties['メモ']) {
+      props['メモ'] = r.properties['メモ'].type === 'select'
+        ? { select: memo ? { name: memo } : null }
+        : { rich_text: [{ text: { content: memo } }] };
+    }
+    if (r.properties['出庫先'] && memo) {
+      props['出庫先'] = { rich_text: [{ text: { content: memo } }] };
+    }
+
+    await notionAPI('PATCH', `/pages/${pageId}`, { properties: props });
+
+    // ローカルデータも更新
+    if (r.properties['区分']) r.properties['区分'] = { type:'select', select:{ name: kubun }};
+    if (r.properties['数量']) r.properties['数量'] = { type:'number', number: qty };
+
+    closeHistoryEdit();
+    renderHistory();
+  } catch(e) {
+    document.getElementById('edit-error').innerHTML = `<div class="error-box" style="font-size:11px;">${e.message}</div>`;
+    btn.disabled = false; btn.textContent = '保存';
   }
 }
 </script>

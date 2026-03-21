@@ -1577,6 +1577,22 @@ function closePdfOverlay() {
 function printPdfOverlay() {
   const frame = document.getElementById('pdf-overlay-frame');
   if (!frame) return;
+  try {
+    const iframeDoc = frame.contentDocument || frame.contentWindow?.document;
+    const htmlContent = iframeDoc?.documentElement?.outerHTML || '';
+    const fname = iframeDoc?.title || 'TMFoo_発注書';
+    if (htmlContent) {
+      const printWin = window.open('', '_blank');
+      if (printWin) {
+        printWin.document.write(htmlContent);
+        printWin.document.close();
+        printWin.document.title = fname;
+        printWin.onafterprint = () => printWin.close();
+        setTimeout(() => { printWin.focus(); printWin.print(); }, 300);
+        return;
+      }
+    }
+  } catch(e) { console.warn('新ウィンドウprint失敗:', e); }
   frame.contentWindow.focus();
   frame.contentWindow.print();
 }

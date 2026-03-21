@@ -983,14 +983,26 @@ function _onPopStateOrder(e) {
 }
 
 function printOrderPreview() {
-  // インラインプレビューとオーバーレイプレビューどちらも対応
+  // 新しいウィンドウで開いてprint（ファイル名がtitleから自動セットされる）
   const frame = document.getElementById('order-inline-frame') || document.getElementById('order-preview-frame');
   if (!frame) return;
   const fname = document.getElementById('pdf-filename-input')?.value.trim() || window._pdfFilename || 'TMFoo_発注書';
   try {
     const iframeDoc = frame.contentDocument || frame.contentWindow?.document;
-    if (iframeDoc) iframeDoc.title = fname;
-  } catch(e) {}
+    const htmlContent = iframeDoc?.documentElement?.outerHTML || '';
+    if (htmlContent) {
+      const printWin = window.open('', '_blank');
+      if (printWin) {
+        printWin.document.write(htmlContent);
+        printWin.document.close();
+        printWin.document.title = fname;
+        printWin.onafterprint = () => printWin.close();
+        setTimeout(() => { printWin.focus(); printWin.print(); }, 300);
+        return;
+      }
+    }
+  } catch(e) { console.warn('新ウィンドウprint失敗、iframe fallback:', e); }
+  // fallback: iframe直接print
   frame.contentWindow?.focus();
   frame.contentWindow?.print();
 }

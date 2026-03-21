@@ -82,7 +82,8 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 .alert-dot-big { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
 .alert-info { flex:1; min-width:0; }
 .alert-pattern { font-size:14px; font-weight:700; font-family:'DM Mono',monospace; }
-.alert-meta { font-size:10px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.alert-meta { font-size:13px; font-family:'DM Mono',monospace; color:var(--accent2); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.alert-meta.sub { font-size:10px; font-family:'Noto Sans JP',sans-serif; color:var(--muted); }
 .alert-stocks { display:flex; gap:0; flex-shrink:0; }
 .st-cell { text-align:center; padding:0 8px; border-left:0.5px solid var(--border); }
 .st-num { font-size:15px; font-weight:700; font-family:'DM Mono',monospace; line-height:1; }
@@ -407,6 +408,14 @@ async function loadAlerts() {
     // 1) 在庫基準設定を全取得
     const kijunRows = await fetchAllKijun();
 
+    // カテゴリ別件数をデバッグ用に記録
+    const catCount = {};
+    kijunRows.forEach(r => {
+      const cat = r.カテゴリ || '(未設定)';
+      catCount[cat] = (catCount[cat] || 0) + 1;
+    });
+    window._kijunDebug = { total: kijunRows.length, catCount };
+
     // 2) 対象倉庫（五日市・志和）のみ、しきい値 > 0 のものだけ処理
     const targets = kijunRows.filter(r => {
       const w = r.倉庫;
@@ -555,6 +564,23 @@ function renderAlertPage() {
     <div class="summ-card"><div class="summ-num" style="color:var(--accent);">${toyo}</div><div class="summ-lbl">TOYO要発注</div></div>
   </div>`;
 
+  // カテゴリ別取得件数（デバッグ用折りたたみ）
+  if (window._kijunDebug) {
+    const d = window._kijunDebug;
+    const catRows = Object.entries(d.catCount).sort((a,b) => a[0].localeCompare(b[0],'ja')).map(([cat,cnt]) => {
+      const inMap = CAT_DB_MAP[cat] ? '✓' : '－';
+      const color = CAT_DB_MAP[cat] ? 'var(--green)' : 'var(--muted)';
+      return `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:0.5px solid var(--border);">
+        <span style="font-size:11px;">${cat}</span>
+        <span style="font-size:11px;color:${color};">${inMap} ${cnt}件</span>
+      </div>`;
+    }).join('');
+    html += `<details style="margin-bottom:8px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;">
+      <summary style="font-size:10px;color:var(--muted);cursor:pointer;list-style:none;">▶ 在庫基準設定 取得内容を確認（合計 ${d.total}件）</summary>
+      <div style="margin-top:8px;">${catRows}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:6px;">✓=アプリで在庫計算対象　－=CAT_DB_MAPに未登録</div>
+    </details>`;
+
   if (!alertItems.length) {
     html += '<div style="text-align:center;padding:48px 0;color:var(--muted);font-size:14px;">在庫基準を満たしています ✓</div>';
     html += '</div>';
@@ -593,8 +619,8 @@ function renderAlertPage() {
           <div class="alert-dot-big" style="background:${dotColor2};"></div>
           <div class="alert-info">
             <div class="alert-pattern">${item.pattern} &nbsp;${makerTag}</div>
-            <div class="alert-meta">${item.size} ／ ${item.category}</div>
-            <div class="alert-meta" style="margin-top:2px;font-size:9px;">${stockInfo}</div>
+            <div class="alert-meta">${item.size}</div>
+            <div class="alert-meta sub">${item.category} ／ ${stockInfo}</div>
           </div>
           <div class="alert-stocks">
             <div class="st-cell">

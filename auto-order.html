@@ -1099,8 +1099,8 @@ function buildPrintSheet(items, tantou, nouki, biko) {
 
   // ── 発注管理アプリと同じスタイル ──
   // 列幅を明示（パターン・サイズは固定幅、他は狭め）
-  const TH  = (w='') => `padding:1px 2px;font-size:4.0pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;white-space:nowrap;${w?'width:'+w+';':''}`;
-  const tdS = (i,ex='') => `padding:1px 2px;font-size:4.0pt;text-align:center;border:0.3px solid #b8cfe8;${i%2===1?'background:#f0f5fc;':'background:#fff;'}white-space:nowrap;${ex}`;
+  const TH  = (w='') => `padding:1px 2px;font-size:3.5pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;white-space:nowrap;${w?'width:'+w+';':''}`;
+  const tdS = (i,ex='') => `padding:1px 2px;font-size:3.5pt;text-align:center;border:0.3px solid #b8cfe8;${i%2===1?'background:#f0f5fc;':'background:#fff;'}white-space:nowrap;${ex}`;
 
   // 五日市→志和が第一優先、その中でLTL TB→LTS→バンの順
   const CAT_ORDER = ['LTL TB　ノーマル','LTL TB　スタッドレス','LTS　ノーマル','LTS　スタッドレス','RT 再生','バン','リフト'];
@@ -1200,8 +1200,8 @@ async function _fetchAndInjectPending() {
   const iframe = document.getElementById('order-inline-frame') || document.getElementById('order-preview-frame');
   if (!iframe) return;
 
-  const TH = (w='') => `padding:1px 2px;font-size:4.0pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;white-space:nowrap;${w?'width:'+w+';':''}`;
-  const tdS = (i,ex='') => `padding:1px 2px;font-size:4.0pt;text-align:center;border:0.3px solid #b8cfe8;${i%2===1?'background:#f0f5fc;':'background:#fff;'}white-space:nowrap;${ex}`;
+  const TH = (w='') => `padding:1px 2px;font-size:3.5pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;white-space:nowrap;${w?'width:'+w+';':''}`;
+  const tdS = (i,ex='') => `padding:1px 2px;font-size:3.5pt;text-align:center;border:0.3px solid #b8cfe8;${i%2===1?'background:#f0f5fc;':'background:#fff;'}white-space:nowrap;${ex}`;
 
   try {
     const body = {

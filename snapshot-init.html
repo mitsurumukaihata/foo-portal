@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>在庫スナップショット 初期化</title>
+<style>
+:root {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --green: #22c55e; --red: #ef4444; --yellow: #f59e0b;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--text); padding: 20px; max-width: 600px; margin: 0 auto; }
+h1 { font-size: 18px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+.sub { font-size: 12px; color: var(--muted); margin-bottom: 24px; }
+.card { background: var(--s2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+.card-title { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 12px; }
+.btn { width: 100%; padding: 14px; border-radius: 8px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:disabled { background: var(--s3); color: var(--muted); cursor: not-allowed; }
+.btn-danger { background: var(--red); color: #fff; margin-top: 8px; }
+.btn-danger:disabled { background: var(--s3); color: var(--muted); cursor: not-allowed; }
+.log-box { background: var(--s1); border: 1px solid var(--border); border-radius: 8px; padding: 12px; min-height: 200px; max-height: 400px; overflow-y: auto; font-family: 'DM Mono', monospace; font-size: 11px; line-height: 1.7; }
+.log-ok { color: var(--green); }
+.log-err { color: var(--red); }
+.log-info { color: var(--muted); }
+.log-warn { color: var(--yellow); }
+.log-accent { color: var(--accent); }
+.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+.stat { background: var(--s2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
+.stat-num { font-size: 22px; font-weight: 700; color: var(--accent); }
+.stat-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.progress-wrap { background: var(--s3); border-radius: 4px; height: 6px; margin: 8px 0 4px; overflow: hidden; }
+.progress-bar { height: 100%; background: var(--accent); border-radius: 4px; transition: width .3s ease; width: 0%; }
+.progress-txt { font-size: 11px; color: var(--muted); text-align: right; }
+</style>
+</head>
+<body>
+<h1>📸 在庫スナップショット 初期化ツール</h1>
+<p class="sub">全入出庫DBを集計してスナップショットDBに書き込みます。初回のみ実行してください。</p>
+
+<div class="stat-grid">
+  <div class="stat"><div class="stat-num" id="stat-records">—</div><div class="stat-lbl">取得レコード数</div></div>
+  <div class="stat"><div class="stat-num" id="stat-keys">—</div><div class="stat-lbl">集計キー数</div></div>
+  <div class="stat"><div class="stat-num" id="stat-written">—</div><div class="stat-lbl">書き込み済み</div></div>
+</div>
+
+<div class="card">
+  <div class="card-title">進捗</div>
+  <div class="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+  <div class="progress-txt" id="progress-txt">待機中</div>
+</div>
+
+<button class="btn btn-primary" id="btn-start" onclick="startInit()">▶ スナップショット初期化を開始</button>
+<button class="btn btn-danger" id="btn-clear" onclick="clearSnapshot()" style="display:none">🗑 スナップショットをクリア（再初期化用）</button>
+
+<div class="card" style="margin-top:16px;">
+  <div class="card-title">ログ</div>
+  <div class="log-box" id="log"></div>
+</div>
+
+<script>
+const WORKER       = 'https://notion-proxy.33322666666mm.workers.dev';
+const SNAPSHOT_DB  = '1123c46301764238a511114ed59159bd';
+
+const KUBUN_SIGN = {
+  '入庫':1,'移動入庫':1,'返品（倉庫へ）':1,'返品':1,
+  '出庫':-1,'準備':-1,'移動出庫':-1,'返品（メーカーへ）':-1,
+  '発注中':0
+};
+
+// カテゴリ → 入出庫DB ID・倉庫フィールド名
+const CAT_DB_MAP = {
+  'LTL TB　ノーマル':    { id:'200a695f8e888018b5f5eac83fdad412', wField:'倉庫' },
+  'LTL TB　スタッドレス':{ id:'201a695f8e888171abb8e349ad4d055a', wField:'倉庫' },
+  'LTS　ノーマル':       { id:'201a695f8e8881adb144cd3a1639132d', wField:'倉庫' },
+  'LTS　スタッドレス':   { id:'201a695f8e8881a299e8fb57bad707f6', wField:'倉庫' },
+  'RT 再生':             { id:'201a695f8e888104bb47c7103d5909dc', wField:'倉庫' },
+  'バン':                { id:'201a695f8e8881f3a958cead42156e07', wField:'出庫倉庫' },
+  'リフト':              { id:'201a695f8e8881c5b2c3d9e9ce2ffd21', wField:'出庫倉庫' },
+};
+
+let totalRecords = 0, totalKeys = 0, totalWritten = 0;
+
+function log(msg, cls='log-info') {
+  const box = document.getElementById('log');
+  const d = document.createElement('div');
+  d.className = cls;
+  d.textContent = new Date().toLocaleTimeString('ja') + ' ' + msg;
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+
+function setProgress(pct, txt) {
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('progress-txt').textContent = txt;
+}
+
+function updateStats() {
+  document.getElementById('stat-records').textContent = totalRecords.toLocaleString();
+  document.getElementById('stat-keys').textContent = totalKeys.toLocaleString();
+  document.getElementById('stat-written').textContent = totalWritten.toLocaleString();
+}
+
+async function notionAPI(method, path, body) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('タイムアウト: ' + path)), 30000);
+    fetch(WORKER + path, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+    })
+    .then(r => r.json())
+    .then(d => { clearTimeout(timer); resolve(d); })
+    .catch(e => { clearTimeout(timer); reject(e); });
+  });
+}
+
+// 入出庫DBを全件取得してstockMapに集計
+async function fetchAndAccumulate(catName, dbId, wField, stockMap) {
+  let cursor, pageNum = 0, count = 0;
+  while (pageNum < 30) {
+    pageNum++;
+    const body = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    const res = await notionAPI('POST', `/databases/${dbId}/query`, body);
+    if (res.object === 'error') throw new Error(res.message);
+
+    for (const r of res.results) {
+      const p = r.properties;
+      const pattern  = p['パターン名']?.select?.name || '';
+      const size     = p['サイズコード']?.select?.name || '';
+      const qty      = p['数量']?.number || 0;
+      const kubun    = p['区分']?.select?.name || '';
+      const warehouse = p[wField]?.select?.name || '';
+      if (!pattern || !size || !warehouse) continue;
+      if (warehouse === '海田倉庫' || warehouse === '未定') continue; // 対象外
+
+      const sign = KUBUN_SIGN[kubun] ?? 0;
+      if (sign === 0) continue; // 発注中はスキップ
+
+      const key = `${catName}|${pattern}|${size}|${warehouse}`;
+      stockMap[key] = (stockMap[key] || 0) + sign * qty;
+      count++;
+    }
+
+    totalRecords += res.results.length;
+    updateStats();
+
+    if (!res.has_more) break;
+    cursor = res.next_cursor;
+  }
+  return count;
+}
+
+// スナップショットDBに1件書き込み
+async function writeSnapshot(catName, pattern, size, warehouse, qty) {
+  const name = `${pattern}|${size}|${warehouse}`;
+  const res = await notionAPI('POST', '/pages', {
+    parent: { database_id: SNAPSHOT_DB },
+    properties: {
+      'Name':     { title: [{ text: { content: name } }] },
+      'パターン名': { rich_text: [{ text: { content: pattern } }] },
+      'サイズコード':{ rich_text: [{ text: { content: size } }] },
+      'カテゴリ':  { select: { name: catName } },
+      '倉庫':      { select: { name: warehouse } },
+      '在庫数':    { number: qty },
+    }
+  });
+  if (res.object === 'error') throw new Error(res.message);
+  return res;
+}
+
+async function startInit() {
+  document.getElementById('btn-start').disabled = true;
+  document.getElementById('btn-clear').style.display = 'none';
+  totalRecords = 0; totalKeys = 0; totalWritten = 0;
+  updateStats();
+
+  log('=== スナップショット初期化開始 ===', 'log-accent');
+  log('まず既存のスナップショットを確認します...', 'log-info');
+
+  // 既存レコードを確認
+  const existing = await notionAPI('POST', `/databases/${SNAPSHOT_DB}/query`, { page_size: 1 });
+  if (existing.results && existing.results.length > 0) {
+    log('⚠️ スナップショットDBにすでにデータがあります。', 'log-warn');
+    log('先に「クリア」ボタンで削除してから再実行してください。', 'log-warn');
+    document.getElementById('btn-start').disabled = false;
+    document.getElementById('btn-clear').style.display = 'block';
+    return;
+  }
+
+  const stockMap = {};
+  const cats = Object.entries(CAT_DB_MAP);
+
+  // Step1: 全カテゴリの入出庫DBを集計
+  for (let i = 0; i < cats.length; i++) {
+    const [catName, info] = cats[i];
+    setProgress(Math.round(i / cats.length * 50), `集計中: ${catName} (${i+1}/${cats.length})`);
+    log(`▶ ${catName} を集計中...`, 'log-info');
+    try {
+      const count = await fetchAndAccumulate(catName, info.id, info.wField, stockMap);
+      log(`  ✓ ${catName}: ${count.toLocaleString()}件処理`, 'log-ok');
+    } catch(e) {
+      log(`  ✕ ${catName} エラー: ${e.message}`, 'log-err');
+    }
+  }
+
+  // Step2: stockMapをNotionに書き込み
+  const entries = Object.entries(stockMap);
+  totalKeys = entries.length;
+  updateStats();
+  log(`\n集計完了。${totalKeys}件のスナップショットを書き込みます...`, 'log-accent');
+
+  for (let i = 0; i < entries.length; i++) {
+    const [key, qty] = entries[i];
+    const [catName, pattern, size, warehouse] = key.split('|');
+    setProgress(50 + Math.round(i / entries.length * 50), `書き込み中: ${i+1}/${entries.length}`);
+
+    try {
+      await writeSnapshot(catName, pattern, size, warehouse, qty);
+      totalWritten++;
+      updateStats();
+      if (i % 10 === 0) log(`  書き込み中... ${i+1}/${entries.length}`, 'log-info');
+    } catch(e) {
+      log(`  ✕ 書き込みエラー [${key}]: ${e.message}`, 'log-err');
+    }
+
+    // Notionのレート制限対策（3リクエスト/秒）
+    await new Promise(r => setTimeout(r, 350));
+  }
+
+  setProgress(100, '完了');
+  log('', 'log-info');
+  log(`=== 完了 ===`, 'log-accent');
+  log(`取得レコード: ${totalRecords.toLocaleString()}件`, 'log-ok');
+  log(`集計キー数: ${totalKeys}件`, 'log-ok');
+  log(`書き込み完了: ${totalWritten}件`, 'log-ok');
+  log(`\nスナップショットDBが準備できました！`, 'log-ok');
+  log(`次のステップ: auto-order.htmlをスナップショット対応版に更新してください。`, 'log-info');
+
+  document.getElementById('btn-start').disabled = false;
+  document.getElementById('btn-clear').style.display = 'block';
+}
+
+async function clearSnapshot() {
+  if (!confirm('スナップショットDBの全レコードを削除しますか？')) return;
+  document.getElementById('btn-clear').disabled = true;
+  log('クリア処理中...', 'log-warn');
+
+  let cursor, deleted = 0;
+  while (true) {
+    const body = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    const res = await notionAPI('POST', `/databases/${SNAPSHOT_DB}/query`, body);
+    if (!res.results?.length) break;
+
+    for (const page of res.results) {
+      await notionAPI('PATCH', `/pages/${page.id}`, { archived: true });
+      deleted++;
+      await new Promise(r => setTimeout(r, 300));
+    }
+    log(`${deleted}件削除...`, 'log-warn');
+    if (!res.has_more) break;
+    cursor = res.next_cursor;
+  }
+
+  log(`クリア完了 (${deleted}件削除)`, 'log-ok');
+  document.getElementById('btn-clear').disabled = false;
+}
+</script>
+</body>
+</html>

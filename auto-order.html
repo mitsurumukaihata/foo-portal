@@ -1198,8 +1198,7 @@ table{width:100%;border-collapse:collapse;}
 </div>
 </body></html>`;
 
-  // ファイル名をwindowに保存（オーバーレイで使用）
-  window._pdfFilename = defaultFilename || 'TMFoo_発注書';
+  // ファイル名はpreviewOrderPdfで設定済みのwindow._pdfFilenameを使用
   document.getElementById('print-content').innerHTML = fullHtml;
 }
 

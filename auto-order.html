@@ -315,11 +315,19 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 // 設定
 // ──────────────────────────────────────
 const WORKER      = 'https://notion-proxy.33322666666mm.workers.dev';
-const KIJUN_DB    = '2fea695f8e88813ca455d96295acc4c5';   // 在庫基準設定DB
 const HACCHU_DB   = '202a695f8e8880aa92f6f38d9b47b537';   // 発注管理表DB
 const SESSION_KEY = 'foo_portal_session';
 
-// 在庫DBマッピング（カテゴリ名 → DB ID・warehouseField）
+// 在庫基準設定DB（カテゴリごとに別DB）
+// カテゴリ名 → { kijunId: 在庫基準設定のDB ID, stockId: 入出庫記録のDB ID, wField: 倉庫フィールド名 }
+const KIJUN_DB_MAP = {
+  'LTL TB　ノーマル':    { kijunId:'520fe8fa034543428c0e9fff3c5cb511', stockId:'200a695f8e888018b5f5eac83fdad412', wField:'倉庫' },
+  'LTS　ノーマル':       { kijunId:'2fea695f8e88813ca455d96295acc4c5', stockId:'201a695f8e8881adb144cd3a1639132d', wField:'倉庫' },
+  'RT 再生':             { kijunId:'302a695f8e8881f49821faa32d2708b4', stockId:'201a695f8e888104bb47c7103d5909dc', wField:'倉庫' },
+  'バン':                { kijunId:'301a695f8e8881b7ad64e2cb9ad06e66', stockId:'201a695f8e8881f3a958cead42156e07', wField:'出庫倉庫' },
+};
+
+// 後方互換（発注確認で使用）
 const CAT_DB_MAP = {
   'LTL TB　ノーマル':    { id:'200a695f8e888018b5f5eac83fdad412', wField:'倉庫' },
   'LTL TB　スタッドレス':{ id:'201a695f8e888171abb8e349ad4d055a', wField:'倉庫' },
@@ -402,68 +410,55 @@ async function notionAPI(method, path, body) {
 // ──────────────────────────────────────
 async function loadAlerts() {
   const el = document.getElementById('alert-content');
-  el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">在庫基準設定を取得中…</div></div>';
+  el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">在庫基準をチェック中…</div></div>';
 
   try {
-    // 1) 在庫基準設定を全取得
-    const kijunRows = await fetchAllKijun();
+    let allItems = [];
 
-    // カテゴリ別件数をデバッグ用に記録
-    const catCount = {};
-    kijunRows.forEach(r => {
-      const cat = r.カテゴリ || '(未設定)';
-      catCount[cat] = (catCount[cat] || 0) + 1;
-    });
-    window._kijunDebug = { total: kijunRows.length, catCount };
+    // カテゴリごとに直列処理（並列だとタイムアウト）
+    for (const [catName, dbInfo] of Object.entries(KIJUN_DB_MAP)) {
+      el.innerHTML = `<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">${catName} をチェック中…</div></div>`;
 
-    // 2) 対象倉庫（五日市・志和）のみ、しきい値 > 0 のものだけ処理
-    const targets = kijunRows.filter(r => {
-      const w = r.倉庫;
-      return (w === '五日市倉庫' || w === '志和倉庫') && (r.しきい値 || 0) > 0 && r.パターン名 && r.サイズコード;
-    });
+      // 1) 在庫基準設定を取得
+      const kijunRows = await fetchKijunForCat(catName, dbInfo.kijunId);
+      if (!kijunRows.length) continue;
 
-    if (!targets.length) {
-      el.innerHTML = '<div class="content"><div style="text-align:center;padding:48px 20px;color:var(--muted);font-size:14px;">在庫基準設定データがありません</div></div>';
-      return;
+      // 2) 入出庫記録から在庫計算
+      const stockMap = {};
+      await fetchStockForCat(catName, dbInfo, stockMap);
+
+      // 3) しきい値と在庫を比較
+      for (const row of kijunRows) {
+        const key = `${row.パターン名}|${row.サイズコード}|${row.倉庫}`;
+        const orderKey = `${row.パターン名}|${row.サイズコード}|__order__`;
+        const st = stockMap[key] || { actual: 0, prepQty: 0 };
+        const orderInFlight = stockMap[orderKey] || 0;
+        const realStock = st.actual + orderInFlight;
+        const threshold = row.しきい値;
+
+        if (realStock < threshold) {
+          const needed = threshold - realStock;
+          const maker = guessMaker(row.パターン名);
+          allItems.push({
+            kijunId: row.id,
+            pattern: row.パターン名,
+            size: row.サイズコード,
+            category: catName,
+            warehouse: row.倉庫,
+            threshold,
+            actualStock: st.actual,
+            prepQty: st.prepQty,
+            orderInFlight,
+            realStock,
+            orderQty: needed,
+            selected: needed > 0 && maker === 'TOYO',
+            maker,
+          });
+        }
+      }
     }
 
-    el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">在庫データを集計中…</div></div>';
-
-    // 3) 必要なカテゴリの在庫を取得
-    const catSet = [...new Set(targets.map(r => r.カテゴリ).filter(c => CAT_DB_MAP[c]))];
-    const stockMap = {}; // key: "pattern|size|warehouse" → {actual, prep, order}
-    await Promise.all(catSet.map(cat => fetchStockForCat(cat, stockMap)));
-
-    // 4) 実質在庫を計算してアラート判定
-    alertItems = targets.map(r => {
-      const key = r.倉庫 !== '全倉庫'
-        ? `${r.パターン名}|${r.サイズコード}|${r.倉庫}`
-        : null;
-      const orderKey = `${r.パターン名}|${r.サイズコード}|__order__`;
-      const st = key ? (stockMap[key] || {actual:0, prepQty:0}) : {actual:0, prepQty:0};
-      const orderQtyInFlight = stockMap[orderKey] || 0;
-      // 実質在庫 = 在庫本数（準備中含む） + 発注中の入荷予定
-      const realStock = st.actual + orderQtyInFlight;
-      const threshold = r.しきい値 || 0;
-      const needed = Math.max(0, threshold - realStock);
-      const maker = guessMaker(r.パターン名);
-      return {
-        kijunId: r.id,
-        pattern: r.パターン名,
-        size: r.サイズコード,
-        category: r.カテゴリ,
-        warehouse: r.倉庫,
-        threshold,
-        actualStock: st.actual,      // 純在庫（準備中を含む実在庫）
-        prepQty: st.prepQty,         // 準備中の内訳本数（表示用）
-        orderInFlight: orderQtyInFlight, // 発注中の入荷予定
-        realStock,
-        orderQty: needed,
-        selected: needed > 0 && maker === 'TOYO',
-        maker,
-      };
-    }).filter(item => item.realStock < item.threshold);
-
+    alertItems = allItems;
     renderAlertPage();
     renderOrderPage();
 
@@ -472,42 +467,55 @@ async function loadAlerts() {
   }
 }
 
-async function fetchAllKijun() {
-  let all = [], cursor;
-  while (true) {
-    const body = { page_size:100 };
-    if (cursor) body.start_cursor = cursor;
-    const res = await notionAPI('POST', `/databases/${KIJUN_DB}/query`, body);
-    res.results.forEach(page => {
-      const p = page.properties;
-      all.push({
-        id: page.id,
-        パターン名: p['パターン名']?.select?.name || '',
-        サイズコード: p['サイズコード']?.rich_text?.[0]?.plain_text || '',
-        カテゴリ: p['カテゴリ']?.select?.name || '',
-        タイヤメーカー: p['タイヤメーカー']?.select?.name || '',
-        倉庫: p['倉庫']?.select?.name || '',
-        しきい値: p['しきい値']?.number ?? 0,
-      });
-    });
-    if (!res.has_more) break;
-    cursor = res.next_cursor;
-  }
-  return all;
+async function fetchKijunForCat(catName, kijunDbId) {
+  const body = {
+    filter: { or: [
+      { property: '倉庫', select: { equals: '五日市倉庫' } },
+      { property: '倉庫', select: { equals: '志和倉庫' } },
+    ]},
+    page_size: 100
+  };
+  const res = await notionAPI('POST', `/databases/${kijunDbId}/query`, body);
+  if (res.object === 'error') throw new Error(`${catName} 在庫基準取得エラー: ${res.message}`);
+  return (res.results || []).map(page => {
+    const p = page.properties;
+    return {
+      id: page.id,
+      パターン名: p['パターン名']?.select?.name || '',
+      サイズコード: p['サイズコード']?.rich_text?.[0]?.plain_text || '',
+      倉庫: p['倉庫']?.select?.name || '',
+      しきい値: p['しきい値']?.number ?? 0,
+    };
+  }).filter(r => r.パターン名 && r.サイズコード && r.しきい値 > 0);
 }
 
-async function fetchStockForCat(cat, stockMap) {
-  const info = CAT_DB_MAP[cat];
+async function fetchStockForCat(cat, dbInfo, stockMap) {
+  const info = dbInfo || CAT_DB_MAP[cat];
   if (!info) return;
+  const stockDbId = info.stockId || info.id;
+
+  const warehouseField = info.wField;
+  const filter = {
+    or: [
+      { property: warehouseField, select: { equals: '五日市倉庫' } },
+      { property: warehouseField, select: { equals: '志和倉庫' } },
+      { property: '区分', select: { equals: '発注中' } },
+    ]
+  };
+
   let all = [], cursor;
-  while (true) {
-    const body = { page_size:100 };
+  let pageNum = 0;
+  while (pageNum < 5) {
+    pageNum++;
+    const body = { filter, page_size: 100 };
     if (cursor) body.start_cursor = cursor;
-    const res = await notionAPI('POST', `/databases/${info.id}/query`, body);
+    const res = await notionAPI('POST', `/databases/${stockDbId}/query`, body);
+    if (res.object === 'error') throw new Error(res.message);
     all = all.concat(res.results);
     if (!res.has_more) break;
     cursor = res.next_cursor;
   }
+
   all.forEach(r => {
     const p = r.properties;
     const pattern = p['パターン名']?.select?.name || '';
@@ -516,9 +524,7 @@ async function fetchStockForCat(cat, stockMap) {
     const kubun = p['区分']?.select?.name || '';
     if (!pattern || !size) return;
 
-    // 発注中は倉庫不問で集計（入荷予定本数として加算）
     if (kubun === '発注中') {
-      // 全倉庫キーに発注中を加算（後で各倉庫の realStock に足す）
       const allKey = `${pattern}|${size}|__order__`;
       if (!stockMap[allKey]) stockMap[allKey] = 0;
       stockMap[allKey] += qty;
@@ -528,11 +534,10 @@ async function fetchStockForCat(cat, stockMap) {
     const warehouse = p[info.wField]?.select?.name || '';
     if (!warehouse) return;
     const key = `${pattern}|${size}|${warehouse}`;
-    if (!stockMap[key]) stockMap[key] = {actual:0, prepQty:0};
+    if (!stockMap[key]) stockMap[key] = { actual: 0, prepQty: 0 };
 
     const sign = KUBUN_SIGN[kubun] || 0;
     stockMap[key].actual += sign * qty;
-    // 準備中の本数を別途記録（表示用）
     if (kubun === '準備') stockMap[key].prepQty += qty;
   });
 }

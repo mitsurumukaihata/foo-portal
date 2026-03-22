@@ -192,6 +192,8 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .file-dl-btn { background:var(--accent); color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap; }
 .file-dl-btn:active { opacity:0.8; }
 .file-dl-btn:disabled { opacity:0.4; cursor:default; }
+.file-dl-btn.done { background:var(--green); }
+.file-dl-btn.done:disabled { opacity:1; }
 
 /* ── 認可エラー ── */
 .auth-error { display:none; text-align:center; padding:60px 20px; }
@@ -1204,6 +1206,7 @@ async function showMaterialDetail(pageId) {
       html += `<div class="detail-section">
         <div class="detail-section-title">ファイル一覧</div>
         <div id="detail-file-list" class="file-list"><div class="loading"></div></div>
+        <button class="detail-btn primary" id="bulk-save-btn" style="margin-top:10px;display:none;" onclick="bulkSaveToPhotos()">まとめて写真アプリに保存</button>
       </div>`;
     }
 
@@ -1223,7 +1226,9 @@ async function showMaterialDetail(pageId) {
 }
 
 // GAS経由でファイル一覧を取得
+var _currentFileList = [];
 async function loadFileList(folderId) {
+  _currentFileList = [];
   const container = document.getElementById('detail-file-list');
   if (!container) return;
   try {
@@ -1232,18 +1237,25 @@ async function loadFileList(folderId) {
       container.innerHTML = '<div style="font-size:12px;color:var(--muted);">ファイルなし</div>';
       return;
     }
+    _currentFileList = res.files;
     let html = '';
-    res.files.forEach(f => {
+    res.files.forEach((f, idx) => {
       const sizeStr = f.size < 1024 * 1024
         ? Math.round(f.size / 1024) + 'KB'
         : (f.size / (1024 * 1024)).toFixed(1) + 'MB';
       html += `<div class="file-item">
         <div class="file-item-name">${escapeHtml(f.name)}</div>
         <div class="file-item-size">${sizeStr}</div>
-        <button class="file-dl-btn" onclick="downloadFile('${f.id}', '${escapeHtml(f.name).replace(/'/g, "\\'")}', ${f.size})">DL</button>
+        <button class="file-dl-btn" id="dl-btn-${idx}" onclick="downloadFile('${f.id}', '${escapeHtml(f.name).replace(/'/g, "\\'")}', ${f.size}, ${idx})">DL</button>
       </div>`;
     });
     container.innerHTML = html;
+
+    // 2件以上あればまとめて保存ボタン表示
+    const bulkBtn = document.getElementById('bulk-save-btn');
+    if (bulkBtn && res.files.length >= 2) {
+      bulkBtn.style.display = 'block';
+    }
   } catch(err) {
     container.innerHTML = `<div style="font-size:12px;color:var(--red);">読み込みエラー: ${escapeHtml(err.message)}</div>`;
   }
@@ -1266,59 +1278,149 @@ function hideDlProgress() {
   document.getElementById('dl-overlay').classList.remove('show');
 }
 
+// base64をBlobに変換するヘルパー
+function base64ToBlob(base64, mimeType) {
+  const byteChars = atob(base64);
+  const byteArr = new Uint8Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+  return new Blob([byteArr], { type: mimeType || 'application/octet-stream' });
+}
+
+// GASからファイルのbase64を取得
+async function fetchFileBase64(fileId, fileSize, onProgress) {
+  if (fileSize < 4 * 1024 * 1024) {
+    if (onProgress) onProgress(30, 'ダウンロード中...');
+    const res = await gasRequest({ action: 'downloadFile', fileId }, 1);
+    if (onProgress) onProgress(90, '変換中...');
+    return { base64: res.base64, mimeType: res.mimeType, fileName: res.fileName };
+  } else {
+    const dlStart = Date.now();
+    const firstRes = await gasRequest({ action: 'downloadChunk', fileId, chunkIndex: 0 }, 1);
+    let chunks = [firstRes.base64];
+    const total = firstRes.totalChunks;
+    if (onProgress) onProgress(Math.round(100 / total), `1/${total} チャンク`);
+    for (let i = 1; i < total; i++) {
+      const chunkRes = await gasRequest({ action: 'downloadChunk', fileId, chunkIndex: i }, 1);
+      chunks.push(chunkRes.base64);
+      const pct = Math.round(((i + 1) / total) * 90);
+      const elapsed = (Date.now() - dlStart) / 1000;
+      const remaining = elapsed / (i + 1) * (total - i - 1);
+      const remStr = remaining < 60 ? `残り約${Math.ceil(remaining)}秒` : `残り約${Math.ceil(remaining / 60)}分`;
+      if (onProgress) onProgress(pct, `${i + 1}/${total} チャンク · ${remStr}`);
+    }
+    return { base64: chunks.join(''), mimeType: null, fileName: null };
+  }
+}
+
 // GAS経由でファイルをダウンロード（Driveは非公開のまま）
-async function downloadFile(fileId, fileName, fileSize) {
-  const btn = event.target;
+async function downloadFile(fileId, fileName, fileSize, btnIdx) {
+  const btn = typeof btnIdx === 'number' ? document.getElementById('dl-btn-' + btnIdx) : event.target;
   btn.disabled = true;
   btn.textContent = '...';
   showDlProgress(fileName);
-  const dlStart = Date.now();
   try {
-    let base64;
-    if (fileSize < 4 * 1024 * 1024) {
-      updateDlProgress(30, 'ダウンロード中...');
-      const res = await gasRequest({ action: 'downloadFile', fileId }, 1);
-      base64 = res.base64;
-      updateDlProgress(90, '変換中...');
-    } else {
-      // チャンク式ダウンロード
-      const firstRes = await gasRequest({ action: 'downloadChunk', fileId, chunkIndex: 0 }, 1);
-      let chunks = [firstRes.base64];
-      const total = firstRes.totalChunks;
-      const sizeMB = (firstRes.totalSize / (1024 * 1024)).toFixed(1);
-      updateDlProgress(Math.round(100 / total), `1/${total} チャンク · ${sizeMB}MB`);
+    const result = await fetchFileBase64(fileId, fileSize, updateDlProgress);
+    const mimeType = result.mimeType || guessMimeType(fileName);
+    const blob = base64ToBlob(result.base64, mimeType);
 
-      for (let i = 1; i < total; i++) {
-        const chunkRes = await gasRequest({ action: 'downloadChunk', fileId, chunkIndex: i }, 1);
-        chunks.push(chunkRes.base64);
-        const pct = Math.round(((i + 1) / total) * 90);
-        const elapsed = (Date.now() - dlStart) / 1000;
-        const remaining = elapsed / (i + 1) * (total - i - 1);
-        const remStr = remaining < 60 ? `残り約${Math.ceil(remaining)}秒` : `残り約${Math.ceil(remaining / 60)}分`;
-        updateDlProgress(pct, `${i + 1}/${total} チャンク · ${remStr}`);
+    // iPhoneならShare APIで写真アプリに保存可能
+    const file = new File([blob], fileName, { type: mimeType });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      updateDlProgress(95, '保存画面を開いています...');
+      try {
+        await navigator.share({ files: [file] });
+      } catch(shareErr) {
+        // ユーザーがキャンセルした場合 → 通常ダウンロードにフォールバック
+        if (shareErr.name !== 'AbortError') {
+          triggerBrowserDownload(blob, fileName);
+        }
       }
-      base64 = chunks.join('');
-      updateDlProgress(95, '変換中...');
+    } else {
+      triggerBrowserDownload(blob, fileName);
     }
-    // ブラウザでダウンロード
-    const byteChars = atob(base64);
-    const byteArr = new Uint8Array(byteChars.length);
-    for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
-    const blob = new Blob([byteArr]);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = fileName;
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
+
     updateDlProgress(100, '完了！');
-    setTimeout(hideDlProgress, 800);
-    btn.textContent = 'DL';
-    btn.disabled = false;
+    setTimeout(hideDlProgress, 600);
+
+    // ボタンを「完了」に変更
+    btn.textContent = '完了';
+    btn.className = 'file-dl-btn done';
+    btn.disabled = true;
   } catch(err) {
     hideDlProgress();
     btn.textContent = 'DL';
     btn.disabled = false;
     showToast('ダウンロードエラー: ' + err.message, 'error');
+  }
+}
+
+function triggerBrowserDownload(blob, fileName) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fileName;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+function guessMimeType(name) {
+  const ext = name.split('.').pop().toLowerCase();
+  const map = { jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png', gif:'image/gif', webp:'image/webp', heic:'image/heic', mp4:'video/mp4', mov:'video/quicktime', avi:'video/x-msvideo' };
+  return map[ext] || 'application/octet-stream';
+}
+
+// まとめて写真アプリに保存
+async function bulkSaveToPhotos() {
+  const btn = document.getElementById('bulk-save-btn');
+  if (!_currentFileList || _currentFileList.length === 0) return;
+  btn.disabled = true;
+  btn.textContent = 'ダウンロード中...';
+  showDlProgress('まとめてダウンロード');
+
+  try {
+    const files = [];
+    for (let i = 0; i < _currentFileList.length; i++) {
+      const f = _currentFileList[i];
+      updateDlProgress(
+        Math.round(((i) / _currentFileList.length) * 80),
+        `${i + 1}/${_currentFileList.length} ファイル取得中...`
+      );
+      const result = await fetchFileBase64(f.id, f.size, null);
+      const mimeType = result.mimeType || guessMimeType(f.name);
+      const blob = base64ToBlob(result.base64, mimeType);
+      files.push(new File([blob], f.name, { type: mimeType }));
+
+      // 個別DLボタンも完了にする
+      const dlBtn = document.getElementById('dl-btn-' + i);
+      if (dlBtn) { dlBtn.textContent = '完了'; dlBtn.className = 'file-dl-btn done'; dlBtn.disabled = true; }
+    }
+
+    updateDlProgress(90, '保存画面を開いています...');
+
+    // Web Share APIで写真アプリに保存
+    if (navigator.canShare && navigator.canShare({ files })) {
+      try {
+        await navigator.share({ files });
+      } catch(shareErr) {
+        if (shareErr.name !== 'AbortError') {
+          // フォールバック: 個別ダウンロード
+          files.forEach(f => triggerBrowserDownload(f, f.name));
+        }
+      }
+    } else {
+      // Share API非対応 → 個別ダウンロード
+      files.forEach(f => triggerBrowserDownload(f, f.name));
+    }
+
+    updateDlProgress(100, '完了！');
+    setTimeout(hideDlProgress, 600);
+    btn.textContent = '保存完了';
+    btn.className = 'detail-btn primary done';
+    btn.style.background = 'var(--green)';
+  } catch(err) {
+    hideDlProgress();
+    btn.disabled = false;
+    btn.textContent = 'まとめて写真アプリに保存';
+    showToast('一括ダウンロードエラー: ' + err.message, 'error');
   }
 }
 

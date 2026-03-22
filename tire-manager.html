@@ -324,11 +324,6 @@ const DB_MAP = {
 
 const WAREHOUSES = ['五日市倉庫','志和倉庫','海田倉庫'];
 
-const KUBUN_TO_SHORIYTYPE = {
-  '入庫':'入庫','移動入庫':'入庫','出庫':'出庫','準備':'出庫','移動出庫':'出庫',
-  '返品（倉庫へ）':'返品入庫','返品（メーカーへ）':'出庫','返品':'返品入庫'
-};
-
 const KUBUN_SIGN = {
   '入庫':1,'移動入庫':1,'返品（倉庫へ）':1,'返品':1,
   '出庫':-1,'準備':-1,'移動出庫':-1,'返品（メーカーへ）':-1,
@@ -816,7 +811,7 @@ async function submitPrepToShukko(pageId, catKey) {
   const wField = db.warehouseField;
   const warehouse = document.getElementById('prep-warehouse')?.value || '';
   try {
-    const props = { '区分': { select: { name: '出庫' } }, '処理タイプ': { select: { name: '出庫' } }, '数量': { number: qty } };
+    const props = { '区分': { select: { name: '出庫' } }, '数量': { number: qty } };
     props[wField] = { select: { name: warehouse } };
     if (dest) props['出庫先'] = { rich_text: [{ text: { content: dest } }] };
     await notionAPI('PATCH', `/pages/${pageId}`, { properties: props });
@@ -1147,7 +1142,7 @@ async function notionAPI(method, path, body) {
   }
 }
 
-function getNow() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+
 function buildTitle(s) { const db = DB_MAP[state.cat]; const k = state.isMove ? '移動' : state.kubun; const w = state.isMove ? `${state.moveDir.from}→${state.moveDir.to}` : state.warehouse; return `${s} ${state.pattern} ${k} ${w}`; }
 
 async function createRecord(kubun, warehouse) {
@@ -1159,8 +1154,6 @@ async function createRecord(kubun, warehouse) {
     'パターン名': { select: { name: state.pattern } },
     '数量': { number: state.qty },
     '区分': { select: { name: kubun } },
-    '処理タイプ': { select: { name: KUBUN_TO_SHORIYTYPE[kubun] || '出庫' } },
-    '年月': { rich_text: [{ text: { content: getNow() } }] },
     '作成者': { select: { name: (USER_NAME || '').replace(/ /g, '　') } },
   };
   props[wField] = { select: { name: warehouse } };
@@ -1400,11 +1393,9 @@ async function saveHistoryEdit(pageId, idx) {
   btn.disabled = true; btn.textContent = '保存中...';
 
   try {
-    const processType = KUBUN_TO_SHORIYTYPE[kubun] || kubun;
     const props = {
       '区分': { select: { name: kubun } },
       '数量': { number: qty },
-      '処理タイプ': { select: { name: processType } },
     };
     // メモフィールド更新（リッチテキストの場合）
     const r = historyRecords[idx];

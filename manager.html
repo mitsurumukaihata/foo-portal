@@ -421,7 +421,8 @@ async function updateNavBadge() {
     });
     let count = 0;
     for (const p of res) {
-      if ((p.created_by?.name || '') !== currentUserName) count++;
+      const poster = p.properties['投稿者']?.select?.name || '';
+      if (poster !== currentUserName) count++;
     }
     if (count > 0) {
       el.textContent = count > 9 ? '9+' : count;
@@ -505,10 +506,13 @@ async function loadComm() {
       const importance = getPropValue(p, '重要度');
       const content = getPropValue(p, '内容');
       const rel = getPropValue(p, '関係者');
-      const author = p.created_by?.name || '';
+      const author = getPropValue(p, '投稿者') || '';
       const confirmed = getPropValue(p, '確認者') || [];
+      const isAuthor = currentUserName && author === currentUserName;
+      const needConfirm = !isAuthor && currentUserName && !confirmed.includes(currentUserName);
       const card = document.createElement('div');
       card.className = 'card';
+      card.style.position = 'relative';
       let tags = '';
       if (kind) tags += '<span class="tag tag-type">' + escapeHtml(kind) + '</span>';
       if (importance) {
@@ -522,14 +526,16 @@ async function loadComm() {
         const scs = status === '対応中' ? 'status-active' : status === '検討中' ? 'status-considering' : status === '会議で報告' ? 'status-meeting' : 'status-resolved';
         statusBadge = '<span class="status-badge ' + scs + '">' + escapeHtml(status) + '</span>';
       }
-      const authorHtml = author ? '<span style="font-size:10px;color:var(--muted);">by ' + escapeHtml(author) + '</span>' : '';
+      const authorHtml = author ? '<span style="font-size:10px;color:var(--accent);font-weight:600;">' + escapeHtml(author) + '</span>' : '';
+      const unreadDot = needConfirm ? '<span style="position:absolute;top:8px;right:8px;width:10px;height:10px;background:var(--red);border-radius:50%;"></span>' : '';
       let confirmedHtml = '';
       if (confirmed.length > 0) {
         confirmedHtml = '<div style="margin-top:6px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;"><span style="font-size:10px;color:var(--green);">✓</span>';
         for (const c of confirmed) confirmedHtml += '<span style="font-size:10px;color:var(--green);font-weight:600;">' + escapeHtml(c) + '</span>';
         confirmedHtml += '</div>';
       }
-      card.innerHTML = '<div class="card-header"><div><div class="card-title">' + escapeHtml(title) + '</div>' + authorHtml + '</div><div>' + statusBadge + '</div></div>' +
+      card.innerHTML = unreadDot +
+        '<div class="card-header"><div><div class="card-title">' + escapeHtml(title) + '</div>' + authorHtml + '</div><div>' + statusBadge + '</div></div>' +
         '<div class="card-tags">' + tags + '</div>' +
         '<div class="card-content">' + escapeHtml(content || '') + '</div>' +
         confirmedHtml +
@@ -554,7 +560,7 @@ function showCommDetail(page) {
   const rel = getPropValue(page, '関係者');
   const phase = getPropValue(page, 'フェーズ');
   const confirmed = getPropValue(page, '確認者') || [];
-  const author = page.created_by?.name || '';
+  const author = getPropValue(page, '投稿者') || '';
   const isAuthor = currentUserName && author && currentUserName === author;
   const alreadyConfirmed = confirmed.includes(currentUserName);
   const det = document.getElementById('detail-content');
@@ -987,7 +993,8 @@ async function submitCommForm() {
         '内容': { rich_text: [{ text: { content: content } }] },
         '関係者': { multi_select: rel },
         'フェーズ': phase ? { select: { name: phase } } : undefined,
-        '状態': { status: { name: '対応中' } }
+        '状態': { status: { name: '対応中' } },
+        '投稿者': currentUserName ? { select: { name: currentUserName } } : undefined
       }
     });
     showToast('追加しました', 'success');

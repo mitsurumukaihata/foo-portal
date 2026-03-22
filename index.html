@@ -1728,7 +1728,8 @@ async function checkBadges(user) {
       let count = 0;
       if (data.results) {
         for (const p of data.results) {
-          if (p.created_by?.name !== userName) count++;
+          const poster = p.properties?.['投稿者']?.select?.name || '';
+          if (poster !== userName) count++;
         }
       }
       if (count > 0) {

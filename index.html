@@ -1920,7 +1920,8 @@ async function loadStaffList() {
       return;
     }
 
-    const MERGED_PAIR = ['部長', 'リーダー'];
+    // 横並びにまとめるグループペア（経理と会長を同じ行に）
+    const MERGED_PAIRS = [['経理', '会長']];
 
     const orderedGroups = GROUP_ORDER.filter(g => grouped[g])
       .concat(Object.keys(grouped).filter(g => !GROUP_ORDER.includes(g)));
@@ -1933,23 +1934,28 @@ async function loadStaffList() {
       const members = grouped[grp];
       if (!members?.length) return;
 
-      const isDisplayOnly = DISPLAY_ONLY_GROUPS.includes(grp);
-
-      if (MERGED_PAIR.includes(grp)) {
-        const pairMembers = MERGED_PAIR.flatMap(g => grouped[g] || []);
+      // マージペアの先頭グループを見つけたらペア全体をレンダリング
+      const mergedSet = MERGED_PAIRS.find(pair => pair.includes(grp));
+      if (mergedSet) {
+        const pairMembers = mergedSet.flatMap(g => (grouped[g] || []).map(m => ({ ...m, grp: g })));
         if (pairMembers.length) {
-          const pairLabel = MERGED_PAIR
+          const pairLabel = mergedSet
             .filter(g => grouped[g]?.length)
             .map(g => GROUP_LABEL[g] || g).join(' · ');
           html += `<div style="grid-column:1/-1;font-size:10px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;padding:6px 2px 2px;margin-top:4px;border-top:0.5px solid var(--border);">${pairLabel}</div>`;
-          pairMembers.forEach(({ name }) => {
-            html += '<button class="staff-btn" onclick="selectStaff(\'' + name + '\')">' + name + '</button>';
+          pairMembers.forEach(({ name, grp: memberGrp }) => {
+            if (DISPLAY_ONLY_GROUPS.includes(memberGrp)) {
+              html += '<button class="staff-btn display-only" disabled>' + name + '</button>';
+            } else {
+              html += '<button class="staff-btn" onclick="selectStaff(\'' + name + '\')">' + name + '</button>';
+            }
           });
-          MERGED_PAIR.forEach(g => rendered.add(g));
+          mergedSet.forEach(g => rendered.add(g));
         }
         return;
       }
 
+      const isDisplayOnly = DISPLAY_ONLY_GROUPS.includes(grp);
       const label = GROUP_LABEL[grp] || grp;
       html += `<div style="grid-column:1/-1;font-size:10px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;padding:6px 2px 2px;margin-top:4px;border-top:0.5px solid var(--border);">${label}</div>`;
       members.forEach(({ name }) => {

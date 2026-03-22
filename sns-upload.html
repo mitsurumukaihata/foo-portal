@@ -139,6 +139,20 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .tag-count { background:rgba(34,197,94,0.15); color:var(--green); }
 .tag-error { background:rgba(239,68,68,0.15); color:var(--red); }
 .tag-members { background:rgba(168,85,247,0.12); color:var(--purple); }
+.resume-banner { display:flex; gap:10px; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); border-radius:10px; padding:12px 14px; margin-bottom:14px; }
+.resume-banner-icon { font-size:20px; flex-shrink:0; }
+.resume-banner-body { flex:1; min-width:0; }
+.resume-banner-title { font-size:13px; font-weight:700; color:var(--yellow); }
+.resume-banner-detail { font-size:11px; color:var(--muted); margin-top:2px; }
+.resume-banner-actions { display:flex; gap:8px; margin-top:8px; }
+.resume-btn { border:none; border-radius:8px; padding:8px 16px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+.resume-btn-go { background:var(--accent); color:#fff; }
+.resume-btn-go:active { opacity:0.7; }
+.resume-btn-cancel { background:var(--s3); color:var(--muted); border:1px solid var(--border); }
+.resume-btn-cancel:active { opacity:0.7; }
+.resume-notice { background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.3); border-radius:10px; padding:12px 14px; margin-bottom:14px; }
+.resume-notice-title { font-size:13px; font-weight:700; color:var(--blue); }
+.resume-notice-files { font-size:12px; color:var(--text); margin-top:4px; word-break:break-all; }
 .error-banner { background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:10px; padding:12px 14px; margin-bottom:12px; }
 .error-banner-title { font-size:12px; font-weight:700; color:var(--red); margin-bottom:4px; }
 .error-banner-item { font-size:11px; color:var(--text); padding:4px 0; border-bottom:1px solid rgba(239,68,68,0.1); }
@@ -436,6 +450,25 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
   </div>
 
   <div class="guide-section">
+    <div class="guide-section-icon">💡</div>
+    <div class="guide-section-title">アップロードの注意点</div>
+    <div class="guide-card">
+      <div class="guide-item">
+        <div class="guide-item-label">途中で戻っても大丈夫</div>
+        <div class="guide-item-value">大きいファイルのアップロード中にページを離れても、<strong>途中から再開</strong>できます。<br>次にこのページを開くと「再開しますか？」と聞かれるので、同じファイルを選び直してください。</div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-item-label">電波が悪い場所では</div>
+        <div class="guide-item-value">アップロードはWi-Fi環境がおすすめです。<br>モバイル回線でも動きますが、大きい動画は時間がかかります。</div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-item-label">1ファイル100MBまで</div>
+        <div class="guide-item-value">100MBを超えるファイルは選択できません。<br>動画が大きすぎる場合はiPhoneの設定で<strong>30fps</strong>にしてください。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="guide-section">
     <div class="guide-section-icon">🚫</div>
     <div class="guide-section-title">NGパターン（これは撮らない！）</div>
     <div class="guide-card guide-card-ng">
@@ -519,6 +552,7 @@ let selectedFiles = [];
 let selectedWeather = null;
 let selectedRating = null;
 let _submitting = false;
+let _resumeState = null; // レジューム用の状態
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // アクセスチェック
@@ -668,40 +702,58 @@ function generateUploadId() {
   return 'up_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
 }
 
-// 大きいファイルのチャンク式アップロード
-async function uploadLargeFile(folderId, file, fileIndex, totalFiles, baseSent) {
-  const buffer = await fileToArrayBuffer(file);
-  const totalChunks = Math.ceil(buffer.byteLength / CHUNK_SIZE);
-  const uploadId = generateUploadId();
+// 大きいファイルのチャンク式アップロード（レジューム対応版は下のuploadLargeFileResumableを使用）
 
-  for (let c = 0; c < totalChunks; c++) {
-    updateProgressStatus(`アップロード中... (${fileIndex + 1}/${totalFiles})`);
-    const chunkEnd = Math.min((c + 1) * CHUNK_SIZE, buffer.byteLength);
-    updateProgressDetail(baseSent + chunkEnd);
-    const chunk = buffer.slice(c * CHUNK_SIZE, chunkEnd);
-    const base64 = arrayBufferToBase64(chunk);
-    await gasRequest({ action: 'uploadChunk', folderId, uploadId, index: c, base64 });
-  }
-  updateProgressStatus('ファイル結合中...');
-  await gasRequest({ action: 'assembleFile', folderId, uploadId, totalChunks, fileName: file.name, mimeType: file.type }, 1);
-}
-
-// Google Drive にアップロード
+// Google Drive にアップロード（レジューム対応）
 async function uploadToGoogleDrive(files, folderName) {
   // 合計サイズ計算 + タイマー開始
   _uploadTotalBytes = files.reduce((sum, f) => sum + f.size, 0);
   _uploadSentBytes = 0;
   _uploadStartTime = Date.now();
 
-  updateProgressStatus('フォルダ作成中...');
+  // レジューム状態があるか確認
+  const resume = _resumeState;
+  let folderId;
+  let startFileIndex = 0;
+  let resumeChunkStart = 0;
 
-  // 1. フォルダ作成
-  const createRes = await gasRequest({ action: 'createFolder', folderName: folderName });
-  const folderId = createRes.folderId;
+  if (resume && resume.folderId) {
+    // レジューム: 既存フォルダを使用
+    folderId = resume.folderId;
+    const doneBefore = resume.completedFileIndexes || [];
+    startFileIndex = doneBefore.length;
+    resumeChunkStart = resume.currentChunkDone || 0;
+    updateProgressStatus(`レジューム: ${startFileIndex}ファイル完了済み、続きから再開...`);
+
+    // 完了済みファイルの分だけ送信済みバイトを進める
+    let alreadySent = 0;
+    for (let i = 0; i < startFileIndex && i < files.length; i++) {
+      alreadySent += files[i].size;
+    }
+    _uploadSentBytes = alreadySent;
+  } else {
+    // 通常: フォルダ新規作成
+    updateProgressStatus('フォルダ作成中...');
+    const createRes = await gasRequest({ action: 'createFolder', folderName: folderName });
+    folderId = createRes.folderId;
+  }
+
+  // レジューム状態をlocalStorageに保存
+  const filesMeta = files.map(f => ({ name: f.name, size: f.size }));
+  saveResumeState({
+    folderId,
+    folderName,
+    files: filesMeta,
+    completedFileIndexes: resume ? (resume.completedFileIndexes || []) : [],
+    currentFileIndex: startFileIndex,
+    currentUploadId: resume ? resume.currentUploadId : null,
+    currentChunkDone: resumeChunkStart,
+    startedAt: resume ? resume.startedAt : Date.now()
+  });
 
   // 2. ファイルを1つずつアップロード（画像は圧縮、大きいファイルはチャンク式）
-  let sentSoFar = 0;
-  for (let i = 0; i < files.length; i++) {
+  let sentSoFar = _uploadSentBytes;
+  for (let i = startFileIndex; i < files.length; i++) {
     let file = files[i];
     const origSize = file.size;
     updateProgressStatus(`処理中... (${i + 1}/${files.length})`);
@@ -714,9 +766,12 @@ async function uploadToGoogleDrive(files, folderName) {
       _uploadTotalBytes = _uploadTotalBytes - origSize + file.size;
     }
 
+    // このファイルのチャンクレジューム開始位置
+    const chunkStart = (i === startFileIndex && resumeChunkStart > 0) ? resumeChunkStart : 0;
+
     if (file.size > 50 * 1024 * 1024) {
-      // 50MB以上はチャンク式
-      await uploadLargeFile(folderId, file, i, files.length, sentSoFar);
+      // 50MB以上はチャンク式（レジューム対応）
+      await uploadLargeFileResumable(folderId, file, i, files.length, sentSoFar, chunkStart);
     } else {
       // 50MB以下は一括送信（動画含む）
       updateProgressStatus(`アップロード中... (${i + 1}/${files.length})`);
@@ -729,16 +784,26 @@ async function uploadToGoogleDrive(files, folderName) {
         mimeType: file.type,
         base64: base64
       }, 3);
+
+      // ファイル完了 → レジューム状態更新
+      const currentState = loadResumeState();
+      if (currentState) {
+        const done = currentState.completedFileIndexes || [];
+        if (!done.includes(i)) done.push(i);
+        saveResumeState({ ...currentState, completedFileIndexes: done, currentFileIndex: i + 1 });
+      }
     }
     sentSoFar += file.size;
     updateProgressDetail(sentSoFar);
   }
 
-  // 3. 完了
+  // 3. 完了 → レジューム状態をクリア
   updateProgressStatus('完了処理中...');
   updateProgressDetail(_uploadTotalBytes);
   await gasRequest({ action: 'finish', folderId: folderId });
-  return folderId; // フォルダIDを返す（URLではなく）
+  clearResumeState();
+  _resumeState = null;
+  return folderId;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -782,6 +847,149 @@ function addUploadError(info) {
 }
 function getUploadErrors() {
   return _uploadErrors;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// アップロード レジューム機能
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const RESUME_KEY = 'foo_upload_resume';
+
+function saveResumeState(state) {
+  try { localStorage.setItem(RESUME_KEY, JSON.stringify(state)); } catch(e) {}
+}
+function loadResumeState() {
+  try {
+    const raw = localStorage.getItem(RESUME_KEY);
+    if (!raw) return null;
+    const state = JSON.parse(raw);
+    // 24時間以上前のものは破棄
+    if (Date.now() - state.startedAt > 24 * 60 * 60 * 1000) {
+      clearResumeState();
+      return null;
+    }
+    return state;
+  } catch(e) { return null; }
+}
+function clearResumeState() {
+  try { localStorage.removeItem(RESUME_KEY); } catch(e) {}
+}
+
+// レジューム用: ファイル名・サイズで同じファイルか判定
+function matchFileToResume(file, savedFile) {
+  return file.name === savedFile.name && file.size === savedFile.size;
+}
+
+// レジュームバナー表示
+function showResumeBanner(state) {
+  const existing = document.getElementById('resume-banner');
+  if (existing) existing.remove();
+
+  const elapsed = Math.round((Date.now() - state.startedAt) / 60000);
+  const completedFiles = state.completedFileIndexes ? state.completedFileIndexes.length : 0;
+  const totalFiles = state.files.length;
+  const banner = document.createElement('div');
+  banner.id = 'resume-banner';
+  banner.className = 'resume-banner';
+  banner.innerHTML = `
+    <div class="resume-banner-icon">⚠️</div>
+    <div class="resume-banner-body">
+      <div class="resume-banner-title">中断されたアップロードがあります</div>
+      <div class="resume-banner-detail">
+        ${escapeHtml(state.folderName)} — ${completedFiles}/${totalFiles}ファイル完了（${elapsed}分前）
+      </div>
+      <div class="resume-banner-actions">
+        <button class="resume-btn resume-btn-go" onclick="startResume()">再開する</button>
+        <button class="resume-btn resume-btn-cancel" onclick="cancelResume()">破棄する</button>
+      </div>
+    </div>
+  `;
+
+  const form = document.getElementById('upload-form');
+  form.parentNode.insertBefore(banner, form);
+}
+
+function hideResumeBanner() {
+  const el = document.getElementById('resume-banner');
+  if (el) el.remove();
+}
+
+// 再開ボタン押下 → ファイル再選択を促す
+function startResume() {
+  const state = loadResumeState();
+  if (!state) { showToast('レジューム情報が見つかりません', 'error'); return; }
+  _resumeState = state;
+
+  // 残りファイル名を表示して再選択を促す
+  const remaining = state.files.filter((f, i) => !(state.completedFileIndexes || []).includes(i));
+  const names = remaining.map(f => f.name).join('、');
+
+  hideResumeBanner();
+
+  const notice = document.createElement('div');
+  notice.id = 'resume-notice';
+  notice.className = 'resume-notice';
+  notice.innerHTML = `
+    <div class="resume-notice-title">以下のファイルを再選択してください</div>
+    <div class="resume-notice-files">${escapeHtml(names)}</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px;">ファイルを選び直してからアップロードボタンを押してください。<br>同じファイルが見つかれば、送信済みチャンクはスキップされます。</div>
+    <button class="resume-btn resume-btn-cancel" style="margin-top:8px;" onclick="cancelResume()">やっぱりやめる</button>
+  `;
+  const form = document.getElementById('upload-form');
+  form.parentNode.insertBefore(notice, form);
+}
+
+function cancelResume() {
+  clearResumeState();
+  _resumeState = null;
+  hideResumeBanner();
+  const notice = document.getElementById('resume-notice');
+  if (notice) notice.remove();
+  showToast('中断されたアップロードを破棄しました', 'default');
+}
+
+// レジューム対応版の大きいファイルアップロード
+async function uploadLargeFileResumable(folderId, file, fileIndex, totalFiles, baseSent, resumeChunkStart) {
+  const buffer = await fileToArrayBuffer(file);
+  const totalChunks = Math.ceil(buffer.byteLength / CHUNK_SIZE);
+  // レジュームの場合は同じuploadIdを使う
+  const uploadId = (_resumeState && _resumeState.currentUploadId) ? _resumeState.currentUploadId : generateUploadId();
+
+  const startChunk = resumeChunkStart || 0;
+
+  // 送信済みチャンク分の進捗を反映
+  if (startChunk > 0) {
+    const alreadySent = Math.min(startChunk * CHUNK_SIZE, buffer.byteLength);
+    updateProgressDetail(baseSent + alreadySent);
+  }
+
+  for (let c = startChunk; c < totalChunks; c++) {
+    updateProgressStatus(`アップロード中... (${fileIndex + 1}/${totalFiles})`);
+    const chunkEnd = Math.min((c + 1) * CHUNK_SIZE, buffer.byteLength);
+    updateProgressDetail(baseSent + chunkEnd);
+    const chunk = buffer.slice(c * CHUNK_SIZE, chunkEnd);
+    const base64 = arrayBufferToBase64(chunk);
+    await gasRequest({ action: 'uploadChunk', folderId, uploadId, index: c, base64 });
+
+    // チャンク完了ごとにレジューム状態を保存
+    saveResumeState({
+      ...(_resumeState || loadResumeState() || {}),
+      folderId,
+      currentFileIndex: fileIndex,
+      currentUploadId: uploadId,
+      currentChunkDone: c + 1,
+      currentTotalChunks: totalChunks
+    });
+  }
+  updateProgressStatus('ファイル結合中...');
+  await gasRequest({ action: 'assembleFile', folderId, uploadId, totalChunks, fileName: file.name, mimeType: file.type }, 1);
+
+  // ファイル完了 → レジューム状態更新
+  const currentState = loadResumeState();
+  if (currentState) {
+    const done = currentState.completedFileIndexes || [];
+    if (!done.includes(fileIndex)) done.push(fileIndex);
+    saveResumeState({ ...currentState, completedFileIndexes: done, currentUploadId: null, currentChunkDone: 0 });
+  }
 }
 
 function toggleTheme() {
@@ -1040,7 +1248,7 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
     document.getElementById('progress-bar').style.display = 'block';
     document.getElementById('submit-btn').disabled = true;
 
-    const folderName = `${workDate}_${currentUserName}`;
+    const folderName = (_resumeState && _resumeState.folderName) ? _resumeState.folderName : `${workDate}_${currentUserName}`;
 
     // Google Drive にアップロード
     let folderId;
@@ -1094,6 +1302,12 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
       _submitting = false;
       return;
     }
+
+    // レジューム状態クリア & UI
+    hideResumeBanner();
+    const resumeNotice = document.getElementById('resume-notice');
+    if (resumeNotice) resumeNotice.remove();
+    _resumeState = null;
 
     // フォームを完全リセット（新しいシートに）
     resetForm();
@@ -1704,6 +1918,12 @@ function init() {
   document.getElementById('app').style.display = 'block';
   document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
   updateThemeButton();
+
+  // レジューム: 未完了のアップロードがあるか確認
+  const resumeCheck = loadResumeState();
+  if (resumeCheck && resumeCheck.folderId) {
+    showResumeBanner(resumeCheck);
+  }
 }
 
 init();

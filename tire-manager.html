@@ -1217,7 +1217,7 @@ async function loadHistory() {
       const db = DB_MAP[key];
       const res = await notionAPI('POST', `/databases/${db.id}/query`, {
         sorts: [{ timestamp: 'created_time', direction: 'descending' }],
-        page_size: 30,
+        page_size: 5,
       });
       (res.results || []).forEach(r => {
         r._catKey = key;
@@ -1229,7 +1229,7 @@ async function loadHistory() {
 
     // 作成日時で降順ソート
     allRecords.sort((a, b) => (b.created_time || '').localeCompare(a.created_time || ''));
-    historyRecords = allRecords.slice(0, 100);
+    historyRecords = allRecords.slice(0, 20);
     historyLoaded = true;
     renderHistory();
   } catch(e) {

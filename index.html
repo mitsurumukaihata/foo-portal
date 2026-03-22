@@ -1637,9 +1637,9 @@ function renderPortalApps(user) {
         </div>
       </div>`;
     } else {
-      const pUrl = user.payslipUrl || '';
-      if (pUrl) {
-        html += `<a class="app-row" href="${pUrl}" target="_blank">
+      const hasMeisai = user.meisaiDbId || user.payslipUrl;
+      if (hasMeisai) {
+        html += `<div class="app-row" onclick="openPayslip()" style="cursor:pointer;">
           <div class="app-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
           </div>
@@ -1648,7 +1648,7 @@ function renderPortalApps(user) {
             <div class="app-sub">自分の明細を確認</div>
           </div>
           <div class="app-arrow">›</div>
-        </a>`;
+        </div>`;
       } else {
         html += `<div class="app-row" style="opacity:0.4;pointer-events:none;">
           <div class="app-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div>
@@ -1866,8 +1866,8 @@ function openPayslip() {
   if (session.meisaiDbId) {
     const params = new URLSearchParams({ name: session.name, db: session.meisaiDbId });
     location.href = 'https://mitsurumukaihata.github.io/foo-portal/payslip.html?' + params;
-  } else if (session.payslipUrl) {
-    window.open(session.payslipUrl, '_blank');
+  } else {
+    alert('明細DB IDが未設定です。管理者に確認してください。');
   }
 }
 

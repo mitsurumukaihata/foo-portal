@@ -535,7 +535,7 @@ async function loadComm() {
       const importance = getPropValue(p, '重要度');
       const content = getPropValue(p, '内容');
       const rel = getPropValue(p, '関係者');
-      const author = getPropValue(p, '投稿者') || '';
+      const author = getPropValue(p, '投稿者') || p.created_by?.name || '';
       const confirmed = getPropValue(p, '確認者') || [];
       const isAuthor = currentUserName && author === currentUserName;
       const needConfirm = !isAuthor && currentUserName && !confirmed.includes(currentUserName);
@@ -593,7 +593,7 @@ async function updateNavBadge() {
     });
     let count = 0;
     for (const p of res) {
-      const poster = p.properties['投稿者']?.select?.name || '';
+      const poster = p.properties['投稿者']?.select?.name || p.created_by?.name || '';
       if (poster !== currentUserName) count++;
     }
     if (count > 0) {
@@ -615,7 +615,7 @@ function showCommDetail(page) {
   const rel = getPropValue(page, '関係者');
   const phase = getPropValue(page, 'フェーズ');
   const confirmed = getPropValue(page, '確認者') || [];
-  const author = getPropValue(page, '投稿者') || '';
+  const author = getPropValue(page, '投稿者') || page.created_by?.name || '';
   const isAuthor = currentUserName && author && currentUserName === author;
   const alreadyConfirmed = confirmed.includes(currentUserName);
   const det = document.getElementById('detail-content');

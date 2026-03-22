@@ -349,8 +349,8 @@ const DB = {
 // ★ Google Apps Script のデプロイURL をここに貼り付け ★
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxjPCYkdIg4Nay3mXLJAo8PEBf0VQwGr0KC1kJUUyr1j1jf4_NlzLEGhExGv1xFGS7X/exec';
 
-const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
-const CHUNK_SIZE = 1.5 * 1024 * 1024;   // 1.5MB per chunk
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+const CHUNK_SIZE = 1.5 * 1024 * 1024;    // 1.5MB per chunk
 const IMAGE_MAX_PX = 1600;
 const IMAGE_QUALITY = 0.75;
 
@@ -641,7 +641,7 @@ document.getElementById('file-input').addEventListener('change', (e) => {
   // サイズチェック
   const oversized = selectedFiles.filter(f => f.size > MAX_FILE_SIZE);
   if (oversized.length > 0) {
-    showToast(`25MB以上のファイルは送れません（${oversized.length}件）`, 'error');
+    showToast(`100MB以上のファイルは送れません（${oversized.length}件）`, 'error');
     selectedFiles = selectedFiles.filter(f => f.size <= MAX_FILE_SIZE);
   }
 

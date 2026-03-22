@@ -425,7 +425,7 @@ function renderCommFilters() {
     { id: 'all', label: '全て' },
     { id: 'active', label: '対応中' },
     { id: 'considering', label: '検討中' },
-    { id: 'meeting', label: '次回会議' }
+    { id: 'meeting', label: '会議で報告' }
   ];
   for (const f of filters) {
     const chip = document.createElement('button');
@@ -443,16 +443,16 @@ async function loadComm() {
   try {
     const filter = {};
     if (currentFilter === 'active') {
-      filter.filter = { property: '状態', select: { equals: '対応中' } };
+      filter.filter = { property: '状態', status: { equals: '対応中' } };
     } else if (currentFilter === 'considering') {
-      filter.filter = { property: '状態', select: { equals: '検討中' } };
+      filter.filter = { property: '状態', status: { equals: '検討中' } };
     } else if (currentFilter === 'meeting') {
-      filter.filter = { property: '状態', select: { equals: '次回会議で報告' } };
+      filter.filter = { property: '状態', status: { equals: '会議で報告' } };
     } else {
       filter.filter = {
         and: [
-          { property: '状態', select: { does_not_equal: '解決' } },
-          { property: '状態', select: { does_not_equal: 'マニュアル反映済' } }
+          { property: '状態', status: { does_not_equal: '解決' } },
+          { property: '状態', status: { does_not_equal: 'マニュアル反映済' } }
         ]
       };
     }
@@ -482,7 +482,7 @@ async function loadComm() {
       if (Array.isArray(rel)) for (const r of rel) relTags += '<span class="tag tag-status">' + escapeHtml(r) + '</span>';
       let statusBadge = '';
       if (status) {
-        const scs = status === '対応中' ? 'status-active' : status === '検討中' ? 'status-considering' : status === '次回会議で報告' ? 'status-meeting' : 'status-resolved';
+        const scs = status === '対応中' ? 'status-active' : status === '検討中' ? 'status-considering' : status === '会議で報告' ? 'status-meeting' : 'status-resolved';
         statusBadge = '<span class="status-badge ' + scs + '">' + escapeHtml(status) + '</span>';
       }
       card.innerHTML = '<div class="card-header"><div><div class="card-title">' + escapeHtml(title) + '</div></div><div>' + statusBadge + '</div></div>' +
@@ -521,7 +521,7 @@ function showCommDetail(page) {
     '<div class="detail-buttons">' +
     '<button class="detail-btn primary" onclick="updateCommStatus(\'対応中\')">対応中</button>' +
     '<button class="detail-btn primary" onclick="updateCommStatus(\'検討中\')">検討中</button>' +
-    '<button class="detail-btn" onclick="updateCommStatus(\'次回会議で報告\')">次回会議で報告</button>' +
+    '<button class="detail-btn" onclick="updateCommStatus(\'会議で報告\')">会議で報告</button>' +
     '<button class="detail-btn" onclick="updateCommStatus(\'解決\')">解決</button>' +
     '<button class="detail-btn" onclick="updateCommStatus(\'マニュアル反映済\')">マニュアル反映済</button>' +
     '</div>';
@@ -533,7 +533,7 @@ async function updateCommStatus(status) {
   if (!detailData) return;
   try {
     await notionAPI('PATCH', `/pages/${detailData.id}`, {
-      properties: { '状態': { select: { name: status } } }
+      properties: { '状態': { status: { name: status } } }
     });
     showToast('更新しました', 'success');
     closeDetail();
@@ -712,7 +712,7 @@ async function updateTaskStatus(status) {
   if (!detailData) return;
   try {
     await notionAPI('PATCH', `/pages/${detailData.id}`, {
-      properties: { 'ステータス': { select: { name: status } } }
+      properties: { 'ステータス': { status: { name: status } } }
     });
     showToast('更新しました', 'success');
     closeDetail();
@@ -835,7 +835,7 @@ function showAddForm() {
       '<div class="form-group"><label class="form-label">重要度</label><select class="form-select" id="form-comm-importance"><option value="">選択</option><option>高</option><option>中</option><option>低</option></select></div>' +
       '<div class="form-group"><label class="form-label">内容</label><textarea class="form-textarea" id="form-comm-content" placeholder=""></textarea></div>' +
       '<div class="form-group"><label class="form-label">関係者</label><input class="form-input" id="form-comm-rel" placeholder="カンマ区切り"></div>' +
-      '<div class="form-group"><label class="form-label">フェーズ</label><input class="form-input" id="form-comm-phase" placeholder=""></div>' +
+      '<div class="form-group"><label class="form-label">フェーズ</label><select class="form-select" id="form-comm-phase"><option value="">選択</option><option>フェーズ1</option><option>フェーズ2</option><option>将来検討</option></select></div>' +
       '<button class="form-btn" onclick="submitCommForm()">追加</button>' +
       '<button class="form-btn-cancel" onclick="closeForm()">キャンセル</button>';
   } else if (currentTab === 'meeting') {
@@ -903,8 +903,8 @@ async function submitCommForm() {
         '重要度': { select: { name: importance || '中' } },
         '内容': { rich_text: [{ text: { content: content } }] },
         '関係者': { multi_select: rel },
-        'フェーズ': { rich_text: [{ text: { content: phase } }] },
-        '状態': { select: { name: '対応中' } }
+        'フェーズ': phase ? { select: { name: phase } } : undefined,
+        '状態': { status: { name: '対応中' } }
       }
     });
     showToast('追加しました', 'success');
@@ -974,7 +974,7 @@ async function submitTaskForm() {
         '期日': due ? { date: { start: due } } : undefined,
         '説明': { rich_text: [{ text: { content: desc } }] },
         '会話元': { multi_select: srcs },
-        'ステータス': { select: { name: '未着手' } }
+        'ステータス': { status: { name: '未着手' } }
       }
     });
     showToast('追加しました', 'success');

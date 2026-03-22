@@ -286,8 +286,8 @@ const MTG_DB = {
 };
 
 const MSG_PAGES = [
-  { id: '306a695f8e888056aaf2c929c097beab', icon: '📘', title: '代表としての思い', date: '2026.2.13' },
-  { id: '2e0a695f8e8880cd802ec1ba146afbe0', icon: '📕', title: '役割任命書（現場部長）', date: '2026.1.6' },
+  { key: 'omoi', icon: '📘', title: '代表としての思い', date: '2026.2.13' },
+  { key: 'ninmei', icon: '📕', title: '役割任命書（現場部長）', date: '2026.1.6' },
 ];
 
 let currentTab = 'comm';
@@ -985,7 +985,108 @@ async function submitTaskForm() {
   }
 }
 
-/* ── 社長の思い ── */
+/* ── 社長の思い（静的コンテンツ） ── */
+const MSG_CONTENT = {};
+MSG_CONTENT['omoi'] = '<h1>西地区リーダー任命にあたって</h1>' +
+'<p style="color:var(--muted)">2026.2.13 ─ 成長期待＋体制構築版</p><hr>' +
+'<p>今回、西地区リーダーをお願いするのは、<br>単に段取りを任せたいからではありません。</p>' +
+'<p>私は、<br>あなたに <strong>「体制を作る視点」を持ってほしい</strong> と思っています。</p><hr>' +
+'<h2>■ 繁忙期の本質</h2>' +
+'<p>繁忙期は、必ず想定外が起きます。</p>' +
+'<ul><li>備品不足</li><li>車両トラブル</li><li>固着ナットで想定時間超過</li><li>サイズ違い持参・本数違い</li></ul>' +
+'<p>これらは「問題」ではありません。<br><strong>準備不足が問題</strong>です。</p><hr>' +
+'<h2>■ 作りたい環境</h2>' +
+'<p>私は、</p>' +
+'<ul><li>備品は「必要分があるのが当然」</li><li>工具は「キレイに揃っていて当然」</li><li>出張車は「整備済みが当然」</li><li>在庫は「把握できていて当然」</li></ul>' +
+'<p>という状態を、<br><span class="highlight-red"><strong>特別な努力なしで維持できる環境</strong></span>を作りたい。</p>' +
+'<p>その環境づくりを、<br>あなたと一緒に作っていきたいと考えています。</p><hr>' +
+'<h2>■ リーダーに期待する視点</h2>' +
+'<h3>① 事後対応ではなく事前準備</h3>' +
+'<p>問題が起きてから動くのではなく、<br>起きない構造を作る。</p><hr>' +
+'<h3>② 個人能力ではなく仕組み</h3>' +
+'<p>「あの人がいるから回る」ではなく、<br>誰でも回る体制。</p><hr>' +
+'<h3>③ 在庫・備品の"当然化"</h3>' +
+'<ul><li>消耗品の基準数量を決める</li><li>不足の兆候を拾う</li><li>繁忙期前に必ず点検する</li></ul>' +
+'<p>"気づいた人がやる"から<br>"決められた仕組みで回る"へ。</p><hr>' +
+'<h3>④ 想定トラブルの事前共有</h3>' +
+'<p>繁忙期前に、</p>' +
+'<ul><li>起こり得るトラブルの洗い出し</li><li>優先順位の整理</li><li>判断基準の共有</li></ul>' +
+'<p>ここまで準備できれば、<br>繁忙期は半分勝ちです。</p><hr>' +
+'<h2>■ 閑散期の意味</h2>' +
+'<p>閑散期は休みではありません。</p>' +
+'<ul><li>顧客への点検回り</li><li>マニュアル更新</li><li>機械整備</li><li>作業動線の見直し</li><li>新人の訓練</li><li>備品基準の確認</li></ul>' +
+'<p><strong>整える時間</strong>です。<br>ここで整えたものが、<br>繁忙期の安定を作ります。</p><hr>' +
+'<h2>■ あなたに期待していること</h2>' +
+'<ul><li>課題を拾う目</li><li>不安を言語化する力</li><li>先回りする思考</li><li>年齢を超えて信頼される姿勢</li></ul>' +
+'<p>完璧な判断ではなく、<br>「現場を安定させようとする視点」<br>を見ています。</p><hr>' +
+'<h2>■ 権限と責任</h2>' +
+'<p>最終責任は私と現場部長が持ちます。<br>あなたに求めるのは、</p>' +
+'<ul><li>独断ではなく共有</li><li>隠さず報告</li><li>改善を提案する姿勢</li></ul><hr>' +
+'<h2>■ これは昇格試験ではない</h2>' +
+'<p>交代制は競争ではありません。<br>それぞれの強みと適性を確認し、<br>会社として最適な形を探るための期間です。</p><hr>' +
+'<h2>■ 最後に</h2>' +
+'<p>私は、<br>"トラブルに強い現場"ではなく<br>"トラブルが起きにくい現場"<br>を作りたい。</p>' +
+'<p>その入口を、<br>あなたと一緒に作りたいと考えています。</p>' +
+'<p><strong>挑戦してください。</strong></p>';
+
+MSG_CONTENT['ninmei'] = '<h1>役割任命書（フェーズ1：試運転段階）</h1>' +
+'<p style="color:var(--muted)">現場部長 ＝ Field Operations Manager</p>' +
+'<p><strong>作成日：2026年1月6日</strong><br><strong>任命日：2026年1月7日</strong><br><strong>試行期間：2026年1月7日 ～ 2026年3月6日（約2か月）</strong></p><hr>' +
+'<h2>1．本任命の目的</h2>' +
+'<p>本任命は、<br>当社における<strong>現場・出張作業の判断、教育、相談、作業標準化を進め、<br>現場運営の再現性と安定性を高めること</strong>を目的とする。</p>' +
+'<p>役職を設ける目的は、上下関係や序列を作ることではなく、<br><span class="highlight-orange"><strong>判断・教育・作業工程・メンテナンスの流れを整理し、<br>誰でも同じ品質で動ける状態を作ること</strong></span>にある。</p>' +
+'<p>本役職は試運転的な位置づけとし、<br>決定権および役割は段階的に見直すものとする。</p><hr>' +
+'<h2>2．任命内容</h2>' +
+'<p>下記のとおり、<br><span class="highlight-blue"><strong>大田　健　を【現場部長】に任命する。</strong></span></p><hr>' +
+'<h2>3．役割および責任範囲（フェーズ1）</h2>' +
+'<h3>（1）現場・出張作業に関する判断（協議・確立段階）</h3>' +
+'<ul>' +
+'<li>当日の人員配置および現場割り振りについて、<br><span class="highlight-orange"><strong>社長と相談・共有しながら判断の基準を整理する</strong></span></li>' +
+'<li>出張作業の段取り・順序・進め方について、<br><span class="highlight-orange"><strong>実務を通じて最適な判断パターンを確立していく</strong></span></li>' +
+'<li>作業工程・作業手順について、<br><span class="highlight-orange"><strong>判断内容を共有し、共通ルールとして整理する</strong></span></li>' +
+'<li>現場で発生した課題・トラブルについて、<br><span class="highlight-orange"><strong>対応内容と判断理由を整理・共有する</strong></span></li>' +
+'</ul>' +
+'<p>※ フェーズ1では、<br><span class="highlight-orange"><strong>判断そのものより「判断の考え方」を社長とすり合わせていくことを重視する。</strong></span><br>※ 上記判断は、原則として <strong>事後報告</strong> とする。</p><hr>' +
+'<h3>（2）新人・若手社員の教育・育成</h3>' +
+'<p>本役職者は、<br><strong>新人および若手社員の教育・育成の中心的役割</strong>を担う。</p>' +
+'<ul><li>タイヤ交換作業・出張作業の基本指導</li><li>作業の考え方・安全意識の共有</li><li>分からないことを相談しやすい環境づくり</li><li>一人で現場に出られるまでの段階的フォロー</li></ul>' +
+'<p>教育は、命令や叱責ではなく、<br><span class="highlight-orange"><strong>理解と信頼を積み重ねる指導</strong></span>を基本とする。</p><hr>' +
+'<h3>（3）相談・判断の一次窓口</h3>' +
+'<ul><li>日々の現場判断に関する一次相談窓口となる</li><li>年齢・勤続年数に関係なく、<br><span class="highlight-orange"><strong>誰もが安心して相談できる存在</strong></span>であることを求める</li></ul><hr>' +
+'<h3>（4）車両・機械整備に関する注文・発注権（フェーズ1）</h3>' +
+'<p>本役職者は、<br><strong>現場および出張作業を止めないことを目的として、<br>以下の範囲で車両・機械整備に関する注文・発注を行うことができる。</strong></p>' +
+'<h3>【単独で判断・発注してよいもの（事後報告）】</h3>' +
+'<ul><li>作業車両・サービスカーの消耗品交換に伴う部品発注（オイル、フィルター、電球、ベルト類 等）</li><li>タイヤ交換作業に使用する機械・工具の消耗品、軽微な部品</li><li>故障・不具合時の応急対応としての部品手配</li><li>現場作業継続に不可欠な緊急発注</li></ul>' +
+'<p>※ 発注は <span class="highlight-orange"><strong>現場を止めないための対応</strong></span> を目的とする。</p><hr>' +
+'<h3>【条件付きで判断・発注できるもの】</h3>' +
+'<ul><li>過去に実績のある同等内容の修理・整備</li><li>内容が明確で、常識的な範囲の少額整備</li></ul>' +
+'<p>※ 発注後、<span class="highlight-orange"><strong>速やかに役員へ内容を共有・報告</strong></span>すること。</p><hr>' +
+'<h3>【役員判断が必要なもの】</h3>' +
+'<ul><li>高額な修理・大規模整備</li><li>新規設備・高額工具・機械の導入</li><li>車両更新・設備更新</li><li>定期契約・保守契約の締結</li><li>業務範囲・作業能力に影響する整備・投資</li></ul><hr>' +
+'<h3>（5）作業工程・メンテナンスに関するマニュアル作成</h3>' +
+'<p>本役職者は、<br><span class="highlight-orange"><strong>現場実務を基にした作業工程および<br>機械・車両メンテナンスに関するマニュアル作成を担当</strong></span>する。</p>' +
+'<h3>【対象】</h3>' +
+'<ul><li>タイヤ交換作業の基本工程</li><li>出張作業における準備・搬入・設置・撤収手順</li><li>作業車両・サービスカーの日常点検・定期点検項目</li><li>タイヤ交換機械・工具の点検方法・使用上の注意</li></ul>' +
+'<h3>【作成方針】</h3>' +
+'<ul><li>完成度より <span class="highlight-orange"><strong>使えること</strong></span> を優先する</li><li>「作る → 使う → 直す」を繰り返す</li><li>文章は最小限とし、写真・箇条書きを中心とする</li><li>新人が読んで動けるかを基準とする</li></ul>' +
+'<h3>【役割分担】</h3>' +
+'<ul><li>マニュアル叩き台作成：代表・現場部長</li><li>内容確認・最終判断：代表</li><li>運用・改善フィードバック：現場全員</li></ul><hr>' +
+'<h3>（6）マニュアル運用および改善責任</h3>' +
+'<ul><li>作成したマニュアルは <strong>新人教育および現場指導の基準</strong> とする</li><li>現場で不備・改善点が出た場合は随時見直す</li><li>マニュアルを守らせることだけではなく、<strong>改善し続けること</strong> を目的とする</li></ul><hr>' +
+'<h2>4．本任命における制限事項（フェーズ1）</h2>' +
+'<p>以下の事項については、<br><span class="highlight-orange"><strong>役員（代表取締役）の事前判断または承認を必要</strong></span><strong>とする。</strong></p>' +
+'<ul><li>価格・工賃・契約条件の変更</li><li>人事評価・昇給・処遇・懲戒に関する判断</li><li>高額な設備投資・車両更新</li><li>社外に対する正式な条件提示</li><li>会社方針および事業運営に影響する判断全般</li></ul><hr>' +
+'<h2>5．評価および見直し</h2>' +
+'<p>試行期間中は、以下を中心に確認を行う。</p>' +
+'<ul><li>現場・出張作業が滞りなく回っているか</li><li>新人・若手の理解度および定着状況</li><li>マニュアルが実際に使われているか</li><li>現場トラブルや判断の迷いが減っているか</li><li>代表の現場判断負荷が軽減されているか</li></ul>' +
+'<p>試行期間終了時に、<br>役割・裁量・任命内容を総合的に見直す。</p><hr>' +
+'<h2>6．役職の考え方（社内共通認識）</h2>' +
+'<p>本役職は、<br>誰かを偉くするためのものではない。</p>' +
+'<ul><li>現場判断を一本化するため</li><li>教育・相談の窓口を明確にするため</li><li>誰でも同じ品質で仕事ができる状態を作るため</li></ul>' +
+'<p>に設ける<strong>役割</strong>である。</p>' +
+'<p>当社は、<br><span class="highlight-orange"><strong>役職に人を当てるのではなく、役割に人を当てる</strong></span><br>ことを基本方針とする。</p><hr>' +
+'<p><strong>代表取締役　　向畑　充</strong><br><strong>任命者　　　 大田　健</strong></p>';
+
 function loadMessageList() {
   const list = document.getElementById('message-list');
   list.innerHTML = '';
@@ -995,77 +1096,15 @@ function loadMessageList() {
     card.innerHTML = '<div class="msg-page-icon">' + pg.icon + '</div>' +
       '<div class="msg-page-title">' + escapeHtml(pg.title) + '</div>' +
       '<div class="msg-page-date">' + escapeHtml(pg.date) + '</div>';
-    card.onclick = () => loadMessagePage(pg);
+    card.onclick = () => showMessagePage(pg.key);
     list.appendChild(card);
   }
 }
 
-async function loadMessagePage(pg) {
+function showMessagePage(key) {
   const list = document.getElementById('message-list');
-  list.innerHTML = '<button class="msg-back-btn" onclick="loadMessageList()">← 一覧に戻る</button><div class="loading"></div>';
-  try {
-    let allBlocks = [], cursor = null;
-    while (true) {
-      let url = '/blocks/' + pg.id + '/children?page_size=100';
-      if (cursor) url += '&start_cursor=' + cursor;
-      const res = await notionAPI('GET', url);
-      allBlocks = allBlocks.concat(res.results || []);
-      if (!res.has_more) break;
-      cursor = res.next_cursor;
-    }
-    let html = '<button class="msg-back-btn" onclick="loadMessageList()">← 一覧に戻る</button>';
-    html += '<div class="msg-body">';
-    html += '<h1>' + pg.icon + ' ' + escapeHtml(pg.title) + '</h1>';
-    for (const b of allBlocks) {
-      html += renderBlock(b);
-    }
-    html += '</div>';
-    list.innerHTML = html;
-  } catch(e) {
-    list.innerHTML = '<button class="msg-back-btn" onclick="loadMessageList()">← 一覧に戻る</button>' +
-      '<div class="empty-state">' + escapeHtml(e.message) + '<br><button style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px 12px;margin-top:12px;cursor:pointer;font-size:12px;font-weight:600;" onclick="loadMessagePage(' + JSON.stringify(pg).replace(/"/g,'&quot;') + ')">再試行</button></div>';
-  }
-}
-
-function renderBlock(block) {
-  const type = block.type;
-  if (type === 'heading_1') return '<h1>' + richTextToHtml(block.heading_1.rich_text) + '</h1>';
-  if (type === 'heading_2') return '<h2>' + richTextToHtml(block.heading_2.rich_text) + '</h2>';
-  if (type === 'heading_3') return '<h3>' + richTextToHtml(block.heading_3.rich_text) + '</h3>';
-  if (type === 'paragraph') {
-    const txt = richTextToHtml(block.paragraph.rich_text);
-    return txt ? '<p>' + txt + '</p>' : '<p>&nbsp;</p>';
-  }
-  if (type === 'bulleted_list_item') return '<ul><li>' + richTextToHtml(block.bulleted_list_item.rich_text) + '</li></ul>';
-  if (type === 'numbered_list_item') return '<ol><li>' + richTextToHtml(block.numbered_list_item.rich_text) + '</li></ol>';
-  if (type === 'divider') return '<hr>';
-  if (type === 'to_do') {
-    const checked = block.to_do.checked ? '☑' : '☐';
-    return '<p>' + checked + ' ' + richTextToHtml(block.to_do.rich_text) + '</p>';
-  }
-  if (type === 'callout') return '<div style="background:var(--s3);border-radius:10px;padding:12px 14px;margin:8px 0;font-size:13px;line-height:1.8;">' + richTextToHtml(block.callout.rich_text) + '</div>';
-  if (type === 'quote') return '<div style="border-left:3px solid var(--accent);padding-left:12px;margin:8px 0;font-size:13px;line-height:1.8;color:var(--muted);">' + richTextToHtml(block.quote.rich_text) + '</div>';
-  return '';
-}
-
-function richTextToHtml(richText) {
-  if (!richText || !richText.length) return '';
-  return richText.map(t => {
-    let text = escapeHtml(t.plain_text);
-    if (t.annotations) {
-      if (t.annotations.bold) text = '<strong>' + text + '</strong>';
-      if (t.annotations.italic) text = '<em>' + text + '</em>';
-      if (t.annotations.strikethrough) text = '<del>' + text + '</del>';
-      if (t.annotations.underline) text = '<u>' + text + '</u>';
-      if (t.annotations.color && t.annotations.color !== 'default') {
-        const c = t.annotations.color;
-        if (c === 'red' || c === 'red_background') text = '<span class="highlight-red">' + text + '</span>';
-        else if (c === 'orange' || c === 'orange_background') text = '<span class="highlight-orange">' + text + '</span>';
-        else if (c === 'blue' || c === 'blue_background') text = '<span class="highlight-blue">' + text + '</span>';
-      }
-    }
-    return text;
-  }).join('');
+  list.innerHTML = '<button class="msg-back-btn" onclick="loadMessageList()">← 一覧に戻る</button>' +
+    '<div class="msg-body">' + MSG_CONTENT[key] + '</div>';
 }
 
 function init() {

@@ -120,6 +120,18 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .tag-status { background:rgba(168,85,247,0.15); color:var(--purple); }
 .tag-count { background:rgba(34,197,94,0.15); color:var(--green); }
 
+/* ── 撮影ガイド ── */
+.guide-section { margin-bottom:20px; }
+.guide-section-icon { font-size:28px; margin-bottom:4px; }
+.guide-section-title { font-size:15px; font-weight:700; color:var(--text); margin-bottom:10px; }
+.guide-card { background:var(--s2); border:1px solid var(--border); border-radius:12px; padding:14px; }
+.guide-card-ng { border-color:rgba(239,68,68,0.3); background:rgba(239,68,68,0.05); }
+.guide-item { padding:10px 0; border-bottom:1px solid var(--border); }
+.guide-item:last-child { border-bottom:none; }
+.guide-item-label { font-size:11px; font-weight:700; color:var(--accent); margin-bottom:4px; }
+.guide-item-value { font-size:13px; color:var(--text); line-height:1.8; }
+.guide-ng-badge { display:inline-block; background:var(--red); color:#fff; font-size:10px; font-weight:700; padding:2px 8px; border-radius:4px; margin-bottom:4px; }
+
 /* ── 詳細パネル ── */
 .detail-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:90; }
 .detail-overlay.show { display:block; }
@@ -211,6 +223,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 <div class="nav">
   <button class="nav-btn active" data-tab="upload">アップロード</button>
   <button class="nav-btn" data-tab="list">素材一覧</button>
+  <button class="nav-btn" data-tab="guide">撮影ガイド</button>
 </div>
 
 <!-- ── ページ: アップロード ── -->
@@ -308,6 +321,82 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
     <button class="chip" data-filter="used">使用済み</button>
   </div>
   <div id="list-content"></div>
+</div>
+
+<!-- ── ページ: 撮影ガイド ── -->
+<div class="page" id="page-guide">
+
+  <div class="guide-section">
+    <div class="guide-section-icon">📱</div>
+    <div class="guide-section-title">iPhone設定ガイド</div>
+    <div class="guide-card">
+      <div class="guide-item">
+        <div class="guide-item-label">ビデオ撮影設定</div>
+        <div class="guide-item-value">設定 → カメラ → ビデオ撮影 →<br><strong>1080p HD / 30 fps</strong> に変更</div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-item-label">なぜ30fps？</div>
+        <div class="guide-item-value">60fps → 30fpsでファイルサイズが約半分に。<br>SNS投稿には30fpsで十分です。</div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-item-label">ファイルサイズの目安</div>
+        <div class="guide-item-value">
+          写真：1枚 2〜5MB（自動圧縮されます）<br>
+          動画30秒：約15〜25MB<br>
+          動画1分：約30〜50MB<br>
+          動画2分：約60〜100MB<br>
+          <strong>※ 1ファイル100MBまで対応</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="guide-section">
+    <div class="guide-section-icon">📸</div>
+    <div class="guide-section-title">撮影のコツ</div>
+    <div class="guide-card">
+      <div class="guide-item">
+        <div class="guide-item-label">向き</div>
+        <div class="guide-item-value"><strong>縦向きで撮影</strong>してください。<br>Instagram Reels・TikTok・ストーリーズに最適です。</div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-item-label">ビフォーアフター</div>
+        <div class="guide-item-value">交換前 → 交換後の比較写真は<strong>必ず撮って</strong>ください。<br>同じ角度・位置から撮ると効果的です。</div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-item-label">手元アップ＋全体</div>
+        <div class="guide-item-value">作業の<strong>手元アップ</strong>と<strong>全体の引きの画</strong>、<br>両方あるとSNS投稿の幅が広がります。</div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-item-label">明るさ・背景</div>
+        <div class="guide-item-value">
+          ・逆光を避けて撮影する<br>
+          ・背景が散らかっていないか確認<br>
+          ・暗い場所ではフラッシュよりライトで照らす
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="guide-section">
+    <div class="guide-section-icon">🚫</div>
+    <div class="guide-section-title">NGパターン（これは撮らない！）</div>
+    <div class="guide-card guide-card-ng">
+      <div class="guide-item">
+        <div class="guide-ng-badge">NG</div>
+        <div class="guide-item-value"><strong>ナンバープレート</strong>が読める写真・動画<br>→ 写り込んだら角度を変えるか隠してください</div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-ng-badge">NG</div>
+        <div class="guide-item-value"><strong>お客様の顔</strong>がはっきりわかるもの<br>→ 手元や車両だけを撮影してください</div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-ng-badge">NG</div>
+        <div class="guide-item-value"><strong>個人情報</strong>が映り込んでいるもの<br>→ 伝票・書類・電話番号・住所などが見えないように注意</div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 </div><!-- #app -->
@@ -544,11 +633,12 @@ async function uploadToGoogleDrive(files, folderName) {
     // 画像は圧縮
     file = await compressImage(file);
 
-    if (file.size > 4 * 1024 * 1024) {
-      // 4MB以上はチャンク式
+    if (file.size > 50 * 1024 * 1024) {
+      // 50MB以上はチャンク式
       await uploadLargeFile(folderId, file, i, files.length);
     } else {
-      updateProgressStatus(`アップロード中... (${i + 1}/${files.length})`);
+      // 50MB以下は一括送信（動画含む）
+      updateProgressStatus(`アップロード中... (${i + 1}/${files.length}) ${Math.round(file.size / 1024 / 1024)}MB`);
       const base64 = await fileToBase64(file);
       await gasRequest({
         action: 'upload',
@@ -556,7 +646,7 @@ async function uploadToGoogleDrive(files, folderName) {
         fileName: file.name,
         mimeType: file.type,
         base64: base64
-      });
+      }, 3);
     }
   }
 

@@ -1412,6 +1412,8 @@ const APP_DEFS = [
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>` },
   { key: '🏅 リーダーコミュニティ', id: 'leader', label: 'リーダーコミュニティ', sub: 'コミュ · タスク · 思い', section: 'コミュニティ', url: 'https://mitsurumukaihata.github.io/foo-portal/leader.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>` },
+  { key: '📢 マーケ・EC', id: 'marketing', label: 'マーケ・EC', sub: 'コミュ · オークション · SNS', section: 'コミュニティ', url: 'https://mitsurumukaihata.github.io/foo-portal/marketing.html',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="12" y1="7" x2="12" y2="13"/></svg>` },
   { key: '📖 タイヤ交換マニュアル', id: 'manual', label: 'タイヤ交換マニュアル', sub: '準備中',                section: 'マニュアル',   coming: true,
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>` },
   { key: '📝 作業報告書',         id: 'report',  label: '作業報告書',         sub: '準備中',                   section: 'マニュアル',   coming: true,
@@ -1692,10 +1694,15 @@ const BADGE_TARGETS = {
   leader: {
     commDb: '295feb96730a410a8d7ad8c2a9ad7abe',
     doneStatuses: ['完了']
+  },
+  marketing: {
+    commDb: '314a695f8e888076b7e3cb8108439f2b',
+    doneStatuses: ['完了'],
+    statusProp: 'ステータス'
   }
 };
 
-const APP_LABELS = { manager: '部長コミュニティ', leader: 'リーダーコミュニティ' };
+const APP_LABELS = { manager: '部長コミュニティ', leader: 'リーダーコミュニティ', marketing: 'マーケ・EC' };
 let _firstBadgeApp = null;
 
 async function checkBadges(user) {
@@ -1710,11 +1717,12 @@ async function checkBadges(user) {
     const el = document.getElementById('badge-' + appId);
     if (!el) continue;
     try {
+      const statusProp = cfg.statusProp || '状態';
       const filterAnd = [
         { property: '確認者', multi_select: { does_not_contain: userName } }
       ];
       for (const ds of cfg.doneStatuses) {
-        filterAnd.push({ property: '状態', status: { does_not_equal: ds } });
+        filterAnd.push({ property: statusProp, status: { does_not_equal: ds } });
       }
       const res = await fetch(BADGE_PROXY + '/databases/' + cfg.commDb + '/query', {
         method: 'POST',

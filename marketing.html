@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>マーケ・EC | f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --blue: #3b82f6;
+  --yellow: #f59e0b; --red: #ef4444; --purple: #a855f7;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+    --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208; --muted: #a08060;
+    --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --blue: #2563eb;
+    --yellow: #d97706; --red: #dc2626; --purple: #9333ea;
+  }
+}
+[data-theme="dark"] {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --blue: #3b82f6;
+  --yellow: #f59e0b; --red: #ef4444; --purple: #a855f7;
+}
+[data-theme="light"] {
+  --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+  --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208; --muted: #a08060;
+  --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --blue: #2563eb;
+  --yellow: #d97706; --red: #dc2626; --purple: #9333ea;
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', sans-serif; min-height: 100vh; max-width: 480px; margin: 0 auto; }
+
+/* ── ヘッダー ── */
+.app-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px 8px; }
+.portal-link { display:flex; align-items:center; gap:4px; color:var(--muted); font-size:12px; text-decoration:none; }
+.portal-link svg { width:16px; height:16px; }
+.portal-link:active { opacity:0.6; }
+.app-title { font-size:20px; font-weight:900; letter-spacing:-0.03em; padding:0 20px 4px; }
+.app-title span { color:var(--accent); }
+.app-subtitle { font-size:11px; color:var(--muted); padding:0 20px 12px; }
+
+.header-controls { display:flex; align-items:center; gap:8px; }
+.theme-toggle { background:var(--s2); border:1px solid var(--border); border-radius:8px; width:36px; height:36px; color:var(--text); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.theme-toggle:active { background:var(--s3); }
+
+/* ── ナビ ── */
+.nav { display:flex; gap:2px; padding:0 20px 12px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.nav::-webkit-scrollbar { display:none; }
+.nav-btn { flex-shrink:0; background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:9px 14px; font-size:12px; font-weight:600; color:var(--muted); cursor:pointer; font-family:'Noto Sans JP',sans-serif; transition:all 0.15s; white-space:nowrap; position:relative; }
+.nav-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+.nav-badge { position:absolute; top:-6px; right:-6px; background:var(--red); color:#fff; border-radius:50%; width:18px; height:18px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; }
+
+/* ── ページ ── */
+.page { display:none; padding:0 20px 120px; }
+.page.show { display:block; }
+
+/* ── カード ── */
+.card { background:var(--s2); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:10px; cursor:pointer; transition:all 0.15s; }
+.card:active { background:var(--s3); }
+.card-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; }
+.card-title { font-size:13px; font-weight:700; color:var(--text); margin-bottom:4px; }
+.card-subtitle { font-size:11px; color:var(--muted); }
+.card-tags { display:flex; flex-wrap:wrap; gap:4px 6px; margin-bottom:8px; }
+.tag { display:inline-block; padding:3px 8px; border-radius:8px; font-size:10px; font-weight:600; white-space:nowrap; }
+.tag-type { background:rgba(59,130,246,0.15); color:var(--blue); }
+.tag-importance { background:rgba(239,68,68,0.15); color:var(--red); }
+.tag-importance-medium { background:rgba(245,158,11,0.15); color:var(--yellow); }
+.tag-importance-low { background:rgba(34,197,94,0.15); color:var(--green); }
+.tag-status { background:rgba(168,85,247,0.15); color:var(--purple); }
+.tag-section { background:rgba(107,114,128,0.2); color:var(--muted); }
+.card-content { font-size:12px; color:var(--muted); line-height:1.5; max-height:60px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.card-footer { display:flex; justify-content:space-between; align-items:center; font-size:10px; color:var(--muted); margin-top:8px; }
+
+/* ── ステータスバッジ ── */
+.status-badge { display:inline-block; padding:3px 8px; border-radius:8px; font-size:10px; font-weight:600; }
+.status-active { background:rgba(34,197,94,0.15); color:var(--green); }
+.status-considering { background:rgba(245,158,11,0.15); color:var(--yellow); }
+.status-meeting { background:rgba(59,130,246,0.15); color:var(--blue); }
+.status-resolved { background:rgba(107,114,128,0.2); color:var(--muted); }
+
+/* ── フィルターチップ ── */
+.filter-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+.chip { background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:7px 12px; font-size:11px; font-weight:600; color:var(--muted); cursor:pointer; transition:all 0.15s; }
+.chip.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+/* ── 詳細パネル ── */
+.detail-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:90; }
+.detail-overlay.show { display:block; }
+.detail-sheet { display:none; position:fixed; bottom:0; left:0; right:0; background:var(--bg); border-radius:20px 20px 0 0; width:100%; max-width:480px; max-height:85vh; overflow-y:auto; padding:24px 20px 32px; z-index:95; animation:slideUp 0.3s ease-out; }
+.detail-sheet.show { display:block; }
+@keyframes slideUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
+.detail-close-btn { position:absolute; top:12px; right:12px; background:var(--s2); border:1px solid var(--border); border-radius:8px; width:32px; height:32px; color:var(--text); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.detail-close-btn:active { background:var(--s3); }
+.detail-title { font-size:18px; font-weight:700; margin-bottom:16px; padding-right:40px; }
+.detail-section { margin-bottom:16px; }
+.detail-section-title { font-size:11px; color:var(--muted); font-weight:600; margin-bottom:6px; }
+.detail-section-content { font-size:13px; color:var(--text); line-height:1.8; word-break:break-word; }
+.detail-tag-group { display:flex; flex-wrap:wrap; gap:4px 6px; }
+.detail-buttons { display:flex; flex-direction:column; gap:6px; margin-top:16px; }
+.detail-btn { width:100%; padding:12px; border:1.5px solid var(--border); background:var(--s2); color:var(--text); border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.15s; }
+.detail-btn:active { background:var(--s3); }
+.detail-btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+.detail-btn.danger { background:rgba(239,68,68,0.15); color:var(--red); }
+
+/* ── フォーム ── */
+.form-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:100; justify-content:center; align-items:flex-end; }
+.form-overlay.show { display:flex; }
+.form-sheet { background:var(--bg); border-radius:20px 20px 0 0; width:100%; max-width:480px; max-height:85vh; overflow-y:auto; padding:20px 20px 32px; }
+.form-title { font-size:16px; font-weight:700; margin-bottom:16px; }
+.form-group { margin-bottom:14px; }
+.form-label { font-size:11px; color:var(--muted); font-weight:600; margin-bottom:5px; }
+.form-input { width:100%; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:12px 14px; font-size:14px; color:var(--text); outline:none; font-family:inherit; }
+.form-input:focus { border-color:var(--accent); }
+.form-select { width:100%; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:12px 14px; font-size:14px; color:var(--text); outline:none; font-family:inherit; appearance:none; }
+.form-select:focus { border-color:var(--accent); }
+.form-textarea { width:100%; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:12px 14px; font-size:14px; color:var(--text); outline:none; font-family:inherit; resize:vertical; min-height:100px; }
+.form-textarea:focus { border-color:var(--accent); }
+.form-btn { width:100%; background:var(--accent); border:none; border-radius:10px; padding:14px; color:#fff; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:8px; }
+.form-btn:disabled { opacity:0.4; cursor:default; }
+.form-btn-cancel { width:100%; background:var(--s3); border:1px solid var(--border2); border-radius:10px; padding:12px; color:var(--text); font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; margin-top:6px; }
+.form-btn-cancel:active { opacity:0.7; }
+
+/* ── ローディング ── */
+.loading { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; }
+.loading::before { content:''; display:block; width:28px; height:28px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; margin:0 auto 12px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── 空状態 ── */
+.empty-state { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; line-height:1.8; }
+
+/* ── トースト ── */
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:12px 16px; font-size:12px; color:var(--text); z-index:200; max-width:90%; word-break:break-word; animation:slideUpToast 0.3s ease-out; }
+@keyframes slideUpToast { from { transform:translateX(-50%) translateY(100%); } to { transform:translateX(-50%) translateY(0); } }
+.toast.error { background:rgba(239,68,68,0.15); border-color:var(--red); color:var(--red); }
+.toast.success { background:rgba(34,197,94,0.15); border-color:var(--green); color:var(--green); }
+
+/* ── FAB ── */
+.fab { position:fixed; bottom:24px; right:24px; width:52px; height:52px; border-radius:50%; background:var(--accent); border:none; color:#fff; font-size:28px; font-weight:300; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,0.4); display:none; align-items:center; justify-content:center; z-index:50; }
+.fab.show { display:flex; }
+
+/* ── オークションカード ── */
+.auction-card { background:var(--s2); border:1px solid var(--border); border-radius:14px; padding:18px; margin-bottom:14px; cursor:pointer; transition:all 0.15s; }
+.auction-card:active { background:var(--s3); }
+.auction-icon { font-size:28px; margin-bottom:8px; }
+.auction-title { font-size:15px; font-weight:700; color:var(--text); margin-bottom:4px; }
+.auction-desc { font-size:11px; color:var(--muted); }
+
+/* ── オークション詳細ページ ── */
+.auction-body { padding:4px 0 40px; }
+.auction-body h1 { font-size:18px; font-weight:900; margin:20px 0 10px; color:var(--accent); }
+.auction-body h2 { font-size:15px; font-weight:700; margin:18px 0 8px; color:var(--text); }
+.auction-body h3 { font-size:13px; font-weight:700; margin:14px 0 6px; color:var(--text); }
+.auction-body p { font-size:13px; line-height:1.9; color:var(--text); margin-bottom:8px; word-break:break-word; }
+.auction-body hr { border:none; border-top:1px solid var(--border); margin:16px 0; }
+.auction-body ul, .auction-body ol { font-size:13px; line-height:1.9; color:var(--text); margin:4px 0 8px 18px; }
+.auction-body li { margin-bottom:2px; }
+.auction-back-btn { display:inline-flex; align-items:center; gap:4px; background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:8px 14px; font-size:12px; font-weight:600; color:var(--muted); cursor:pointer; margin-bottom:14px; font-family:inherit; }
+.auction-back-btn:active { background:var(--s3); }
+.highlight-red { color:var(--red); font-weight:700; }
+.highlight-orange { color:var(--accent); font-weight:700; }
+.highlight-blue { color:var(--blue); font-weight:700; }
+
+.auth-error { display:none; text-align:center; padding:60px 20px; }
+.auth-error.show { display:block; }
+.auth-error-title { font-size:18px; font-weight:700; margin-bottom:8px; }
+.auth-error-msg { font-size:13px; color:var(--muted); line-height:1.8; }
+</style>
+</head>
+<body>
+
+<!-- ── 認可エラー ── -->
+<div class="auth-error" id="auth-error">
+  <div class="auth-error-title">アクセス権限がありません</div>
+  <div class="auth-error-msg">マーケ・ECへのアクセス権限がないか、セッションが期限切れです。<br><br><a href="https://mitsurumukaihata.github.io/foo-portal/" style="color:var(--accent);text-decoration:none;">ポータルに戻る</a></div>
+</div>
+
+<!-- ── メインアプリ ── -->
+<div id="app" style="display:none;">
+
+<!-- ── ヘッダー ── -->
+<div class="app-header">
+  <a href="https://mitsurumukaihata.github.io/foo-portal/" class="portal-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    ポータル
+  </a>
+  <div class="header-controls">
+    <button class="theme-toggle" id="theme-toggle">🌙</button>
+  </div>
+</div>
+<div class="app-title">マーケ・<span>EC</span></div>
+<div class="app-subtitle">コミュニケーション · オークション · SNS管理</div>
+
+<!-- ── ナビ ── -->
+<div class="nav" id="nav"></div>
+
+<!-- ── ページ ── -->
+
+<!-- コミュ -->
+<div class="page show" id="page-comm">
+  <div class="filter-chips" id="comm-filters"></div>
+  <div id="comm-list"></div>
+</div>
+
+<!-- オークション -->
+<div class="page" id="page-auction">
+  <div id="auction-list"></div>
+</div>
+
+<!-- SNS -->
+<div class="page" id="page-sns">
+  <div class="filter-chips" id="sns-filters"></div>
+  <div id="sns-list"></div>
+</div>
+
+</div><!-- #app -->
+
+<!-- ── 詳細パネル ── -->
+<div class="detail-overlay" id="detail-overlay"></div>
+<div class="detail-sheet" id="detail-sheet">
+  <button class="detail-close-btn" onclick="closeDetail()">✕</button>
+  <div id="detail-content"></div>
+</div>
+
+<!-- ── 追加フォーム ── -->
+<div class="form-overlay" id="form-overlay" onclick="if(event.target===this)closeForm()">
+  <div class="form-sheet">
+    <div class="form-title" id="form-title">新規作成</div>
+    <div id="form-content"></div>
+  </div>
+</div>
+
+<!-- ── FAB ── -->
+<button class="fab" id="fab" onclick="showAddForm()">＋</button>
+
+<!-- ── トースト ── -->
+<div id="toast"></div>
+
+<script>
+(function(){
+  const t = localStorage.getItem('foo_portal_theme') || 'auto';
+  if (t !== 'auto') document.documentElement.setAttribute('data-theme', t);
+})();
+
+const PROXY = 'https://notion-proxy.33322666666mm.workers.dev';
+const DB = {
+  comm: '314a695f8e888076b7e3cb8108439f2b',   // 対 藤井 DB
+  sns:  'aa27ee5c34b4404bb6e7818ba0c59d12',   // SNS投稿管理DB
+};
+
+// ── オークション静的ページ定義 ──
+const AUCTION_PAGES = [
+  { key: 'basic',   icon: '📋', title: 'ヤフオク基本情報',   desc: 'アカウント・出品の基本',   pageId: '319a695f8e88809ca379c086205a0258' },
+  { key: 'flow',    icon: '📦', title: '落札後の手順',       desc: '落札〜発送までの流れ',     pageId: '30aa695f8e888048b40bd417f19fec03' },
+  { key: 'qa',      icon: '💬', title: '質問回答例',         desc: 'よくある質問と回答テンプレ', pageId: '306a695f8e8880808af2ee058db8979f' },
+  { key: 'message', icon: '✉️', title: '取引メッセージ例',   desc: 'コピペで使えるメッセージ',  pageId: '30aa695f8e8880da82efd2710bb71289' },
+  { key: 'cancel',  icon: '🚫', title: '取り消し方法',       desc: '出品取消・キャンセル手順',  pageId: '30ba695f8e8880e2b82cc830c643dc60' },
+  { key: 'sagawa',  icon: '🚚', title: '佐川急便',           desc: '集荷・伝票・送料',         pageId: '309a695f8e8880ed9b70c0239034c592' },
+];
+
+let currentTab = 'comm';
+let currentFilter = 'all';
+let snsFilter = 'all';
+let detailData = null;
+let currentUserName = '';
+
+function checkAccess() {
+  try {
+    const raw = localStorage.getItem('foo_portal_session');
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (new Date(data.expires) < new Date()) return false;
+    if (data.apps && data.apps.marketing === true) {
+      currentUserName = data.name || '';
+      return true;
+    }
+    return false;
+  } catch(e) { return false; }
+}
+
+async function notionAPI(method, path, body) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const res = await fetch(PROXY + path, {
+      method, headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined, signal: ctrl.signal
+    });
+    clearTimeout(timer);
+    const data = await res.json();
+    if (data.object === 'error') throw new Error(data.message);
+    return data;
+  } catch(e) {
+    clearTimeout(timer);
+    if (e.name === 'AbortError') throw new Error('タイムアウト');
+    throw new Error('通信エラー: ' + e.message);
+  }
+}
+
+async function queryAll(dbId, body) {
+  let all = [], cursor = null;
+  while (true) {
+    const b = { ...body, page_size: 100 };
+    if (cursor) b.start_cursor = cursor;
+    const res = await notionAPI('POST', `/databases/${dbId}/query`, b);
+    all = all.concat(res.results || []);
+    if (!res.has_more) break;
+    cursor = res.next_cursor;
+  }
+  return all;
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function getPropValue(page, prop) {
+  const p = page.properties[prop];
+  if (!p) return null;
+  switch(p.type) {
+    case 'title': return p.title.map(t => t.plain_text).join('');
+    case 'rich_text': return p.rich_text.map(t => t.plain_text).join('');
+    case 'select': return p.select?.name || null;
+    case 'multi_select': return p.multi_select?.map(s => s.name) || [];
+    case 'date': return p.date?.start || null;
+    case 'checkbox': return p.checkbox;
+    case 'number': return p.number;
+    case 'status': return p.status?.name || null;
+    default: return null;
+  }
+}
+
+function showToast(msg, type = 'default') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast ' + type;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3000);
+}
+
+function toggleTheme() {
+  const cur = localStorage.getItem('foo_portal_theme') || 'auto';
+  const next = cur === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('foo_portal_theme', next);
+  document.documentElement.setAttribute('data-theme', next);
+  updateThemeButton();
+}
+
+function updateThemeButton() {
+  const theme = localStorage.getItem('foo_portal_theme') || 'auto';
+  const btn = document.getElementById('theme-toggle');
+  if (theme === 'light') btn.textContent = '☀️';
+  else btn.textContent = '🌙';
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// ナビゲーション
+// ════════════════════════════════════════════════════════════════════════════════
+
+function renderNav() {
+  const nav = document.getElementById('nav');
+  nav.innerHTML = '';
+  const tabs = [
+    { id: 'comm', label: 'コミュ' },
+    { id: 'auction', label: 'オークション' },
+    { id: 'sns', label: 'SNS' }
+  ];
+  for (const t of tabs) {
+    const btn = document.createElement('button');
+    btn.className = 'nav-btn' + (currentTab === t.id ? ' active' : '');
+    let badge = '';
+    if (t.id === 'comm') badge = '<span class="nav-badge" id="nav-badge-comm" style="display:none;"></span>';
+    if (t.id === 'sns') badge = '<span class="nav-badge" id="nav-badge-sns" style="display:none;"></span>';
+    btn.innerHTML = escapeHtml(t.label) + badge;
+    btn.onclick = () => switchTab(t.id);
+    nav.appendChild(btn);
+  }
+}
+
+function switchTab(id) {
+  currentTab = id;
+  currentFilter = 'all';
+  snsFilter = 'all';
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('show'));
+  document.getElementById('page-' + id).classList.add('show');
+  renderNav();
+  closeDetail();
+  const fab = document.getElementById('fab');
+  if (id === 'auction') fab.classList.remove('show');
+  else fab.classList.add('show');
+  if (id === 'comm') loadComm();
+  else if (id === 'auction') loadAuctionList();
+  else if (id === 'sns') loadSNS();
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// コミュ タブ（対 藤井 DB）
+// ════════════════════════════════════════════════════════════════════════════════
+
+function renderCommFilters() {
+  const filt = document.getElementById('comm-filters');
+  filt.innerHTML = '';
+  const filters = [
+    { id: 'all', label: '全て' },
+    { id: 'unconfirmed', label: '未確認' },
+    { id: '未着手', label: '未着手' },
+    { id: '進行中', label: '進行中' }
+  ];
+  for (const f of filters) {
+    const chip = document.createElement('button');
+    chip.className = 'chip' + (currentFilter === f.id ? ' active' : '');
+    chip.textContent = f.label;
+    chip.onclick = () => { currentFilter = f.id; loadComm(); };
+    filt.appendChild(chip);
+  }
+}
+
+async function loadComm() {
+  renderCommFilters();
+  const list = document.getElementById('comm-list');
+  list.innerHTML = '<div class="loading"></div>';
+  try {
+    const filter = {};
+    if (currentFilter === 'unconfirmed') {
+      filter.filter = {
+        and: [
+          { property: 'ステータス', status: { does_not_equal: '完了' } },
+          { property: '確認者', multi_select: { does_not_contain: currentUserName } }
+        ]
+      };
+    } else if (currentFilter === '未着手') {
+      filter.filter = { property: 'ステータス', status: { equals: '未着手' } };
+    } else if (currentFilter === '進行中') {
+      filter.filter = { property: 'ステータス', status: { equals: '進行中' } };
+    } else {
+      filter.filter = { property: 'ステータス', status: { does_not_equal: '完了' } };
+    }
+    filter.sorts = [{ timestamp: 'created_time', direction: 'descending' }];
+    const pages = await queryAll(DB.comm, filter);
+    if (pages.length === 0) {
+      list.innerHTML = '<div class="empty-state">データがありません</div>';
+      return;
+    }
+    list.innerHTML = '';
+    const seen = new Set();
+    for (const p of pages) {
+      if (seen.has(p.id)) continue;
+      seen.add(p.id);
+      const title = getPropValue(p, '名前');
+      const status = getPropValue(p, 'ステータス');
+      const category = getPropValue(p, '選択');
+      const content = getPropValue(p, 'テキスト') || getPropValue(p, '説明') || '';
+      const author = getPropValue(p, '投稿者') || p.created_by?.name || '';
+      const confirmed = getPropValue(p, '確認者') || [];
+      const isAuthor = currentUserName && author === currentUserName;
+      const needConfirm = !isAuthor && currentUserName && !confirmed.includes(currentUserName);
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.style.position = 'relative';
+      let tags = '';
+      if (category) tags += '<span class="tag tag-type">' + escapeHtml(category) + '</span>';
+      let statusBadge = '';
+      if (status) {
+        const scs = status === '進行中' ? 'status-active' : status === '未着手' ? 'status-considering' : 'status-resolved';
+        statusBadge = '<span class="status-badge ' + scs + '">' + escapeHtml(status) + '</span>';
+      }
+      const authorHtml = author ? '<span style="font-size:10px;color:var(--accent);font-weight:600;">' + escapeHtml(author) + '</span>' : '';
+      const unreadDot = needConfirm ? '<span style="position:absolute;top:8px;right:8px;width:10px;height:10px;background:var(--red);border-radius:50%;"></span>' : '';
+      let confirmedHtml = '';
+      if (confirmed.length > 0) {
+        confirmedHtml = '<div style="margin-top:6px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;"><span style="font-size:10px;color:var(--green);">✓</span>';
+        for (const c of confirmed) confirmedHtml += '<span style="font-size:10px;color:var(--green);font-weight:600;">' + escapeHtml(c) + '</span>';
+        confirmedHtml += '</div>';
+      }
+      card.innerHTML = unreadDot +
+        '<div class="card-header"><div><div class="card-title">' + escapeHtml(title) + '</div>' + authorHtml + '</div><div>' + statusBadge + '</div></div>' +
+        '<div class="card-tags">' + tags + '</div>' +
+        '<div class="card-content">' + escapeHtml(content) + '</div>' +
+        confirmedHtml +
+        '<div class="card-footer"><div></div></div>';
+      card.onclick = () => showCommDetail(p);
+      list.appendChild(card);
+    }
+    updateNavBadge();
+  } catch(e) {
+    list.innerHTML = '<div class="empty-state">' + escapeHtml(e.message) + '<br><button style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px 12px;margin-top:12px;cursor:pointer;font-size:12px;font-weight:600;" onclick="loadComm()">再試行</button></div>';
+  }
+}
+
+async function updateNavBadge() {
+  const el = document.getElementById('nav-badge-comm');
+  if (!el || !currentUserName) return;
+  try {
+    const res = await queryAll(DB.comm, {
+      filter: {
+        and: [
+          { property: 'ステータス', status: { does_not_equal: '完了' } },
+          { property: '確認者', multi_select: { does_not_contain: currentUserName } }
+        ]
+      },
+      page_size: 100
+    });
+    let count = 0;
+    for (const p of res) {
+      const poster = p.properties['投稿者']?.select?.name || p.created_by?.name || '';
+      if (poster !== currentUserName) count++;
+    }
+    if (count > 0) {
+      el.textContent = count > 9 ? '9+' : count;
+      el.style.display = 'flex';
+    } else {
+      el.style.display = 'none';
+    }
+  } catch(e) { /* silent */ }
+}
+
+function showCommDetail(page) {
+  detailData = page;
+  const title = getPropValue(page, '名前');
+  const status = getPropValue(page, 'ステータス');
+  const category = getPropValue(page, '選択');
+  const content = getPropValue(page, 'テキスト') || '';
+  const desc = getPropValue(page, '説明') || '';
+  const date = getPropValue(page, '日付');
+  const confirmed = getPropValue(page, '確認者') || [];
+  const author = getPropValue(page, '投稿者') || page.created_by?.name || '';
+  const isAuthor = currentUserName && author && currentUserName === author;
+  const alreadyConfirmed = confirmed.includes(currentUserName);
+  const det = document.getElementById('detail-content');
+  let confirmedHtml = '';
+  if (confirmed.length > 0) {
+    confirmedHtml = '<div class="detail-section"><div class="detail-section-title">確認済み</div><div class="detail-tag-group">';
+    for (const c of confirmed) confirmedHtml += '<span class="tag" style="background:rgba(34,197,94,0.15);color:var(--green);">✓ ' + escapeHtml(c) + '</span>';
+    confirmedHtml += '</div></div>';
+  }
+  let confirmBtn = '';
+  if (!isAuthor && !alreadyConfirmed && currentUserName) {
+    confirmBtn = '<button class="detail-btn" style="background:var(--green);color:#fff;border-color:var(--green);" onclick="confirmComm()">✓ 確認しました</button>';
+  } else if (alreadyConfirmed) {
+    confirmBtn = '<span style="font-size:12px;color:var(--green);font-weight:600;">✓ 確認済み</span>';
+  }
+  const dateStr = date ? new Date(date).toLocaleDateString('ja-JP') : '';
+  det.innerHTML =
+    '<div class="detail-title">' + escapeHtml(title) + '</div>' +
+    (author ? '<div style="font-size:11px;color:var(--muted);margin-bottom:12px;">投稿者: ' + escapeHtml(author) + '</div>' : '') +
+    '<div class="detail-section"><div class="detail-section-title">カテゴリ</div><div class="detail-tag-group"><span class="tag tag-type">' + escapeHtml(category || '') + '</span></div></div>' +
+    '<div class="detail-section"><div class="detail-section-title">ステータス</div><div class="detail-section-content">' + escapeHtml(status || '') + '</div></div>' +
+    (dateStr ? '<div class="detail-section"><div class="detail-section-title">日付</div><div class="detail-section-content">' + dateStr + '</div></div>' : '') +
+    '<div class="detail-section"><div class="detail-section-title">内容</div><div class="detail-section-content">' + escapeHtml(content) + '</div></div>' +
+    (desc ? '<div class="detail-section"><div class="detail-section-title">説明</div><div class="detail-section-content">' + escapeHtml(desc) + '</div></div>' : '') +
+    confirmedHtml +
+    '<div class="detail-buttons">' +
+    confirmBtn +
+    '<button class="detail-btn primary" onclick="updateCommStatus(\'未着手\')">未着手</button>' +
+    '<button class="detail-btn primary" onclick="updateCommStatus(\'進行中\')">進行中</button>' +
+    '<button class="detail-btn" onclick="updateCommStatus(\'完了\')">完了</button>' +
+    '</div>';
+  document.getElementById('detail-overlay').classList.add('show');
+  document.getElementById('detail-sheet').classList.add('show');
+}
+
+async function confirmComm() {
+  if (!detailData || !currentUserName) return;
+  try {
+    const existing = getPropValue(detailData, '確認者') || [];
+    if (existing.includes(currentUserName)) { showToast('既に確認済みです', 'info'); return; }
+    const updated = [...existing.map(n => ({ name: n })), { name: currentUserName }];
+    await notionAPI('PATCH', `/pages/${detailData.id}`, {
+      properties: { '確認者': { multi_select: updated } }
+    });
+    showToast('確認しました', 'success');
+    closeDetail();
+    loadComm();
+  } catch(e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function updateCommStatus(status) {
+  if (!detailData) return;
+  try {
+    await notionAPI('PATCH', `/pages/${detailData.id}`, {
+      properties: { 'ステータス': { status: { name: status } } }
+    });
+    showToast('更新しました', 'success');
+    closeDetail();
+    loadComm();
+  } catch(e) {
+    showToast(e.message, 'error');
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// オークション タブ（Notionページを動的取得）
+// ════════════════════════════════════════════════════════════════════════════════
+
+const _auctionCache = {};
+
+function loadAuctionList() {
+  const list = document.getElementById('auction-list');
+  list.innerHTML = '';
+  for (const pg of AUCTION_PAGES) {
+    const card = document.createElement('div');
+    card.className = 'auction-card';
+    card.innerHTML = '<div class="auction-icon">' + pg.icon + '</div>' +
+      '<div class="auction-title">' + escapeHtml(pg.title) + '</div>' +
+      '<div class="auction-desc">' + escapeHtml(pg.desc) + '</div>';
+    card.onclick = () => showAuctionPage(pg);
+    list.appendChild(card);
+  }
+}
+
+async function showAuctionPage(pg) {
+  const list = document.getElementById('auction-list');
+  list.innerHTML = '<button class="auction-back-btn" onclick="loadAuctionList()">← 一覧に戻る</button>' +
+    '<div class="loading"></div>';
+  try {
+    if (_auctionCache[pg.key]) {
+      list.innerHTML = '<button class="auction-back-btn" onclick="loadAuctionList()">← 一覧に戻る</button>' +
+        '<div class="auction-body">' + _auctionCache[pg.key] + '</div>';
+      return;
+    }
+    const data = await notionAPI('POST', `/blocks/${pg.pageId}/children`, { page_size: 100 });
+    let html = '<h1>' + escapeHtml(pg.title) + '</h1><hr>';
+    for (const b of (data.results || [])) {
+      const t = b.type;
+      if (!b[t]) continue;
+      const texts = b[t].rich_text || [];
+      let line = '';
+      for (const rt of texts) {
+        let txt = escapeHtml(rt.plain_text || '');
+        if (rt.annotations?.bold) txt = '<strong>' + txt + '</strong>';
+        if (rt.annotations?.italic) txt = '<em>' + txt + '</em>';
+        if (rt.annotations?.color && rt.annotations.color !== 'default') {
+          const c = rt.annotations.color;
+          if (c.includes('red')) txt = '<span class="highlight-red">' + txt + '</span>';
+          else if (c.includes('orange')) txt = '<span class="highlight-orange">' + txt + '</span>';
+          else if (c.includes('blue')) txt = '<span class="highlight-blue">' + txt + '</span>';
+        }
+        line += txt;
+      }
+      if (t === 'heading_1') html += '<h1>' + line + '</h1>';
+      else if (t === 'heading_2') html += '<h2>' + line + '</h2>';
+      else if (t === 'heading_3') html += '<h3>' + line + '</h3>';
+      else if (t === 'paragraph') html += '<p>' + (line || '&nbsp;') + '</p>';
+      else if (t === 'bulleted_list_item') html += '<ul><li>' + line + '</li></ul>';
+      else if (t === 'numbered_list_item') html += '<ol><li>' + line + '</li></ol>';
+      else if (t === 'divider') html += '<hr>';
+      else if (t === 'toggle') html += '<details><summary style="cursor:pointer;font-weight:700;margin:8px 0;">' + line + '</summary><div class="toggle-content" data-block-id="' + b.id + '"></div></details>';
+    }
+    // 連続リストアイテムをマージ
+    html = html.replace(/<\/ul><ul>/g, '').replace(/<\/ol><ol>/g, '');
+    _auctionCache[pg.key] = html;
+    list.innerHTML = '<button class="auction-back-btn" onclick="loadAuctionList()">← 一覧に戻る</button>' +
+      '<div class="auction-body">' + html + '</div>';
+    // トグルの子ブロックを遅延取得
+    const toggles = list.querySelectorAll('.toggle-content[data-block-id]');
+    for (const tEl of toggles) {
+      loadToggleChildren(tEl, tEl.dataset.blockId);
+    }
+  } catch(e) {
+    list.innerHTML = '<button class="auction-back-btn" onclick="loadAuctionList()">← 一覧に戻る</button>' +
+      '<div class="empty-state">' + escapeHtml(e.message) + '<br><button style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px 12px;margin-top:12px;cursor:pointer;font-size:12px;font-weight:600;" onclick="showAuctionPage(' + JSON.stringify(pg).replace(/"/g, '&quot;') + ')">再試行</button></div>';
+  }
+}
+
+async function loadToggleChildren(el, blockId) {
+  try {
+    const data = await notionAPI('POST', `/blocks/${blockId}/children`, { page_size: 100 });
+    let html = '';
+    for (const b of (data.results || [])) {
+      const t = b.type;
+      if (!b[t]) continue;
+      const texts = b[t].rich_text || [];
+      let line = texts.map(rt => {
+        let txt = escapeHtml(rt.plain_text || '');
+        if (rt.annotations?.bold) txt = '<strong>' + txt + '</strong>';
+        return txt;
+      }).join('');
+      if (t === 'paragraph') html += '<p>' + (line || '&nbsp;') + '</p>';
+      else if (t === 'bulleted_list_item') html += '<ul><li>' + line + '</li></ul>';
+      else if (t === 'numbered_list_item') html += '<ol><li>' + line + '</li></ol>';
+      else if (t === 'heading_3') html += '<h3>' + line + '</h3>';
+    }
+    html = html.replace(/<\/ul><ul>/g, '').replace(/<\/ol><ol>/g, '');
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:12px;">読み込みエラー</p>';
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// SNS タブ（SNS投稿管理DB）
+// ════════════════════════════════════════════════════════════════════════════════
+
+function renderSNSFilters() {
+  const filt = document.getElementById('sns-filters');
+  filt.innerHTML = '';
+  const filters = [
+    { id: 'all', label: '全て' },
+    { id: 'unconfirmed', label: '未確認' },
+    { id: '未着手', label: '未着手' },
+    { id: '進行中', label: '進行中' }
+  ];
+  for (const f of filters) {
+    const chip = document.createElement('button');
+    chip.className = 'chip' + (snsFilter === f.id ? ' active' : '');
+    chip.textContent = f.label;
+    chip.onclick = () => { snsFilter = f.id; loadSNS(); };
+    filt.appendChild(chip);
+  }
+}
+
+async function loadSNS() {
+  renderSNSFilters();
+  const list = document.getElementById('sns-list');
+  list.innerHTML = '<div class="loading"></div>';
+  try {
+    const filter = {};
+    if (snsFilter === 'unconfirmed') {
+      filter.filter = {
+        and: [
+          { property: 'ステータス', status: { does_not_equal: '完了' } },
+          { property: '確認者', multi_select: { does_not_contain: currentUserName } }
+        ]
+      };
+    } else if (snsFilter === '未着手') {
+      filter.filter = { property: 'ステータス', status: { equals: '未着手' } };
+    } else if (snsFilter === '進行中') {
+      filter.filter = { property: 'ステータス', status: { equals: '進行中' } };
+    } else {
+      filter.filter = { property: 'ステータス', status: { does_not_equal: '完了' } };
+    }
+    filter.sorts = [{ timestamp: 'created_time', direction: 'descending' }];
+    const pages = await queryAll(DB.sns, filter);
+    if (pages.length === 0) {
+      list.innerHTML = '<div class="empty-state">データがありません</div>';
+      return;
+    }
+    list.innerHTML = '';
+    const seen = new Set();
+    for (const p of pages) {
+      if (seen.has(p.id)) continue;
+      seen.add(p.id);
+      const title = getPropValue(p, '投稿内容');
+      const status = getPropValue(p, 'ステータス');
+      const platform = getPropValue(p, 'プラットフォーム');
+      const category = getPropValue(p, 'カテゴリ');
+      const postDate = getPropValue(p, '投稿日');
+      const author = getPropValue(p, '投稿者') || p.created_by?.name || '';
+      const confirmed = getPropValue(p, '確認者') || [];
+      const assignee = getPropValue(p, '担当者');
+      const isAuthor = currentUserName && author === currentUserName;
+      const needConfirm = !isAuthor && currentUserName && !confirmed.includes(currentUserName);
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.style.position = 'relative';
+      let tags = '';
+      if (platform) {
+        const platformColors = { 'Instagram': 'tag-importance', 'TikTok': 'tag-importance-medium', 'YouTube': 'tag-importance-low', 'X': 'tag-type' };
+        tags += '<span class="tag ' + (platformColors[platform] || 'tag-type') + '">' + escapeHtml(platform) + '</span>';
+      }
+      if (category) tags += '<span class="tag tag-section">' + escapeHtml(category) + '</span>';
+      let statusBadge = '';
+      if (status) {
+        const scs = status === '進行中' ? 'status-active' : status === '未着手' ? 'status-considering' : 'status-resolved';
+        statusBadge = '<span class="status-badge ' + scs + '">' + escapeHtml(status) + '</span>';
+      }
+      const authorHtml = author ? '<span style="font-size:10px;color:var(--accent);font-weight:600;">' + escapeHtml(author) + '</span>' : '';
+      const unreadDot = needConfirm ? '<span style="position:absolute;top:8px;right:8px;width:10px;height:10px;background:var(--red);border-radius:50%;"></span>' : '';
+      let confirmedHtml = '';
+      if (confirmed.length > 0) {
+        confirmedHtml = '<div style="margin-top:6px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;"><span style="font-size:10px;color:var(--green);">✓</span>';
+        for (const c of confirmed) confirmedHtml += '<span style="font-size:10px;color:var(--green);font-weight:600;">' + escapeHtml(c) + '</span>';
+        confirmedHtml += '</div>';
+      }
+      const dateStr = postDate ? new Date(postDate).toLocaleDateString('ja-JP') : '';
+      card.innerHTML = unreadDot +
+        '<div class="card-header"><div><div class="card-title">' + escapeHtml(title) + '</div>' + authorHtml + '</div><div>' + statusBadge + '</div></div>' +
+        '<div class="card-tags">' + tags + '</div>' +
+        (assignee ? '<div style="font-size:10px;color:var(--muted);margin-bottom:4px;">担当: ' + escapeHtml(assignee) + '</div>' : '') +
+        confirmedHtml +
+        '<div class="card-footer"><div>' + dateStr + '</div></div>';
+      card.onclick = () => showSNSDetail(p);
+      list.appendChild(card);
+    }
+    updateSNSBadge();
+  } catch(e) {
+    list.innerHTML = '<div class="empty-state">' + escapeHtml(e.message) + '<br><button style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px 12px;margin-top:12px;cursor:pointer;font-size:12px;font-weight:600;" onclick="loadSNS()">再試行</button></div>';
+  }
+}
+
+async function updateSNSBadge() {
+  const el = document.getElementById('nav-badge-sns');
+  if (!el || !currentUserName) return;
+  try {
+    const res = await queryAll(DB.sns, {
+      filter: {
+        and: [
+          { property: 'ステータス', status: { does_not_equal: '完了' } },
+          { property: '確認者', multi_select: { does_not_contain: currentUserName } }
+        ]
+      },
+      page_size: 100
+    });
+    let count = 0;
+    for (const p of res) {
+      const poster = p.properties['投稿者']?.select?.name || p.created_by?.name || '';
+      if (poster !== currentUserName) count++;
+    }
+    if (count > 0) {
+      el.textContent = count > 9 ? '9+' : count;
+      el.style.display = 'flex';
+    } else {
+      el.style.display = 'none';
+    }
+  } catch(e) { /* silent */ }
+}
+
+function showSNSDetail(page) {
+  detailData = page;
+  detailData._type = 'sns';
+  const title = getPropValue(page, '投稿内容');
+  const status = getPropValue(page, 'ステータス');
+  const platform = getPropValue(page, 'プラットフォーム');
+  const category = getPropValue(page, 'カテゴリ');
+  const postDate = getPropValue(page, '投稿日');
+  const desc = getPropValue(page, '説明') || '';
+  const assignee = getPropValue(page, '担当者');
+  const confirmed = getPropValue(page, '確認者') || [];
+  const author = getPropValue(page, '投稿者') || page.created_by?.name || '';
+  const isAuthor = currentUserName && author && currentUserName === author;
+  const alreadyConfirmed = confirmed.includes(currentUserName);
+  const det = document.getElementById('detail-content');
+  const dateStr = postDate ? new Date(postDate).toLocaleDateString('ja-JP') : '';
+  let confirmedHtml = '';
+  if (confirmed.length > 0) {
+    confirmedHtml = '<div class="detail-section"><div class="detail-section-title">確認済み</div><div class="detail-tag-group">';
+    for (const c of confirmed) confirmedHtml += '<span class="tag" style="background:rgba(34,197,94,0.15);color:var(--green);">✓ ' + escapeHtml(c) + '</span>';
+    confirmedHtml += '</div></div>';
+  }
+  let confirmBtn = '';
+  if (!isAuthor && !alreadyConfirmed && currentUserName) {
+    confirmBtn = '<button class="detail-btn" style="background:var(--green);color:#fff;border-color:var(--green);" onclick="confirmSNS()">✓ 確認しました</button>';
+  } else if (alreadyConfirmed) {
+    confirmBtn = '<span style="font-size:12px;color:var(--green);font-weight:600;">✓ 確認済み</span>';
+  }
+  det.innerHTML =
+    '<div class="detail-title">' + escapeHtml(title) + '</div>' +
+    (author ? '<div style="font-size:11px;color:var(--muted);margin-bottom:12px;">投稿者: ' + escapeHtml(author) + '</div>' : '') +
+    '<div class="detail-section"><div class="detail-section-title">プラットフォーム</div><div class="detail-section-content">' + escapeHtml(platform || '') + '</div></div>' +
+    '<div class="detail-section"><div class="detail-section-title">カテゴリ</div><div class="detail-section-content">' + escapeHtml(category || '') + '</div></div>' +
+    '<div class="detail-section"><div class="detail-section-title">ステータス</div><div class="detail-section-content">' + escapeHtml(status || '') + '</div></div>' +
+    (dateStr ? '<div class="detail-section"><div class="detail-section-title">投稿日</div><div class="detail-section-content">' + dateStr + '</div></div>' : '') +
+    (assignee ? '<div class="detail-section"><div class="detail-section-title">担当者</div><div class="detail-section-content">' + escapeHtml(assignee) + '</div></div>' : '') +
+    (desc ? '<div class="detail-section"><div class="detail-section-title">説明</div><div class="detail-section-content">' + escapeHtml(desc) + '</div></div>' : '') +
+    confirmedHtml +
+    '<div class="detail-buttons">' +
+    confirmBtn +
+    '<button class="detail-btn primary" onclick="updateSNSStatus(\'未着手\')">未着手</button>' +
+    '<button class="detail-btn primary" onclick="updateSNSStatus(\'進行中\')">進行中</button>' +
+    '<button class="detail-btn" onclick="updateSNSStatus(\'完了\')">完了</button>' +
+    '</div>';
+  document.getElementById('detail-overlay').classList.add('show');
+  document.getElementById('detail-sheet').classList.add('show');
+}
+
+async function confirmSNS() {
+  if (!detailData || !currentUserName) return;
+  try {
+    const existing = getPropValue(detailData, '確認者') || [];
+    if (existing.includes(currentUserName)) { showToast('既に確認済みです', 'info'); return; }
+    const updated = [...existing.map(n => ({ name: n })), { name: currentUserName }];
+    await notionAPI('PATCH', `/pages/${detailData.id}`, {
+      properties: { '確認者': { multi_select: updated } }
+    });
+    showToast('確認しました', 'success');
+    closeDetail();
+    loadSNS();
+  } catch(e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function updateSNSStatus(status) {
+  if (!detailData) return;
+  try {
+    await notionAPI('PATCH', `/pages/${detailData.id}`, {
+      properties: { 'ステータス': { status: { name: status } } }
+    });
+    showToast('更新しました', 'success');
+    closeDetail();
+    loadSNS();
+  } catch(e) {
+    showToast(e.message, 'error');
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// 共通
+// ════════════════════════════════════════════════════════════════════════════════
+
+function closeDetail() {
+  document.getElementById('detail-overlay').classList.remove('show');
+  document.getElementById('detail-sheet').classList.remove('show');
+  detailData = null;
+}
+
+function showAddForm() {
+  const frm = document.getElementById('form-content');
+  const title = document.getElementById('form-title');
+  if (currentTab === 'comm') {
+    title.textContent = 'コミュニケーション追加';
+    frm.innerHTML =
+      '<div class="form-group"><label class="form-label">タイトル</label><input class="form-input" id="form-comm-title" placeholder=""></div>' +
+      '<div class="form-group"><label class="form-label">カテゴリ</label><select class="form-select" id="form-comm-category"><option value="">選択</option><option>SNS</option><option>オークション</option><option>その他</option></select></div>' +
+      '<div class="form-group"><label class="form-label">内容</label><textarea class="form-textarea" id="form-comm-content" placeholder=""></textarea></div>' +
+      '<div class="form-group"><label class="form-label">説明</label><textarea class="form-textarea" id="form-comm-desc" placeholder="補足があれば"></textarea></div>' +
+      '<button class="form-btn" onclick="submitCommForm()">追加</button>' +
+      '<button class="form-btn-cancel" onclick="closeForm()">キャンセル</button>';
+  } else if (currentTab === 'sns') {
+    title.textContent = 'SNS投稿追加';
+    frm.innerHTML =
+      '<div class="form-group"><label class="form-label">投稿内容</label><input class="form-input" id="form-sns-title" placeholder=""></div>' +
+      '<div class="form-group"><label class="form-label">プラットフォーム</label><select class="form-select" id="form-sns-platform"><option value="">選択</option><option>Instagram</option><option>TikTok</option><option>YouTube</option><option>X</option></select></div>' +
+      '<div class="form-group"><label class="form-label">カテゴリ</label><select class="form-select" id="form-sns-category"><option value="">選択</option><option>作業風景</option><option>商品紹介</option><option>求人</option><option>お知らせ</option><option>その他</option></select></div>' +
+      '<div class="form-group"><label class="form-label">担当者</label><select class="form-select" id="form-sns-assignee"><option value="">選択</option><option>藤井</option><option>矢島</option></select></div>' +
+      '<div class="form-group"><label class="form-label">投稿日</label><input class="form-input" id="form-sns-date" type="date"></div>' +
+      '<div class="form-group"><label class="form-label">説明</label><textarea class="form-textarea" id="form-sns-desc" placeholder=""></textarea></div>' +
+      '<button class="form-btn" onclick="submitSNSForm()">追加</button>' +
+      '<button class="form-btn-cancel" onclick="closeForm()">キャンセル</button>';
+  }
+  document.getElementById('form-overlay').classList.add('show');
+}
+
+function closeForm() {
+  document.getElementById('form-overlay').classList.remove('show');
+}
+
+let _submitting = false;
+async function submitCommForm() {
+  if (_submitting) return;
+  _submitting = true;
+  const btn = document.querySelector('.form-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '送信中...'; }
+  const title = document.getElementById('form-comm-title').value.trim();
+  const category = document.getElementById('form-comm-category').value;
+  const content = document.getElementById('form-comm-content').value.trim();
+  const desc = document.getElementById('form-comm-desc').value.trim();
+  if (!title) { showToast('タイトルを入力してください', 'error'); _submitting = false; if (btn) { btn.disabled = false; btn.textContent = '追加'; } return; }
+  try {
+    const props = {
+      '名前': { title: [{ text: { content: title } }] },
+      '選択': category ? { select: { name: category } } : undefined,
+      'テキスト': { rich_text: [{ text: { content: content } }] },
+      '説明': desc ? { rich_text: [{ text: { content: desc } }] } : undefined,
+      'ステータス': { status: { name: '未着手' } },
+      '投稿者': currentUserName ? { select: { name: currentUserName } } : undefined
+    };
+    // undefinedを除去
+    Object.keys(props).forEach(k => { if (props[k] === undefined) delete props[k]; });
+    await notionAPI('POST', '/pages', {
+      parent: { database_id: DB.comm },
+      properties: props
+    });
+    showToast('追加しました', 'success');
+    closeForm();
+    loadComm();
+  } catch(e) {
+    showToast(e.message, 'error');
+  } finally {
+    _submitting = false;
+  }
+}
+
+async function submitSNSForm() {
+  if (_submitting) return;
+  _submitting = true;
+  const btn = document.querySelector('.form-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '送信中...'; }
+  const title = document.getElementById('form-sns-title').value.trim();
+  const platform = document.getElementById('form-sns-platform').value;
+  const category = document.getElementById('form-sns-category').value;
+  const assignee = document.getElementById('form-sns-assignee').value;
+  const postDate = document.getElementById('form-sns-date').value;
+  const desc = document.getElementById('form-sns-desc').value.trim();
+  if (!title) { showToast('投稿内容を入力してください', 'error'); _submitting = false; if (btn) { btn.disabled = false; btn.textContent = '追加'; } return; }
+  try {
+    const props = {
+      '投稿内容': { title: [{ text: { content: title } }] },
+      'プラットフォーム': platform ? { select: { name: platform } } : undefined,
+      'カテゴリ': category ? { select: { name: category } } : undefined,
+      '担当者': assignee ? { select: { name: assignee } } : undefined,
+      '投稿日': postDate ? { date: { start: postDate } } : undefined,
+      '説明': desc ? { rich_text: [{ text: { content: desc } }] } : undefined,
+      'ステータス': { status: { name: '未着手' } },
+      '投稿者': currentUserName ? { select: { name: currentUserName } } : undefined
+    };
+    Object.keys(props).forEach(k => { if (props[k] === undefined) delete props[k]; });
+    await notionAPI('POST', '/pages', {
+      parent: { database_id: DB.sns },
+      properties: props
+    });
+    showToast('追加しました', 'success');
+    closeForm();
+    loadSNS();
+  } catch(e) {
+    showToast(e.message, 'error');
+  } finally {
+    _submitting = false;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// 初期化
+// ════════════════════════════════════════════════════════════════════════════════
+
+function init() {
+  if (!checkAccess()) {
+    document.getElementById('auth-error').classList.add('show');
+    document.getElementById('app').style.display = 'none';
+    return;
+  }
+  document.getElementById('auth-error').classList.remove('show');
+  document.getElementById('app').style.display = 'block';
+  updateThemeButton();
+  document.getElementById('theme-toggle').onclick = toggleTheme;
+  renderNav();
+  document.getElementById('fab').classList.add('show');
+  loadComm();
+  document.getElementById('detail-overlay').onclick = closeDetail;
+}
+
+init();
+</script>
+</body>
+</html>

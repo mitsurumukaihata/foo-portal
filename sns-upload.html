@@ -81,6 +81,8 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .file-preview-item { width:70px; height:70px; background:var(--s2); border:1px solid var(--border); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:28px; position:relative; overflow:hidden; }
 .file-preview-item img, .file-preview-item video { width:100%; height:100%; object-fit:cover; }
 .file-preview-video-icon { position:absolute; font-size:20px; background:rgba(0,0,0,0.6); border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:#fff; }
+.file-preview-remove { position:absolute; top:-4px; right:-4px; width:20px; height:20px; background:var(--red); color:#fff; border:2px solid var(--bg); border-radius:50%; font-size:11px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:5; line-height:1; padding:0; }
+.file-preview-remove:active { opacity:0.7; }
 .file-preview-more { font-size:14px; font-weight:600; color:var(--muted); padding:8px; }
 
 /* ── 選択チップ ── */
@@ -652,9 +654,19 @@ function updateFilePreview() {
   container.innerHTML = '';
 
   const maxShow = 4;
-  selectedFiles.slice(0, maxShow).forEach(file => {
+  selectedFiles.slice(0, maxShow).forEach((file, idx) => {
     const item = document.createElement('div');
     item.className = 'file-preview-item';
+
+    // ×ボタン
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'file-preview-remove';
+    removeBtn.textContent = '✕';
+    removeBtn.onclick = (e) => {
+      e.stopPropagation();
+      removeFile(idx);
+    };
+    item.appendChild(removeBtn);
 
     if (file.type.startsWith('image/')) {
       const reader = new FileReader();
@@ -687,6 +699,31 @@ function updateFilePreview() {
     more.textContent = '+' + (selectedFiles.length - maxShow);
     container.appendChild(more);
   }
+}
+
+function removeFile(index) {
+  selectedFiles.splice(index, 1);
+  updateFilePreview();
+  updateFileCount();
+}
+
+function resetForm() {
+  document.getElementById('upload-form').reset();
+  document.getElementById('file-input').value = '';
+  selectedFiles = [];
+  selectedWeather = null;
+  selectedRating = null;
+  updateFilePreview();
+  updateFileCount();
+  document.querySelectorAll('.select-chip').forEach(btn => btn.classList.remove('active'));
+  document.getElementById('progress-bar').style.display = 'none';
+  document.getElementById('progress-fill').style.width = '0%';
+  document.getElementById('progress-status').style.display = 'none';
+  document.getElementById('submit-btn').disabled = false;
+  document.getElementById('work-date').value = getTodayDateString();
+  document.getElementById('work-place').value = '';
+  document.getElementById('notes').value = '';
+  document.getElementById('comment').value = '';
 }
 
 function updateFileCount() {
@@ -783,21 +820,13 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
       if (notionBody.properties[key] === undefined) delete notionBody.properties[key];
     });
 
-    await notionAPI('POST', `/databases/${DB.material}/pages`, notionBody);
+    await notionAPI('POST', '/pages', {
+      parent: { database_id: DB.material },
+      properties: notionBody.properties
+    });
 
-    // リセット
-    document.getElementById('upload-form').reset();
-    selectedFiles = [];
-    selectedWeather = null;
-    selectedRating = null;
-    updateFilePreview();
-    updateFileCount();
-    document.querySelectorAll('.select-chip').forEach(btn => btn.classList.remove('active'));
-    document.getElementById('progress-bar').style.display = 'none';
-    document.getElementById('progress-fill').style.width = '0%';
-    document.getElementById('progress-status').style.display = 'none';
-    document.getElementById('submit-btn').disabled = false;
-    document.getElementById('work-date').value = getTodayDateString();
+    // フォームを完全リセット（新しいシートに）
+    resetForm();
 
     // 完了コメントをNotionから取得して表示
     showDoneModal();

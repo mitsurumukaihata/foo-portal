@@ -94,6 +94,17 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .progress-bar { width:100%; height:6px; background:var(--s2); border-radius:3px; overflow:hidden; margin-top:8px; display:none; }
 .progress-fill { height:100%; background:var(--accent); border-radius:3px; transition:width 0.3s; width:0%; }
 .progress-status { font-size:11px; color:var(--muted); margin-top:4px; text-align:center; display:none; }
+.progress-detail { font-size:10px; color:var(--muted); margin-top:2px; text-align:center; }
+
+/* ── ダウンロード進捗オーバーレイ ── */
+.dl-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:250; align-items:center; justify-content:center; }
+.dl-overlay.show { display:flex; }
+.dl-modal { background:var(--bg); border:1px solid var(--border); border-radius:16px; padding:28px 24px; text-align:center; max-width:300px; width:85%; }
+.dl-filename { font-size:12px; color:var(--muted); margin-bottom:12px; word-break:break-all; }
+.dl-bar { width:100%; height:8px; background:var(--s2); border-radius:4px; overflow:hidden; margin-bottom:8px; }
+.dl-bar-fill { height:100%; background:var(--accent); border-radius:4px; transition:width 0.2s; width:0%; }
+.dl-pct { font-size:22px; font-weight:700; color:var(--text); margin-bottom:4px; }
+.dl-info { font-size:11px; color:var(--muted); }
 
 /* ── ボタン ── */
 .form-btn { width:100%; background:var(--accent); border:none; border-radius:10px; padding:14px; color:#fff; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:8px; transition:all 0.15s; }
@@ -310,6 +321,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
       <div class="progress-fill" id="progress-fill"></div>
     </div>
     <div class="progress-status" id="progress-status"></div>
+    <div class="progress-detail" id="progress-detail"></div>
   </form>
 </div>
 
@@ -406,6 +418,16 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 <div class="detail-sheet" id="detail-sheet">
   <button class="detail-close-btn" onclick="closeDetail()">✕</button>
   <div id="detail-content"></div>
+</div>
+
+<!-- ── ダウンロード進捗 ── -->
+<div class="dl-overlay" id="dl-overlay">
+  <div class="dl-modal">
+    <div class="dl-filename" id="dl-filename"></div>
+    <div class="dl-pct" id="dl-pct">0%</div>
+    <div class="dl-bar"><div class="dl-bar-fill" id="dl-bar-fill"></div></div>
+    <div class="dl-info" id="dl-info">準備中...</div>
+  </div>
 </div>
 
 <!-- ── 完了モーダル ── -->
@@ -602,22 +624,30 @@ function generateUploadId() {
 }
 
 // 大きいファイルのチャンク式アップロード
-async function uploadLargeFile(folderId, file, fileIndex, totalFiles) {
+async function uploadLargeFile(folderId, file, fileIndex, totalFiles, baseSent) {
   const buffer = await fileToArrayBuffer(file);
   const totalChunks = Math.ceil(buffer.byteLength / CHUNK_SIZE);
   const uploadId = generateUploadId();
 
   for (let c = 0; c < totalChunks; c++) {
-    updateProgressStatus(`アップロード中... (${fileIndex + 1}/${totalFiles}) チャンク ${c + 1}/${totalChunks}`);
-    const chunk = buffer.slice(c * CHUNK_SIZE, Math.min((c + 1) * CHUNK_SIZE, buffer.byteLength));
+    updateProgressStatus(`アップロード中... (${fileIndex + 1}/${totalFiles})`);
+    const chunkEnd = Math.min((c + 1) * CHUNK_SIZE, buffer.byteLength);
+    updateProgressDetail(baseSent + chunkEnd);
+    const chunk = buffer.slice(c * CHUNK_SIZE, chunkEnd);
     const base64 = arrayBufferToBase64(chunk);
     await gasRequest({ action: 'uploadChunk', folderId, uploadId, index: c, base64 });
   }
+  updateProgressStatus('ファイル結合中...');
   await gasRequest({ action: 'assembleFile', folderId, uploadId, totalChunks, fileName: file.name, mimeType: file.type }, 1);
 }
 
 // Google Drive にアップロード
 async function uploadToGoogleDrive(files, folderName) {
+  // 合計サイズ計算 + タイマー開始
+  _uploadTotalBytes = files.reduce((sum, f) => sum + f.size, 0);
+  _uploadSentBytes = 0;
+  _uploadStartTime = Date.now();
+
   updateProgressStatus('フォルダ作成中...');
 
   // 1. フォルダ作成
@@ -625,20 +655,27 @@ async function uploadToGoogleDrive(files, folderName) {
   const folderId = createRes.folderId;
 
   // 2. ファイルを1つずつアップロード（画像は圧縮、大きいファイルはチャンク式）
+  let sentSoFar = 0;
   for (let i = 0; i < files.length; i++) {
     let file = files[i];
+    const origSize = file.size;
     updateProgressStatus(`処理中... (${i + 1}/${files.length})`);
-    updateProgress(i, files.length);
 
     // 画像は圧縮
     file = await compressImage(file);
 
+    // 圧縮後のサイズで合計を再計算
+    if (file.size !== origSize) {
+      _uploadTotalBytes = _uploadTotalBytes - origSize + file.size;
+    }
+
     if (file.size > 50 * 1024 * 1024) {
       // 50MB以上はチャンク式
-      await uploadLargeFile(folderId, file, i, files.length);
+      await uploadLargeFile(folderId, file, i, files.length, sentSoFar);
     } else {
       // 50MB以下は一括送信（動画含む）
-      updateProgressStatus(`アップロード中... (${i + 1}/${files.length}) ${Math.round(file.size / 1024 / 1024)}MB`);
+      updateProgressStatus(`アップロード中... (${i + 1}/${files.length})`);
+      updateProgressDetail(sentSoFar);
       const base64 = await fileToBase64(file);
       await gasRequest({
         action: 'upload',
@@ -648,11 +685,13 @@ async function uploadToGoogleDrive(files, folderName) {
         base64: base64
       }, 3);
     }
+    sentSoFar += file.size;
+    updateProgressDetail(sentSoFar);
   }
 
   // 3. 完了
   updateProgressStatus('完了処理中...');
-  updateProgress(files.length, files.length);
+  updateProgressDetail(_uploadTotalBytes);
   await gasRequest({ action: 'finish', folderId: folderId });
   return folderId; // フォルダIDを返す（URLではなく）
 }
@@ -703,15 +742,56 @@ function updateThemeButton() {
   document.getElementById('theme-toggle').textContent = t === 'light' ? '☀️' : '🌙';
 }
 
+var _uploadStartTime = 0;
+var _uploadTotalBytes = 0;
+var _uploadSentBytes = 0;
+
 function updateProgress(current, total) {
   const pct = Math.round((current / total) * 100);
   document.getElementById('progress-fill').style.width = pct + '%';
+}
+
+function updateProgressPct(pct) {
+  document.getElementById('progress-fill').style.width = Math.min(pct, 100) + '%';
 }
 
 function updateProgressStatus(msg) {
   const el = document.getElementById('progress-status');
   el.textContent = msg;
   el.style.display = 'block';
+}
+
+function updateProgressDetail(sentBytes) {
+  _uploadSentBytes = sentBytes;
+  const el = document.getElementById('progress-detail');
+  const elapsed = (Date.now() - _uploadStartTime) / 1000;
+  const sentMB = (sentBytes / (1024 * 1024)).toFixed(1);
+  const totalMB = (_uploadTotalBytes / (1024 * 1024)).toFixed(1);
+  const pct = _uploadTotalBytes > 0 ? Math.round((sentBytes / _uploadTotalBytes) * 100) : 0;
+
+  let timeStr = '';
+  if (elapsed > 3 && sentBytes > 0) {
+    const speed = sentBytes / elapsed;
+    const remaining = (_uploadTotalBytes - sentBytes) / speed;
+    if (remaining < 60) {
+      timeStr = ` · 残り約${Math.ceil(remaining)}秒`;
+    } else {
+      timeStr = ` · 残り約${Math.ceil(remaining / 60)}分`;
+    }
+  }
+
+  el.textContent = `${sentMB} / ${totalMB} MB (${pct}%)${timeStr}`;
+  el.style.display = 'block';
+  updateProgressPct(pct);
+}
+
+function formatDateTime(isoStr) {
+  const d = new Date(isoStr);
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${m}/${day} ${h}:${min}`;
 }
 
 function getTodayDateString() {
@@ -809,6 +889,8 @@ function resetForm() {
   document.getElementById('progress-bar').style.display = 'none';
   document.getElementById('progress-fill').style.width = '0%';
   document.getElementById('progress-status').style.display = 'none';
+  document.getElementById('progress-detail').textContent = '';
+  document.getElementById('progress-detail').style.display = 'none';
   document.getElementById('submit-btn').disabled = false;
   document.getElementById('work-date').value = getTodayDateString();
   document.getElementById('work-place').value = '';
@@ -996,6 +1078,7 @@ async function loadMaterialList() {
       const comment = getPropValue(mat, 'ひとことコメント');
       const status = getPropValue(mat, 'ステータス');
       const fileCount = getPropValue(mat, 'ファイル数');
+      const createdAt = mat.created_time ? formatDateTime(mat.created_time) : '';
 
       const starCount = rating ? rating.length : 0;
       const ratingDisplay = starCount > 0 ? '★'.repeat(starCount) : '';
@@ -1007,7 +1090,7 @@ async function loadMaterialList() {
             <div class="card-subtitle">${escapeHtml(author)}</div>
           </div>
         </div>
-        <div class="card-meta">${date || '日付未設定'}</div>
+        <div class="card-meta">${date || '日付未設定'}${createdAt ? ` · 登録 ${createdAt}` : ''}</div>
         <div class="card-tags">
           ${type ? `<span class="tag tag-work">${escapeHtml(type)}</span>` : ''}
           ${weather ? `<span class="tag tag-weather">${escapeHtml(weather)}</span>` : ''}
@@ -1166,26 +1249,56 @@ async function loadFileList(folderId) {
   }
 }
 
+// ダウンロード進捗UI
+function showDlProgress(fileName) {
+  document.getElementById('dl-filename').textContent = fileName;
+  document.getElementById('dl-pct').textContent = '0%';
+  document.getElementById('dl-bar-fill').style.width = '0%';
+  document.getElementById('dl-info').textContent = 'ダウンロード準備中...';
+  document.getElementById('dl-overlay').classList.add('show');
+}
+function updateDlProgress(pct, info) {
+  document.getElementById('dl-pct').textContent = pct + '%';
+  document.getElementById('dl-bar-fill').style.width = pct + '%';
+  if (info) document.getElementById('dl-info').textContent = info;
+}
+function hideDlProgress() {
+  document.getElementById('dl-overlay').classList.remove('show');
+}
+
 // GAS経由でファイルをダウンロード（Driveは非公開のまま）
 async function downloadFile(fileId, fileName, fileSize) {
   const btn = event.target;
   btn.disabled = true;
   btn.textContent = '...';
+  showDlProgress(fileName);
+  const dlStart = Date.now();
   try {
     let base64;
     if (fileSize < 4 * 1024 * 1024) {
+      updateDlProgress(30, 'ダウンロード中...');
       const res = await gasRequest({ action: 'downloadFile', fileId }, 1);
       base64 = res.base64;
+      updateDlProgress(90, '変換中...');
     } else {
       // チャンク式ダウンロード
       const firstRes = await gasRequest({ action: 'downloadChunk', fileId, chunkIndex: 0 }, 1);
       let chunks = [firstRes.base64];
-      for (let i = 1; i < firstRes.totalChunks; i++) {
-        btn.textContent = `${i + 1}/${firstRes.totalChunks}`;
+      const total = firstRes.totalChunks;
+      const sizeMB = (firstRes.totalSize / (1024 * 1024)).toFixed(1);
+      updateDlProgress(Math.round(100 / total), `1/${total} チャンク · ${sizeMB}MB`);
+
+      for (let i = 1; i < total; i++) {
         const chunkRes = await gasRequest({ action: 'downloadChunk', fileId, chunkIndex: i }, 1);
         chunks.push(chunkRes.base64);
+        const pct = Math.round(((i + 1) / total) * 90);
+        const elapsed = (Date.now() - dlStart) / 1000;
+        const remaining = elapsed / (i + 1) * (total - i - 1);
+        const remStr = remaining < 60 ? `残り約${Math.ceil(remaining)}秒` : `残り約${Math.ceil(remaining / 60)}分`;
+        updateDlProgress(pct, `${i + 1}/${total} チャンク · ${remStr}`);
       }
       base64 = chunks.join('');
+      updateDlProgress(95, '変換中...');
     }
     // ブラウザでダウンロード
     const byteChars = atob(base64);
@@ -1197,9 +1310,12 @@ async function downloadFile(fileId, fileName, fileSize) {
     a.href = url; a.download = fileName;
     document.body.appendChild(a); a.click();
     document.body.removeChild(a); URL.revokeObjectURL(url);
+    updateDlProgress(100, '完了！');
+    setTimeout(hideDlProgress, 800);
     btn.textContent = 'DL';
     btn.disabled = false;
   } catch(err) {
+    hideDlProgress();
     btn.textContent = 'DL';
     btn.disabled = false;
     showToast('ダウンロードエラー: ' + err.message, 'error');

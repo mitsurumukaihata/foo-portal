@@ -39,9 +39,8 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 /* ── 認証エラー ── */
 #auth-error {
   display:none; min-height:100vh; padding:40px 24px;
-  display:flex; flex-direction:column; justify-content:center;
+  flex-direction:column; justify-content:center;
 }
-#auth-error { display:none; }
 .auth-brand { font-size:10px; color:var(--muted); letter-spacing:0.15em; text-transform:uppercase; margin-bottom:24px; }
 .auth-title { font-size:24px; font-weight:900; margin-bottom:12px; letter-spacing:-0.02em; }
 .auth-title span { color:var(--accent); }
@@ -325,6 +324,18 @@ function loadSession() {
     localStorage.setItem(SESSION_KEY, JSON.stringify(d));
     return d;
   } catch(e) { return null; }
+}
+
+// ─── アクセス制御 ───
+function checkAccess() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (new Date(data.expires) < new Date()) return false;
+    if (data.apps && data.apps.task === true) return true;
+    return false;
+  } catch(e) { return false; }
 }
 
 // ─── Notion API ───
@@ -838,7 +849,7 @@ async function submitNewTask() {
 // ─── 初期化 ───
 async function init() {
   const session = loadSession();
-  if (!session) {
+  if (!session || !checkAccess()) {
     document.getElementById('auth-error').style.display = 'flex';
     return;
   }
@@ -880,4 +891,5 @@ async function init() {
 init();
 </script>
 </body>
+</html>
 </html>

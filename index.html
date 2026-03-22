@@ -151,6 +151,12 @@ body {
   line-height: 1.3;
 }
 .staff-btn:active { transform: scale(0.97); }
+.staff-btn.display-only {
+  opacity: 0.5;
+  cursor: default;
+  pointer-events: none;
+  border-style: dashed;
+}
 .staff-btn.selected {
   border-color: var(--accent);
   background: rgba(240,165,0,0.1);
@@ -1873,15 +1879,19 @@ window.onload = async () => {
 };
 
 // ─── スタッフリスト動的ロード ──────────────────────────────────────────────
-const GROUP_ORDER = ['管理者', '部長', 'リーダー', '一般', '事務', '経理'];
+const GROUP_ORDER = ['管理者', '部長', 'リーダー', 'SNS/オークション', '一般', '事務', '経理', '会長'];
 const GROUP_LABEL = {
-  '管理者':   '👑 管理者',
-  '部長':     '👔 部長',
-  'リーダー': '🏅 リーダー',
-  '一般':     '👷 一般',
-  '事務':     '📋 事務',
-  '経理':     '💰 経理',
+  '管理者':         '👑 管理者',
+  '部長':           '👔 部長',
+  'リーダー':       '🏅 リーダー',
+  'SNS/オークション': '📸 SNS/オークション',
+  '一般':           '👷 一般',
+  '事務':           '📋 事務',
+  '経理':           '💰 経理',
+  '会長':           '🏢 会長',
 };
+// 表示のみ（ログイン不可）のグループ
+const DISPLAY_ONLY_GROUPS = ['会長'];
 
 async function loadStaffList() {
   const grid = document.getElementById('staff-grid');
@@ -1923,6 +1933,8 @@ async function loadStaffList() {
       const members = grouped[grp];
       if (!members?.length) return;
 
+      const isDisplayOnly = DISPLAY_ONLY_GROUPS.includes(grp);
+
       if (MERGED_PAIR.includes(grp)) {
         const pairMembers = MERGED_PAIR.flatMap(g => grouped[g] || []);
         if (pairMembers.length) {
@@ -1941,7 +1953,11 @@ async function loadStaffList() {
       const label = GROUP_LABEL[grp] || grp;
       html += `<div style="grid-column:1/-1;font-size:10px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;padding:6px 2px 2px;margin-top:4px;border-top:0.5px solid var(--border);">${label}</div>`;
       members.forEach(({ name }) => {
-        html += '<button class="staff-btn" onclick="selectStaff(\'' + name + '\')">' + name + '</button>';
+        if (isDisplayOnly) {
+          html += '<button class="staff-btn display-only" disabled>' + name + '</button>';
+        } else {
+          html += '<button class="staff-btn" onclick="selectStaff(\'' + name + '\')">' + name + '</button>';
+        }
       });
       rendered.add(grp);
     });

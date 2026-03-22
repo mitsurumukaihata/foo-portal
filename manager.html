@@ -1119,6 +1119,7 @@ function init() {
   document.getElementById('theme-toggle').onclick = toggleTheme;
   renderNav();
   document.getElementById('fab').classList.add('show');
+  localStorage.setItem('foo_portal_seen_manager', new Date().toISOString());
   loadComm();
 }
 

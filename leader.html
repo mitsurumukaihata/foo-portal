@@ -711,9 +711,9 @@ function showAddForm() {
       '<div class="form-group"><label class="form-label">種別</label><select class="form-select" id="form-comm-kind"><option value="">選択</option><option>相談</option><option>報告</option><option>その他</option></select></div>' +
       '<div class="form-group"><label class="form-label">重要度</label><select class="form-select" id="form-comm-importance"><option value="">選択</option><option>高</option><option>中</option><option>低</option></select></div>' +
       '<div class="form-group"><label class="form-label">内容</label><textarea class="form-textarea" id="form-comm-content" placeholder=""></textarea></div>' +
-      '<div class="form-group"><label class="form-label">関係者</label><div style="display:flex;flex-direction:column;gap:6px;"><label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="form-comm-rel-中川" style="width:16px;height:16px;"> 中川</label>' +
-      '<label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="form-comm-rel-大田" style="width:16px;height:16px;"> 大田</label>' +
-      '<label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="form-comm-rel-向畑" style="width:16px;height:16px;"> 向畑</label></div></div>' +
+      '<div class="form-group"><label class="form-label">関係者</label><div style="display:flex;flex-wrap:wrap;gap:6px 12px;">' +
+      ['矢島','大田','中川','平野','山根','村田','岡崎','向畑'].map(n => '<label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="form-comm-rel-' + n + '" style="width:16px;height:16px;"> ' + n + '</label>').join('') +
+      '</div></div>' +
       '<div class="form-group"><label class="form-label">フェーズ</label><select class="form-select" id="form-comm-phase"><option value="">選択</option><option>フェーズ1</option><option>フェーズ2</option><option>将来検討</option></select></div>' +
       '<button class="form-btn" onclick="submitCommForm()">追加</button>' +
       '<button class="form-btn-cancel" onclick="closeForm()">キャンセル</button>';
@@ -721,14 +721,16 @@ function showAddForm() {
     title.textContent = 'タスク追加';
     frm.innerHTML =
       '<div class="form-group"><label class="form-label">タスク名</label><input class="form-input" id="form-task-name" placeholder=""></div>' +
-      '<div class="form-group"><label class="form-label">カテゴリ</label><input class="form-input" id="form-task-cat" placeholder="カンマ区切り"></div>' +
+      '<div class="form-group"><label class="form-label">カテゴリ</label><div style="display:flex;flex-wrap:wrap;gap:6px 12px;">' +
+      ['作業','工場','出張','対顧客','人間関係','事務','SNS'].map(n => '<label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="form-task-cat-' + n + '" style="width:16px;height:16px;"> ' + n + '</label>').join('') +
+      '</div></div>' +
       '<div class="form-group"><label class="form-label">優先度</label><select class="form-select" id="form-task-priority"><option value="">選択</option><option>高</option><option>中</option><option>低</option></select></div>' +
-      '<div class="form-group"><label class="form-label">タスクの種類</label><input class="form-input" id="form-task-type" placeholder=""></div>' +
+      '<div class="form-group"><label class="form-label">タスクの種類</label><select class="form-select" id="form-task-type"><option value="">選択</option><option>試験的</option><option>改善</option><option>リクエスト</option><option>仕上げ</option></select></div>' +
       '<div class="form-group"><label class="form-label">期日</label><input class="form-input" id="form-task-due" type="date"></div>' +
       '<div class="form-group"><label class="form-label">説明</label><textarea class="form-textarea" id="form-task-desc" placeholder=""></textarea></div>' +
-      '<div class="form-group"><label class="form-label">会話元</label><div style="display:flex;flex-direction:column;gap:6px;"><label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="form-task-conv-中川" style="width:16px;height:16px;"> 中川</label>' +
-      '<label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="form-task-conv-大田" style="width:16px;height:16px;"> 大田</label>' +
-      '<label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="form-task-conv-向畑" style="width:16px;height:16px;"> 向畑</label></div></div>' +
+      '<div class="form-group"><label class="form-label">会話元</label><div style="display:flex;flex-wrap:wrap;gap:6px 12px;">' +
+      ['矢島','大田','中川','平野','山根','村田','岡崎','向畑'].map(n => '<label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="form-task-conv-' + n + '" style="width:16px;height:16px;"> ' + n + '</label>').join('') +
+      '</div></div>' +
       '<button class="form-btn" onclick="submitTaskForm()">追加</button>' +
       '<button class="form-btn-cancel" onclick="closeForm()">キャンセル</button>';
   }
@@ -748,7 +750,7 @@ async function submitCommForm() {
   if (!title) { showToast('タイトルを入力してください', 'error'); return; }
   try {
     const rel = [];
-    for (const name of ['中川', '大田', '向畑']) {
+    for (const name of ['矢島','大田','中川','平野','山根','村田','岡崎','向畑']) {
       if (document.getElementById('form-comm-rel-' + name).checked) rel.push({ name });
     }
     await notionAPI('POST', '/pages', {
@@ -773,16 +775,18 @@ async function submitCommForm() {
 
 async function submitTaskForm() {
   const name = document.getElementById('form-task-name').value.trim();
-  const catStr = document.getElementById('form-task-cat').value.trim();
   const priority = document.getElementById('form-task-priority').value;
-  const type = document.getElementById('form-task-type').value.trim();
+  const type = document.getElementById('form-task-type').value;
   const due = document.getElementById('form-task-due').value;
   const desc = document.getElementById('form-task-desc').value.trim();
   if (!name) { showToast('タスク名を入力してください', 'error'); return; }
   try {
-    const cat = catStr ? catStr.split(',').map(s => ({ name: s.trim() })) : [];
+    const cat = [];
+    for (const c of ['作業','工場','出張','対顧客','人間関係','事務','SNS']) {
+      if (document.getElementById('form-task-cat-' + c).checked) cat.push({ name: c });
+    }
     const conv = [];
-    for (const c of ['中川', '大田', '向畑']) {
+    for (const c of ['矢島','大田','中川','平野','山根','村田','岡崎','向畑']) {
       if (document.getElementById('form-task-conv-' + c).checked) conv.push({ name: c });
     }
     await notionAPI('POST', '/pages', {
@@ -838,6 +842,7 @@ function init() {
   document.getElementById('theme-toggle').onclick = toggleTheme;
   renderNav();
   document.getElementById('fab').classList.add('show');
+  localStorage.setItem('foo_portal_seen_leader', new Date().toISOString());
   loadComm();
 }
 

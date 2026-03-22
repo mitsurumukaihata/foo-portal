@@ -328,6 +328,15 @@ body {
   transition: border-color 0.15s;
   text-decoration: none;
   display: block;
+  position: relative;
+}
+.app-badge {
+  position: absolute; top: -4px; right: -4px;
+  background: #ef4444; color: #fff; border-radius: 50%;
+  min-width: 20px; height: 20px; display: flex;
+  align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 .app-card:hover { border-color: rgba(240,165,0,0.5); }
 .app-card:active { transform: scale(0.98); }
@@ -1535,6 +1544,7 @@ function launchPortal(user) {
   document.getElementById('portal-name').textContent   = user.name;
   document.getElementById('portal-role').textContent   = user.group || user.role;
   renderPortalApps(user);
+  checkBadges(user);
 }
 
 // ─── ポータルアプリ動的レンダリング ───────────────────────────────────────────
@@ -1654,11 +1664,56 @@ function appCardHTML(def, encodedUser) {
   const href = def.url ? `href="${def.url}"` : '';
   const onclick = def.action ? `onclick="${def.action}"` : '';
   const coming  = def.coming ? 'coming' : '';
-  return `<${tag} class="app-card ${coming}" ${href} ${onclick}>
+  return `<${tag} class="app-card ${coming}" ${href} ${onclick} data-app-id="${def.id}">
     <div class="app-icon">${def.icon}</div>
     <div class="app-name">${def.label}</div>
     <div class="app-sub">${def.sub}</div>
+    <span class="app-badge" id="badge-${def.id}" style="display:none;"></span>
   </${tag}>`;
+}
+
+// ─── バッジ通知 ───────────────────────────────────────────────────────────────
+const BADGE_PROXY = 'https://notion-proxy.33322666666mm.workers.dev';
+const BADGE_TARGETS = {
+  manager: {
+    dbs: ['2e0a695f8e888020b787db3c6c96c153', '233a695f8e888025a2f9fb1d7974a7c5', '2eea695f8e8880598e50cd9c768f114f'],
+    seenKey: 'foo_portal_seen_manager'
+  },
+  leader: {
+    dbs: ['295feb96730a410a8d7ad8c2a9ad7abe', 'e0663ce07e5a4b99894622199b064f5a'],
+    seenKey: 'foo_portal_seen_leader'
+  }
+};
+
+async function checkBadges(user) {
+  const apps = user.apps || {};
+  for (const [appId, cfg] of Object.entries(BADGE_TARGETS)) {
+    if (!apps[appId]) continue;
+    const el = document.getElementById('badge-' + appId);
+    if (!el) continue;
+    const lastSeen = localStorage.getItem(cfg.seenKey);
+    if (!lastSeen) continue;
+    let total = 0;
+    for (const dbId of cfg.dbs) {
+      try {
+        const res = await fetch(BADGE_PROXY + '/databases/' + dbId + '/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filter: { timestamp: 'created_time', created_time: { after: lastSeen } },
+            page_size: 1
+          })
+        });
+        const data = await res.json();
+        if (data.results) total += data.results.length;
+        if (data.has_more) total = total + 1;
+      } catch(e) { /* silent */ }
+    }
+    if (total > 0) {
+      el.textContent = total > 9 ? '9+' : total;
+      el.style.display = 'flex';
+    }
+  }
 }
 
 function togglePayslipList(btn) {

@@ -1027,19 +1027,30 @@ async function confirmAndSaveOrder() {
   try {
     await createHacchuRecords(selectedItems, tantou, nouki, biko);
 
+    // オーバーレイを閉じる（開いている場合）
+    const overlay = document.getElementById('order-preview-overlay');
+    if (overlay) overlay.style.display = 'none';
+    window.removeEventListener('popstate', _onPopStateOrder);
+
     // プレビューを隠してボタンを戻す
     document.getElementById('order-pdf-preview').style.display = 'none';
     document.getElementById('order-normal-btns').style.display = 'none';
 
+    // 発注済みアイテムをリストから除外（二重発注防止）
+    alertItems = alertItems.filter(i => !selectedItems.includes(i));
+    window._pendingOrder = null;
+
+    // 発注確認タブの表示を更新
     const actEl = document.getElementById('order-actions');
     actEl.innerHTML = `<div class="success-box">
-      ✓ 発注管理表に ${selectedItems.length}件 を記録しました
+      ✓ ${selectedItems.length}件 を「発注中」としてNotionに保存しました
     </div>
     <button class="btn-secondary" onclick="switchTab('history');loadHistory();">発注履歴を確認する</button>
     <button class="btn-secondary" onclick="loadAlerts();">在庫アラートを再チェック</button>`;
 
-    alertItems = alertItems.filter(i => !selectedItems.includes(i));
+    // 在庫アラートと発注確認ページを再描画
     renderAlertPage();
+    renderOrderPage();
 
   } catch(e) {
     if (errEl) errEl.innerHTML = `<div class="error-box" style="margin-bottom:8px;">エラー：${e.message}</div>`;
@@ -1063,7 +1074,7 @@ async function createHacchuRecords(items, tantou, nouki, biko) {
       '数量':         { number: item.orderQty },
       '仕入先':       { select: { name: 'TOYO' } },
       '種別':         { select: { name: 'タイヤ' } },
-      'ステータス':   { select: { name: '新規発注' } },
+      'ステータス':   { select: { name: '発注中' } },
       '納入予定場所': { select: { name: warehouseLabel } },
       '注文担当':     { select: { name: tantou.includes('岡崎') ? '岡崎' : '向畑' } },
     };

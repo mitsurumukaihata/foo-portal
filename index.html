@@ -1672,49 +1672,55 @@ function appCardHTML(def, encodedUser) {
   </${tag}>`;
 }
 
-// ─── バッジ通知 ───────────────────────────────────────────────────────────────
+// ─── バッジ通知（未確認ベース） ──────────────────────────────────────────────
 const BADGE_PROXY = 'https://notion-proxy.33322666666mm.workers.dev';
 const BADGE_TARGETS = {
   manager: {
-    dbs: ['2e0a695f8e888020b787db3c6c96c153', '233a695f8e888025a2f9fb1d7974a7c5', '2eea695f8e8880598e50cd9c768f114f'],
-    seenKey: 'foo_portal_seen_manager'
+    commDb: '2e0a695f8e888020b787db3c6c96c153',
+    doneStatuses: ['解決', 'マニュアル反映済']
   },
   leader: {
-    dbs: ['295feb96730a410a8d7ad8c2a9ad7abe', 'e0663ce07e5a4b99894622199b064f5a'],
-    seenKey: 'foo_portal_seen_leader'
+    commDb: '295feb96730a410a8d7ad8c2a9ad7abe',
+    doneStatuses: ['完了']
   }
 };
 
 async function checkBadges(user) {
   const apps = user.apps || {};
+  const userName = user.name || '';
+  if (!userName) return;
   for (const [appId, cfg] of Object.entries(BADGE_TARGETS)) {
     if (!apps[appId]) continue;
     const el = document.getElementById('badge-' + appId);
     if (!el) continue;
-    let lastSeen = localStorage.getItem(cfg.seenKey);
-    if (!lastSeen) {
-      // 初回：24時間前を基準にする
-      lastSeen = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    }
-    let total = 0;
-    for (const dbId of cfg.dbs) {
-      try {
-        const res = await fetch(BADGE_PROXY + '/databases/' + dbId + '/query', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filter: { timestamp: 'created_time', created_time: { after: lastSeen } },
-            page_size: 100
-          })
-        });
-        const data = await res.json();
-        if (data.results) total += data.results.length;
-      } catch(e) { /* silent */ }
-    }
-    if (total > 0) {
-      el.textContent = total > 9 ? '9+' : total;
-      el.style.display = 'flex';
-    }
+    try {
+      const filterAnd = [
+        { property: '確認者', multi_select: { does_not_contain: userName } }
+      ];
+      for (const ds of cfg.doneStatuses) {
+        filterAnd.push({ property: '状態', status: { does_not_equal: ds } });
+      }
+      const res = await fetch(BADGE_PROXY + '/databases/' + cfg.commDb + '/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filter: { and: filterAnd },
+          page_size: 100
+        })
+      });
+      const data = await res.json();
+      // 自分が投稿者のものは除外
+      let count = 0;
+      if (data.results) {
+        for (const p of data.results) {
+          if (p.created_by?.name !== userName) count++;
+        }
+      }
+      if (count > 0) {
+        el.textContent = count > 9 ? '9+' : count;
+        el.style.display = 'flex';
+      }
+    } catch(e) { /* silent */ }
   }
 }
 

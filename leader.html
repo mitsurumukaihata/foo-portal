@@ -363,6 +363,7 @@ MSG_CONTENT['omoi'] = '<h1>西地区リーダー任命にあたって</h1>' +
 let currentTab = 'comm';
 let currentFilter = 'all';
 let detailData = null;
+let currentUserName = '';
 
 function checkAccess() {
   try {
@@ -370,7 +371,11 @@ function checkAccess() {
     if (!raw) return false;
     const data = JSON.parse(raw);
     if (new Date(data.expires) < new Date()) return false;
-    return data.apps && data.apps.leader === true;
+    if (data.apps && data.apps.leader === true) {
+      currentUserName = data.name || '';
+      return true;
+    }
+    return false;
   } catch(e) { return false; }
 }
 
@@ -531,6 +536,7 @@ async function loadComm() {
       const content = getPropValue(p, '内容');
       const rel = getPropValue(p, '関係者');
       const author = p.created_by?.name || '';
+      const confirmed = getPropValue(p, '確認者') || [];
       const card = document.createElement('div');
       card.className = 'card';
       let tags = '';
@@ -547,9 +553,16 @@ async function loadComm() {
         statusBadge = '<span class="status-badge ' + scs + '">' + escapeHtml(status) + '</span>';
       }
       const authorHtml = author ? '<span style="font-size:10px;color:var(--muted);">by ' + escapeHtml(author) + '</span>' : '';
+      let confirmedHtml = '';
+      if (confirmed.length > 0) {
+        confirmedHtml = '<div style="margin-top:6px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;"><span style="font-size:10px;color:var(--green);">✓</span>';
+        for (const c of confirmed) confirmedHtml += '<span style="font-size:10px;color:var(--green);font-weight:600;">' + escapeHtml(c) + '</span>';
+        confirmedHtml += '</div>';
+      }
       card.innerHTML = '<div class="card-header"><div><div class="card-title">' + escapeHtml(title) + '</div>' + authorHtml + '</div><div>' + statusBadge + '</div></div>' +
         '<div class="card-tags">' + tags + '</div>' +
         '<div class="card-content">' + escapeHtml(content || '') + '</div>' +
+        confirmedHtml +
         '<div class="card-footer"><div>' + relTags + '</div></div>';
       card.onclick = () => showCommDetail(p);
       list.appendChild(card);
@@ -568,23 +581,59 @@ function showCommDetail(page) {
   const content = getPropValue(page, '内容');
   const rel = getPropValue(page, '関係者');
   const phase = getPropValue(page, 'フェーズ');
+  const confirmed = getPropValue(page, '確認者') || [];
+  const author = page.created_by?.name || '';
+  const isAuthor = currentUserName && author && currentUserName === author;
+  const alreadyConfirmed = confirmed.includes(currentUserName);
   const det = document.getElementById('detail-content');
   let relHtml = '';
   if (Array.isArray(rel)) for (const r of rel) relHtml += '<span class="tag tag-status">' + escapeHtml(r) + '</span>';
+  let confirmedHtml = '';
+  if (confirmed.length > 0) {
+    confirmedHtml = '<div class="detail-section"><div class="detail-section-title">確認済み</div><div class="detail-tag-group">';
+    for (const c of confirmed) confirmedHtml += '<span class="tag" style="background:rgba(34,197,94,0.15);color:var(--green);">✓ ' + escapeHtml(c) + '</span>';
+    confirmedHtml += '</div></div>';
+  }
+  let confirmBtn = '';
+  if (!isAuthor && !alreadyConfirmed && currentUserName) {
+    confirmBtn = '<button class="detail-btn" style="background:var(--green);color:#fff;border-color:var(--green);" onclick="confirmComm()">✓ 確認しました</button>';
+  } else if (alreadyConfirmed) {
+    confirmBtn = '<span style="font-size:12px;color:var(--green);font-weight:600;">✓ 確認済み</span>';
+  }
   det.innerHTML =
     '<div class="detail-title">' + escapeHtml(title) + '</div>' +
+    (author ? '<div style="font-size:11px;color:var(--muted);margin-bottom:12px;">投稿者: ' + escapeHtml(author) + '</div>' : '') +
     '<div class="detail-section"><div class="detail-section-title">種別・重要度</div><div class="detail-tag-group"><span class="tag tag-type">' + escapeHtml(kind || '') + '</span><span class="tag tag-importance">' + escapeHtml(importance || '') + '</span></div></div>' +
     '<div class="detail-section"><div class="detail-section-title">状態</div><div class="detail-section-content">' + escapeHtml(status || '') + '</div></div>' +
     '<div class="detail-section"><div class="detail-section-title">内容</div><div class="detail-section-content">' + escapeHtml(content || '') + '</div></div>' +
     '<div class="detail-section"><div class="detail-section-title">関係者</div><div class="detail-tag-group">' + relHtml + '</div></div>' +
     '<div class="detail-section"><div class="detail-section-title">フェーズ</div><div class="detail-section-content">' + escapeHtml(phase || '') + '</div></div>' +
+    confirmedHtml +
     '<div class="detail-buttons">' +
+    confirmBtn +
     '<button class="detail-btn primary" onclick="updateCommStatus(\'未着手\')">未着手</button>' +
     '<button class="detail-btn primary" onclick="updateCommStatus(\'進行中\')">進行中</button>' +
     '<button class="detail-btn" onclick="updateCommStatus(\'完了\')">完了</button>' +
     '</div>';
   document.getElementById('detail-overlay').classList.add('show');
   document.getElementById('detail-sheet').classList.add('show');
+}
+
+async function confirmComm() {
+  if (!detailData || !currentUserName) return;
+  try {
+    const existing = getPropValue(detailData, '確認者') || [];
+    if (existing.includes(currentUserName)) { showToast('既に確認済みです', 'info'); return; }
+    const updated = [...existing.map(n => ({ name: n })), { name: currentUserName }];
+    await notionAPI('PATCH', `/pages/${detailData.id}`, {
+      properties: { '確認者': { multi_select: updated } }
+    });
+    showToast('確認しました', 'success');
+    closeDetail();
+    loadComm();
+  } catch(e) {
+    showToast(e.message, 'error');
+  }
 }
 
 async function updateCommStatus(status) {

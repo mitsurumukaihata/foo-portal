@@ -1898,6 +1898,12 @@ const GROUP_LABEL = {
   '経理':           '💰 経理',
   '会長':           '🏢 会長',
 };
+// ボタン上に表示する役職名（Notionのグループ名→表示名）
+const ROLE_DISPLAY = {
+  '管理者': '代表',
+  '一般': 'フィールドスタッフ',
+};
+function getRoleDisplay(grp) { return ROLE_DISPLAY[grp] || grp; }
 // 表示のみ（ログイン不可）のグループ — 見た目は普通だが押しても反応しない
 const DISPLAY_ONLY_GROUPS = ['会長'];
 
@@ -1949,7 +1955,7 @@ async function loadStaffList() {
         if (pairMembers.length) {
           html += `<div style="grid-column:1/-1;padding:2px;margin-top:4px;border-top:0.5px solid var(--border);"></div>`;
           pairMembers.forEach(({ name, grp: memberGrp }) => {
-            html += '<div class="staff-wrap"><div class="staff-role">' + memberGrp + '</div>';
+            html += '<div class="staff-wrap"><div class="staff-role">' + getRoleDisplay(memberGrp) + '</div>';
             if (DISPLAY_ONLY_GROUPS.includes(memberGrp)) {
               html += '<button class="staff-btn display-only" disabled>' + name + '</button>';
             } else {
@@ -1965,7 +1971,7 @@ async function loadStaffList() {
       const isDisplayOnly = DISPLAY_ONLY_GROUPS.includes(grp);
       html += `<div style="grid-column:1/-1;padding:2px;margin-top:4px;border-top:0.5px solid var(--border);"></div>`;
       members.forEach(({ name }) => {
-        html += '<div class="staff-wrap"><div class="staff-role">' + grp + '</div>';
+        html += '<div class="staff-wrap"><div class="staff-role">' + getRoleDisplay(grp) + '</div>';
         if (isDisplayOnly) {
           html += '<button class="staff-btn display-only" disabled>' + name + '</button>';
         } else {

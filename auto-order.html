@@ -526,6 +526,42 @@ function keyToSafeId(str) {
   return 'k' + Math.abs(h).toString(36);
 }
 
+// 発注管理表から「発注中」「新規発注」のレコードを取得し、パターン|サイズ|倉庫→合計数量のマップを返す
+async function fetchInFlightOrders() {
+  const map = {}; // "パターン|サイズ|倉庫短" → 合計数量
+  try {
+    let hasMore = true;
+    let cursor = undefined;
+    while (hasMore) {
+      const body = {
+        filter: { or: [
+          { property: 'ステータス', select: { equals: '発注中' } },
+          { property: 'ステータス', select: { equals: '新規発注' } },
+        ]},
+        page_size: 100,
+      };
+      if (cursor) body.start_cursor = cursor;
+      const res = await notionAPI('POST', `/databases/${HACCHU_DB}/query`, body);
+      (res.results || []).forEach(page => {
+        const p = page.properties;
+        const pattern   = p['パターン']?.select?.name || '';
+        const size      = p['サイズ']?.select?.name || '';
+        const warehouse = p['納入予定場所']?.select?.name || '';
+        const qty       = p['数量']?.number || 0;
+        if (pattern && size && warehouse && qty > 0) {
+          const key = `${pattern}|${size}|${warehouse}`;
+          map[key] = (map[key] || 0) + qty;
+        }
+      });
+      hasMore = res.has_more;
+      cursor = res.next_cursor;
+    }
+  } catch(e) {
+    console.warn('発注中データ取得失敗（アラートには影響なし）:', e);
+  }
+  return map;
+}
+
 async function loadAlerts() {
   const el = document.getElementById('alert-content');
   el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">スナップショットを取得中…</div></div>';
@@ -535,6 +571,9 @@ async function loadAlerts() {
     // スナップショットDBから全データ取得（在庫数＋しきい値）
     snapshotCache = await fetchAllSnapshotsWithThreshold();
 
+    // 発注管理表から「発注中」「新規発注」の数量を取得（二重発注防止）
+    const inFlightMap = await fetchInFlightOrders();
+
     // しきい値が設定されているレコードでアラート判定
     const allItems = [];
     for (const [key, snap] of Object.entries(snapshotCache)) {
@@ -543,14 +582,18 @@ async function loadAlerts() {
       const realStock = snap.stock ?? 0;
       if (realStock < threshold) {
         const [cat, pattern, size, warehouse] = key.split('|');
-        const needed = threshold - realStock;
+        const shortWh = warehouse === '五日市倉庫' ? '五日市' : '志和';
+        const inFlightKey = `${pattern}|${size}|${shortWh}`;
+        const inFlight = inFlightMap[inFlightKey] || 0;
+        const needed = threshold - realStock - inFlight;
+        if (needed <= 0) continue; // 発注中の数量で足りる→アラート不要
         const maker = guessMaker(pattern);
         allItems.push({
           pageId: snap.pageId,
           kijunId: key,
           pattern, size, category: cat, warehouse,
           threshold, realStock,
-          actualStock: realStock, prepQty: 0, orderInFlight: 0,
+          actualStock: realStock, prepQty: 0, orderInFlight: inFlight,
           orderQty: needed,
           selected: needed > 0 && maker === 'TOYO',
           maker,

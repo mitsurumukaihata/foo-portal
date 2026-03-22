@@ -493,6 +493,7 @@ function renderCommFilters() {
   filt.innerHTML = '';
   const filters = [
     { id: 'all', label: '全て' },
+    { id: 'unconfirmed', label: '未確認' },
     { id: '未着手', label: '未着手' },
     { id: '進行中', label: '進行中' }
   ];
@@ -511,7 +512,14 @@ async function loadComm() {
   list.innerHTML = '<div class="loading"></div>';
   try {
     const filter = {};
-    if (currentFilter === '未着手') {
+    if (currentFilter === 'unconfirmed') {
+      filter.filter = {
+        and: [
+          { property: '状態', status: { does_not_equal: '完了' } },
+          { property: '確認者', multi_select: { does_not_contain: currentUserName } }
+        ]
+      };
+    } else if (currentFilter === '未着手') {
       filter.filter = { property: '状態', status: { equals: '未着手' } };
     } else if (currentFilter === '進行中') {
       filter.filter = { property: '状態', status: { equals: '進行中' } };

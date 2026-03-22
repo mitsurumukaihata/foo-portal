@@ -456,6 +456,7 @@ function renderCommFilters() {
   filt.innerHTML = '';
   const filters = [
     { id: 'all', label: '全て' },
+    { id: 'unconfirmed', label: '未確認' },
     { id: 'active', label: '対応中' },
     { id: 'considering', label: '検討中' },
     { id: 'meeting', label: '会議で報告' }
@@ -475,7 +476,15 @@ async function loadComm() {
   list.innerHTML = '<div class="loading"></div>';
   try {
     const filter = {};
-    if (currentFilter === 'active') {
+    if (currentFilter === 'unconfirmed') {
+      filter.filter = {
+        and: [
+          { property: '状態', status: { does_not_equal: '解決' } },
+          { property: '状態', status: { does_not_equal: 'マニュアル反映済' } },
+          { property: '確認者', multi_select: { does_not_contain: currentUserName } }
+        ]
+      };
+    } else if (currentFilter === 'active') {
       filter.filter = { property: '状態', status: { equals: '対応中' } };
     } else if (currentFilter === 'considering') {
       filter.filter = { property: '状態', status: { equals: '検討中' } };

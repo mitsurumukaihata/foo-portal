@@ -88,8 +88,8 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .status-resolved { background:rgba(107,114,128,0.2); color:var(--muted); }
 
 /* ── フィルターチップ ── */
-.filter-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
-.chip { background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:7px 12px; font-size:11px; font-weight:600; color:var(--muted); cursor:pointer; transition:all 0.15s; }
+.filter-chips { display:flex; gap:6px; margin-bottom:8px; }
+.chip { flex:1; text-align:center; background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:9px 6px; font-size:11px; font-weight:600; color:var(--muted); cursor:pointer; transition:all 0.15s; white-space:nowrap; }
 .chip.active { background:var(--accent); color:#fff; border-color:var(--accent); }
 
 /* ── 詳細パネル ── */
@@ -206,7 +206,8 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 
 <!-- コミュ -->
 <div class="page show" id="page-comm">
-  <div class="filter-chips" id="comm-filters"></div>
+  <div class="filter-chips" id="comm-filters-status"></div>
+  <div class="filter-chips" id="comm-filters-category" style="margin-bottom:14px;"></div>
   <div id="comm-list"></div>
 </div>
 
@@ -508,23 +509,34 @@ function switchTab(id) {
 // ════════════════════════════════════════════════════════════════════════════════
 
 function renderCommFilters() {
-  const filt = document.getElementById('comm-filters');
-  filt.innerHTML = '';
-  const filters = [
+  const statusRow = document.getElementById('comm-filters-status');
+  const catRow = document.getElementById('comm-filters-category');
+  statusRow.innerHTML = '';
+  catRow.innerHTML = '';
+  const statusFilters = [
     { id: 'all', label: '全て' },
     { id: 'unconfirmed', label: '未確認' },
-    { id: 'sns', label: 'SNS' },
-    { id: 'auction', label: 'オークション' },
-    { id: 'other', label: 'その他' },
     { id: '未着手', label: '未着手' },
     { id: '進行中', label: '進行中' }
   ];
-  for (const f of filters) {
+  const catFilters = [
+    { id: 'sns', label: 'SNS' },
+    { id: 'auction', label: 'オークション' },
+    { id: 'other', label: 'その他' }
+  ];
+  for (const f of statusFilters) {
     const chip = document.createElement('button');
     chip.className = 'chip' + (currentFilter === f.id ? ' active' : '');
     chip.textContent = f.label;
     chip.onclick = () => { currentFilter = f.id; loadComm(); };
-    filt.appendChild(chip);
+    statusRow.appendChild(chip);
+  }
+  for (const f of catFilters) {
+    const chip = document.createElement('button');
+    chip.className = 'chip' + (currentFilter === f.id ? ' active' : '');
+    chip.textContent = f.label;
+    chip.onclick = () => { currentFilter = f.id; loadComm(); };
+    catRow.appendChild(chip);
   }
 }
 

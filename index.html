@@ -154,8 +154,8 @@ body {
 .staff-btn .staff-role {
   display: block;
   font-size: 9px;
-  font-weight: 600;
-  color: var(--accent);
+  font-weight: 500;
+  color: var(--muted);
   letter-spacing: 0.05em;
   margin-bottom: 2px;
 }
@@ -1945,12 +1945,9 @@ async function loadStaffList() {
       if (mergedSet) {
         const pairMembers = mergedSet.flatMap(g => (grouped[g] || []).map(m => ({ ...m, grp: g })));
         if (pairMembers.length) {
-          const pairLabel = mergedSet
-            .filter(g => grouped[g]?.length)
-            .map(g => GROUP_LABEL[g] || g).join(' · ');
-          html += `<div style="grid-column:1/-1;font-size:10px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;padding:6px 2px 2px;margin-top:4px;border-top:0.5px solid var(--border);">${pairLabel}</div>`;
+          html += `<div style="grid-column:1/-1;padding:2px;margin-top:4px;border-top:0.5px solid var(--border);"></div>`;
           pairMembers.forEach(({ name, grp: memberGrp }) => {
-            const roleLabel = '<span class="staff-role">' + (memberGrp) + '</span>';
+            const roleLabel = '<span class="staff-role">' + memberGrp + '</span>';
             if (DISPLAY_ONLY_GROUPS.includes(memberGrp)) {
               html += '<button class="staff-btn display-only" disabled>' + roleLabel + name + '</button>';
             } else {
@@ -1963,13 +1960,13 @@ async function loadStaffList() {
       }
 
       const isDisplayOnly = DISPLAY_ONLY_GROUPS.includes(grp);
-      const label = GROUP_LABEL[grp] || grp;
-      html += `<div style="grid-column:1/-1;font-size:10px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;padding:6px 2px 2px;margin-top:4px;border-top:0.5px solid var(--border);">${label}</div>`;
+      html += `<div style="grid-column:1/-1;padding:2px;margin-top:4px;border-top:0.5px solid var(--border);"></div>`;
       members.forEach(({ name }) => {
+        const roleLabel = '<span class="staff-role">' + grp + '</span>';
         if (isDisplayOnly) {
-          html += '<button class="staff-btn display-only" disabled>' + name + '</button>';
+          html += '<button class="staff-btn display-only" disabled>' + roleLabel + name + '</button>';
         } else {
-          html += '<button class="staff-btn" onclick="selectStaff(\'' + name + '\')">' + name + '</button>';
+          html += '<button class="staff-btn" onclick="selectStaff(\'' + name + '\')">' + roleLabel + name + '</button>';
         }
       });
       rendered.add(grp);

@@ -85,6 +85,13 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .file-preview-remove:active { opacity:0.7; }
 .file-preview-more { font-size:14px; font-weight:600; color:var(--muted); padding:8px; }
 
+/* ── メンバーチェック ── */
+.member-checks { display:flex; gap:8px; flex-wrap:wrap; }
+.member-check { display:flex; align-items:center; gap:6px; background:var(--s2); border:1.5px solid var(--border); border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; transition:all 0.15s; }
+.member-check input { display:none; }
+.member-check:has(input:checked) { background:var(--accent); border-color:var(--accent); color:#fff; }
+.member-check span { user-select:none; }
+
 /* ── 選択チップ ── */
 .select-chips { display:flex; gap:6px; }
 .select-chip { flex:1; text-align:center; background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:10px 6px; font-size:13px; cursor:pointer; transition:all 0.15s; white-space:nowrap; }
@@ -130,6 +137,26 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .tag-weather { background:rgba(245,158,11,0.15); color:var(--yellow); }
 .tag-status { background:rgba(168,85,247,0.15); color:var(--purple); }
 .tag-count { background:rgba(34,197,94,0.15); color:var(--green); }
+.tag-error { background:rgba(239,68,68,0.15); color:var(--red); }
+.tag-members { background:rgba(168,85,247,0.12); color:var(--purple); }
+.error-banner { background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:10px; padding:12px 14px; margin-bottom:12px; }
+.error-banner-title { font-size:12px; font-weight:700; color:var(--red); margin-bottom:4px; }
+.error-banner-item { font-size:11px; color:var(--text); padding:4px 0; border-bottom:1px solid rgba(239,68,68,0.1); }
+.error-banner-item:last-child { border-bottom:none; }
+
+/* ── 投稿ログ ── */
+.log-month { font-size:13px; font-weight:700; color:var(--accent); padding:12px 0 6px; }
+.log-item { display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--border); }
+.log-avatar { width:36px; height:36px; border-radius:50%; background:var(--s3); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:var(--accent); flex-shrink:0; }
+.log-body { flex:1; min-width:0; }
+.log-name { font-size:13px; font-weight:700; color:var(--text); }
+.log-detail { font-size:12px; color:var(--muted); margin-top:2px; line-height:1.6; }
+.log-detail strong { color:var(--text); font-weight:600; }
+.log-time { font-size:10px; color:var(--muted); margin-top:3px; }
+.log-stats { display:flex; gap:16px; margin-top:16px; padding:14px; background:var(--s2); border:1px solid var(--border); border-radius:12px; }
+.log-stat { flex:1; text-align:center; }
+.log-stat-num { font-size:22px; font-weight:900; color:var(--accent); }
+.log-stat-label { font-size:10px; color:var(--muted); margin-top:2px; }
 
 /* ── 撮影ガイド ── */
 .guide-section { margin-bottom:20px; }
@@ -221,7 +248,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 
 <!-- ── ヘッダー ── -->
 <div class="app-header">
-  <a href="https://mitsurumukaihata.github.io/foo-portal/" class="portal-link">
+  <a href="https://mitsurumukaihata.github.io/foo-portal/" class="portal-link" id="portal-back-link" onclick="return confirmLeave()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
     ポータル
   </a>
@@ -236,6 +263,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 <div class="nav">
   <button class="nav-btn active" data-tab="upload">アップロード</button>
   <button class="nav-btn" data-tab="list">素材一覧</button>
+  <button class="nav-btn" data-tab="log">みんなの投稿</button>
   <button class="nav-btn" data-tab="guide">撮影ガイド</button>
 </div>
 
@@ -283,6 +311,16 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
         <option value="配達">配達</option>
         <option value="その他">その他</option>
       </select>
+    </div>
+
+    <!-- 参加メンバー -->
+    <div class="form-group">
+      <label class="form-label">参加メンバー（この作業に参加した人）</label>
+      <div class="member-checks" id="member-checks">
+        <label class="member-check"><input type="checkbox" value="向畑" checked><span>向畑</span></label>
+        <label class="member-check"><input type="checkbox" value="矢島"><span>矢島</span></label>
+        <label class="member-check"><input type="checkbox" value="藤井"><span>藤井</span></label>
+      </div>
     </div>
 
     <!-- 特記事項 -->
@@ -335,6 +373,11 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
     <button class="chip" data-filter="used">使用済み</button>
   </div>
   <div id="list-content"></div>
+</div>
+
+<!-- ── ページ: みんなの投稿 ── -->
+<div class="page" id="page-log">
+  <div id="log-content"></div>
 </div>
 
 <!-- ── ページ: 撮影ガイド ── -->
@@ -723,12 +766,22 @@ function getPropValue(page, prop) {
   }
 }
 
-function showToast(msg, type = 'default') {
+function showToast(msg, type = 'default', duration = 3000) {
   const el = document.getElementById('toast');
   el.textContent = msg;
   el.className = 'toast ' + type;
   el.style.display = 'block';
-  setTimeout(() => el.style.display = 'none', 3000);
+  setTimeout(() => el.style.display = 'none', duration);
+}
+
+// アップロードエラー記録（セッション内保持）
+var _uploadErrors = [];
+function addUploadError(info) {
+  _uploadErrors.push(info);
+  // ローカルストレージは使わない（セッション内のみ）
+}
+function getUploadErrors() {
+  return _uploadErrors;
 }
 
 function toggleTheme() {
@@ -898,6 +951,10 @@ function resetForm() {
   document.getElementById('work-place').value = '';
   document.getElementById('notes').value = '';
   document.getElementById('comment').value = '';
+  // 参加メンバーのチェックをリセット（投稿者のみチェック）
+  document.querySelectorAll('#member-checks input').forEach(cb => {
+    cb.checked = (cb.value === currentUserName);
+  });
 }
 
 function updateFileCount() {
@@ -926,6 +983,22 @@ document.getElementById('rating-chips').addEventListener('click', (e) => {
     document.querySelectorAll('#rating-chips .select-chip').forEach(btn => btn.classList.remove('active'));
     e.target.classList.add('active');
     selectedRating = e.target.dataset.rating;
+  }
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// アップロード中の離脱防止
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function confirmLeave() {
+  if (_submitting) {
+    return confirm('アップロード中です。ページを離れるとアップロードが中断されます。本当に戻りますか？');
+  }
+  return true;
+}
+window.addEventListener('beforeunload', (e) => {
+  if (_submitting) {
+    e.preventDefault();
+    e.returnValue = '';
   }
 });
 
@@ -970,7 +1043,17 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
     const folderName = `${workDate}_${currentUserName}`;
 
     // Google Drive にアップロード
-    const folderId = await uploadToGoogleDrive(selectedFiles, folderName);
+    let folderId;
+    try {
+      folderId = await uploadToGoogleDrive(selectedFiles, folderName);
+    } catch(driveErr) {
+      document.getElementById('progress-bar').style.display = 'none';
+      document.getElementById('progress-status').style.display = 'none';
+      document.getElementById('submit-btn').disabled = false;
+      showToast('Driveアップロード失敗: ' + driveErr.message, 'error');
+      _submitting = false;
+      return;
+    }
 
     // Notion に保存
     updateProgressStatus('Notionに保存中...');
@@ -986,7 +1069,8 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
         'おすすめ度': selectedRating ? { select: { name: selectedRating } } : undefined,
         'ひとことコメント': { rich_text: [{ text: { content: comment } }] },
         'フォルダID': { rich_text: [{ text: { content: folderId } }] },
-        'ファイル数': { number: selectedFiles.length }
+        'ファイル数': { number: selectedFiles.length },
+        '参加メンバー': { multi_select: Array.from(document.querySelectorAll('#member-checks input:checked')).map(cb => ({ name: cb.value })) }
       }
     };
 
@@ -994,10 +1078,22 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
       if (notionBody.properties[key] === undefined) delete notionBody.properties[key];
     });
 
-    await notionAPI('POST', '/pages', {
-      parent: { database_id: DB.material },
-      properties: notionBody.properties
-    });
+    try {
+      await notionAPI('POST', '/pages', {
+        parent: { database_id: DB.material },
+        properties: notionBody.properties
+      });
+    } catch(notionErr) {
+      // Drive成功 → Notion失敗：エラーだが画像は保存済み
+      document.getElementById('progress-bar').style.display = 'none';
+      document.getElementById('progress-status').style.display = 'none';
+      document.getElementById('submit-btn').disabled = false;
+      showToast('画像は保存済みですが、Notion登録に失敗しました。素材一覧に反映されません。', 'error', 6000);
+      // ローカルにエラー記録を保持
+      addUploadError({ folderName, folderId, fileCount: selectedFiles.length, error: notionErr.message, time: new Date().toISOString() });
+      _submitting = false;
+      return;
+    }
 
     // フォームを完全リセット（新しいシートに）
     resetForm();
@@ -1019,6 +1115,10 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
+    if (_submitting) {
+      showToast('アップロード中はタブを切り替えできません', 'error');
+      return;
+    }
     const tab = btn.dataset.tab;
     switchTab(tab);
   });
@@ -1034,6 +1134,8 @@ function switchTab(tab) {
 
   if (tab === 'list') {
     loadMaterialList();
+  } else if (tab === 'log') {
+    loadActivityLog();
   }
 }
 
@@ -1070,6 +1172,17 @@ async function loadMaterialList() {
     }
 
     let html = '';
+
+    // アップロードエラーがあれば警告表示
+    const errors = getUploadErrors();
+    if (errors.length > 0) {
+      html += '<div class="error-banner"><div class="error-banner-title">Notion未登録のアップロード</div>';
+      errors.forEach(err => {
+        html += `<div class="error-banner-item">${escapeHtml(err.folderName)} (${err.fileCount}ファイル) — ${escapeHtml(err.error)}</div>`;
+      });
+      html += '</div>';
+    }
+
     materials.forEach(mat => {
       const name = getPropValue(mat, '素材名');
       const author = getPropValue(mat, '投稿者');
@@ -1113,6 +1226,98 @@ async function loadMaterialList() {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 詳細パネル
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// みんなの投稿ログ
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function loadActivityLog() {
+  const container = document.getElementById('log-content');
+  container.innerHTML = '<div class="loading"></div>';
+
+  try {
+    const materials = await queryAll(DB.material, {
+      sorts: [{ timestamp: 'created_time', direction: 'descending' }]
+    });
+
+    if (materials.length === 0) {
+      container.innerHTML = '<div class="empty-state">まだ投稿がありません</div>';
+      return;
+    }
+
+    // 集計
+    const stats = {};
+    let totalFiles = 0;
+    materials.forEach(mat => {
+      const author = getPropValue(mat, '投稿者') || '不明';
+      if (!stats[author]) stats[author] = { count: 0, files: 0 };
+      stats[author].count++;
+      const fc = getPropValue(mat, 'ファイル数') || 0;
+      stats[author].files += fc;
+      totalFiles += fc;
+    });
+
+    // 集計サマリー
+    let html = '<div class="log-stats">';
+    html += `<div class="log-stat"><div class="log-stat-num">${materials.length}</div><div class="log-stat-label">投稿数</div></div>`;
+    html += `<div class="log-stat"><div class="log-stat-num">${totalFiles}</div><div class="log-stat-label">ファイル数</div></div>`;
+    html += `<div class="log-stat"><div class="log-stat-num">${Object.keys(stats).length}</div><div class="log-stat-label">投稿者数</div></div>`;
+    html += '</div>';
+
+    // 月別グループ化
+    let currentMonth = '';
+    materials.forEach(mat => {
+      const author = getPropValue(mat, '投稿者') || '不明';
+      const workType = getPropValue(mat, '作業内容');
+      const place = getPropValue(mat, '作業場所');
+      const fileCount = getPropValue(mat, 'ファイル数') || 0;
+      const comment = getPropValue(mat, 'ひとことコメント');
+      const rating = getPropValue(mat, 'おすすめ度');
+      const members = getPropValue(mat, '参加メンバー') || [];
+      const createdTime = mat.created_time;
+      const date = getPropValue(mat, '作業日');
+
+      // 月見出し
+      if (createdTime) {
+        const d = new Date(createdTime);
+        const monthKey = `${d.getFullYear()}年${d.getMonth() + 1}月`;
+        if (monthKey !== currentMonth) {
+          currentMonth = monthKey;
+          html += `<div class="log-month">${monthKey}</div>`;
+        }
+      }
+
+      // アバターの頭文字
+      const initial = author.charAt(0);
+
+      // 詳細テキスト
+      let detail = '';
+      if (workType) detail += `<strong>${escapeHtml(workType)}</strong>`;
+      if (place) detail += (detail ? ' · ' : '') + escapeHtml(place);
+      if (fileCount) detail += (detail ? ' · ' : '') + `${fileCount}ファイル`;
+      if (comment) detail += `<br>${escapeHtml(comment)}`;
+      if (rating) detail += ` ${rating}`;
+      if (members.length > 0) detail += `<br><span class="tag tag-members">${members.map(m => escapeHtml(m)).join(' ')}</span>`;
+
+      const timeStr = createdTime ? formatDateTime(createdTime) : (date || '');
+
+      html += `<div class="log-item">
+        <div class="log-avatar">${escapeHtml(initial)}</div>
+        <div class="log-body">
+          <div class="log-name">${escapeHtml(author)}</div>
+          <div class="log-detail">${detail}</div>
+          <div class="log-time">${timeStr}</div>
+        </div>
+      </div>`;
+    });
+
+    container.innerHTML = html;
+  } catch(err) {
+    container.innerHTML = `<div class="empty-state">読み込みエラー: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 詳細パネル
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 async function showMaterialDetail(pageId) {
   try {
     const res = await notionAPI('POST', `/databases/${DB.material}/query`, {
@@ -1134,6 +1339,7 @@ async function showMaterialDetail(pageId) {
     const folderId = getPropValue(page, 'フォルダID');
     const status = getPropValue(page, 'ステータス');
     const fileCount = getPropValue(page, 'ファイル数');
+    const members = getPropValue(page, '参加メンバー') || [];
 
     const starCount = rating ? rating.length : 0;
     const ratingDisplay = starCount > 0 ? '★'.repeat(starCount) : '';
@@ -1198,6 +1404,13 @@ async function showMaterialDetail(pageId) {
       html += `<div class="detail-section">
         <div class="detail-section-title">ファイル数</div>
         <div class="detail-section-content">${fileCount}ファイル</div>
+      </div>`;
+    }
+
+    if (members.length > 0) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">参加メンバー</div>
+        <div class="detail-section-content">${members.map(m => `<span class="tag tag-members" style="margin-right:4px;">${escapeHtml(m)}</span>`).join('')}</div>
       </div>`;
     }
 

@@ -476,9 +476,9 @@ async function openPdf(record) {
     return;
   }
 
-  // WorkerのPDFプロキシを通してpdf.jsで表示
+  // pdf.jsでS3 URLを直接読み込み → CORS失敗時はプロキシ経由iframeにフォールバック
   const proxyUrl = `${WORKER}/pdf-proxy?url=${encodeURIComponent(pdfUrl)}`;
-  FooPdfViewer.open(proxyUrl, { title: label, notionUrl: record.pageUrl });
+  FooPdfViewer.open(pdfUrl, { title: label, notionUrl: record.pageUrl, proxyUrl: proxyUrl });
 }
 
 // Notion REST APIからファイルURLを再取得（新鮮な署名付きS3 URL）

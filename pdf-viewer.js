@@ -1,8 +1,14 @@
 /**
- * f.o.o ポータル共通PDFビューア (pdf.js ベース)
+ * f.o.o ポータル共通PDFビューア
+ *
+ * pdf.js で表示を試み、CORS等で失敗したらiframeフォールバック。
  *
  * 使い方:
- *   await FooPdfViewer.open(pdfUrl, { title, notionUrl });
+ *   FooPdfViewer.open(pdfUrl, {
+ *     title: '給与明細',
+ *     notionUrl: 'https://...',
+ *     proxyUrl: 'https://proxy/pdf-proxy?url=...'  // iframe用フォールバックURL
+ *   });
  *   FooPdfViewer.close();
  */
 (function () {
@@ -23,9 +29,10 @@
   let _pendingPage = null;
   let _pinchStartDist = 0;
   let _pinchStartScale = 0;
+  let _mode = ''; // 'canvas' or 'iframe'
 
   // ── DOM refs (lazy-created) ──
-  let _overlay, _canvas, _ctx, _toolbar, _pageInfo, _titleEl, _notionBtn, _loadingEl, _errorEl;
+  let _overlay, _canvas, _ctx, _iframe, _toolbar, _pageInfo, _titleEl, _notionBtn, _loadingEl, _errorEl;
   let _created = false;
 
   // ── Load pdf.js dynamically ──
@@ -56,8 +63,8 @@
     </a>
   </div>
 
-  <!-- Toolbar -->
-  <div id="fpv-toolbar" style="background:#0d0d12;padding:6px 14px;display:flex;align-items:center;justify-content:space-between;gap:6px;flex-shrink:0;border-bottom:0.5px solid #222;">
+  <!-- Toolbar (pdf.js mode only) -->
+  <div id="fpv-toolbar" style="display:none;background:#0d0d12;padding:6px 14px;display:flex;align-items:center;justify-content:space-between;gap:6px;flex-shrink:0;border-bottom:0.5px solid #222;">
     <div style="display:flex;align-items:center;gap:4px;">
       <button id="fpv-prev" class="fpv-tb" title="前のページ">◂</button>
       <span id="fpv-pageinfo" style="font-size:11px;color:#888;min-width:60px;text-align:center;">1 / 1</span>
@@ -71,10 +78,13 @@
     </div>
   </div>
 
-  <!-- Canvas area -->
-  <div id="fpv-canvas-wrap" style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;background:#222;display:flex;align-items:flex-start;justify-content:center;padding:8px;">
+  <!-- Canvas area (pdf.js mode) -->
+  <div id="fpv-canvas-wrap" style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;background:#222;display:none;align-items:flex-start;justify-content:center;padding:8px;">
     <canvas id="fpv-canvas" style="display:block;max-width:none;box-shadow:0 2px 20px rgba(0,0,0,0.5);"></canvas>
   </div>
+
+  <!-- iframe area (fallback mode) -->
+  <iframe id="fpv-iframe" style="display:none;flex:1;border:none;width:100%;background:#fff;" title="PDF"></iframe>
 
   <!-- Loading -->
   <div id="fpv-loading" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#111;z-index:10;">
@@ -108,6 +118,7 @@
     _overlay   = document.getElementById('foo-pdf-overlay');
     _canvas    = document.getElementById('fpv-canvas');
     _ctx       = _canvas.getContext('2d');
+    _iframe    = document.getElementById('fpv-iframe');
     _toolbar   = document.getElementById('fpv-toolbar');
     _pageInfo  = document.getElementById('fpv-pageinfo');
     _titleEl   = document.getElementById('fpv-title');
@@ -123,7 +134,7 @@
     document.getElementById('fpv-zoomout').addEventListener('click', () => setZoom(_scale - 0.25));
     document.getElementById('fpv-fit').addEventListener('click', fitWidth);
 
-    // Swipe navigation
+    // Swipe / pinch on canvas area
     let _touchStartX = 0;
     let _touchStartY = 0;
     const canvasWrap = document.getElementById('fpv-canvas-wrap');
@@ -164,7 +175,6 @@
       if (e.changedTouches.length !== 1) return;
       const now = Date.now();
       if (now - _lastTap < 300) {
-        // Toggle between fit-width and 150%
         if (_scale > 1.2) fitWidth();
         else setZoom(1.5);
       }
@@ -186,7 +196,41 @@
     return Math.sqrt(dx * dx + dy * dy);
   }
 
-  // ── Render page ──
+  // ── Show canvas mode ──
+  function showCanvasMode() {
+    _mode = 'canvas';
+    document.getElementById('fpv-canvas-wrap').style.display = 'flex';
+    _canvas.style.display = 'block';
+    _toolbar.style.display = 'flex';
+    _iframe.style.display = 'none';
+  }
+
+  // ── Show iframe mode ──
+  function showIframeMode(url) {
+    _mode = 'iframe';
+    document.getElementById('fpv-canvas-wrap').style.display = 'none';
+    _canvas.style.display = 'none';
+    _toolbar.style.display = 'none';
+    _iframe.style.display = 'block';
+
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('timeout'));
+      }, 15000);
+
+      _iframe.onload = () => {
+        clearTimeout(timeout);
+        resolve();
+      };
+      _iframe.onerror = () => {
+        clearTimeout(timeout);
+        reject(new Error('iframe load failed'));
+      };
+      _iframe.src = url;
+    });
+  }
+
+  // ── Render page (canvas mode) ──
   async function renderPage(num) {
     if (_rendering) { _pendingPage = num; return; }
     _rendering = true;
@@ -219,7 +263,6 @@
   function goPage(n) {
     if (n < 1 || n > _totalPages) return;
     renderPage(n);
-    // Scroll canvas to top
     const wrap = document.getElementById('fpv-canvas-wrap');
     if (wrap) wrap.scrollTop = 0;
   }
@@ -241,17 +284,52 @@
     });
   }
 
+  // ── Try loading PDF with pdf.js (canvas mode) ──
+  async function tryPdfJs(pdfUrl) {
+    await loadLib();
+
+    // fetch PDF data as ArrayBuffer
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    const res = await fetch(pdfUrl, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.arrayBuffer();
+
+    const loadingTask = pdfjsLib.getDocument({
+      data: data,
+      cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/cmaps/',
+      cMapPacked: true,
+    });
+    _pdfDoc = await loadingTask.promise;
+    _totalPages = _pdfDoc.numPages;
+    _currentPage = 1;
+
+    // Fit to width
+    const page1 = await _pdfDoc.getPage(1);
+    const vp = page1.getViewport({ scale: 1.0 });
+    const wrapWidth = document.getElementById('fpv-canvas-wrap').clientWidth - 16;
+    _scale = wrapWidth / vp.width;
+
+    showCanvasMode();
+    _loadingEl.style.display = 'none';
+    await renderPage(1);
+  }
+
   // ── Public API ──
   async function open(pdfUrl, opts) {
     opts = opts || {};
     createDOM();
 
-    // Show overlay + loading
+    // Reset state
+    _mode = '';
     _overlay.style.display = 'flex';
     _loadingEl.style.display = 'flex';
     _errorEl.style.display = 'none';
     _canvas.style.display = 'none';
-    _toolbar.style.display = 'flex';
+    _iframe.style.display = 'none';
+    _toolbar.style.display = 'none';
+    document.getElementById('fpv-canvas-wrap').style.display = 'none';
 
     _titleEl.textContent = opts.title || 'PDF';
     if (opts.notionUrl) {
@@ -264,49 +342,40 @@
 
     history.pushState(null, '', location.href);
 
+    // Strategy: try pdf.js first, fallback to iframe with proxyUrl
     try {
-      await loadLib();
-
-      const loadingTask = pdfjsLib.getDocument({
-        url: pdfUrl,
-        cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/cmaps/',
-        cMapPacked: true,
-      });
-
-      // timeout
-      const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000));
-      _pdfDoc = await Promise.race([loadingTask.promise, timeout]);
-      _totalPages = _pdfDoc.numPages;
-      _currentPage = 1;
-
-      // Calculate initial scale to fit width
-      const page1 = await _pdfDoc.getPage(1);
-      const vp = page1.getViewport({ scale: 1.0 });
-      const wrapWidth = document.getElementById('fpv-canvas-wrap').clientWidth - 16;
-      _scale = wrapWidth / vp.width;
-
-      _loadingEl.style.display = 'none';
-      _canvas.style.display = 'block';
-
-      await renderPage(1);
+      await tryPdfJs(pdfUrl);
+      console.log('[FooPdfViewer] pdf.js mode OK');
+      return;
     } catch (e) {
-      console.error('PDF load error:', e);
+      console.warn('[FooPdfViewer] pdf.js failed, trying iframe fallback:', e.message);
+    }
+
+    // Fallback: iframe with proxyUrl
+    const iframeUrl = opts.proxyUrl || pdfUrl;
+    try {
+      _loadingEl.style.display = 'flex';
+      await showIframeMode(iframeUrl);
       _loadingEl.style.display = 'none';
-      _canvas.style.display = 'none';
-      _toolbar.style.display = 'none';
+      console.log('[FooPdfViewer] iframe mode OK');
+    } catch (e2) {
+      console.error('[FooPdfViewer] iframe also failed:', e2.message);
+      _loadingEl.style.display = 'none';
+      _iframe.style.display = 'none';
       _errorEl.style.display = 'flex';
       document.getElementById('fpv-error-msg').textContent =
-        e.message === 'timeout'
-          ? '読み込みがタイムアウトしました。\nNotionで直接確認してください。'
-          : 'PDFの読み込みに失敗しました。\nNotionで直接確認してください。';
+        'PDFの読み込みに失敗しました。\nNotionで直接確認してください。';
     }
   }
 
   function close() {
     if (_overlay) _overlay.style.display = 'none';
     if (_pdfDoc) { _pdfDoc.destroy(); _pdfDoc = null; }
+    _iframe.src = '';
+    _iframe.style.display = 'none';
     _rendering = false;
     _pendingPage = null;
+    _mode = '';
   }
 
   // Expose globally

@@ -152,10 +152,8 @@ body {
 }
 .staff-btn:active { transform: scale(0.97); }
 .staff-btn.display-only {
-  opacity: 0.5;
   cursor: default;
   pointer-events: none;
-  border-style: dashed;
 }
 .staff-btn.selected {
   border-color: var(--accent);
@@ -1879,9 +1877,9 @@ window.onload = async () => {
 };
 
 // ─── スタッフリスト動的ロード ──────────────────────────────────────────────
-const GROUP_ORDER = ['管理者', '部長', 'リーダー', 'SNS/オークション', '一般', '事務', '経理', '会長'];
+const GROUP_ORDER = ['管理者', '部長', 'リーダー', '一般', '事務', 'SNS/オークション', '経理', '会長'];
 const GROUP_LABEL = {
-  '管理者':         '👑 管理者',
+  '管理者':         '👑 代表',
   '部長':           '👔 部長',
   'リーダー':       '🏅 リーダー',
   'SNS/オークション': '📸 SNS/オークション',
@@ -1890,7 +1888,7 @@ const GROUP_LABEL = {
   '経理':           '💰 経理',
   '会長':           '🏢 会長',
 };
-// 表示のみ（ログイン不可）のグループ
+// 表示のみ（ログイン不可）のグループ — 見た目は普通だが押しても反応しない
 const DISPLAY_ONLY_GROUPS = ['会長'];
 
 async function loadStaffList() {
@@ -1920,8 +1918,8 @@ async function loadStaffList() {
       return;
     }
 
-    // 横並びにまとめるグループペア（経理と会長を同じ行に）
-    const MERGED_PAIRS = [['経理', '会長']];
+    // 横並びにまとめるグループペア
+    const MERGED_PAIRS = [['部長', 'リーダー'], ['事務', 'SNS/オークション'], ['経理', '会長']];
 
     const orderedGroups = GROUP_ORDER.filter(g => grouped[g])
       .concat(Object.keys(grouped).filter(g => !GROUP_ORDER.includes(g)));

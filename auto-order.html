@@ -526,7 +526,7 @@ function keyToSafeId(str) {
   return 'k' + Math.abs(h).toString(36);
 }
 
-// 発注管理表から「発注中」「新規発注」のレコードを取得し、パターン|サイズ|倉庫→合計数量のマップを返す
+// 発注管理表から未入荷（発注済・発注中・新規発注）のレコードを取得し、パターン|サイズ|倉庫→合計数量のマップを返す
 async function fetchInFlightOrders() {
   const map = {}; // "パターン|サイズ|倉庫短" → 合計数量
   try {
@@ -535,6 +535,7 @@ async function fetchInFlightOrders() {
     while (hasMore) {
       const body = {
         filter: { or: [
+          { property: 'ステータス', select: { equals: '発注済' } },
           { property: 'ステータス', select: { equals: '発注中' } },
           { property: 'ステータス', select: { equals: '新規発注' } },
         ]},

@@ -511,9 +511,7 @@ async function loadComm() {
     } else if (currentFilter === '進行中') {
       filter.filter = { property: '状態', status: { equals: '進行中' } };
     } else {
-      filter.filter = {
-        filter: { property: '状態', status: { does_not_equal: '完了' } }
-      };
+      filter.filter = { property: '状態', status: { does_not_equal: '完了' } };
     }
     filter.sorts = [{ timestamp: 'created_time', direction: 'descending' }];
     const pages = await queryAll(DB.comm, filter);

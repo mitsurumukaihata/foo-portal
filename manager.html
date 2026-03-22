@@ -160,6 +160,26 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .fab.show { display:flex; }
 
 /* ── エラースクリーン ── */
+/* ── メッセージページ（社長の思い） ── */
+.msg-page-card { background:var(--s2); border:1px solid var(--border); border-radius:14px; padding:18px; margin-bottom:14px; cursor:pointer; transition:all 0.15s; }
+.msg-page-card:active { background:var(--s3); }
+.msg-page-icon { font-size:28px; margin-bottom:8px; }
+.msg-page-title { font-size:15px; font-weight:700; color:var(--text); margin-bottom:4px; }
+.msg-page-date { font-size:11px; color:var(--muted); }
+.msg-body { padding:4px 0 40px; }
+.msg-body h1 { font-size:18px; font-weight:900; margin:20px 0 10px; color:var(--accent); }
+.msg-body h2 { font-size:15px; font-weight:700; margin:18px 0 8px; color:var(--text); }
+.msg-body h3 { font-size:13px; font-weight:700; margin:14px 0 6px; color:var(--text); }
+.msg-body p { font-size:13px; line-height:1.9; color:var(--text); margin-bottom:8px; word-break:break-word; }
+.msg-body hr { border:none; border-top:1px solid var(--border); margin:16px 0; }
+.msg-body ul, .msg-body ol { font-size:13px; line-height:1.9; color:var(--text); margin:4px 0 8px 18px; }
+.msg-body li { margin-bottom:2px; }
+.msg-body .highlight-red { color:var(--red); font-weight:700; }
+.msg-body .highlight-orange { color:var(--accent); font-weight:700; }
+.msg-body .highlight-blue { color:var(--blue); font-weight:700; }
+.msg-back-btn { display:inline-flex; align-items:center; gap:4px; background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:8px 14px; font-size:12px; font-weight:600; color:var(--muted); cursor:pointer; margin-bottom:14px; font-family:inherit; }
+.msg-back-btn:active { background:var(--s3); }
+
 .auth-error { display:none; text-align:center; padding:60px 20px; }
 .auth-error.show { display:block; }
 .auth-error-title { font-size:18px; font-weight:700; margin-bottom:8px; }
@@ -216,6 +236,11 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
   <div id="interview-list"></div>
 </div>
 
+<!-- 社長の思い -->
+<div class="page" id="page-message">
+  <div id="message-list"></div>
+</div>
+
 </div><!-- #app -->
 
 <!-- ── 詳細パネル ── -->
@@ -259,6 +284,11 @@ const MTG_DB = {
   '山根': '23ca695f8e88819cba5bd12cda06b134',
   '村田': '23da695f8e88800198f3f2ba842d960a',
 };
+
+const MSG_PAGES = [
+  { id: '306a695f8e888056aaf2c929c097beab', icon: '📘', title: '代表としての思い', date: '2026.2.13' },
+  { id: '2e0a695f8e8880cd802ec1ba146afbe0', icon: '📕', title: '役割任命書（現場部長）', date: '2026.1.6' },
+];
 
 let currentTab = 'comm';
 let currentFilter = 'all';
@@ -358,7 +388,8 @@ function renderNav() {
     { id: 'comm', label: 'コミュ' },
     { id: 'meeting', label: '会議' },
     { id: 'task', label: 'タスク' },
-    { id: 'interview', label: '面談' }
+    { id: 'interview', label: '面談' },
+    { id: 'message', label: '思い' }
   ];
   for (const t of tabs) {
     const btn = document.createElement('button');
@@ -377,10 +408,14 @@ function switchTab(id) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   event.target.classList.add('active');
   closeDetail();
+  const fab = document.getElementById('fab');
+  if (id === 'interview' || id === 'message') fab.classList.remove('show');
+  else fab.classList.add('show');
   if (id === 'comm') loadComm();
   else if (id === 'meeting') loadMeeting();
   else if (id === 'task') loadTask();
   else if (id === 'interview') loadInterview();
+  else if (id === 'message') loadMessageList();
 }
 
 function renderCommFilters() {
@@ -950,6 +985,89 @@ async function submitTaskForm() {
   }
 }
 
+/* ── 社長の思い ── */
+function loadMessageList() {
+  const list = document.getElementById('message-list');
+  list.innerHTML = '';
+  for (const pg of MSG_PAGES) {
+    const card = document.createElement('div');
+    card.className = 'msg-page-card';
+    card.innerHTML = '<div class="msg-page-icon">' + pg.icon + '</div>' +
+      '<div class="msg-page-title">' + escapeHtml(pg.title) + '</div>' +
+      '<div class="msg-page-date">' + escapeHtml(pg.date) + '</div>';
+    card.onclick = () => loadMessagePage(pg);
+    list.appendChild(card);
+  }
+}
+
+async function loadMessagePage(pg) {
+  const list = document.getElementById('message-list');
+  list.innerHTML = '<button class="msg-back-btn" onclick="loadMessageList()">← 一覧に戻る</button><div class="loading"></div>';
+  try {
+    let allBlocks = [], cursor = null;
+    while (true) {
+      let url = '/blocks/' + pg.id + '/children?page_size=100';
+      if (cursor) url += '&start_cursor=' + cursor;
+      const res = await notionAPI('GET', url);
+      allBlocks = allBlocks.concat(res.results || []);
+      if (!res.has_more) break;
+      cursor = res.next_cursor;
+    }
+    let html = '<button class="msg-back-btn" onclick="loadMessageList()">← 一覧に戻る</button>';
+    html += '<div class="msg-body">';
+    html += '<h1>' + pg.icon + ' ' + escapeHtml(pg.title) + '</h1>';
+    for (const b of allBlocks) {
+      html += renderBlock(b);
+    }
+    html += '</div>';
+    list.innerHTML = html;
+  } catch(e) {
+    list.innerHTML = '<button class="msg-back-btn" onclick="loadMessageList()">← 一覧に戻る</button>' +
+      '<div class="empty-state">' + escapeHtml(e.message) + '<br><button style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px 12px;margin-top:12px;cursor:pointer;font-size:12px;font-weight:600;" onclick="loadMessagePage(' + JSON.stringify(pg).replace(/"/g,'&quot;') + ')">再試行</button></div>';
+  }
+}
+
+function renderBlock(block) {
+  const type = block.type;
+  if (type === 'heading_1') return '<h1>' + richTextToHtml(block.heading_1.rich_text) + '</h1>';
+  if (type === 'heading_2') return '<h2>' + richTextToHtml(block.heading_2.rich_text) + '</h2>';
+  if (type === 'heading_3') return '<h3>' + richTextToHtml(block.heading_3.rich_text) + '</h3>';
+  if (type === 'paragraph') {
+    const txt = richTextToHtml(block.paragraph.rich_text);
+    return txt ? '<p>' + txt + '</p>' : '<p>&nbsp;</p>';
+  }
+  if (type === 'bulleted_list_item') return '<ul><li>' + richTextToHtml(block.bulleted_list_item.rich_text) + '</li></ul>';
+  if (type === 'numbered_list_item') return '<ol><li>' + richTextToHtml(block.numbered_list_item.rich_text) + '</li></ol>';
+  if (type === 'divider') return '<hr>';
+  if (type === 'to_do') {
+    const checked = block.to_do.checked ? '☑' : '☐';
+    return '<p>' + checked + ' ' + richTextToHtml(block.to_do.rich_text) + '</p>';
+  }
+  if (type === 'callout') return '<div style="background:var(--s3);border-radius:10px;padding:12px 14px;margin:8px 0;font-size:13px;line-height:1.8;">' + richTextToHtml(block.callout.rich_text) + '</div>';
+  if (type === 'quote') return '<div style="border-left:3px solid var(--accent);padding-left:12px;margin:8px 0;font-size:13px;line-height:1.8;color:var(--muted);">' + richTextToHtml(block.quote.rich_text) + '</div>';
+  return '';
+}
+
+function richTextToHtml(richText) {
+  if (!richText || !richText.length) return '';
+  return richText.map(t => {
+    let text = escapeHtml(t.plain_text);
+    if (t.annotations) {
+      if (t.annotations.bold) text = '<strong>' + text + '</strong>';
+      if (t.annotations.italic) text = '<em>' + text + '</em>';
+      if (t.annotations.strikethrough) text = '<del>' + text + '</del>';
+      if (t.annotations.underline) text = '<u>' + text + '</u>';
+      if (t.annotations.color && t.annotations.color !== 'default') {
+        const c = t.annotations.color;
+        if (c === 'red' || c === 'red_background') text = '<span class="highlight-red">' + text + '</span>';
+        else if (c === 'orange' || c === 'orange_background') text = '<span class="highlight-orange">' + text + '</span>';
+        else if (c === 'blue' || c === 'blue_background') text = '<span class="highlight-blue">' + text + '</span>';
+      }
+    }
+    return text;
+  }).join('');
+}
+
 function init() {
   if (!checkAccess()) {
     document.getElementById('auth-error').classList.add('show');
@@ -961,6 +1079,7 @@ function init() {
   updateThemeButton();
   document.getElementById('theme-toggle').onclick = toggleTheme;
   renderNav();
+  document.getElementById('fab').classList.add('show');
   loadComm();
 }
 

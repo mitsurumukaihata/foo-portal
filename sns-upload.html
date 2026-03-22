@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>SNS用素材アップロード | f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --blue: #3b82f6;
+  --yellow: #f59e0b; --red: #ef4444; --purple: #a855f7;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+    --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208; --muted: #a08060;
+    --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --blue: #2563eb;
+    --yellow: #d97706; --red: #dc2626; --purple: #9333ea;
+  }
+}
+[data-theme="dark"] {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --blue: #3b82f6;
+  --yellow: #f59e0b; --red: #ef4444; --purple: #a855f7;
+}
+[data-theme="light"] {
+  --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+  --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208; --muted: #a08060;
+  --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --blue: #2563eb;
+  --yellow: #d97706; --red: #dc2626; --purple: #9333ea;
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', sans-serif; min-height: 100vh; max-width: 480px; margin: 0 auto; }
+
+/* ── ヘッダー ── */
+.app-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px 8px; }
+.portal-link { display:flex; align-items:center; gap:4px; color:var(--muted); font-size:12px; text-decoration:none; }
+.portal-link svg { width:16px; height:16px; }
+.portal-link:active { opacity:0.6; }
+.app-title { font-size:20px; font-weight:900; letter-spacing:-0.03em; padding:0 20px 4px; }
+.app-title span { color:var(--accent); }
+.app-subtitle { font-size:11px; color:var(--muted); padding:0 20px 12px; }
+
+.header-controls { display:flex; align-items:center; gap:8px; }
+.theme-toggle { background:var(--s2); border:1px solid var(--border); border-radius:8px; width:36px; height:36px; color:var(--text); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.theme-toggle:active { background:var(--s3); }
+
+/* ── ナビ ── */
+.nav { display:flex; gap:2px; padding:0 20px 12px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.nav::-webkit-scrollbar { display:none; }
+.nav-btn { flex-shrink:0; background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:9px 14px; font-size:12px; font-weight:600; color:var(--muted); cursor:pointer; font-family:'Noto Sans JP',sans-serif; transition:all 0.15s; white-space:nowrap; position:relative; }
+.nav-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+/* ── ページ ── */
+.page { display:none; padding:0 20px 120px; }
+.page.show { display:block; }
+
+/* ── フォーム ── */
+.form-group { margin-bottom:14px; }
+.form-label { font-size:11px; color:var(--muted); font-weight:600; margin-bottom:5px; display:block; }
+.form-input { width:100%; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:12px 14px; font-size:14px; color:var(--text); outline:none; font-family:inherit; }
+.form-input:focus { border-color:var(--accent); }
+.form-input[type="date"] { font-family:inherit; }
+.form-select { width:100%; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:12px 14px; font-size:14px; color:var(--text); outline:none; font-family:inherit; appearance:none; }
+.form-select:focus { border-color:var(--accent); }
+.form-textarea { width:100%; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:12px 14px; font-size:14px; color:var(--text); outline:none; font-family:inherit; resize:vertical; min-height:80px; }
+.form-textarea:focus { border-color:var(--accent); }
+
+/* ── ファイル選択 ── */
+#file-input { display:none; }
+.file-select-label { display:block; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:12px 14px; font-size:14px; color:var(--text); text-align:center; cursor:pointer; font-weight:600; transition:all 0.15s; }
+.file-select-label:active { background:var(--s3); border-color:var(--accent); }
+.file-preview { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+.file-preview-item { width:70px; height:70px; background:var(--s2); border:1px solid var(--border); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:28px; position:relative; overflow:hidden; }
+.file-preview-item img, .file-preview-item video { width:100%; height:100%; object-fit:cover; }
+.file-preview-video-icon { position:absolute; font-size:20px; background:rgba(0,0,0,0.6); border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:#fff; }
+.file-preview-more { font-size:14px; font-weight:600; color:var(--muted); padding:8px; }
+
+/* ── 選択チップ ── */
+.select-chips { display:flex; gap:6px; }
+.select-chip { flex:1; text-align:center; background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:10px 6px; font-size:13px; cursor:pointer; transition:all 0.15s; white-space:nowrap; }
+.select-chip.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+/* ── プログレスバー ── */
+.progress-bar { width:100%; height:6px; background:var(--s2); border-radius:3px; overflow:hidden; margin-top:8px; display:none; }
+.progress-fill { height:100%; background:var(--accent); border-radius:3px; transition:width 0.3s; width:0%; }
+
+/* ── ボタン ── */
+.form-btn { width:100%; background:var(--accent); border:none; border-radius:10px; padding:14px; color:#fff; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:8px; transition:all 0.15s; }
+.form-btn:disabled { opacity:0.4; cursor:default; }
+.form-btn:active:not(:disabled) { opacity:0.9; }
+
+/* ── フィルターチップ ── */
+.filter-chips { display:flex; gap:6px; margin-bottom:8px; }
+.chip { flex:1; text-align:center; background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:9px 6px; font-size:11px; font-weight:600; color:var(--muted); cursor:pointer; transition:all 0.15s; }
+.chip.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+/* ── カード ── */
+.card { background:var(--s2); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:10px; cursor:pointer; transition:all 0.15s; }
+.card:active { background:var(--s3); }
+.card-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; }
+.card-title { font-size:13px; font-weight:700; color:var(--text); }
+.card-subtitle { font-size:11px; color:var(--muted); }
+.card-meta { font-size:11px; color:var(--muted); margin-bottom:6px; }
+.card-info { font-size:12px; color:var(--text); margin-bottom:4px; }
+.card-tags { display:flex; flex-wrap:wrap; gap:4px 6px; margin-bottom:8px; }
+.tag { display:inline-block; padding:3px 8px; border-radius:6px; font-size:10px; font-weight:600; }
+.tag-work { background:rgba(59,130,246,0.15); color:var(--blue); }
+.tag-weather { background:rgba(245,158,11,0.15); color:var(--yellow); }
+.tag-status { background:rgba(168,85,247,0.15); color:var(--purple); }
+
+/* ── 詳細パネル ── */
+.detail-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:90; }
+.detail-overlay.show { display:block; }
+.detail-sheet { display:none; position:fixed; bottom:0; left:0; right:0; background:var(--bg); border-radius:20px 20px 0 0; width:100%; max-width:480px; max-height:85vh; overflow-y:auto; padding:24px 20px 32px; z-index:95; animation:slideUp 0.3s ease-out; }
+.detail-sheet.show { display:block; }
+@keyframes slideUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
+.detail-close-btn { position:absolute; top:12px; right:12px; background:var(--s2); border:1px solid var(--border); border-radius:8px; width:32px; height:32px; color:var(--text); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.detail-close-btn:active { background:var(--s3); }
+.detail-title { font-size:18px; font-weight:700; margin-bottom:16px; padding-right:40px; }
+.detail-section { margin-bottom:16px; }
+.detail-section-title { font-size:11px; color:var(--muted); font-weight:600; margin-bottom:6px; }
+.detail-section-content { font-size:13px; color:var(--text); line-height:1.8; word-break:break-word; }
+.detail-buttons { display:flex; flex-direction:column; gap:6px; margin-top:16px; }
+.detail-btn { width:100%; padding:12px; border:1.5px solid var(--border); background:var(--s2); color:var(--text); border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.15s; }
+.detail-btn:active { background:var(--s3); }
+.detail-btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+/* ── ローディング ── */
+.loading { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; }
+.loading::before { content:''; display:block; width:28px; height:28px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; margin:0 auto 12px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── 空状態 ── */
+.empty-state { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; line-height:1.8; }
+
+/* ── トースト ── */
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:12px 16px; font-size:12px; color:var(--text); z-index:200; max-width:90%; word-break:break-word; animation:slideUpToast 0.3s ease-out; display:none; }
+@keyframes slideUpToast { from { transform:translateX(-50%) translateY(100%); } to { transform:translateX(-50%) translateY(0); } }
+.toast.error { background:rgba(239,68,68,0.15); border-color:var(--red); color:var(--red); }
+.toast.success { background:rgba(34,197,94,0.15); border-color:var(--green); color:var(--green); }
+
+/* ── 認可エラー ── */
+.auth-error { display:none; text-align:center; padding:60px 20px; }
+.auth-error.show { display:block; }
+.auth-error-title { font-size:18px; font-weight:700; margin-bottom:8px; }
+.auth-error-msg { font-size:13px; color:var(--muted); line-height:1.8; }
+
+/* ── セットアップ通知 ── */
+.setup-notice { text-align:center; padding:40px 20px; }
+.setup-notice-icon { font-size:48px; margin-bottom:12px; }
+.setup-notice-title { font-size:16px; font-weight:700; margin-bottom:8px; }
+.setup-notice-msg { font-size:13px; color:var(--muted); line-height:1.8; }
+</style>
+</head>
+<body>
+
+<!-- ── 認可エラー ── -->
+<div class="auth-error" id="auth-error">
+  <div class="auth-error-title">アクセス権限がありません</div>
+  <div class="auth-error-msg">SNS用素材アップロードへのアクセス権限がないか、セッションが期限切れです。<br><br><a href="https://mitsurumukaihata.github.io/foo-portal/" style="color:var(--accent);text-decoration:none;">ポータルに戻る</a></div>
+</div>
+
+<!-- ── メインアプリ ── -->
+<div id="app" style="display:none;">
+
+<!-- ── ヘッダー ── -->
+<div class="app-header">
+  <a href="https://mitsurumukaihata.github.io/foo-portal/" class="portal-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    ポータル
+  </a>
+  <div class="header-controls">
+    <button class="theme-toggle" id="theme-toggle">🌙</button>
+  </div>
+</div>
+<div class="app-title">SNS用素材<span>アップロード</span></div>
+<div class="app-subtitle">撮影素材の共有 · OneDrive連携</div>
+
+<!-- ── ナビ ── -->
+<div class="nav">
+  <button class="nav-btn active" data-tab="upload">アップロード</button>
+  <button class="nav-btn" data-tab="list">素材一覧</button>
+</div>
+
+<!-- ── ページ: アップロード ── -->
+<div class="page show" id="page-upload">
+  <div id="setup-notice-upload" style="display:none;">
+    <div class="setup-notice">
+      <div class="setup-notice-icon">⚙️</div>
+      <div class="setup-notice-title">OneDrive連携の設定が必要です</div>
+      <div class="setup-notice-msg">このアプリを使用するには、管理者にお問い合わせください。</div>
+    </div>
+  </div>
+
+  <form id="upload-form" style="display:none;">
+    <!-- ファイル選択 -->
+    <div class="form-group">
+      <label class="form-label">ファイル選択</label>
+      <input type="file" id="file-input" multiple accept="image/*,video/*">
+      <label for="file-input" class="file-select-label" id="file-select-btn">
+        <span id="file-count">ファイルを選択</span>
+      </label>
+      <div class="file-preview" id="file-preview"></div>
+    </div>
+
+    <!-- 作業日 -->
+    <div class="form-group">
+      <label class="form-label">作業日</label>
+      <input type="date" id="work-date" class="form-input">
+    </div>
+
+    <!-- 作業場所 -->
+    <div class="form-group">
+      <label class="form-label">作業場所</label>
+      <input type="text" id="work-place" class="form-input" placeholder="広島市南区○○町">
+    </div>
+
+    <!-- 作業内容 -->
+    <div class="form-group">
+      <label class="form-label">作業内容</label>
+      <select id="work-type" class="form-select">
+        <option value="">選択してください</option>
+        <option value="タイヤ交換">タイヤ交換</option>
+        <option value="出張作業">出張作業</option>
+        <option value="倉庫作業">倉庫作業</option>
+        <option value="配達">配達</option>
+        <option value="その他">その他</option>
+      </select>
+    </div>
+
+    <!-- 特記事項 -->
+    <div class="form-group">
+      <label class="form-label">特記事項</label>
+      <textarea id="notes" class="form-textarea" placeholder="いつもと違う作業があれば"></textarea>
+    </div>
+
+    <!-- 天気 -->
+    <div class="form-group">
+      <label class="form-label">天気</label>
+      <div class="select-chips" id="weather-chips">
+        <button type="button" class="select-chip" data-weather="晴☀️">晴☀️</button>
+        <button type="button" class="select-chip" data-weather="曇☁️">曇☁️</button>
+        <button type="button" class="select-chip" data-weather="雨🌧️">雨🌧️</button>
+      </div>
+    </div>
+
+    <!-- おすすめ度 -->
+    <div class="form-group">
+      <label class="form-label">おすすめ度</label>
+      <div class="select-chips" id="rating-chips">
+        <button type="button" class="select-chip" data-rating="★">★</button>
+        <button type="button" class="select-chip" data-rating="★★">★★</button>
+        <button type="button" class="select-chip" data-rating="★★★">★★★</button>
+      </div>
+    </div>
+
+    <!-- ひとことコメント -->
+    <div class="form-group">
+      <label class="form-label">ひとことコメント</label>
+      <input type="text" id="comment" class="form-input" placeholder="この素材のポイント">
+    </div>
+
+    <!-- アップロードボタン -->
+    <button type="submit" class="form-btn" id="submit-btn">アップロード</button>
+    <div class="progress-bar" id="progress-bar">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+  </form>
+</div>
+
+<!-- ── ページ: 素材一覧 ── -->
+<div class="page" id="page-list">
+  <div class="filter-chips" id="list-filters">
+    <button class="chip active" data-filter="all">全て</button>
+    <button class="chip" data-filter="unused">未使用</button>
+    <button class="chip" data-filter="used">使用済み</button>
+  </div>
+  <div id="list-content"></div>
+</div>
+
+</div><!-- #app -->
+
+<!-- ── 詳細パネル ── -->
+<div class="detail-overlay" id="detail-overlay" onclick="closeDetail()"></div>
+<div class="detail-sheet" id="detail-sheet">
+  <button class="detail-close-btn" onclick="closeDetail()">✕</button>
+  <div id="detail-content"></div>
+</div>
+
+<!-- ── トースト ── -->
+<div id="toast"></div>
+
+<script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+<script>
+(function(){
+  const t = localStorage.getItem('foo_portal_theme') || 'auto';
+  if (t !== 'auto') document.documentElement.setAttribute('data-theme', t);
+})();
+
+const PROXY = 'https://notion-proxy.33322666666mm.workers.dev';
+const DB = { material: '32ba695f8e888156ae77edaca8d4c6b5' };
+
+const MSAL_CONFIG = {
+  auth: {
+    clientId: 'YOUR_CLIENT_ID_HERE',
+    authority: 'https://login.microsoftonline.com/common',
+    redirectUri: 'https://mitsurumukaihata.github.io/foo-portal/sns-upload.html'
+  },
+  cache: { cacheLocation: 'localStorage' }
+};
+const ONEDRIVE_FOLDER = 'SNS素材';
+const GRAPH_SCOPES = ['Files.ReadWrite', 'Files.ReadWrite.All'];
+
+let currentTab = 'upload';
+let currentFilter = 'all';
+let currentUserName = '';
+let selectedFiles = [];
+let selectedWeather = null;
+let selectedRating = null;
+let msalInstance = null;
+let msalAccount = null;
+let _submitting = false;
+
+function checkAccess() {
+  try {
+    const raw = localStorage.getItem('foo_portal_session');
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (new Date(data.expires) < new Date()) return false;
+    if (data.apps && data.apps.sns_upload === true) {
+      currentUserName = data.name || '';
+      return true;
+    }
+    return false;
+  } catch(e) { return false; }
+}
+
+async function notionAPI(method, path, body) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const res = await fetch(PROXY + path, {
+      method, headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined, signal: ctrl.signal
+    });
+    clearTimeout(timer);
+    const data = await res.json();
+    if (data.object === 'error') throw new Error(data.message);
+    return data;
+  } catch(e) {
+    clearTimeout(timer);
+    if (e.name === 'AbortError') throw new Error('タイムアウト');
+    throw new Error('通信エラー: ' + e.message);
+  }
+}
+
+async function queryAll(dbId, body) {
+  let all = [], cursor = null;
+  while (true) {
+    const b = { ...body, page_size: 100 };
+    if (cursor) b.start_cursor = cursor;
+    const res = await notionAPI('POST', `/databases/${dbId}/query`, b);
+    all = all.concat(res.results || []);
+    if (!res.has_more) break;
+    cursor = res.next_cursor;
+  }
+  return all;
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function getPropValue(page, prop) {
+  const p = page.properties[prop];
+  if (!p) return null;
+  switch(p.type) {
+    case 'title': return p.title.map(t => t.plain_text).join('');
+    case 'rich_text': return p.rich_text.map(t => t.plain_text).join('');
+    case 'select': return p.select?.name || null;
+    case 'multi_select': return p.multi_select?.map(s => s.name) || [];
+    case 'date': return p.date?.start || null;
+    case 'checkbox': return p.checkbox;
+    case 'number': return p.number;
+    case 'status': return p.status?.name || null;
+    default: return null;
+  }
+}
+
+function showToast(msg, type = 'default') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast ' + type;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3000);
+}
+
+function toggleTheme() {
+  const cur = localStorage.getItem('foo_portal_theme') || 'auto';
+  const next = cur === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('foo_portal_theme', next);
+  document.documentElement.setAttribute('data-theme', next);
+  updateThemeButton();
+}
+
+function updateThemeButton() {
+  const t = document.documentElement.getAttribute('data-theme') || 'auto';
+  document.getElementById('theme-toggle').textContent = t === 'light' ? '☀️' : '🌙';
+}
+
+function initMSAL() {
+  if (msalInstance) return;
+  msalInstance = new msal.PublicClientApplication(MSAL_CONFIG);
+  const accounts = msalInstance.getAllAccounts();
+  if (accounts.length > 0) msalAccount = accounts[0];
+}
+
+async function getMSALToken() {
+  if (!msalInstance) initMSAL();
+  if (msalAccount) {
+    try {
+      const resp = await msalInstance.acquireTokenSilent({ scopes: GRAPH_SCOPES, account: msalAccount });
+      return resp.accessToken;
+    } catch(e) {}
+  }
+  const resp = await msalInstance.acquireTokenPopup({ scopes: GRAPH_SCOPES });
+  msalAccount = resp.account;
+  return resp.accessToken;
+}
+
+async function uploadToOneDrive(files, folderName) {
+  const token = await getMSALToken();
+  const headers = { 'Authorization': 'Bearer ' + token };
+
+  const folderPath = ONEDRIVE_FOLDER + '/' + folderName;
+  let uploaded = 0;
+
+  for (const file of files) {
+    const uploadUrl = 'https://graph.microsoft.com/v1.0/me/drive/root:/' +
+      encodeURIComponent(folderPath) + '/' + encodeURIComponent(file.name) + ':/content';
+
+    await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { ...headers, 'Content-Type': file.type },
+      body: file
+    });
+
+    uploaded++;
+    updateProgress(uploaded, files.length);
+  }
+
+  const folderUrl = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodeURIComponent(folderPath);
+  const folderRes = await fetch(folderUrl, { headers });
+  const folderData = await folderRes.json();
+
+  const shareRes = await fetch('https://graph.microsoft.com/v1.0/me/drive/items/' + folderData.id + '/createLink', {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'view', scope: 'organization' })
+  });
+  const shareData = await shareRes.json();
+  return shareData.link?.webUrl || '';
+}
+
+function updateProgress(current, total) {
+  const pct = Math.round((current / total) * 100);
+  document.getElementById('progress-fill').style.width = pct + '%';
+}
+
+function formatDateJST(date) {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getTodayDateString() {
+  const now = new Date();
+  return formatDateJST(now);
+}
+
+// ── ファイル選択 ──
+document.getElementById('file-input').addEventListener('change', (e) => {
+  selectedFiles = Array.from(e.target.files);
+  updateFilePreview();
+  updateFileCount();
+});
+
+function updateFilePreview() {
+  const container = document.getElementById('file-preview');
+  container.innerHTML = '';
+
+  const maxShow = 4;
+  selectedFiles.slice(0, maxShow).forEach(file => {
+    const item = document.createElement('div');
+    item.className = 'file-preview-item';
+
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        item.appendChild(img);
+      };
+      reader.readAsDataURL(file);
+    } else if (file.type.startsWith('video/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const video = document.createElement('video');
+        video.src = e.target.result;
+        item.appendChild(video);
+        const icon = document.createElement('div');
+        icon.className = 'file-preview-video-icon';
+        icon.textContent = '▶';
+        item.appendChild(icon);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    container.appendChild(item);
+  });
+
+  if (selectedFiles.length > maxShow) {
+    const more = document.createElement('div');
+    more.className = 'file-preview-more';
+    more.textContent = '+' + (selectedFiles.length - maxShow);
+    container.appendChild(more);
+  }
+}
+
+function updateFileCount() {
+  const btn = document.getElementById('file-select-btn');
+  const count = selectedFiles.length;
+  btn.innerHTML = count > 0
+    ? `<span>ファイル選択済み <strong>${count}</strong></span>`
+    : '<span>ファイルを選択</span>';
+}
+
+// ── 天気選択 ──
+document.getElementById('weather-chips').addEventListener('click', (e) => {
+  if (e.target.classList.contains('select-chip')) {
+    e.preventDefault();
+    document.querySelectorAll('#weather-chips .select-chip').forEach(btn => btn.classList.remove('active'));
+    e.target.classList.add('active');
+    selectedWeather = e.target.dataset.weather;
+  }
+});
+
+// ── おすすめ度選択 ──
+document.getElementById('rating-chips').addEventListener('click', (e) => {
+  if (e.target.classList.contains('select-chip')) {
+    e.preventDefault();
+    document.querySelectorAll('#rating-chips .select-chip').forEach(btn => btn.classList.remove('active'));
+    e.target.classList.add('active');
+    selectedRating = e.target.dataset.rating;
+  }
+});
+
+// ── フォーム送信 ──
+document.getElementById('upload-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  if (_submitting) return;
+  _submitting = true;
+
+  try {
+    if (selectedFiles.length === 0) {
+      showToast('ファイルを選択してください', 'error');
+      _submitting = false;
+      return;
+    }
+
+    const workDate = document.getElementById('work-date').value;
+    const workPlace = document.getElementById('work-place').value;
+    const workType = document.getElementById('work-type').value;
+    const notes = document.getElementById('notes').value;
+    const comment = document.getElementById('comment').value;
+
+    if (!workDate) {
+      showToast('作業日を選択してください', 'error');
+      _submitting = false;
+      return;
+    }
+
+    if (!workType) {
+      showToast('作業内容を選択してください', 'error');
+      _submitting = false;
+      return;
+    }
+
+    // ショー プログレスバー
+    document.getElementById('progress-bar').style.display = 'block';
+    document.getElementById('submit-btn').disabled = true;
+
+    const dateStr = workDate.replace(/-/g, '');
+    const folderName = `${workDate}_${currentUserName}`;
+
+    const oneDriveUrl = await uploadToOneDrive(selectedFiles, folderName);
+
+    // Notion に保存
+    const notionBody = {
+      properties: {
+        '素材名': { title: [{ text: { content: folderName } }] },
+        '投稿者': { rich_text: [{ text: { content: currentUserName } }] },
+        '作業日': { date: { start: workDate } },
+        '作業場所': { rich_text: [{ text: { content: workPlace } }] },
+        '作業内容': { select: { name: workType } },
+        '特記事項': { rich_text: [{ text: { content: notes } }] },
+        '天気': selectedWeather ? { select: { name: selectedWeather } } : undefined,
+        'おすすめ度': selectedRating ? { select: { name: selectedRating } } : undefined,
+        'ひとことコメント': { rich_text: [{ text: { content: comment } }] },
+        'OneDriveリンク': { url: oneDriveUrl },
+        '使用済み': { checkbox: false }
+      }
+    };
+
+    Object.keys(notionBody.properties).forEach(key => {
+      if (notionBody.properties[key] === undefined) delete notionBody.properties[key];
+    });
+
+    await notionAPI('POST', `/databases/${DB.material}/pages`, notionBody);
+
+    // リセット
+    document.getElementById('upload-form').reset();
+    selectedFiles = [];
+    selectedWeather = null;
+    selectedRating = null;
+    updateFilePreview();
+    updateFileCount();
+    document.querySelectorAll('.select-chip').forEach(btn => btn.classList.remove('active'));
+    document.getElementById('progress-bar').style.display = 'none';
+    document.getElementById('progress-fill').style.width = '0%';
+    document.getElementById('submit-btn').disabled = false;
+
+    showToast('アップロード完了しました', 'success');
+  } catch(err) {
+    document.getElementById('progress-bar').style.display = 'none';
+    document.getElementById('submit-btn').disabled = false;
+    showToast('エラー: ' + err.message, 'error');
+  } finally {
+    _submitting = false;
+  }
+});
+
+// ── ナビゲーション ──
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    switchTab(tab);
+  });
+});
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelector(`.nav-btn[data-tab="${tab}"]`).classList.add('active');
+
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('show'));
+  document.getElementById(`page-${tab}`).classList.add('show');
+
+  if (tab === 'list') {
+    loadMaterialList();
+  }
+}
+
+// ── 素材一覧 ──
+document.querySelectorAll('#list-filters .chip').forEach(btn => {
+  btn.addEventListener('click', () => {
+    currentFilter = btn.dataset.filter;
+    document.querySelectorAll('#list-filters .chip').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadMaterialList();
+  });
+});
+
+async function loadMaterialList() {
+  const container = document.getElementById('list-content');
+  container.innerHTML = '<div class="loading"></div>';
+
+  try {
+    const materials = await queryAll(DB.material, {});
+
+    let filtered = materials;
+    if (currentFilter === 'used') {
+      filtered = materials.filter(m => getPropValue(m, '使用済み') === true);
+    } else if (currentFilter === 'unused') {
+      filtered = materials.filter(m => getPropValue(m, '使用済み') === false);
+    }
+
+    if (filtered.length === 0) {
+      container.innerHTML = '<div class="empty-state">素材がありません</div>';
+      return;
+    }
+
+    let html = '';
+    filtered.forEach(mat => {
+      const name = getPropValue(mat, '素材名');
+      const author = getPropValue(mat, '投稿者');
+      const date = getPropValue(mat, '作業日');
+      const type = getPropValue(mat, '作業内容');
+      const weather = getPropValue(mat, '天気');
+      const rating = getPropValue(mat, 'おすすめ度');
+      const comment = getPropValue(mat, 'ひとことコメント');
+      const used = getPropValue(mat, '使用済み');
+
+      const starCount = rating ? rating.length : 0;
+      const ratingDisplay = '★'.repeat(starCount);
+
+      html += `<div class="card" onclick="showMaterialDetail('${mat.id}')">
+        <div class="card-header">
+          <div>
+            <div class="card-title">${escapeHtml(name)}</div>
+            <div class="card-subtitle">${escapeHtml(author)}</div>
+          </div>
+        </div>
+        <div class="card-meta">${date || '日付未設定'}</div>
+        <div class="card-tags">
+          ${type ? `<span class="tag tag-work">${escapeHtml(type)}</span>` : ''}
+          ${weather ? `<span class="tag tag-weather">${escapeHtml(weather)}</span>` : ''}
+        </div>
+        ${ratingDisplay ? `<div class="card-info">おすすめ度: ${ratingDisplay}</div>` : ''}
+        ${comment ? `<div class="card-info">${escapeHtml(comment)}</div>` : ''}
+        ${used ? `<div style="margin-top:8px;"><span class="tag tag-status">使用済み</span></div>` : ''}
+      </div>`;
+    });
+
+    container.innerHTML = html;
+  } catch(err) {
+    container.innerHTML = `<div class="empty-state">読み込みエラー: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+async function showMaterialDetail(pageId) {
+  try {
+    const res = await notionAPI('GET', `/pages/${pageId}`, null);
+
+    const name = getPropValue(res, '素材名');
+    const author = getPropValue(res, '投稿者');
+    const date = getPropValue(res, '作業日');
+    const place = getPropValue(res, '作業場所');
+    const type = getPropValue(res, '作業内容');
+    const weather = getPropValue(res, '天気');
+    const rating = getPropValue(res, 'おすすめ度');
+    const comment = getPropValue(res, 'ひとことコメント');
+    const notes = getPropValue(res, '特記事項');
+    const url = getPropValue(res, 'OneDriveリンク');
+    const used = getPropValue(res, '使用済み');
+
+    const starCount = rating ? rating.length : 0;
+    const ratingDisplay = '★'.repeat(starCount);
+
+    let html = `<div class="detail-title">${escapeHtml(name)}</div>`;
+
+    html += `<div class="detail-section">
+      <div class="detail-section-title">投稿者</div>
+      <div class="detail-section-content">${escapeHtml(author)}</div>
+    </div>`;
+
+    if (date) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">作業日</div>
+        <div class="detail-section-content">${escapeHtml(date)}</div>
+      </div>`;
+    }
+
+    if (place) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">作業場所</div>
+        <div class="detail-section-content">${escapeHtml(place)}</div>
+      </div>`;
+    }
+
+    if (type) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">作業内容</div>
+        <div class="detail-section-content">${escapeHtml(type)}</div>
+      </div>`;
+    }
+
+    if (weather) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">天気</div>
+        <div class="detail-section-content">${escapeHtml(weather)}</div>
+      </div>`;
+    }
+
+    if (ratingDisplay) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">おすすめ度</div>
+        <div class="detail-section-content">${ratingDisplay}</div>
+      </div>`;
+    }
+
+    if (comment) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">ひとことコメント</div>
+        <div class="detail-section-content">${escapeHtml(comment)}</div>
+      </div>`;
+    }
+
+    if (notes) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">特記事項</div>
+        <div class="detail-section-content">${escapeHtml(notes)}</div>
+      </div>`;
+    }
+
+    html += `<div class="detail-buttons">
+      ${url ? `<a href="${escapeHtml(url)}" target="_blank" class="detail-btn primary">OneDriveで開く</a>` : ''}
+      ${!used && author === currentUserName ? `<button class="detail-btn" onclick="markAsUsed('${pageId}')">使用済みにする</button>` : ''}
+    </div>`;
+
+    document.getElementById('detail-content').innerHTML = html;
+    document.getElementById('detail-overlay').classList.add('show');
+    document.getElementById('detail-sheet').classList.add('show');
+  } catch(err) {
+    showToast('詳細取得エラー: ' + err.message, 'error');
+  }
+}
+
+function closeDetail() {
+  document.getElementById('detail-overlay').classList.remove('show');
+  document.getElementById('detail-sheet').classList.remove('show');
+  document.getElementById('detail-content').innerHTML = '';
+}
+
+async function markAsUsed(pageId) {
+  try {
+    await notionAPI('PATCH', `/pages/${pageId}`, {
+      properties: {
+        '使用済み': { checkbox: true }
+      }
+    });
+    closeDetail();
+    loadMaterialList();
+    showToast('使用済みにしました', 'success');
+  } catch(err) {
+    showToast('更新エラー: ' + err.message, 'error');
+  }
+}
+
+// ── 初期化 ──
+function init() {
+  if (!checkAccess()) {
+    document.getElementById('auth-error').classList.add('show');
+    return;
+  }
+
+  const isMsalReady = MSAL_CONFIG.auth.clientId !== 'YOUR_CLIENT_ID_HERE';
+
+  if (!isMsalReady) {
+    document.getElementById('setup-notice-upload').style.display = 'block';
+    document.getElementById('upload-form').style.display = 'none';
+  } else {
+    document.getElementById('setup-notice-upload').style.display = 'none';
+    document.getElementById('upload-form').style.display = 'block';
+    document.getElementById('work-date').value = getTodayDateString();
+    initMSAL();
+  }
+
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+  updateThemeButton();
+}
+
+init();
+</script>
+</body>
+</html>

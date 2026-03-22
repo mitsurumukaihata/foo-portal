@@ -577,8 +577,8 @@ async function uploadToGoogleDrive(files, folderName) {
   // 3. 共有リンク取得
   updateProgressStatus('共有リンク取得中...');
   updateProgress(files.length, files.length);
-  const finishRes = await gasRequest({ action: 'finish', folderId: folderId });
-  return finishRes.url;
+  await gasRequest({ action: 'finish', folderId: folderId });
+  return folderId; // フォルダIDを返す（URLではなく）
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -796,7 +796,7 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
         '天気': selectedWeather ? { select: { name: selectedWeather } } : undefined,
         'おすすめ度': selectedRating ? { select: { name: selectedRating } } : undefined,
         'ひとことコメント': { rich_text: [{ text: { content: comment } }] },
-        'Driveリンク': { url: driveUrl },
+        'フォルダID': { rich_text: [{ text: { content: driveUrl } }] },
         'ファイル数': { number: selectedFiles.length }
       }
     };
@@ -948,86 +948,128 @@ async function showMaterialDetail(pageId) {
     const rating = getPropValue(page, 'おすすめ度');
     const comment = getPropValue(page, 'ひとことコメント');
     const notes = getPropValue(page, '特記事項');
-    const url = getPropValue(page, 'Driveリンク');
+    const folderId = getPropValue(page, 'フォルダID');
     const status = getPropValue(page, 'ステータス');
-    const fileCount = getPropValue(page, 'ファイル数');
 
     const starCount = rating ? rating.length : 0;
     const ratingDisplay = starCount > 0 ? '★'.repeat(starCount) : '';
 
     let html = `<div class="detail-title">${escapeHtml(name)}</div>`;
 
-    html += `<div class="detail-section">
-      <div class="detail-section-title">投稿者</div>
-      <div class="detail-section-content">${escapeHtml(author)}</div>
-    </div>`;
+    const infoItems = [
+      { label: '投稿者', value: author },
+      { label: '作業日', value: date },
+      { label: '作業場所', value: place },
+      { label: '作業内容', value: type },
+      { label: '天気', value: weather },
+      { label: 'おすすめ度', value: ratingDisplay },
+      { label: 'ひとことコメント', value: comment },
+      { label: '特記事項', value: notes }
+    ];
+    infoItems.forEach(item => {
+      if (item.value) {
+        html += `<div class="detail-section">
+          <div class="detail-section-title">${item.label}</div>
+          <div class="detail-section-content">${escapeHtml(item.value)}</div>
+        </div>`;
+      }
+    });
 
-    if (date) {
+    // ファイル一覧（GAS経由で取得）
+    if (folderId) {
       html += `<div class="detail-section">
-        <div class="detail-section-title">作業日</div>
-        <div class="detail-section-content">${escapeHtml(date)}</div>
-      </div>`;
-    }
-
-    if (place) {
-      html += `<div class="detail-section">
-        <div class="detail-section-title">作業場所</div>
-        <div class="detail-section-content">${escapeHtml(place)}</div>
-      </div>`;
-    }
-
-    if (type) {
-      html += `<div class="detail-section">
-        <div class="detail-section-title">作業内容</div>
-        <div class="detail-section-content">${escapeHtml(type)}</div>
-      </div>`;
-    }
-
-    if (weather) {
-      html += `<div class="detail-section">
-        <div class="detail-section-title">天気</div>
-        <div class="detail-section-content">${escapeHtml(weather)}</div>
-      </div>`;
-    }
-
-    if (ratingDisplay) {
-      html += `<div class="detail-section">
-        <div class="detail-section-title">おすすめ度</div>
-        <div class="detail-section-content">${ratingDisplay}</div>
-      </div>`;
-    }
-
-    if (comment) {
-      html += `<div class="detail-section">
-        <div class="detail-section-title">ひとことコメント</div>
-        <div class="detail-section-content">${escapeHtml(comment)}</div>
-      </div>`;
-    }
-
-    if (notes) {
-      html += `<div class="detail-section">
-        <div class="detail-section-title">特記事項</div>
-        <div class="detail-section-content">${escapeHtml(notes)}</div>
-      </div>`;
-    }
-
-    if (fileCount) {
-      html += `<div class="detail-section">
-        <div class="detail-section-title">ファイル数</div>
-        <div class="detail-section-content">${fileCount}ファイル</div>
+        <div class="detail-section-title">ファイル</div>
+        <div id="file-list-area"><div class="loading"></div></div>
       </div>`;
     }
 
     html += `<div class="detail-buttons">
-      ${url ? `<a href="${escapeHtml(url)}" target="_blank" class="detail-btn primary">Google Driveで開く</a>` : ''}
       ${status !== '使用済み' ? `<button class="detail-btn" onclick="markAsUsed('${pageId}')">使用済みにする</button>` : ''}
     </div>`;
 
     document.getElementById('detail-content').innerHTML = html;
     document.getElementById('detail-overlay').classList.add('show');
     document.getElementById('detail-sheet').classList.add('show');
+
+    // ファイル一覧を非同期で読み込み
+    if (folderId) loadFileList(folderId);
   } catch(err) {
     showToast('詳細取得エラー: ' + err.message, 'error');
+  }
+}
+
+// ── フォルダ内のファイル一覧を取得して表示 ──
+async function loadFileList(folderId) {
+  const area = document.getElementById('file-list-area');
+  if (!area) return;
+  try {
+    const res = await gasRequest({ action: 'listFiles', folderId: folderId });
+    if (!res.files || res.files.length === 0) {
+      area.innerHTML = '<div style="color:var(--muted);font-size:12px;">ファイルなし</div>';
+      return;
+    }
+    let html = '';
+    res.files.forEach(f => {
+      const sizeMB = (f.size / 1024 / 1024).toFixed(1);
+      const isImage = f.mimeType.startsWith('image/');
+      const icon = isImage ? '🖼️' : '🎬';
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${icon} ${escapeHtml(f.name)}</div>
+          <div style="font-size:10px;color:var(--muted);">${sizeMB}MB</div>
+        </div>
+        <button onclick="downloadFile('${f.id}','${escapeHtml(f.name)}',${f.size})" style="flex-shrink:0;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer;">DL</button>
+      </div>`;
+    });
+    area.innerHTML = html;
+  } catch(err) {
+    area.innerHTML = `<div style="color:var(--red);font-size:12px;">読み込みエラー: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+// ── ファイルダウンロード ──
+async function downloadFile(fileId, fileName, fileSize) {
+  showToast('ダウンロード中...', 'default');
+  try {
+    let base64;
+
+    if (fileSize < 4 * 1024 * 1024) {
+      // 4MB以下: 一括ダウンロード
+      const res = await gasRequest({ action: 'downloadFile', fileId: fileId }, 1);
+      base64 = res.base64;
+    } else {
+      // 4MB超: チャンクダウンロード
+      const firstRes = await gasRequest({ action: 'downloadChunk', fileId: fileId, chunkIndex: 0 }, 1);
+      const totalChunks = firstRes.totalChunks;
+      let chunks = [firstRes.base64];
+
+      for (let i = 1; i < totalChunks; i++) {
+        showToast(`ダウンロード中... (${i+1}/${totalChunks})`, 'default');
+        const chunkRes = await gasRequest({ action: 'downloadChunk', fileId: fileId, chunkIndex: i }, 1);
+        chunks.push(chunkRes.base64);
+      }
+      base64 = chunks.join('');
+    }
+
+    // base64 → Blob → ダウンロード
+    const byteChars = atob(base64);
+    const byteArr = new Uint8Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) {
+      byteArr[i] = byteChars.charCodeAt(i);
+    }
+    const blob = new Blob([byteArr]);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showToast('ダウンロード完了', 'success');
+  } catch(err) {
+    showToast('ダウンロードエラー: ' + err.message, 'error');
   }
 }
 

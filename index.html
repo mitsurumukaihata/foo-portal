@@ -1691,8 +1691,11 @@ async function checkBadges(user) {
     if (!apps[appId]) continue;
     const el = document.getElementById('badge-' + appId);
     if (!el) continue;
-    const lastSeen = localStorage.getItem(cfg.seenKey);
-    if (!lastSeen) continue;
+    let lastSeen = localStorage.getItem(cfg.seenKey);
+    if (!lastSeen) {
+      // 初回：24時間前を基準にする
+      lastSeen = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    }
     let total = 0;
     for (const dbId of cfg.dbs) {
       try {
@@ -1701,12 +1704,11 @@ async function checkBadges(user) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             filter: { timestamp: 'created_time', created_time: { after: lastSeen } },
-            page_size: 1
+            page_size: 100
           })
         });
         const data = await res.json();
         if (data.results) total += data.results.length;
-        if (data.has_more) total = total + 1;
       } catch(e) { /* silent */ }
     }
     if (total > 0) {

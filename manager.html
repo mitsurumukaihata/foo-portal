@@ -463,13 +463,17 @@ async function loadComm() {
       return;
     }
     list.innerHTML = '';
+    const seen = new Set();
     for (const p of pages) {
+      if (seen.has(p.id)) continue;
+      seen.add(p.id);
       const title = getPropValue(p, 'タイトル');
       const status = getPropValue(p, '状態');
       const kind = getPropValue(p, '種別');
       const importance = getPropValue(p, '重要度');
       const content = getPropValue(p, '内容');
       const rel = getPropValue(p, '関係者');
+      const author = p.created_by?.name || '';
       const card = document.createElement('div');
       card.className = 'card';
       let tags = '';
@@ -485,7 +489,8 @@ async function loadComm() {
         const scs = status === '対応中' ? 'status-active' : status === '検討中' ? 'status-considering' : status === '会議で報告' ? 'status-meeting' : 'status-resolved';
         statusBadge = '<span class="status-badge ' + scs + '">' + escapeHtml(status) + '</span>';
       }
-      card.innerHTML = '<div class="card-header"><div><div class="card-title">' + escapeHtml(title) + '</div></div><div>' + statusBadge + '</div></div>' +
+      const authorHtml = author ? '<span style="font-size:10px;color:var(--muted);">by ' + escapeHtml(author) + '</span>' : '';
+      card.innerHTML = '<div class="card-header"><div><div class="card-title">' + escapeHtml(title) + '</div>' + authorHtml + '</div><div>' + statusBadge + '</div></div>' +
         '<div class="card-tags">' + tags + '</div>' +
         '<div class="card-content">' + escapeHtml(content || '') + '</div>' +
         '<div class="card-footer"><div>' + relTags + '</div></div>';
@@ -881,20 +886,21 @@ function closeForm() {
   document.getElementById('form-overlay').classList.remove('show');
 }
 
+let _submitting = false;
 async function submitCommForm() {
+  if (_submitting) return;
+  _submitting = true;
+  const btn = document.querySelector('.form-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '送信中...'; }
   const title = document.getElementById('form-comm-title').value.trim();
   const kind = document.getElementById('form-comm-kind').value;
   const importance = document.getElementById('form-comm-importance').value;
   const content = document.getElementById('form-comm-content').value.trim();
   const relStr = document.getElementById('form-comm-rel').value.trim();
   const phase = document.getElementById('form-comm-phase').value.trim();
-  if (!title) { showToast('タイトルを入力してください', 'error'); return; }
+  if (!title) { showToast('タイトルを入力してください', 'error'); _submitting = false; if (btn) { btn.disabled = false; btn.textContent = '追加'; } return; }
   try {
     const rel = relStr ? relStr.split(',').map(s => ({ name: s.trim() })) : [];
-    await notionAPI('POST', `/databases/${DB.comm}/query`, {
-      filter: { property: 'タイトル', title: { equals: title } },
-      page_size: 1
-    });
     await notionAPI('POST', '/pages', {
       parent: { database_id: DB.comm },
       properties: {
@@ -912,6 +918,8 @@ async function submitCommForm() {
     loadComm();
   } catch(e) {
     showToast(e.message, 'error');
+  } finally {
+    _submitting = false;
   }
 }
 

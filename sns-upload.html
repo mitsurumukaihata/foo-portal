@@ -316,10 +316,11 @@ const DB = { material: '32ba695f8e888156ae77edaca8d4c6b5' };
 // ★ Google Apps Script のデプロイURL をここに貼り付け ★
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxjPCYkdIg4Nay3mXLJAo8PEBf0VQwGr0KC1kJUUyr1j1jf4_NlzLEGhExGv1xFGS7X/exec';
 
-// 画像: 自動圧縮するので大きくてもOK, 動画: 5MBまで
-const MAX_VIDEO_SIZE = 5 * 1024 * 1024;
-const IMAGE_MAX_PX = 1600; // 圧縮後の最大幅/高さ
-const IMAGE_QUALITY = 0.75; // JPEG品質
+// 画像: 自動圧縮, 動画: チャンク分割で25MBまで対応
+const MAX_FILE_SIZE = 25 * 1024 * 1024; // 1ファイル25MBまで
+const CHUNK_SIZE = 1.5 * 1024 * 1024; // 1.5MBずつ分割送信
+const IMAGE_MAX_PX = 1600;
+const IMAGE_QUALITY = 0.75;
 
 let currentTab = 'upload';
 let currentFilter = 'all';
@@ -475,6 +476,78 @@ function fileToBase64(file) {
   });
 }
 
+// ArrayBuffer を base64 に変換
+function arrayBufferToBase64(buffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+// ファイルを ArrayBuffer として読み込む
+function fileToArrayBuffer(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('ファイル読み込みエラー'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// ランダムID生成
+function generateUploadId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+// ── 小ファイルアップロード（2MB以下：1回で送信）──
+async function uploadSmallFile(folderId, file) {
+  const base64 = await fileToBase64(file);
+  await gasRequest({
+    action: 'upload',
+    folderId: folderId,
+    fileName: file.name,
+    mimeType: file.type,
+    base64: base64
+  });
+}
+
+// ── 大ファイルアップロード（2MB超：チャンク分割）──
+async function uploadLargeFile(folderId, file, fileIndex, totalFiles) {
+  const buffer = await fileToArrayBuffer(file);
+  const totalChunks = Math.ceil(buffer.byteLength / CHUNK_SIZE);
+  const uploadId = generateUploadId();
+
+  for (let c = 0; c < totalChunks; c++) {
+    const start = c * CHUNK_SIZE;
+    const end = Math.min(start + CHUNK_SIZE, buffer.byteLength);
+    const chunk = buffer.slice(start, end);
+    const base64 = arrayBufferToBase64(chunk);
+
+    updateProgressStatus(`アップロード中... ファイル${fileIndex + 1}/${totalFiles} (${c + 1}/${totalChunks})`);
+
+    await gasRequest({
+      action: 'uploadChunk',
+      folderId: folderId,
+      uploadId: uploadId,
+      index: c,
+      base64: base64
+    });
+  }
+
+  // チャンクを組み立て
+  updateProgressStatus(`ファイル${fileIndex + 1}を組み立て中...`);
+  await gasRequest({
+    action: 'assembleFile',
+    folderId: folderId,
+    uploadId: uploadId,
+    totalChunks: totalChunks,
+    fileName: file.name,
+    mimeType: file.type
+  }, 1); // リトライ少なめ（組み立ては時間がかかる）
+}
+
 // Google Drive にアップロード
 async function uploadToGoogleDrive(files, folderName) {
   updateProgressStatus('フォルダ作成中...');
@@ -483,7 +556,7 @@ async function uploadToGoogleDrive(files, folderName) {
   const createRes = await gasRequest({ action: 'createFolder', folderName: folderName });
   const folderId = createRes.folderId;
 
-  // 2. ファイルを1つずつ（画像は圧縮して）アップロード
+  // 2. ファイルを1つずつアップロード
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     updateProgressStatus(`処理中... (${i + 1}/${files.length})`);
@@ -493,14 +566,12 @@ async function uploadToGoogleDrive(files, folderName) {
     const processed = await compressImage(file);
     updateProgressStatus(`アップロード中... (${i + 1}/${files.length})`);
 
-    const base64 = await fileToBase64(processed);
-    await gasRequest({
-      action: 'upload',
-      folderId: folderId,
-      fileName: processed.name,
-      mimeType: processed.type,
-      base64: base64
-    });
+    // 2MB以下 → 一括、2MB超 → チャンク分割
+    if (processed.size <= 2 * 1024 * 1024) {
+      await uploadSmallFile(folderId, processed);
+    } else {
+      await uploadLargeFile(folderId, processed, i, files.length);
+    }
   }
 
   // 3. 共有リンク取得
@@ -581,11 +652,11 @@ function getTodayDateString() {
 document.getElementById('file-input').addEventListener('change', (e) => {
   selectedFiles = Array.from(e.target.files);
 
-  // 動画のサイズチェック（画像は圧縮するのでチェック不要）
-  const oversizedVideos = selectedFiles.filter(f => f.type.startsWith('video/') && f.size > MAX_VIDEO_SIZE);
-  if (oversizedVideos.length > 0) {
-    showToast(`動画は5MB以下にしてください（${oversizedVideos.length}件除外）`, 'error');
-    selectedFiles = selectedFiles.filter(f => !(f.type.startsWith('video/') && f.size > MAX_VIDEO_SIZE));
+  // サイズチェック（25MBまで）
+  const oversized = selectedFiles.filter(f => f.size > MAX_FILE_SIZE);
+  if (oversized.length > 0) {
+    showToast(`25MB以上のファイルは送れません（${oversized.length}件除外）`, 'error');
+    selectedFiles = selectedFiles.filter(f => f.size <= MAX_FILE_SIZE);
   }
 
   // 合計10ファイルまで

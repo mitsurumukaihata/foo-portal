@@ -536,7 +536,6 @@ async function fetchInFlightOrders() {
       const body = {
         filter: { or: [
           { property: 'ステータス', select: { equals: '発注済' } },
-          { property: 'ステータス', select: { equals: '発注中' } },
           { property: 'ステータス', select: { equals: '新規発注' } },
         ]},
         page_size: 100,
@@ -1087,7 +1086,7 @@ async function confirmAndSaveOrder() {
     // 発注確認タブの表示を更新
     const actEl = document.getElementById('order-actions');
     actEl.innerHTML = `<div class="success-box">
-      ✓ ${selectedItems.length}件 を「発注中」としてNotionに保存しました
+      ✓ ${selectedItems.length}件 を「発注済」としてNotionに保存しました
     </div>
     <button class="btn-secondary" onclick="switchTab('history');loadHistory();">発注履歴を確認する</button>
     <button class="btn-secondary" onclick="loadAlerts();">在庫アラートを再チェック</button>`;
@@ -1118,7 +1117,7 @@ async function createHacchuRecords(items, tantou, nouki, biko) {
       '数量':         { number: item.orderQty },
       '仕入先':       { select: { name: 'TOYO' } },
       '種別':         { select: { name: 'タイヤ' } },
-      'ステータス':   { select: { name: '発注中' } },
+      'ステータス':   { select: { name: '発注済' } },
       '納入予定場所': { select: { name: warehouseLabel } },
       '注文担当':     { select: { name: tantou.includes('岡崎') ? '岡崎' : '向畑' } },
     };

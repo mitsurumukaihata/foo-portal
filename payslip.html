@@ -158,81 +158,7 @@ body {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── PDFビューアオーバーレイ ── */
-#pdf-viewer {
-  display: none;
-  position: fixed; inset: 0;
-  background: #000;
-  z-index: 500;
-  max-width: 480px;
-  margin: 0 auto;
-  flex-direction: column;
-}
-#pdf-viewer.open { display: flex; }
-
-.pdf-header {
-  background: #111;
-  padding: 12px 16px;
-  display: flex; align-items: center; gap: 10px;
-  flex-shrink: 0;
-  border-bottom: 0.5px solid #333;
-}
-.pdf-back-btn {
-  background: transparent; border: none;
-  color: var(--accent); font-size: 22px;
-  cursor: pointer; line-height: 1; padding: 0 4px;
-  font-family: inherit;
-}
-.pdf-title { font-size: 13px; font-weight: 700; color: #fff; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pdf-notion-btn {
-  background: transparent;
-  border: 1px solid #444;
-  border-radius: 16px;
-  padding: 5px 10px;
-  color: #999;
-  font-size: 11px;
-  font-family: inherit;
-  cursor: pointer;
-  white-space: nowrap;
-  text-decoration: none;
-  display: flex; align-items: center; gap: 4px;
-  flex-shrink: 0;
-}
-
-.pdf-loading {
-  flex: 1;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  gap: 14px; color: #666; font-size: 13px;
-  background: #0a0a0a;
-}
-.pdf-loading .spinner { border-color: #333; border-top-color: var(--accent); }
-
-/* iFrameでPDF表示 */
-#pdf-frame {
-  flex: 1; border: none; width: 100%; display: none;
-  background: #fff;
-}
-
-/* エラー表示 */
-.pdf-error {
-  flex: 1;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  gap: 16px; padding: 30px;
-  background: #0a0a0a;
-  text-align: center;
-}
-.pdf-error-icon { font-size: 40px; }
-.pdf-error-msg { font-size: 13px; color: #888; line-height: 1.7; }
-.pdf-open-notion {
-  background: var(--accent);
-  border: none; border-radius: 10px;
-  padding: 12px 24px;
-  color: #fff; font-size: 14px; font-weight: 700;
-  font-family: inherit; cursor: pointer;
-  text-decoration: none; display: inline-block;
-}
+/* PDFビューアは pdf-viewer.js (共通コンポーネント) に移行 */
 </style>
 <script>
 (function(){
@@ -267,27 +193,8 @@ body {
   </div>
 </div>
 
-<!-- ── PDFビューアオーバーレイ ── -->
-<div id="pdf-viewer">
-  <div class="pdf-header">
-    <button class="pdf-back-btn" onclick="closePdf()">‹</button>
-    <div class="pdf-title" id="pdf-title">給与明細</div>
-    <a class="pdf-notion-btn" id="pdf-notion-link" href="#" target="_blank">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-      Notion
-    </a>
-  </div>
-  <div class="pdf-loading" id="pdf-loading">
-    <div class="spinner"></div>
-    <div>PDFを読み込み中...</div>
-  </div>
-  <iframe id="pdf-frame" title="給与明細PDF"></iframe>
-  <div class="pdf-error" id="pdf-error" style="display:none;">
-    <div class="pdf-error-icon">📄</div>
-    <div class="pdf-error-msg" id="pdf-error-msg">PDFの読み込みに失敗しました。<br>Notionで直接確認してください。</div>
-    <a class="pdf-open-notion" id="pdf-error-btn" href="#" target="_blank">Notionで開く</a>
-  </div>
-</div>
+<!-- 共通PDFビューア -->
+<script src="pdf-viewer.js"></script>
 
 <script>
 const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
@@ -555,22 +462,9 @@ function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ─── PDFビューア ──────────────────────────────────────────────────────────────
+// ─── PDFビューア（共通コンポーネント使用） ─────────────────────────────────────
 async function openPdf(record) {
-  const viewer  = document.getElementById('pdf-viewer');
-  const loading = document.getElementById('pdf-loading');
-  const frame   = document.getElementById('pdf-frame');
-  const errEl   = document.getElementById('pdf-error');
-
-  viewer.classList.add('open');
-  loading.style.display = 'flex';
-  frame.style.display   = 'none';
-  errEl.style.display   = 'none';
-
   const label = record.title || record.date || '給与明細';
-  document.getElementById('pdf-title').textContent = label;
-  document.getElementById('pdf-notion-link').href = record.pageUrl;
-  document.getElementById('pdf-error-btn').href   = record.pageUrl;
   currentPageUrl = record.pageUrl;
 
   // Notionのファイルプロパティは署名付きURLが期限切れになるため
@@ -578,30 +472,13 @@ async function openPdf(record) {
   const pdfUrl = await fetchFileUrl(record.id);
 
   if (!pdfUrl) {
-    showPdfError('PDFのURLが取得できませんでした。\nNotionで直接確認してください。');
+    alert('PDFのURLが取得できませんでした。Notionで直接確認してください。');
     return;
   }
 
-  // WorkerのPDFプロキシを通して表示
+  // WorkerのPDFプロキシを通してpdf.jsで表示
   const proxyUrl = `${WORKER}/pdf-proxy?url=${encodeURIComponent(pdfUrl)}`;
-
-  const timeout = setTimeout(() => {
-    if (loading.style.display !== 'none') {
-      showPdfError('読み込みがタイムアウトしました。\nNotionで直接確認してください。');
-    }
-  }, 12000);
-
-  frame.onload = () => {
-    clearTimeout(timeout);
-    loading.style.display = 'none';
-    frame.style.display   = 'block';
-  };
-  frame.onerror = () => {
-    clearTimeout(timeout);
-    showPdfError('PDFの表示に失敗しました。\nNotionで直接確認してください。');
-  };
-
-  frame.src = proxyUrl;
+  FooPdfViewer.open(proxyUrl, { title: label, notionUrl: record.pageUrl });
 }
 
 // Notion REST APIからファイルURLを再取得（新鮮な署名付きS3 URL）
@@ -611,8 +488,6 @@ async function fetchFileUrl(pageId) {
     const files = res.properties?.['給与明細']?.files || [];
     if (!files.length) return '';
     const f = files[0];
-    // type: "file" → file.url がS3署名付きURL（https://prod-files-secure.s3...）
-    // type: "external" → external.url
     const url = f.file?.url || f.external?.url || '';
     console.log('File URL type:', f.type, 'URL prefix:', url.slice(0, 60));
     return url;
@@ -621,34 +496,6 @@ async function fetchFileUrl(pageId) {
     return '';
   }
 }
-
-function showPdfError(msg) {
-  document.getElementById('pdf-loading').style.display = 'none';
-  document.getElementById('pdf-frame').style.display   = 'none';
-  document.getElementById('pdf-error-msg').textContent = msg;
-  document.getElementById('pdf-error').style.display   = 'flex';
-}
-
-function closePdf() {
-  const viewer = document.getElementById('pdf-viewer');
-  viewer.classList.remove('open');
-  // iFrameをクリア（メモリ解放）
-  const frame = document.getElementById('pdf-frame');
-  frame.src   = '';
-  frame.style.display = 'none';
-  document.getElementById('pdf-loading').style.display = 'flex';
-  document.getElementById('pdf-error').style.display   = 'none';
-}
-
-// バックボタン（Android対応）
-window.addEventListener('popstate', () => {
-  const viewer = document.getElementById('pdf-viewer');
-  if (viewer.classList.contains('open')) {
-    closePdf();
-    history.pushState(null, '', location.href);
-  }
-});
-history.pushState(null, '', location.href);
 </script>
 </body>
 </html>

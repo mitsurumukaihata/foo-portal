@@ -1046,6 +1046,16 @@ body {
     </div>
   </div>
 
+  <div id="notify-banner" style="display:none;margin:0 20px 12px;padding:12px 16px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);border-radius:12px;cursor:pointer;" onclick="scrollToBadgeApp()">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="font-size:16px;">🔔</span>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--red);" id="notify-banner-title">未確認の投稿があります</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;" id="notify-banner-detail"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="portal-body" id="portal-body">
     <!-- ログイン後にJSで動的レンダリング -->
   </div>
@@ -1685,10 +1695,16 @@ const BADGE_TARGETS = {
   }
 };
 
+const APP_LABELS = { manager: '部長コミュニティ', leader: 'リーダーコミュニティ' };
+let _firstBadgeApp = null;
+
 async function checkBadges(user) {
   const apps = user.apps || {};
   const userName = user.name || '';
   if (!userName) return;
+  const bannerParts = [];
+  let totalAll = 0;
+  _firstBadgeApp = null;
   for (const [appId, cfg] of Object.entries(BADGE_TARGETS)) {
     if (!apps[appId]) continue;
     const el = document.getElementById('badge-' + appId);
@@ -1709,7 +1725,6 @@ async function checkBadges(user) {
         })
       });
       const data = await res.json();
-      // 自分が投稿者のものは除外
       let count = 0;
       if (data.results) {
         for (const p of data.results) {
@@ -1719,9 +1734,33 @@ async function checkBadges(user) {
       if (count > 0) {
         el.textContent = count > 9 ? '9+' : count;
         el.style.display = 'flex';
+        bannerParts.push(APP_LABELS[appId] + ' ' + count + '件');
+        totalAll += count;
+        if (!_firstBadgeApp) _firstBadgeApp = appId;
       }
     } catch(e) { /* silent */ }
   }
+  // バナー表示
+  const banner = document.getElementById('notify-banner');
+  if (banner && totalAll > 0) {
+    document.getElementById('notify-banner-detail').textContent = bannerParts.join(' / ');
+    banner.style.display = 'block';
+  }
+}
+
+function scrollToBadgeApp() {
+  if (_firstBadgeApp) {
+    const card = document.querySelector('[data-app-id="' + _firstBadgeApp + '"]');
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.style.transition = 'box-shadow 0.3s';
+      card.style.boxShadow = '0 0 0 2px var(--red)';
+      setTimeout(() => { card.style.boxShadow = ''; }, 2000);
+      return;
+    }
+  }
+  // フォールバック：下までスクロール
+  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 }
 
 function togglePayslipList(btn) {

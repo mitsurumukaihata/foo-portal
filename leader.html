@@ -466,7 +466,7 @@ function renderNav() {
   for (const t of tabs) {
     const btn = document.createElement('button');
     btn.className = 'nav-btn' + (currentTab === t.id ? ' active' : '');
-    btn.textContent = t.label;
+    btn.innerHTML = escapeHtml(t.label) + (t.id === 'comm' ? '<span class="nav-badge" id="nav-badge-comm" style="display:none;"></span>' : '');
     btn.onclick = () => switchTab(t.id);
     nav.appendChild(btn);
   }
@@ -567,9 +567,36 @@ async function loadComm() {
       card.onclick = () => showCommDetail(p);
       list.appendChild(card);
     }
+    updateNavBadge();
   } catch(e) {
     list.innerHTML = '<div class="empty-state">' + escapeHtml(e.message) + '<br><button style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px 12px;margin-top:12px;cursor:pointer;font-size:12px;font-weight:600;" onclick="loadComm()">再試行</button></div>';
   }
+}
+
+async function updateNavBadge() {
+  const el = document.getElementById('nav-badge-comm');
+  if (!el || !currentUserName) return;
+  try {
+    const res = await queryAll(DB.comm, {
+      filter: {
+        and: [
+          { property: '状態', status: { does_not_equal: '完了' } },
+          { property: '確認者', multi_select: { does_not_contain: currentUserName } }
+        ]
+      },
+      page_size: 100
+    });
+    let count = 0;
+    for (const p of res) {
+      if ((p.created_by?.name || '') !== currentUserName) count++;
+    }
+    if (count > 0) {
+      el.textContent = count > 9 ? '9+' : count;
+      el.style.display = 'flex';
+    } else {
+      el.style.display = 'none';
+    }
+  } catch(e) { /* silent */ }
 }
 
 function showCommDetail(page) {

@@ -149,6 +149,25 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .toast.error { background:rgba(239,68,68,0.15); border-color:var(--red); color:var(--red); }
 .toast.success { background:rgba(34,197,94,0.15); border-color:var(--green); color:var(--green); }
 
+/* ── 完了モーダル ── */
+.done-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:300; align-items:center; justify-content:center; }
+.done-overlay.show { display:flex; }
+.done-modal { background:var(--bg); border:1px solid var(--border); border-radius:20px; padding:36px 28px 28px; text-align:center; max-width:320px; width:90%; animation:popIn 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+@keyframes popIn { from { transform:scale(0.7); opacity:0; } to { transform:scale(1); opacity:1; } }
+.done-icon { font-size:56px; margin-bottom:12px; }
+.done-message { font-size:15px; font-weight:700; color:var(--text); line-height:1.7; margin-bottom:20px; }
+.done-btn { width:100%; padding:12px; background:var(--accent); color:#fff; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
+.done-btn:active { opacity:0.8; }
+
+/* ── ファイルリスト（詳細パネル内） ── */
+.file-list { display:flex; flex-direction:column; gap:6px; }
+.file-item { display:flex; align-items:center; justify-content:space-between; background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
+.file-item-name { font-size:12px; color:var(--text); word-break:break-all; flex:1; margin-right:8px; }
+.file-item-size { font-size:10px; color:var(--muted); white-space:nowrap; margin-right:8px; }
+.file-dl-btn { background:var(--accent); color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap; }
+.file-dl-btn:active { opacity:0.8; }
+.file-dl-btn:disabled { opacity:0.4; cursor:default; }
+
 /* ── 認可エラー ── */
 .auth-error { display:none; text-align:center; padding:60px 20px; }
 .auth-error.show { display:block; }
@@ -298,6 +317,15 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
   <div id="detail-content"></div>
 </div>
 
+<!-- ── 完了モーダル ── -->
+<div class="done-overlay" id="done-overlay" onclick="closeDoneModal()">
+  <div class="done-modal" onclick="event.stopPropagation()">
+    <div class="done-icon">🎉</div>
+    <div class="done-message" id="done-message">お疲れさまでした！</div>
+    <button class="done-btn" onclick="closeDoneModal()">OK</button>
+  </div>
+</div>
+
 <!-- ── トースト ── -->
 <div id="toast"></div>
 
@@ -311,16 +339,20 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 // 設定
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const PROXY = 'https://notion-proxy.33322666666mm.workers.dev';
-const DB = { material: '32ba695f8e888156ae77edaca8d4c6b5' };
+const DB = {
+  material: '32ba695f8e888156ae77edaca8d4c6b5',
+  comments: '581fd7b0209e4944b0763f126751471f'
+};
 
 // ★ Google Apps Script のデプロイURL をここに貼り付け ★
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxjPCYkdIg4Nay3mXLJAo8PEBf0VQwGr0KC1kJUUyr1j1jf4_NlzLEGhExGv1xFGS7X/exec';
 
-// 画像: 自動圧縮, 動画: チャンク分割で25MBまで対応
-const MAX_FILE_SIZE = 25 * 1024 * 1024; // 1ファイル25MBまで
-const CHUNK_SIZE = 1.5 * 1024 * 1024; // 1.5MBずつ分割送信
+const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
+const CHUNK_SIZE = 1.5 * 1024 * 1024;   // 1.5MB per chunk
 const IMAGE_MAX_PX = 1600;
 const IMAGE_QUALITY = 0.75;
+
+// （MAX_FILE_SIZEは上で定義済み）
 
 let currentTab = 'upload';
 let currentFilter = 'all';
@@ -389,7 +421,7 @@ async function gasRequest(data, retries = 2) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 120000); // 2分タイムアウト
+      const timer = setTimeout(() => ctrl.abort(), 120000);
       const res = await fetch(GAS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -401,60 +433,54 @@ async function gasRequest(data, retries = 2) {
       const text = await res.text();
       let result;
       try { result = JSON.parse(text); } catch(e) {
-        // GASがHTMLを返す場合がある
         if (attempt < retries) continue;
         throw new Error('サーバーの応答を処理できませんでした');
       }
       if (result.error) throw new Error(result.error);
       return result;
     } catch(e) {
-      if (e.name === 'AbortError') {
+      if (e.name === 'AbortError' || (e.message && e.message.includes('Load'))) {
         if (attempt < retries) continue;
-        throw new Error('タイムアウト：ファイルが大きすぎる可能性があります');
-      }
-      if (attempt < retries && (e.message.includes('Load') || e.message.includes('fetch'))) {
-        await new Promise(r => setTimeout(r, 1000));
-        continue;
       }
       throw e;
     }
   }
 }
 
-// ── 画像圧縮 ──
+// ファイルをbase64に変換
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      // data:image/jpeg;base64,XXXX → XXXX 部分だけ取り出す
+      const base64 = reader.result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// 画像圧縮
 function compressImage(file) {
   return new Promise((resolve, reject) => {
-    // 動画はそのまま返す
     if (!file.type.startsWith('image/')) { resolve(file); return; }
-
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(url);
       let w = img.width, h = img.height;
-
-      // 既に小さい画像はそのまま（500KB以下 & 1600px以下）
-      if (file.size < 500 * 1024 && w <= IMAGE_MAX_PX && h <= IMAGE_MAX_PX) {
-        resolve(file); return;
-      }
-
-      // リサイズ
+      if (file.size < 500 * 1024 && w <= IMAGE_MAX_PX && h <= IMAGE_MAX_PX) { resolve(file); return; }
       if (w > IMAGE_MAX_PX || h > IMAGE_MAX_PX) {
         const ratio = Math.min(IMAGE_MAX_PX / w, IMAGE_MAX_PX / h);
-        w = Math.round(w * ratio);
-        h = Math.round(h * ratio);
+        w = Math.round(w * ratio); h = Math.round(h * ratio);
       }
-
       const canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, w, h);
-
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
       canvas.toBlob((blob) => {
         if (!blob) { resolve(file); return; }
-        const compressed = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
-          type: 'image/jpeg', lastModified: file.lastModified
-        });
+        const compressed = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
         resolve(compressed);
       }, 'image/jpeg', IMAGE_QUALITY);
     };
@@ -463,89 +489,40 @@ function compressImage(file) {
   });
 }
 
-// ファイルをbase64に変換
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = reader.result.split(',')[1];
-      resolve(base64);
-    };
-    reader.onerror = () => reject(new Error('ファイル読み込みエラー'));
-    reader.readAsDataURL(file);
-  });
-}
-
-// ArrayBuffer を base64 に変換
-function arrayBufferToBase64(buffer) {
-  let binary = '';
-  const bytes = new Uint8Array(buffer);
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-// ファイルを ArrayBuffer として読み込む
+// ArrayBuffer変換
 function fileToArrayBuffer(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error('ファイル読み込みエラー'));
+    reader.onerror = reject;
     reader.readAsArrayBuffer(file);
   });
 }
 
-// ランダムID生成
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
 function generateUploadId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  return 'up_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
 }
 
-// ── 小ファイルアップロード（2MB以下：1回で送信）──
-async function uploadSmallFile(folderId, file) {
-  const base64 = await fileToBase64(file);
-  await gasRequest({
-    action: 'upload',
-    folderId: folderId,
-    fileName: file.name,
-    mimeType: file.type,
-    base64: base64
-  });
-}
-
-// ── 大ファイルアップロード（2MB超：チャンク分割）──
+// 大きいファイルのチャンク式アップロード
 async function uploadLargeFile(folderId, file, fileIndex, totalFiles) {
   const buffer = await fileToArrayBuffer(file);
   const totalChunks = Math.ceil(buffer.byteLength / CHUNK_SIZE);
   const uploadId = generateUploadId();
 
   for (let c = 0; c < totalChunks; c++) {
-    const start = c * CHUNK_SIZE;
-    const end = Math.min(start + CHUNK_SIZE, buffer.byteLength);
-    const chunk = buffer.slice(start, end);
+    updateProgressStatus(`アップロード中... (${fileIndex + 1}/${totalFiles}) チャンク ${c + 1}/${totalChunks}`);
+    const chunk = buffer.slice(c * CHUNK_SIZE, Math.min((c + 1) * CHUNK_SIZE, buffer.byteLength));
     const base64 = arrayBufferToBase64(chunk);
-
-    updateProgressStatus(`アップロード中... ファイル${fileIndex + 1}/${totalFiles} (${c + 1}/${totalChunks})`);
-
-    await gasRequest({
-      action: 'uploadChunk',
-      folderId: folderId,
-      uploadId: uploadId,
-      index: c,
-      base64: base64
-    });
+    await gasRequest({ action: 'uploadChunk', folderId, uploadId, index: c, base64 });
   }
-
-  // チャンクを組み立て
-  updateProgressStatus(`ファイル${fileIndex + 1}を組み立て中...`);
-  await gasRequest({
-    action: 'assembleFile',
-    folderId: folderId,
-    uploadId: uploadId,
-    totalChunks: totalChunks,
-    fileName: file.name,
-    mimeType: file.type
-  }, 1); // リトライ少なめ（組み立ては時間がかかる）
+  await gasRequest({ action: 'assembleFile', folderId, uploadId, totalChunks, fileName: file.name, mimeType: file.type }, 1);
 }
 
 // Google Drive にアップロード
@@ -556,26 +533,33 @@ async function uploadToGoogleDrive(files, folderName) {
   const createRes = await gasRequest({ action: 'createFolder', folderName: folderName });
   const folderId = createRes.folderId;
 
-  // 2. ファイルを1つずつアップロード
+  // 2. ファイルを1つずつアップロード（画像は圧縮、大きいファイルはチャンク式）
   for (let i = 0; i < files.length; i++) {
-    const file = files[i];
+    let file = files[i];
     updateProgressStatus(`処理中... (${i + 1}/${files.length})`);
     updateProgress(i, files.length);
 
-    // 画像なら圧縮
-    const processed = await compressImage(file);
-    updateProgressStatus(`アップロード中... (${i + 1}/${files.length})`);
+    // 画像は圧縮
+    file = await compressImage(file);
 
-    // 2MB以下 → 一括、2MB超 → チャンク分割
-    if (processed.size <= 2 * 1024 * 1024) {
-      await uploadSmallFile(folderId, processed);
+    if (file.size > 4 * 1024 * 1024) {
+      // 4MB以上はチャンク式
+      await uploadLargeFile(folderId, file, i, files.length);
     } else {
-      await uploadLargeFile(folderId, processed, i, files.length);
+      updateProgressStatus(`アップロード中... (${i + 1}/${files.length})`);
+      const base64 = await fileToBase64(file);
+      await gasRequest({
+        action: 'upload',
+        folderId: folderId,
+        fileName: file.name,
+        mimeType: file.type,
+        base64: base64
+      });
     }
   }
 
-  // 3. 共有リンク取得
-  updateProgressStatus('共有リンク取得中...');
+  // 3. 完了
+  updateProgressStatus('完了処理中...');
   updateProgress(files.length, files.length);
   await gasRequest({ action: 'finish', folderId: folderId });
   return folderId; // フォルダIDを返す（URLではなく）
@@ -652,17 +636,11 @@ function getTodayDateString() {
 document.getElementById('file-input').addEventListener('change', (e) => {
   selectedFiles = Array.from(e.target.files);
 
-  // サイズチェック（25MBまで）
+  // サイズチェック
   const oversized = selectedFiles.filter(f => f.size > MAX_FILE_SIZE);
   if (oversized.length > 0) {
-    showToast(`25MB以上のファイルは送れません（${oversized.length}件除外）`, 'error');
+    showToast(`25MB以上のファイルは送れません（${oversized.length}件）`, 'error');
     selectedFiles = selectedFiles.filter(f => f.size <= MAX_FILE_SIZE);
-  }
-
-  // 合計10ファイルまで
-  if (selectedFiles.length > 10) {
-    showToast('一度に送れるのは10ファイルまでです', 'error');
-    selectedFiles = selectedFiles.slice(0, 10);
   }
 
   updateFilePreview();
@@ -781,7 +759,7 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
     const folderName = `${workDate}_${currentUserName}`;
 
     // Google Drive にアップロード
-    const driveUrl = await uploadToGoogleDrive(selectedFiles, folderName);
+    const folderId = await uploadToGoogleDrive(selectedFiles, folderName);
 
     // Notion に保存
     updateProgressStatus('Notionに保存中...');
@@ -796,7 +774,7 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
         '天気': selectedWeather ? { select: { name: selectedWeather } } : undefined,
         'おすすめ度': selectedRating ? { select: { name: selectedRating } } : undefined,
         'ひとことコメント': { rich_text: [{ text: { content: comment } }] },
-        'フォルダID': { rich_text: [{ text: { content: driveUrl } }] },
+        'フォルダID': { rich_text: [{ text: { content: folderId } }] },
         'ファイル数': { number: selectedFiles.length }
       }
     };
@@ -821,7 +799,8 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
     document.getElementById('submit-btn').disabled = false;
     document.getElementById('work-date').value = getTodayDateString();
 
-    showToast('アップロード完了しました！', 'success');
+    // 完了コメントをNotionから取得して表示
+    showDoneModal();
   } catch(err) {
     document.getElementById('progress-bar').style.display = 'none';
     document.getElementById('progress-status').style.display = 'none';
@@ -950,36 +929,79 @@ async function showMaterialDetail(pageId) {
     const notes = getPropValue(page, '特記事項');
     const folderId = getPropValue(page, 'フォルダID');
     const status = getPropValue(page, 'ステータス');
+    const fileCount = getPropValue(page, 'ファイル数');
 
     const starCount = rating ? rating.length : 0;
     const ratingDisplay = starCount > 0 ? '★'.repeat(starCount) : '';
 
     let html = `<div class="detail-title">${escapeHtml(name)}</div>`;
 
-    const infoItems = [
-      { label: '投稿者', value: author },
-      { label: '作業日', value: date },
-      { label: '作業場所', value: place },
-      { label: '作業内容', value: type },
-      { label: '天気', value: weather },
-      { label: 'おすすめ度', value: ratingDisplay },
-      { label: 'ひとことコメント', value: comment },
-      { label: '特記事項', value: notes }
-    ];
-    infoItems.forEach(item => {
-      if (item.value) {
-        html += `<div class="detail-section">
-          <div class="detail-section-title">${item.label}</div>
-          <div class="detail-section-content">${escapeHtml(item.value)}</div>
-        </div>`;
-      }
-    });
+    html += `<div class="detail-section">
+      <div class="detail-section-title">投稿者</div>
+      <div class="detail-section-content">${escapeHtml(author)}</div>
+    </div>`;
 
-    // ファイル一覧（GAS経由で取得）
+    if (date) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">作業日</div>
+        <div class="detail-section-content">${escapeHtml(date)}</div>
+      </div>`;
+    }
+
+    if (place) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">作業場所</div>
+        <div class="detail-section-content">${escapeHtml(place)}</div>
+      </div>`;
+    }
+
+    if (type) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">作業内容</div>
+        <div class="detail-section-content">${escapeHtml(type)}</div>
+      </div>`;
+    }
+
+    if (weather) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">天気</div>
+        <div class="detail-section-content">${escapeHtml(weather)}</div>
+      </div>`;
+    }
+
+    if (ratingDisplay) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">おすすめ度</div>
+        <div class="detail-section-content">${ratingDisplay}</div>
+      </div>`;
+    }
+
+    if (comment) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">ひとことコメント</div>
+        <div class="detail-section-content">${escapeHtml(comment)}</div>
+      </div>`;
+    }
+
+    if (notes) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">特記事項</div>
+        <div class="detail-section-content">${escapeHtml(notes)}</div>
+      </div>`;
+    }
+
+    if (fileCount) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">ファイル数</div>
+        <div class="detail-section-content">${fileCount}ファイル</div>
+      </div>`;
+    }
+
+    // ファイル一覧エリア
     if (folderId) {
       html += `<div class="detail-section">
-        <div class="detail-section-title">ファイル</div>
-        <div id="file-list-area"><div class="loading"></div></div>
+        <div class="detail-section-title">ファイル一覧</div>
+        <div id="detail-file-list" class="file-list"><div class="loading"></div></div>
       </div>`;
     }
 
@@ -998,77 +1020,69 @@ async function showMaterialDetail(pageId) {
   }
 }
 
-// ── フォルダ内のファイル一覧を取得して表示 ──
+// GAS経由でファイル一覧を取得
 async function loadFileList(folderId) {
-  const area = document.getElementById('file-list-area');
-  if (!area) return;
+  const container = document.getElementById('detail-file-list');
+  if (!container) return;
   try {
-    const res = await gasRequest({ action: 'listFiles', folderId: folderId });
+    const res = await gasRequest({ action: 'listFiles', folderId }, 1);
     if (!res.files || res.files.length === 0) {
-      area.innerHTML = '<div style="color:var(--muted);font-size:12px;">ファイルなし</div>';
+      container.innerHTML = '<div style="font-size:12px;color:var(--muted);">ファイルなし</div>';
       return;
     }
     let html = '';
     res.files.forEach(f => {
-      const sizeMB = (f.size / 1024 / 1024).toFixed(1);
-      const isImage = f.mimeType.startsWith('image/');
-      const icon = isImage ? '🖼️' : '🎬';
-      html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${icon} ${escapeHtml(f.name)}</div>
-          <div style="font-size:10px;color:var(--muted);">${sizeMB}MB</div>
-        </div>
-        <button onclick="downloadFile('${f.id}','${escapeHtml(f.name)}',${f.size})" style="flex-shrink:0;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer;">DL</button>
+      const sizeStr = f.size < 1024 * 1024
+        ? Math.round(f.size / 1024) + 'KB'
+        : (f.size / (1024 * 1024)).toFixed(1) + 'MB';
+      html += `<div class="file-item">
+        <div class="file-item-name">${escapeHtml(f.name)}</div>
+        <div class="file-item-size">${sizeStr}</div>
+        <button class="file-dl-btn" onclick="downloadFile('${f.id}', '${escapeHtml(f.name).replace(/'/g, "\\'")}', ${f.size})">DL</button>
       </div>`;
     });
-    area.innerHTML = html;
+    container.innerHTML = html;
   } catch(err) {
-    area.innerHTML = `<div style="color:var(--red);font-size:12px;">読み込みエラー: ${escapeHtml(err.message)}</div>`;
+    container.innerHTML = `<div style="font-size:12px;color:var(--red);">読み込みエラー: ${escapeHtml(err.message)}</div>`;
   }
 }
 
-// ── ファイルダウンロード ──
+// GAS経由でファイルをダウンロード（Driveは非公開のまま）
 async function downloadFile(fileId, fileName, fileSize) {
-  showToast('ダウンロード中...', 'default');
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '...';
   try {
     let base64;
-
     if (fileSize < 4 * 1024 * 1024) {
-      // 4MB以下: 一括ダウンロード
-      const res = await gasRequest({ action: 'downloadFile', fileId: fileId }, 1);
+      const res = await gasRequest({ action: 'downloadFile', fileId }, 1);
       base64 = res.base64;
     } else {
-      // 4MB超: チャンクダウンロード
-      const firstRes = await gasRequest({ action: 'downloadChunk', fileId: fileId, chunkIndex: 0 }, 1);
-      const totalChunks = firstRes.totalChunks;
+      // チャンク式ダウンロード
+      const firstRes = await gasRequest({ action: 'downloadChunk', fileId, chunkIndex: 0 }, 1);
       let chunks = [firstRes.base64];
-
-      for (let i = 1; i < totalChunks; i++) {
-        showToast(`ダウンロード中... (${i+1}/${totalChunks})`, 'default');
-        const chunkRes = await gasRequest({ action: 'downloadChunk', fileId: fileId, chunkIndex: i }, 1);
+      for (let i = 1; i < firstRes.totalChunks; i++) {
+        btn.textContent = `${i + 1}/${firstRes.totalChunks}`;
+        const chunkRes = await gasRequest({ action: 'downloadChunk', fileId, chunkIndex: i }, 1);
         chunks.push(chunkRes.base64);
       }
       base64 = chunks.join('');
     }
-
-    // base64 → Blob → ダウンロード
+    // ブラウザでダウンロード
     const byteChars = atob(base64);
     const byteArr = new Uint8Array(byteChars.length);
-    for (let i = 0; i < byteChars.length; i++) {
-      byteArr[i] = byteChars.charCodeAt(i);
-    }
+    for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
     const blob = new Blob([byteArr]);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    showToast('ダウンロード完了', 'success');
+    a.href = url; a.download = fileName;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+    btn.textContent = 'DL';
+    btn.disabled = false;
   } catch(err) {
+    btn.textContent = 'DL';
+    btn.disabled = false;
     showToast('ダウンロードエラー: ' + err.message, 'error');
   }
 }
@@ -1092,6 +1106,29 @@ async function markAsUsed(pageId) {
   } catch(err) {
     showToast('更新エラー: ' + err.message, 'error');
   }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 完了モーダル
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function showDoneModal() {
+  let message = 'お疲れさまでした！';
+  try {
+    const res = await notionAPI('POST', `/databases/${DB.comments}/query`, {
+      filter: { property: '有効', checkbox: { equals: true } },
+      page_size: 100
+    });
+    const comments = (res.results || []).map(r => getPropValue(r, 'コメント')).filter(Boolean);
+    if (comments.length > 0) {
+      message = comments[Math.floor(Math.random() * comments.length)];
+    }
+  } catch(e) { /* フォールバック */ }
+  document.getElementById('done-message').textContent = message;
+  document.getElementById('done-overlay').classList.add('show');
+}
+
+function closeDoneModal() {
+  document.getElementById('done-overlay').classList.remove('show');
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

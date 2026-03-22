@@ -253,18 +253,119 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 const PROXY = 'https://notion-proxy.33322666666mm.workers.dev';
 const DB = {
   comm: '314a695f8e888076b7e3cb8108439f2b',   // 対 藤井 DB
-  sns:  'aa27ee5c34b4404bb6e7818ba0c59d12',   // SNS投稿管理DB
+  sns:  '32ba695f8e888179a474c530efebf2be',   // SNS投稿管理DB
 };
 
 // ── オークション静的ページ定義 ──
 const AUCTION_PAGES = [
-  { key: 'basic',   icon: '📋', title: 'ヤフオク基本情報',   desc: 'アカウント・出品の基本',   pageId: '319a695f8e88809ca379c086205a0258' },
-  { key: 'flow',    icon: '📦', title: '落札後の手順',       desc: '落札〜発送までの流れ',     pageId: '30aa695f8e888048b40bd417f19fec03' },
-  { key: 'qa',      icon: '💬', title: '質問回答例',         desc: 'よくある質問と回答テンプレ', pageId: '306a695f8e8880808af2ee058db8979f' },
-  { key: 'message', icon: '✉️', title: '取引メッセージ例',   desc: 'コピペで使えるメッセージ',  pageId: '30aa695f8e8880da82efd2710bb71289' },
-  { key: 'cancel',  icon: '🚫', title: '取り消し方法',       desc: '出品取消・キャンセル手順',  pageId: '30ba695f8e8880e2b82cc830c643dc60' },
-  { key: 'sagawa',  icon: '🚚', title: '佐川急便',           desc: '集荷・伝票・送料',         pageId: '309a695f8e8880ed9b70c0239034c592' },
+  { key: 'basic',   icon: '📋', title: 'ヤフオク基本情報',   desc: 'アカウント・出品の基本' },
+  { key: 'flow',    icon: '📦', title: '落札後の手順',       desc: '落札〜発送までの流れ' },
+  { key: 'qa',      icon: '💬', title: '質問回答例',         desc: 'よくある質問と回答テンプレ' },
+  { key: 'message', icon: '✉️', title: '取引メッセージ例',   desc: 'コピペで使えるメッセージ' },
+  { key: 'cancel',  icon: '🚫', title: '取り消し方法',       desc: '出品取消・キャンセル手順' },
+  { key: 'sagawa',  icon: '🚚', title: '佐川急便',           desc: '集荷・伝票・送料' },
+  { key: 'sns_req', icon: '📘', title: 'SNS担当に求めること', desc: '業務要件一覧' },
 ];
+
+const AUCTION_CONTENT = {
+  'basic': '<h1>ヤフオク 基本情報</h1><hr>' +
+           '<p><strong>ID</strong>　muktire0708</p>',
+
+  'flow': '<h1>落札後手順</h1><hr>' +
+          '<h2>【落札後】</h2>' +
+          '<ul><li>Notionのオークション管理　掲載中→発送準備中に切り替え</li></ul>' +
+          '<h2>【商品の確認・梱包】</h2>' +
+          '<ul><li>サイズ、本数、管理番号の確認</li><li>ラッピング</li></ul>' +
+          '<h2>【落札者からの連絡待ち】</h2>' +
+          '<ul><li>お届け先情報</li><li>お支払い情報</li><li>落札者情報</li></ul>' +
+          '<h2>【取引メッセージで落札者への確認】</h2>' +
+          '<ul><li>法人なの？</li><li>電話番号</li></ul>' +
+          '<h2>【詳細確認後】</h2>' +
+          '<ul><li>送り状作成</li></ul>' +
+          '<h2>【落札者から入金確認】</h2>' +
+          '<ul><li>佐川急便に集荷依頼</li></ul>' +
+          '<h2>【発送後】</h2>' +
+          '<ol><li>落札者へ発送連絡をする（佐川急便のお問い合わせ番号も添える）<br><a href="https://www.sagawa-exp.co.jp/send/howto-search.html" target="_blank" style="color:var(--accent);">佐川急便 お問い合わせURL</a></li>' +
+          '<li>落札者へ評価（テンプレでOK！）</li>' +
+          '<li>この画面をスクショして、岡崎さんにＬＩＮＥしてください。<br>画像転送後、その下に佐川急便のお問い合わせ番号をテキストで入れてあげてください。</li></ol>',
+
+  'qa': '<h1>質問回答例</h1><hr>' +
+        '<h2>Q１　領収書は発行出来ますか？</h2>' +
+        '<div style="background:rgba(240,165,0,0.1);border-left:4px solid var(--accent);padding:12px 14px;border-radius:8px;margin:8px 0 16px;">' +
+        '<p>ご質問ありがとうございます。はい、可能です（当方、適格請求書発行事業者のためインボイス対応可）。</p>' +
+        '<p>原則は<strong>PDFをメール送付</strong>ですが、電子が苦手な方は<strong>紙の領収書を同梱</strong>もできます。</p>' +
+        '<p>お支払い確認後に発行しますので、取引メッセージで<br><strong>宛名／但し書き／送付方法（PDFメール or 紙同梱）</strong><br>をお知らせください。</p></div>' +
+        '<h2>Q２　いつ届く？</h2>' +
+        '<div style="background:rgba(240,165,0,0.1);border-left:4px solid var(--accent);padding:12px 14px;border-radius:8px;margin:8px 0 16px;">' +
+        '<p>ご質問ありがとうございます。広島から神奈川宛は、当方手配の西濃運輸での発送の場合、<strong>発送日から到着まで「目安で3〜5営業日」</strong>ほどを見込んでおります。</p>' +
+        '<p>※天候・物量・中継状況で前後するため<strong>到着日の確約はできません</strong>。発送後に伝票番号をご連絡します。</p></div>' +
+        '<h2>Q３　複数落札したら同梱できますか？</h2>' +
+        '<div style="background:rgba(240,165,0,0.1);border-left:4px solid var(--accent);padding:12px 14px;border-radius:8px;margin:8px 0 16px;">' +
+        '<p>ご質問ありがとうございます。はい、同梱（まとめ発送）可能です。</p>' +
+        '<p>ヤフオクの「まとめて取引」は<strong>同一出品者の落札分で、落札後72時間以内かつ取引開始前</strong>の場合にご利用いただけます。</p>' +
+        '<p>まとめて取引の依頼を先にお願いします。</p></div>' +
+        '<h2>Q４　直接引き取りできますか？</h2>' +
+        '<div style="background:rgba(240,165,0,0.1);border-left:4px solid var(--accent);padding:12px 14px;border-radius:8px;margin:8px 0 16px;">' +
+        '<p>ご質問ありがとうございます。はい、直接引き取り（手渡し）も可能です（受け渡し場所：<strong>広島県東広島市</strong>）。</p>' +
+        '<p>ただしトラブル防止のため、<strong>お支払いはYahoo!かんたん決済完了後</strong>にお願いします。</p>' +
+        '<p>落札後、取引ナビでご希望の日時（候補2〜3）をご連絡いただければ、受け渡し場所の詳細を含めて調整します。</p></div>' +
+        '<h2>Q５　取り置きできますか？</h2>' +
+        '<div style="background:rgba(240,165,0,0.1);border-left:4px solid var(--accent);padding:12px 14px;border-radius:8px;margin:8px 0 16px;">' +
+        '<p>取り置きは可能ですが、トラブル防止のため<strong>お支払い完了後のみ</strong>とさせてください。</p>' +
+        '<p>お支払い確認後、<strong>最大7日間</strong>まで取り置き対応できます。</p></div>' +
+        '<h2>Q６　値下げできますか？</h2>' +
+        '<div style="background:rgba(240,165,0,0.1);border-left:4px solid var(--accent);padding:12px 14px;border-radius:8px;margin:8px 0 16px;">' +
+        '<p>ご相談ありがとうございます。基本は現価格ですが、<strong>状況により出品ページ上で価格を見直す場合</strong>があります。</p>' +
+        '<p>もしご希望があれば「ご希望額」をお知らせください。検討のうえ、対応する場合は<strong>出品ページの価格変更で反映</strong>します。</p></div>',
+
+  'message': '<h1>取引メッセージ例</h1><hr>' +
+             '<div style="background:rgba(240,165,0,0.1);border-left:4px solid var(--accent);padding:12px 14px;border-radius:8px;margin:8px 0 8px;">' +
+             '<h3>最初の挨拶【入金前】法人？個人？で分からない時</h3></div>' +
+             '<div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:14px;margin:8px 0 20px;font-size:13px;line-height:1.9;">' +
+             'はじめまして。向畑と申します。この度は当方の商品を選んでいただきありがとうございます。<br><br>' +
+             '①ヤフオクのシステムの変更により、こちらにお客様の電話番号が表示されなくなりました。お手数ですが運送会社様に伝えるため教えていただけると助かります。<br>' +
+             '②商品説明でも記載させていただいておりますが、個人宅への発送は受け付けておりません。<br><br>' +
+             '法人宛又は西濃運輸ターミナル止めでのご対応になります。どちらかでご指示いただければ幸いです。<br>短い間ですが宜しくお願いいします。</div>' +
+             '<div style="background:rgba(240,165,0,0.1);border-left:4px solid var(--accent);padding:12px 14px;border-radius:8px;margin:8px 0 8px;">' +
+             '<h3>最初の挨拶【入金済】法人＋電話番号が分かる時</h3></div>' +
+             '<div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:14px;margin:8px 0 20px;font-size:13px;line-height:1.9;">' +
+             'はじめまして。向畑と申します。この度は当方の商品を選んでいただきありがとうございます。<br>' +
+             'そして、お支払い確認させていただきました。ありがとうございます。<br>' +
+             'それでは発送の準備に取り掛からせていただきます。<br>短い間ですが宜しくお願い致します。</div>' +
+             '<div style="background:rgba(240,165,0,0.1);border-left:4px solid var(--accent);padding:12px 14px;border-radius:8px;margin:8px 0 8px;">' +
+             '<h3>【発送後連絡】</h3></div>' +
+             '<div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:14px;margin:8px 0 20px;font-size:13px;line-height:1.9;">' +
+             'お世話になります。先程商品発送の手続きを完了いたしました。<br>' +
+             '到着の連絡は評価からでいいので、ご連絡していただけると助かります。<br>' +
+             'こちらからは先に評価させていただきます。宜しくお願い致します。</div>',
+
+  'cancel': '<h1>取り消し方法</h1><hr>' +
+            '<p><strong>【オークションの取り消し】</strong></p>' +
+            '<p>手数料は掛からないので、気軽に取り消しOK。</p>' +
+            '<p style="color:var(--muted);font-size:12px;">※詳細手順はNotionの元ページに画像付きで掲載</p>',
+
+  'sagawa': '<h1>佐川急便</h1><hr>' +
+            '<p><a href="https://www.e-service.sagawa-exp.co.jp/" target="_blank" style="color:var(--accent);font-weight:700;">【佐川急便】スマートクラブ</a></p>' +
+            '<div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:14px;margin:12px 0;font-size:13px;line-height:1.9;">' +
+            '<strong>【法人のお客様】でログイン</strong><br>' +
+            'ID：09078995191001<br>' +
+            'PW：20080224mm</div>' +
+            '<h2>送り状作成手順</h2>' +
+            '<ol>' +
+            '<li>送り状発行（e飛伝Ⅲ）</li>' +
+            '<li>送り状作成</li>' +
+            '<li>飛脚宅配便</li>' +
+            '<li>入力！！</li>' +
+            '</ol>' +
+            '<h3>入力内容</h3>' +
+            '<ul>' +
+            '<li><strong>お届け先</strong>：電話番号・郵便番号・住所・名称</li>' +
+            '<li><strong>荷送り人</strong>：「荷送り人を変更」で本社を選択</li>' +
+            '<li><strong>荷姿・品名</strong>：箱類のままでOK！右側に管理番号・タイヤサイズ・本数などを入力</li>' +
+            '<li><strong class="highlight-red">出荷個数：かならず選択すること！！</strong></li>' +
+            '</ul>' +
+            '<p>⑤印刷</p>'
+};
 
 let currentTab = 'comm';
 let currentFilter = 'all';
@@ -412,6 +513,9 @@ function renderCommFilters() {
   const filters = [
     { id: 'all', label: '全て' },
     { id: 'unconfirmed', label: '未確認' },
+    { id: 'sns', label: 'SNS' },
+    { id: 'auction', label: 'オークション' },
+    { id: 'other', label: 'その他' },
     { id: '未着手', label: '未着手' },
     { id: '進行中', label: '進行中' }
   ];
@@ -437,6 +541,21 @@ async function loadComm() {
           { property: '確認者', multi_select: { does_not_contain: currentUserName } }
         ]
       };
+    } else if (currentFilter === 'sns') {
+      filter.filter = { and: [
+        { property: 'ステータス', status: { does_not_equal: '完了' } },
+        { property: '選択', select: { equals: 'SNS' } }
+      ]};
+    } else if (currentFilter === 'auction') {
+      filter.filter = { and: [
+        { property: 'ステータス', status: { does_not_equal: '完了' } },
+        { property: '選択', select: { equals: 'オークション' } }
+      ]};
+    } else if (currentFilter === 'other') {
+      filter.filter = { and: [
+        { property: 'ステータス', status: { does_not_equal: '完了' } },
+        { property: '選択', select: { equals: 'その他' } }
+      ]};
     } else if (currentFilter === '未着手') {
       filter.filter = { property: 'ステータス', status: { equals: '未着手' } };
     } else if (currentFilter === '進行中') {
@@ -600,10 +719,8 @@ async function updateCommStatus(status) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
-// オークション タブ（Notionページを動的取得）
+// オークション タブ（静的コンテンツ + 動的sns_req）
 // ════════════════════════════════════════════════════════════════════════════════
-
-const _auctionCache = {};
 
 function loadAuctionList() {
   const list = document.getElementById('auction-list');
@@ -614,88 +731,48 @@ function loadAuctionList() {
     card.innerHTML = '<div class="auction-icon">' + pg.icon + '</div>' +
       '<div class="auction-title">' + escapeHtml(pg.title) + '</div>' +
       '<div class="auction-desc">' + escapeHtml(pg.desc) + '</div>';
-    card.onclick = () => showAuctionPage(pg);
+    card.onclick = () => showAuctionPage(pg.key);
     list.appendChild(card);
   }
 }
 
-async function showAuctionPage(pg) {
+async function showAuctionPage(key) {
   const list = document.getElementById('auction-list');
-  list.innerHTML = '<button class="auction-back-btn" onclick="loadAuctionList()">← 一覧に戻る</button>' +
-    '<div class="loading"></div>';
-  try {
-    if (_auctionCache[pg.key]) {
-      list.innerHTML = '<button class="auction-back-btn" onclick="loadAuctionList()">← 一覧に戻る</button>' +
-        '<div class="auction-body">' + _auctionCache[pg.key] + '</div>';
-      return;
-    }
-    const data = await notionAPI('POST', `/blocks/${pg.pageId}/children`, { page_size: 100 });
-    let html = '<h1>' + escapeHtml(pg.title) + '</h1><hr>';
-    for (const b of (data.results || [])) {
-      const t = b.type;
-      if (!b[t]) continue;
-      const texts = b[t].rich_text || [];
-      let line = '';
-      for (const rt of texts) {
-        let txt = escapeHtml(rt.plain_text || '');
-        if (rt.annotations?.bold) txt = '<strong>' + txt + '</strong>';
-        if (rt.annotations?.italic) txt = '<em>' + txt + '</em>';
-        if (rt.annotations?.color && rt.annotations.color !== 'default') {
-          const c = rt.annotations.color;
-          if (c.includes('red')) txt = '<span class="highlight-red">' + txt + '</span>';
-          else if (c.includes('orange')) txt = '<span class="highlight-orange">' + txt + '</span>';
-          else if (c.includes('blue')) txt = '<span class="highlight-blue">' + txt + '</span>';
-        }
-        line += txt;
+  if (key === 'sns_req') {
+    list.innerHTML = '<button class="auction-back-btn" onclick="loadAuctionList()">← 一覧に戻る</button><div class="loading"></div>';
+    try {
+      const data = await notionAPI('POST', '/databases/2f0a695f8e8880d8be9ac31af19a9d1c/query', { page_size: 100 });
+      let html = '<h1>SNS担当に求めること</h1><hr>';
+      const groups = {};
+      for (const p of (data.results || [])) {
+        const cat = p.properties['業務別']?.select?.name || 'その他';
+        const req = p.properties['求めること']?.rich_text?.map(t=>t.plain_text).join('') || '';
+        const more = p.properties['さらに求めること']?.rich_text?.map(t=>t.plain_text).join('') || '';
+        if (!req) continue;
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push({ req, more });
       }
-      if (t === 'heading_1') html += '<h1>' + line + '</h1>';
-      else if (t === 'heading_2') html += '<h2>' + line + '</h2>';
-      else if (t === 'heading_3') html += '<h3>' + line + '</h3>';
-      else if (t === 'paragraph') html += '<p>' + (line || '&nbsp;') + '</p>';
-      else if (t === 'bulleted_list_item') html += '<ul><li>' + line + '</li></ul>';
-      else if (t === 'numbered_list_item') html += '<ol><li>' + line + '</li></ol>';
-      else if (t === 'divider') html += '<hr>';
-      else if (t === 'toggle') html += '<details><summary style="cursor:pointer;font-weight:700;margin:8px 0;">' + line + '</summary><div class="toggle-content" data-block-id="' + b.id + '"></div></details>';
+      const catColors = { 'オークション': 'var(--green)', 'SNS': 'var(--accent)', 'タイヤ関連': 'var(--blue)', '事務': 'var(--purple)', 'Notion': 'var(--yellow)', '求人': 'var(--red)' };
+      for (const [cat, items] of Object.entries(groups)) {
+        const color = catColors[cat] || 'var(--muted)';
+        html += '<h2 style="border-left:4px solid ' + color + ';padding-left:10px;margin-top:20px;">' + escapeHtml(cat) + '</h2>';
+        for (const item of items) {
+          html += '<div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin:8px 0;">';
+          html += '<p style="font-weight:700;margin-bottom:4px;">' + escapeHtml(item.req) + '</p>';
+          if (item.more) html += '<p style="font-size:12px;color:var(--muted);">' + escapeHtml(item.more) + '</p>';
+          html += '</div>';
+        }
+      }
+      list.innerHTML = '<button class="auction-back-btn" onclick="loadAuctionList()">← 一覧に戻る</button><div class="auction-body">' + html + '</div>';
+    } catch(e) {
+      list.innerHTML = '<button class="auction-back-btn" onclick="loadAuctionList()">← 一覧に戻る</button><div class="empty-state">' + escapeHtml(e.message) + '</div>';
     }
-    // 連続リストアイテムをマージ
-    html = html.replace(/<\/ul><ul>/g, '').replace(/<\/ol><ol>/g, '');
-    _auctionCache[pg.key] = html;
-    list.innerHTML = '<button class="auction-back-btn" onclick="loadAuctionList()">← 一覧に戻る</button>' +
-      '<div class="auction-body">' + html + '</div>';
-    // トグルの子ブロックを遅延取得
-    const toggles = list.querySelectorAll('.toggle-content[data-block-id]');
-    for (const tEl of toggles) {
-      loadToggleChildren(tEl, tEl.dataset.blockId);
-    }
-  } catch(e) {
-    list.innerHTML = '<button class="auction-back-btn" onclick="loadAuctionList()">← 一覧に戻る</button>' +
-      '<div class="empty-state">' + escapeHtml(e.message) + '<br><button style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px 12px;margin-top:12px;cursor:pointer;font-size:12px;font-weight:600;" onclick="showAuctionPage(' + JSON.stringify(pg).replace(/"/g, '&quot;') + ')">再試行</button></div>';
+    return;
   }
-}
-
-async function loadToggleChildren(el, blockId) {
-  try {
-    const data = await notionAPI('POST', `/blocks/${blockId}/children`, { page_size: 100 });
-    let html = '';
-    for (const b of (data.results || [])) {
-      const t = b.type;
-      if (!b[t]) continue;
-      const texts = b[t].rich_text || [];
-      let line = texts.map(rt => {
-        let txt = escapeHtml(rt.plain_text || '');
-        if (rt.annotations?.bold) txt = '<strong>' + txt + '</strong>';
-        return txt;
-      }).join('');
-      if (t === 'paragraph') html += '<p>' + (line || '&nbsp;') + '</p>';
-      else if (t === 'bulleted_list_item') html += '<ul><li>' + line + '</li></ul>';
-      else if (t === 'numbered_list_item') html += '<ol><li>' + line + '</li></ol>';
-      else if (t === 'heading_3') html += '<h3>' + line + '</h3>';
-    }
-    html = html.replace(/<\/ul><ul>/g, '').replace(/<\/ol><ol>/g, '');
-    el.innerHTML = html;
-  } catch(e) {
-    el.innerHTML = '<p style="color:var(--muted);font-size:12px;">読み込みエラー</p>';
-  }
+  // Static content
+  const content = AUCTION_CONTENT[key];
+  if (!content) return;
+  list.innerHTML = '<button class="auction-back-btn" onclick="loadAuctionList()">← 一覧に戻る</button><div class="auction-body">' + content + '</div>';
 }
 
 // ════════════════════════════════════════════════════════════════════════════════

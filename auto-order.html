@@ -398,6 +398,7 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 const WORKER      = 'https://notion-proxy.33322666666mm.workers.dev';
 const SNAPSHOT_DB  = '1123c46301764238a511114ed59159bd';   // 在庫スナップショットDB
 const HACCHU_DB   = '202a695f8e8880aa92f6f38d9b47b537';   // 発注管理表DB
+const HACCHUSHEET_DB = 'e400cc4f87f94af78392d794523894d9'; // 発注書（送付用）DB
 const SESSION_KEY = 'foo_portal_session';
 
 // 在庫基準設定DB（カテゴリごとに別DB）
@@ -1141,7 +1142,13 @@ async function confirmAndSaveOrder() {
   const errEl = document.getElementById('inline-order-error') || document.getElementById('order-preview-error');
 
   try {
-    await createHacchuRecords(selectedItems, tantou, nouki, biko, method);
+    const createdPages = await createHacchuRecords(selectedItems, tantou, nouki, biko, method);
+    // 発注書（送付用）DBにもレコードを作成 → 発注書未発行バッジを解消
+    const pageIds = createdPages.filter(p => p && p.id).map(p => p.id);
+    if (pageIds.length > 0) {
+      const supName = SUPPLIER_CONFIG[currentSupplier]?.notionName || 'TOYO';
+      await createHacchuSheetRecord(pageIds, supName);
+    }
 
     // オーバーレイを閉じる（開いている場合）
     const overlay = document.getElementById('order-preview-overlay');
@@ -1180,8 +1187,8 @@ async function submitOrders() {
 
 async function createHacchuRecords(items, tantou, nouki, biko, method) {
   method = method || '自動';
-  // 並列で作成
-  await Promise.all(items.map(item => {
+  // 並列で作成 → 各レスポンス(ページ)を返す
+  const pages = await Promise.all(items.map(item => {
     const warehouseLabel = item.warehouse === '五日市倉庫' ? '五日市' : '志和';
     const titleText = `${item.pattern} ${item.size} ${item.warehouse}`;
     const props = {
@@ -1205,6 +1212,21 @@ async function createHacchuRecords(items, tantou, nouki, biko, method) {
     if (method === '口頭') props['口頭注文済'] = { checkbox: true };
     return notionAPI('POST', '/pages', { parent: { database_id: HACCHU_DB }, properties: props });
   }));
+  return pages; // 作成されたページ情報を返す
+}
+
+// 発注書（送付用）DBにレコードを作成し、発注行をリレーションで紐づける
+async function createHacchuSheetRecord(pageIds, supplierName) {
+  const today = new Date().toISOString().split('T')[0];
+  const sheetName = `自動発注_${supplierName}_${today}`;
+  const props = {
+    '発注書名': { title: [{ text: { content: sheetName } }] },
+    '仕入先':   { select: { name: supplierName } },
+    '作成日':   { date: { start: today } },
+    '発注行':   { relation: pageIds.map(id => ({ id })) },
+    '送付確認': { checkbox: true },
+  };
+  return notionAPI('POST', '/pages', { parent: { database_id: HACCHUSHEET_DB }, properties: props });
 }
 
 // ──────────────────────────────────────

@@ -39,8 +39,9 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 /* ── 認証エラー ── */
 #auth-error {
   display:none; min-height:100vh; padding:40px 24px;
-  flex-direction:column; justify-content:center;
+  display:flex; flex-direction:column; justify-content:center;
 }
+#auth-error { display:none; }
 .auth-brand { font-size:10px; color:var(--muted); letter-spacing:0.15em; text-transform:uppercase; margin-bottom:24px; }
 .auth-title { font-size:24px; font-weight:900; margin-bottom:12px; letter-spacing:-0.02em; }
 .auth-title span { color:var(--accent); }
@@ -295,6 +296,15 @@ const TASK_DB = '204a695f8e88807cbf73fb7e72caac27';
 const SESSION_KEY = 'foo_portal_session';
 const SESSION_DAYS = 30;
 const SEASON_RE = /^20\d{2}[春冬][前後]$/;
+// 季節ソート順: 春前→春後→冬前→冬後
+function seasonSort(a, b) {
+  const order = k => {
+    const m = k.match(/^(\d{4})(春|冬)(前|後)$/);
+    if (!m) return 99999;
+    return Number(m[1]) * 100 + (m[2] === '春' ? 0 : 10) + (m[3] === '前' ? 0 : 1);
+  };
+  return order(a) - order(b);
+}
 const PORTAL_URL = 'https://mitsurumukaihata.github.io/foo-portal/';
 
 // ─── 状態 ───
@@ -326,18 +336,6 @@ function loadSession() {
   } catch(e) { return null; }
 }
 
-// ─── アクセス制御 ───
-function checkAccess() {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) return false;
-    const data = JSON.parse(raw);
-    if (new Date(data.expires) < new Date()) return false;
-    if (data.apps && data.apps.task === true) return true;
-    return false;
-  } catch(e) { return false; }
-}
-
 // ─── Notion API ───
 async function notionAPI(method, path, body) {
   const ctrl = new AbortController();
@@ -366,7 +364,7 @@ async function fetchAllTasks() {
   do {
     const body = { page_size: 100 };
     if (cursor) body.start_cursor = cursor;
-    const res = await notionAPI('POST', `/databases/${TASK_DB}/query`, body);
+    const res = await notionAPI('POST', `/v1/databases/${TASK_DB}/query`, body);
     all = all.concat(res.results || []);
     cursor = res.has_more ? res.next_cursor : null;
   } while (cursor);
@@ -585,7 +583,7 @@ function renderCard(task, lastVisit, showSeasonTag, showSeason, showExtra) {
   // 季節チェック行
   let seasonHtml = '';
   if (showSeason) {
-    const keys = Object.keys(task.seasonChecks).sort();
+    const keys = Object.keys(task.seasonChecks).sort(seasonSort);
     if (keys.length > 0) {
       seasonHtml = '<div class="season-row">' + keys.map(k => {
         const done = task.seasonChecks[k] === '完了';
@@ -654,7 +652,7 @@ function openDetail(taskId) {
   html += `<div class="field"><div class="field-label">説明</div><div style="font-size:13px;color:${task.desc ? 'var(--text)' : 'var(--muted)'}">${task.desc ? escH(task.desc) : '（なし）'}</div></div>`;
 
   // 季節チェック
-  const sKeys = Object.keys(task.seasonChecks).sort();
+  const sKeys = Object.keys(task.seasonChecks).sort(seasonSort);
   if (sKeys.length) {
     html += `<div class="field"><div class="field-label">季節チェック</div><div class="detail-seasons">`;
     sKeys.forEach(k => {
@@ -694,7 +692,7 @@ async function updateStatus(taskId, newStatus, el) {
   renderContent();
 
   try {
-    await notionAPI('PATCH', `/pages/${taskId}`, {
+    await notionAPI('PATCH', `/v1/pages/${taskId}`, {
       properties: { 'ステータス': { status: { name: newStatus } } }
     });
     showToast(`ステータスを「${newStatus}」に変更しました`, 'success');
@@ -725,7 +723,7 @@ async function toggleSeason(taskId, seasonKey, wasDone) {
   }
 
   try {
-    await notionAPI('PATCH', `/pages/${taskId}`, {
+    await notionAPI('PATCH', `/v1/pages/${taskId}`, {
       properties: { [seasonKey]: { select: { name: newVal } } }
     });
   } catch(e) {
@@ -749,7 +747,7 @@ async function toggleSeasonDetail(taskId, seasonKey, wasDone, btn) {
   renderContent();
 
   try {
-    await notionAPI('PATCH', `/pages/${taskId}`, {
+    await notionAPI('PATCH', `/v1/pages/${taskId}`, {
       properties: { [seasonKey]: { select: { name: newVal } } }
     });
   } catch(e) {
@@ -826,7 +824,7 @@ async function submitNewTask() {
   if (effort) properties['工数レベル'] = { select: { name: effort } };
 
   try {
-    const res = await notionAPI('POST', '/pages', {
+    const res = await notionAPI('POST', '/v1/pages', {
       parent: { database_id: TASK_DB },
       properties
     });
@@ -849,7 +847,7 @@ async function submitNewTask() {
 // ─── 初期化 ───
 async function init() {
   const session = loadSession();
-  if (!session || !checkAccess()) {
+  if (!session) {
     document.getElementById('auth-error').style.display = 'flex';
     return;
   }
@@ -891,5 +889,4 @@ async function init() {
 init();
 </script>
 </body>
-</html>
 </html>

@@ -1223,7 +1223,7 @@ async function createHacchuSheetRecord(pageIds, supplierName) {
     '発注書名': { title: [{ text: { content: sheetName } }] },
     '仕入先':   { select: { name: supplierName } },
     '作成日':   { date: { start: today } },
-    '発注行':   { relation: pageIds.map(id => ({ id })) },
+    '発注行 1': { relation: pageIds.map(id => ({ id })) },
     '送付確認': { checkbox: true },
   };
   return notionAPI('POST', '/pages', { parent: { database_id: HACCHUSHEET_DB }, properties: props });

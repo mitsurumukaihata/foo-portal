@@ -346,10 +346,11 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
         <div id="order-error"></div>
         <!-- プレビューエリア -->
         <div id="order-pdf-preview" style="display:none;margin-bottom:10px;">
+          <div id="inline-order-error"></div>
           <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">発注書プレビュー — 内容を確認してください</div>
           <iframe id="order-inline-frame" style="width:100%;height:500px;border:1px solid var(--border);border-radius:8px;background:#fff;"></iframe>
           <div style="display:flex;gap:8px;margin-top:8px;">
-            <button class="btn-primary" id="order-confirm-btn" onclick="confirmAndSaveOrder()" style="flex:3;">
+            <button class="btn-primary" id="inline-confirm-btn" onclick="confirmAndSaveOrder()" style="flex:3;">
               発注確定 → Notion保存
             </button>
             <button class="btn-secondary" onclick="cancelPreview()" style="flex:1;flex-shrink:0;">修正</button>
@@ -1135,9 +1136,9 @@ async function confirmAndSaveOrder() {
   if (!pending) return;
   const { selectedItems, tantou, nouki, biko, method } = pending;
 
-  const btn = document.getElementById('order-confirm-btn');
+  const btn = document.getElementById('inline-confirm-btn') || document.getElementById('order-confirm-btn');
   if (btn) { btn.disabled = true; btn.textContent = '保存中…'; }
-  const errEl = document.getElementById('order-preview-error');
+  const errEl = document.getElementById('inline-order-error') || document.getElementById('order-preview-error');
 
   try {
     await createHacchuRecords(selectedItems, tantou, nouki, biko, method);
@@ -1189,6 +1190,7 @@ async function createHacchuRecords(items, tantou, nouki, biko, method) {
       'サイズ':       { select: { name: item.size } },
       '数量':         { number: item.orderQty },
       '仕入先':       { select: { name: SUPPLIER_CONFIG[item.maker === 'TOYO' ? 'TOYO' : 'BS']?.notionName || item.maker } },
+      'タイヤメーカー': { select: { name: ({'BS':'BRIDGESTONE','TOYO':'TOYO','DUNLOP':'DUNLOP','MICHELIN':'MICHELIN'})[item.maker] || item.maker } },
       '種別':         { select: { name: 'タイヤ' } },
       'ステータス':   { select: { name: '発注済' } },
       '納入予定場所': { select: { name: warehouseLabel } },

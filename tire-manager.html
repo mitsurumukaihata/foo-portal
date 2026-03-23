@@ -1241,6 +1241,8 @@ async function loadHistory(forceReload) {
       and: [
         { timestamp: 'created_time', created_time: { on_or_after: startDate } },
         { timestamp: 'created_time', created_time: { before: endDate } },
+        // 繰越レコードは履歴に表示しない（在庫計算用のシステムレコード）
+        { property: '区分', select: { does_not_equal: '繰越' } },
       ]
     };
 
@@ -1251,7 +1253,7 @@ async function loadHistory(forceReload) {
       const res = await notionAPI('POST', `/databases/${db.id}/query`, {
         filter: dateFilter,
         sorts: [{ timestamp: 'created_time', direction: 'descending' }],
-        page_size: 10,
+        page_size: 20,
       });
       (res.results || []).forEach(r => {
         r._catKey = key;

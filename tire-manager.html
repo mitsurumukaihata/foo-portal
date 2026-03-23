@@ -1351,12 +1351,13 @@ function renderHistory() {
     const pattern = propStr(r, 'パターン名');
     const qty = propStr(r, '数量');
     const creator = propStr(r, '作成者');
-    const memo = propStr(r, 'メモ') || propStr(r, '出庫先');
+    const memo = propStr(r, 'メモ');
+    const shukko = propStr(r, '出庫先');
     const warehouse = propStr(r, '倉庫') || propStr(r, '出庫倉庫');
     const catIcon = DB_MAP[r._catKey]?.icon || '';
 
     html += `
-    <div style="background:var(--s2);border:0.5px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;" id="hist-${idx}" data-size="${(size||'').toLowerCase()}">
+    <div onclick="openHistoryDetail(${idx})" style="background:var(--s2);border:0.5px solid var(--border);border-left:3px solid ${kubunColor(kubun)};border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:background 0.15s;" id="hist-${idx}" data-size="${(size||'').toLowerCase()}" ontouchstart="this.style.background='var(--s3)'" ontouchend="this.style.background='var(--s2)'">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
         <div style="display:flex;align-items:center;gap:6px;">
           <span style="font-size:14px;">${catIcon}</span>
@@ -1365,14 +1366,14 @@ function renderHistory() {
         <span style="font-size:10px;color:var(--muted);">${fmt(r.created_time)}</span>
       </div>
       <div style="font-size:15px;font-weight:900;letter-spacing:0.02em;margin-bottom:6px;font-family:'DM Mono',monospace;color:var(--text);">${size || '—'}</div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
         <span style="font-size:11px;font-weight:600;color:${kubunColor(kubun)};background:color-mix(in srgb,${kubunColor(kubun)} 12%,transparent);padding:2px 8px;border-radius:4px;">${kubun || '—'}</span>
         <span style="font-size:13px;font-weight:700;color:var(--accent);">${qty}本</span>
         <span style="font-size:11px;color:var(--muted);">${warehouse}</span>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div style="font-size:10px;color:var(--muted);">${creator ? '担当:'+creator : ''}${memo ? '　'+memo : ''}</div>
-        <button onclick="openHistoryEdit(${idx})" style="background:var(--accent);border:none;border-radius:6px;padding:4px 12px;font-size:10px;font-weight:600;color:#fff;cursor:pointer;font-family:inherit;">編集</button>
+        <div style="font-size:10px;color:var(--muted);">${creator ? '担当:'+creator : ''}${shukko ? ' ▸'+shukko : ''}</div>
+        <span style="font-size:9px;color:var(--muted);">タップで詳細 ›</span>
       </div>
     </div>`;
   });
@@ -1383,6 +1384,92 @@ function renderHistory() {
   const hInput = document.getElementById('history-search');
   if (hInput) {
     hInput.addEventListener('input', e => { window._historySelectedSize = ''; filterHistorySizes(e.target.value); });
+  }
+}
+
+// ─── 履歴詳細モーダル ──────────────────────────────────────────────────────────
+function openHistoryDetail(idx) {
+  const r = historyRecords[idx];
+  if (!r) return;
+  const ps = (name) => {
+    const p = r.properties?.[name];
+    if (!p) return '—';
+    if (p.type === 'title') return p.title?.[0]?.plain_text || '—';
+    if (p.type === 'rich_text') return p.rich_text?.[0]?.plain_text || '—';
+    if (p.type === 'select') return p.select?.name || '—';
+    if (p.type === 'number') return p.number != null ? String(p.number) : '—';
+    if (p.type === 'created_by') return p.created_by?.name || '—';
+    return '—';
+  };
+  const db = DB_MAP[r._catKey];
+  const kubun = ps('区分');
+  const qty = ps('数量');
+  const sign = KUBUN_SIGN[kubun] ?? 0;
+  const signStr = sign > 0 ? '+' : sign < 0 ? '-' : '';
+  const signColor = sign > 0 ? 'var(--green)' : sign < 0 ? 'var(--red)' : 'var(--muted)';
+  const kubunColor = (k) => {
+    if (k.includes('入庫') || k.includes('返品（倉庫')) return 'var(--green)';
+    if (k === '準備') return '#f59e0b';
+    if (k.includes('出庫') || k.includes('返品（メーカー')) return 'var(--red)';
+    if (k === '発注中') return 'var(--blue)';
+    return 'var(--muted)';
+  };
+  const kColor = kubunColor(kubun);
+  const d = new Date(r.created_time);
+  const dateStr = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  const editD = r.last_edited_time ? new Date(r.last_edited_time) : null;
+  const editStr = editD ? `${editD.getFullYear()}/${editD.getMonth()+1}/${editD.getDate()} ${String(editD.getHours()).padStart(2,'0')}:${String(editD.getMinutes()).padStart(2,'0')}` : '—';
+
+  const row = (label, value, hl) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:12px;color:var(--muted);min-width:80px;">${label}</span>
+      <span style="font-size:13px;font-weight:${hl?'700':'500'};color:${hl||'var(--text)'};text-align:right;">${value}</span>
+    </div>`;
+
+  let modal = document.getElementById('hist-detail-modal');
+  if (!modal) { modal = document.createElement('div'); modal.id = 'hist-detail-modal'; document.body.appendChild(modal); }
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `
+    <div style="background:var(--bg);width:100%;max-width:400px;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="background:color-mix(in srgb,${kColor} 15%,var(--bg));padding:20px;text-align:center;border-bottom:1px solid var(--border);">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">${db?.icon||''} ${db?.name||''}</div>
+        <span style="display:inline-block;font-size:13px;font-weight:700;color:${kColor};background:color-mix(in srgb,${kColor} 18%,transparent);padding:4px 16px;border-radius:20px;">${kubun}</span>
+        <div style="font-size:28px;font-weight:800;color:${signColor};margin-top:8px;">${signStr}${qty}本</div>
+      </div>
+      <div style="padding:4px 20px 8px;">
+        ${row('パターン', ps('パターン名'))}
+        ${row('サイズ', ps('サイズコード'))}
+        ${row('倉庫', ps('倉庫') !== '—' ? ps('倉庫') : ps('出庫倉庫'))}
+        ${row('出庫先', ps('出庫先'), ps('出庫先') !== '—' ? '#f59e0b' : '')}
+        ${row('入力者', ps('作成者'), '#3b82f6')}
+        ${row('メモ', ps('メモ'))}
+        ${row('登録日時', dateStr)}
+        ${row('最終更新', editStr)}
+      </div>
+      <div style="padding:0 20px 16px;display:flex;gap:8px;">
+        <button onclick="document.getElementById('hist-detail-modal').style.display='none';openHistoryEdit(${idx})" style="flex:2;padding:12px;background:var(--accent);border:none;border-radius:10px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;">編集</button>
+        <button onclick="archiveHistoryRecord(${idx})" id="hist-archive-btn" style="flex:1;padding:12px;background:transparent;border:1.5px solid var(--red);border-radius:10px;font-size:12px;font-weight:600;color:var(--red);cursor:pointer;font-family:inherit;">取消</button>
+        <button onclick="document.getElementById('hist-detail-modal').style.display='none'" style="flex:1;padding:12px;background:var(--s3);border:none;border-radius:10px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;">閉じる</button>
+      </div>
+    </div>`;
+  modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+}
+
+async function archiveHistoryRecord(idx) {
+  const r = historyRecords[idx];
+  if (!r) return;
+  const ps = (name) => r.properties?.[name]?.select?.name || r.properties?.[name]?.rich_text?.[0]?.plain_text || '';
+  if (!confirm(`この記録を取り消しますか？\n\n${ps('区分')} ${ps('パターン名')} ${ps('サイズコード')} ${r.properties?.['数量']?.number||0}本\n\n※Notionのゴミ箱に移動します`)) return;
+  const btn = document.getElementById('hist-archive-btn');
+  btn.disabled = true; btn.textContent = '処理中…';
+  try {
+    await notionAPI('PATCH', `/pages/${r.id}`, { archived: true });
+    historyRecords.splice(idx, 1);
+    document.getElementById('hist-detail-modal').style.display = 'none';
+    renderHistory();
+  } catch(e) {
+    alert('取消エラー: ' + e.message);
+    btn.disabled = false; btn.textContent = '取消';
   }
 }
 

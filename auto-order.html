@@ -1016,8 +1016,8 @@ function renderOrderPage() {
       const entryCls = item.selected ? '' : 'deselected';
       html += `<div class="order-entry ${entryCls}" id="oe-${globalIdx}">
         <div class="order-checkbox ${chkCls}" onclick="toggleOrderItem(${globalIdx})">${chkIcon}</div>
-        <div class="order-info">
-          <div class="order-pattern">${item.pattern}</div>
+        <div class="order-info" onclick="showOrderItemDetail(${globalIdx})" style="cursor:pointer;">
+          <div class="order-pattern">${item.pattern} <span style="font-size:9px;color:var(--muted);font-weight:400;">›</span></div>
           <div class="order-detail">${item.size} ／ <span style="color:var(--accent);font-weight:700;">${item.warehouse.replace('倉庫','')}</span></div>
         </div>
         <div class="qty-wrap">
@@ -1548,7 +1548,10 @@ async function loadHistory() {
   }
 }
 
+let hacchuHistoryRecords = [];
+
 function renderHistory(records) {
+  hacchuHistoryRecords = records;
   const el = document.getElementById('history-content');
   if (!records.length) {
     el.innerHTML = '<div style="text-align:center;padding:48px 20px;color:var(--muted);font-size:14px;">発注履歴がありません</div>';
@@ -1557,6 +1560,9 @@ function renderHistory(records) {
   const STATUS_CLASS = {
     '新規発注': 'st-new', '発注済': 'st-ordered', '納入済': 'st-done', 'キャンセル': 'st-cancel'
   };
+  const STATUS_COLOR = {
+    '新規発注': '#f59e0b', '発注済': '#3b82f6', '納入済': '#22c55e', 'キャンセル': '#6b7280'
+  };
   const MAKER_GROUPS = [
     { key:'TOYO',       label:'TOYO TIRE',   color:'var(--accent)' },
     { key:'BRIDGESTONE',label:'BRIDGESTONE', color:'var(--blue)' },
@@ -1564,12 +1570,7 @@ function renderHistory(records) {
     { key:'その他',     label:'その他',      color:'var(--muted)' },
   ];
   const grouped = {};
-  records.forEach(r => {
-    const sup = r.properties['仕入先']?.select?.name || 'その他';
-    const g = MAKER_GROUPS.find(m => m.key === sup) ? sup : 'その他';
-    if (!grouped[g]) grouped[g] = [];
-    grouped[g].push(r);
-  });
+  records.forEach((r, i) => { r._hIdx = i; const sup = r.properties['仕入先']?.select?.name || 'その他'; const g = MAKER_GROUPS.find(m => m.key === sup) ? sup : 'その他'; if (!grouped[g]) grouped[g] = []; grouped[g].push(r); });
 
   let html = '<div style="padding:12px 0 0;">';
   MAKER_GROUPS.forEach(mg => {
@@ -1590,8 +1591,9 @@ function renderHistory(records) {
       const pattern = p['パターン']?.select?.name || '';
       const dateStr = r.created_time ? new Date(r.created_time).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}) : '—';
       const stCls   = STATUS_CLASS[status] || 'st-new';
+      const stColor = STATUS_COLOR[status] || '#6b7280';
       const noukiStr= nouki ? new Date(nouki).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}) : '—';
-      html += `<div class="history-row">
+      html += `<div class="history-row" onclick="openHacchuDetail(${r._hIdx})" style="cursor:pointer;border-left:3px solid ${stColor};transition:background 0.15s;" ontouchstart="this.style.background='var(--s3)'" ontouchend="this.style.background=''">
         <div class="history-row-head">
           <div class="history-date">${dateStr} 登録</div>
           <span class="history-status ${stCls}">${status}</span>
@@ -1601,12 +1603,109 @@ function renderHistory(records) {
           <strong style="font-family:'DM Mono',monospace;">${escHtml(title)}</strong>
           &nbsp; <strong style="color:var(--accent);">${qty}本</strong>
         </div>
-        <div class="history-row-meta">納入先：${place} ／ 担当：${tantou} ／ 希望納期：${noukiStr}</div>
+        <div class="history-row-meta">納入先：${place} ／ 担当：${tantou} ／ 希望納期：${noukiStr}　<span style="font-size:9px;color:var(--muted);">タップで詳細 ›</span></div>
       </div>`;
     });
   });
   html += '</div>';
   el.innerHTML = html;
+}
+
+// ─── 発注履歴 詳細モーダル ───────────────────────────────────
+function openHacchuDetail(idx) {
+  const r = hacchuHistoryRecords[idx];
+  if (!r) return;
+  const p = r.properties;
+  const ps = (name) => {
+    const v = p[name];
+    if (!v) return '—';
+    if (v.type === 'title') return v.title?.[0]?.plain_text || '—';
+    if (v.type === 'rich_text') return v.rich_text?.[0]?.plain_text || '—';
+    if (v.type === 'select') return v.select?.name || '—';
+    if (v.type === 'number') return v.number != null ? String(v.number) : '—';
+    if (v.type === 'date') return v.date?.start || '—';
+    return '—';
+  };
+  const status = ps('ステータス');
+  const STATUS_COLOR = { '新規発注': '#f59e0b', '発注済': '#3b82f6', '納入済': '#22c55e', 'キャンセル': '#6b7280' };
+  const stColor = STATUS_COLOR[status] || '#6b7280';
+  const d = r.created_time ? new Date(r.created_time) : null;
+  const dateStr = d ? `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` : '—';
+
+  const row = (label, value, hl) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:12px;color:var(--muted);min-width:90px;">${label}</span>
+      <span style="font-size:13px;font-weight:${hl?'700':'500'};color:${hl||'var(--text)'};text-align:right;">${value}</span>
+    </div>`;
+
+  const statusOpts = ['新規発注','発注済','納入済','キャンセル'].map(s =>
+    `<option value="${s}" ${s===status?'selected':''}>${s}</option>`
+  ).join('');
+
+  let modal = document.getElementById('hacchu-detail-modal');
+  if (!modal) { modal = document.createElement('div'); modal.id = 'hacchu-detail-modal'; document.body.appendChild(modal); }
+  modal.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `
+    <div style="background:var(--bg);width:100%;max-width:420px;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="background:color-mix(in srgb,${stColor} 15%,var(--bg));padding:20px;text-align:center;border-bottom:1px solid var(--border);">
+        <span style="display:inline-block;font-size:13px;font-weight:700;color:${stColor};background:color-mix(in srgb,${stColor} 18%,transparent);padding:4px 16px;border-radius:20px;">${status}</span>
+        <div style="font-size:16px;font-weight:800;color:var(--text);margin-top:10px;font-family:'DM Mono',monospace;">${ps('パターン')} ${ps('タイヤサイズ')}</div>
+        <div style="font-size:28px;font-weight:800;color:var(--accent);margin-top:4px;">${ps('数量')}本</div>
+      </div>
+      <div style="padding:4px 20px 8px;">
+        ${row('仕入先', ps('仕入先'))}
+        ${row('タイヤメーカー', ps('タイヤメーカー'))}
+        ${row('納入予定場所', ps('納入予定場所'), '#f59e0b')}
+        ${row('注文担当', ps('注文担当'), '#3b82f6')}
+        ${row('サイズコード', ps('サイズコード'))}
+        ${row('納期予定日', ps('納期予定日'))}
+        ${row('登録日', dateStr)}
+      </div>
+      <div style="padding:0 20px 8px;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">ステータス変更</div>
+        <select id="hacchu-st-select" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:13px;font-family:inherit;">${statusOpts}</select>
+      </div>
+      <div id="hacchu-detail-error" style="padding:0 20px;"></div>
+      <div style="padding:8px 20px 16px;display:flex;gap:8px;">
+        <button onclick="saveHacchuStatus(${idx})" id="hacchu-save-btn" style="flex:2;padding:12px;background:var(--accent);border:none;border-radius:10px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;">保存</button>
+        <button onclick="archiveHacchu(${idx})" id="hacchu-archive-btn" style="flex:1;padding:12px;background:transparent;border:1.5px solid var(--red);border-radius:10px;font-size:12px;font-weight:600;color:var(--red);cursor:pointer;font-family:inherit;">取消</button>
+        <button onclick="document.getElementById('hacchu-detail-modal').style.display='none'" style="flex:1;padding:12px;background:var(--s3);border:none;border-radius:10px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;">閉じる</button>
+      </div>
+    </div>`;
+  modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+}
+
+async function saveHacchuStatus(idx) {
+  const r = hacchuHistoryRecords[idx];
+  const newStatus = document.getElementById('hacchu-st-select').value;
+  const btn = document.getElementById('hacchu-save-btn');
+  btn.disabled = true; btn.textContent = '保存中…';
+  try {
+    await notionAPI('PATCH', `/pages/${r.id}`, { properties: { 'ステータス': { select: { name: newStatus } } } });
+    r.properties['ステータス'] = { type:'select', select:{ name: newStatus } };
+    document.getElementById('hacchu-detail-modal').style.display = 'none';
+    renderHistory(hacchuHistoryRecords);
+  } catch(e) {
+    document.getElementById('hacchu-detail-error').innerHTML = `<div style="color:var(--red);font-size:11px;padding:4px 0;">${e.message}</div>`;
+    btn.disabled = false; btn.textContent = '保存';
+  }
+}
+
+async function archiveHacchu(idx) {
+  const r = hacchuHistoryRecords[idx];
+  const title = r.properties['タイヤサイズ']?.title?.[0]?.plain_text || '';
+  if (!confirm(`この発注を取り消しますか？\n\n${title} ${r.properties['数量']?.number||0}本\n\n※Notionのゴミ箱に移動します`)) return;
+  const btn = document.getElementById('hacchu-archive-btn');
+  btn.disabled = true; btn.textContent = '処理中…';
+  try {
+    await notionAPI('PATCH', `/pages/${r.id}`, { archived: true });
+    hacchuHistoryRecords.splice(idx, 1);
+    document.getElementById('hacchu-detail-modal').style.display = 'none';
+    renderHistory(hacchuHistoryRecords);
+  } catch(e) {
+    alert('取消エラー: ' + e.message);
+    btn.disabled = false; btn.textContent = '取消';
+  }
 }
 
 // ──────────────────────────────────────
@@ -2115,6 +2214,57 @@ async function showItemHistory(idx) {
 }
 
 // ─── 履歴詳細モーダル ──────────────────────────────────
+// ─── 発注リスト 在庫詳細モーダル ─────────────────────────────
+function showOrderItemDetail(idx) {
+  const item = alertItems[idx];
+  if (!item) return;
+  const row = (label, value, hl) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:12px;color:var(--muted);">${label}</span>
+      <span style="font-size:13px;font-weight:${hl?'700':'500'};color:${hl||'var(--text)'};">${value}</span>
+    </div>`;
+
+  const stockColor = item.realStock <= 0 ? '#ef4444' : item.realStock < item.threshold ? '#f59e0b' : '#22c55e';
+
+  let modal = document.getElementById('order-item-detail');
+  if (!modal) { modal = document.createElement('div'); modal.id = 'order-item-detail'; document.body.appendChild(modal); }
+  modal.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `
+    <div style="background:var(--bg);width:100%;max-width:400px;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="background:color-mix(in srgb,${stockColor} 12%,var(--bg));padding:20px;text-align:center;border-bottom:1px solid var(--border);">
+        <div style="font-size:15px;font-weight:800;color:var(--text);">${item.pattern}</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;">${item.size}</div>
+        <div style="display:flex;justify-content:center;gap:20px;margin-top:12px;">
+          <div style="text-align:center;">
+            <div style="font-size:24px;font-weight:800;color:${stockColor};">${item.realStock}</div>
+            <div style="font-size:10px;color:var(--muted);">現在庫</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:24px;font-weight:800;color:var(--muted);">${item.threshold}</div>
+            <div style="font-size:10px;color:var(--muted);">しきい値</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:24px;font-weight:800;color:var(--accent);">${item.orderQty}</div>
+            <div style="font-size:10px;color:var(--muted);">発注数</div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:4px 20px 8px;">
+        ${row('カテゴリ', item.category)}
+        ${row('倉庫', item.warehouse, '#f59e0b')}
+        ${row('メーカー', item.maker || '—')}
+        ${row('実在庫（準備含む）', item.actualStock != null ? item.actualStock + '本' : '—')}
+        ${row('うち準備', item.prepQty != null ? item.prepQty + '本' : '—')}
+        ${row('発注中（未納入）', item.orderInFlight != null ? item.orderInFlight + '本' : '—')}
+      </div>
+      <div style="padding:4px 20px 16px;display:flex;gap:8px;">
+        <button onclick="document.getElementById('order-item-detail').style.display='none';showItemHistory(${idx})" style="flex:2;padding:12px;background:var(--accent);border:none;border-radius:10px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;">入出庫履歴</button>
+        <button onclick="document.getElementById('order-item-detail').style.display='none'" style="flex:1;padding:12px;background:var(--s3);border:none;border-radius:10px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;">閉じる</button>
+      </div>
+    </div>`;
+  modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+}
+
 function showHistoryDetail(idx) {
   const r = window._historyRecords?.[idx];
   if (!r) return;

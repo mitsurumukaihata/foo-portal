@@ -2071,34 +2071,40 @@ async function showItemHistory(idx) {
     }
 
     const kubunColor = (k) => {
-      if (k.includes('入庫') || k.includes('返品（倉庫')) return 'var(--green)';
-      if (k.includes('出庫') || k.includes('準備')) return 'var(--red)';
-      if (k === '発注中') return 'var(--blue)';
+      if (k.includes('入庫') || k.includes('返品（倉庫')) return '#22c55e';
+      if (k === '準備') return '#f59e0b';
+      if (k.includes('出庫') || k.includes('返品（メーカー')) return '#ef4444';
+      if (k === '発注中') return '#3b82f6';
       return 'var(--muted)';
     };
 
-    let html = `<div style="font-size:11px;color:var(--muted);margin-bottom:8px;">直近 ${records.length} 件の入出庫履歴</div>`;
-    records.forEach(r => {
+    // 履歴データを保持（詳細表示用）
+    window._historyRecords = records;
+
+    let html = `<div style="font-size:11px;color:var(--muted);margin-bottom:8px;">直近 ${records.length} 件の入出庫履歴（タップで詳細）</div>`;
+    records.forEach((r, i) => {
       const p = r.properties;
       const kubun = p['区分']?.select?.name || '';
       const qty = p['数量']?.number || 0;
       const creator = p['作成者']?.select?.name || '';
-      const memo = p['メモ']?.rich_text?.[0]?.plain_text || p['出庫先']?.rich_text?.[0]?.plain_text || '';
+      const shukkoSaki = p['出庫先']?.rich_text?.[0]?.plain_text || '';
       const d = new Date(r.created_time);
       const dateStr = `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
       const sign = KUBUN_SIGN[kubun] ?? 0;
       const signStr = sign > 0 ? '+' : sign < 0 ? '-' : '';
-      const signColor = sign > 0 ? 'var(--green)' : sign < 0 ? 'var(--red)' : 'var(--muted)';
+      const signColor = sign > 0 ? '#22c55e' : sign < 0 ? '#ef4444' : 'var(--muted)';
+      const kColor = kubunColor(kubun);
 
-      html += `<div style="background:var(--s2);border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;">
+      html += `<div onclick="showHistoryDetail(${i})" style="background:var(--s2);border:0.5px solid var(--border);border-left:3px solid ${kColor};border-radius:8px;padding:10px 12px;margin-bottom:6px;cursor:pointer;transition:background 0.15s;" ontouchstart="this.style.background='var(--s3)'" ontouchend="this.style.background='var(--s2)'" onmousedown="this.style.background='var(--s3)'" onmouseup="this.style.background='var(--s2)'">
         <div style="display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:11px;font-weight:600;color:${kubunColor(kubun)};background:color-mix(in srgb,${kubunColor(kubun)} 12%,transparent);padding:2px 8px;border-radius:4px;">${kubun}</span>
+          <span style="font-size:11px;font-weight:600;color:${kColor};background:color-mix(in srgb,${kColor} 12%,transparent);padding:2px 8px;border-radius:4px;">${kubun}</span>
           <span style="font-size:10px;color:var(--muted);">${dateStr}</span>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
-          <span style="font-size:14px;font-weight:700;color:${signColor};">${signStr}${qty}本</span>
-          <span style="font-size:10px;color:var(--muted);">${creator ? '担当:'+creator : ''}${memo ? '　'+memo : ''}</span>
+          <span style="font-size:15px;font-weight:700;color:${signColor};">${signStr}${qty}本</span>
+          <span style="font-size:11px;color:var(--text);opacity:0.7;">${creator || ''}</span>
         </div>
+        ${shukkoSaki ? `<div style="margin-top:4px;font-size:12px;font-weight:600;color:#f59e0b;">▸ ${shukkoSaki}</div>` : ''}
       </div>`;
     });
 
@@ -2106,6 +2112,76 @@ async function showItemHistory(idx) {
   } catch(e) {
     document.getElementById('history-modal-body').innerHTML = `<div style="color:var(--red);padding:20px;font-size:13px;">取得エラー: ${e.message}</div>`;
   }
+}
+
+// ─── 履歴詳細モーダル ──────────────────────────────────
+function showHistoryDetail(idx) {
+  const r = window._historyRecords?.[idx];
+  if (!r) return;
+  const p = r.properties;
+  const kubun = p['区分']?.select?.name || '-';
+  const qty = p['数量']?.number || 0;
+  const creator = p['作成者']?.select?.name || '-';
+  const createdBy = p['作成者１']?.created_by?.name || '';
+  const shukkoSaki = p['出庫先']?.rich_text?.[0]?.plain_text || '-';
+  const memo = p['メモ']?.rich_text?.[0]?.plain_text || '-';
+  const warehouse = p['倉庫']?.select?.name || p['出庫倉庫']?.select?.name || '-';
+  const pattern = p['パターン名']?.select?.name || '-';
+  const sizeCode = p['サイズコード']?.select?.name || '-';
+  const d = new Date(r.created_time);
+  const dateStr = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  const editD = r.last_edited_time ? new Date(r.last_edited_time) : null;
+  const editStr = editD ? `${editD.getFullYear()}/${editD.getMonth()+1}/${editD.getDate()} ${String(editD.getHours()).padStart(2,'0')}:${String(editD.getMinutes()).padStart(2,'0')}` : '-';
+  const sign = KUBUN_SIGN[kubun] ?? 0;
+  const signStr = sign > 0 ? '+' : sign < 0 ? '-' : '';
+  const signColor = sign > 0 ? '#22c55e' : sign < 0 ? '#ef4444' : 'var(--muted)';
+
+  const kubunColor = (k) => {
+    if (k.includes('入庫') || k.includes('返品（倉庫')) return '#22c55e';
+    if (k === '準備') return '#f59e0b';
+    if (k.includes('出庫') || k.includes('返品（メーカー')) return '#ef4444';
+    if (k === '発注中') return '#3b82f6';
+    return 'var(--muted)';
+  };
+  const kColor = kubunColor(kubun);
+
+  let detail = document.getElementById('history-detail-modal');
+  if (!detail) {
+    detail = document.createElement('div');
+    detail.id = 'history-detail-modal';
+    detail.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:20px;';
+    document.body.appendChild(detail);
+  }
+  detail.style.display = 'flex';
+
+  const row = (label, value, highlight) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:12px;color:var(--muted);min-width:80px;">${label}</span>
+      <span style="font-size:13px;font-weight:${highlight?'700':'500'};color:${highlight||'var(--text)'};text-align:right;">${value}</span>
+    </div>`;
+
+  detail.innerHTML = `
+    <div style="background:var(--bg);width:100%;max-width:400px;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="background:color-mix(in srgb,${kColor} 15%,var(--bg));padding:20px;text-align:center;border-bottom:1px solid var(--border);">
+        <span style="display:inline-block;font-size:13px;font-weight:700;color:${kColor};background:color-mix(in srgb,${kColor} 18%,transparent);padding:4px 16px;border-radius:20px;margin-bottom:8px;">${kubun}</span>
+        <div style="font-size:28px;font-weight:800;color:${signColor};margin-top:8px;">${signStr}${qty}本</div>
+      </div>
+      <div style="padding:4px 20px 12px;">
+        ${row('パターン', pattern)}
+        ${row('サイズ', sizeCode)}
+        ${row('倉庫', warehouse)}
+        ${row('出庫先', shukkoSaki, shukkoSaki !== '-' ? '#f59e0b' : '')}
+        ${row('入力者', creator !== '-' ? creator : (createdBy || '-'), '#3b82f6')}
+        ${row('メモ', memo)}
+        ${row('登録日時', dateStr)}
+        ${row('最終更新', editStr)}
+      </div>
+      <div style="padding:0 20px 16px;">
+        <button onclick="document.getElementById('history-detail-modal').style.display='none'" style="width:100%;padding:12px;background:var(--s3);border:none;border-radius:10px;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;">閉じる</button>
+      </div>
+    </div>`;
+
+  detail.onclick = (e) => { if (e.target === detail) detail.style.display = 'none'; };
 }
 
 // ─── オーバーレイボタンのイベントリスナー登録

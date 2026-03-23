@@ -140,6 +140,46 @@ body{
 }
 .nyuko-btn:active{background:rgba(34,197,94,.22);}
 
+/* ── グループ化未入荷 ── */
+.maker-group{margin-bottom:14px;}
+.maker-header{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 0 4px;margin-bottom:2px;
+}
+.maker-label{font-size:12px;font-weight:800;letter-spacing:0.04em;}
+.maker-count{font-size:10px;color:var(--muted);font-weight:500;}
+.maker-line{flex:1;height:1px;background:var(--border);}
+.pat-group{margin-bottom:6px;}
+.pat-header{
+  font-size:11px;font-weight:700;color:var(--text);
+  padding:3px 10px;background:var(--s2);border-radius:8px 8px 0 0;
+  border:0.5px solid var(--border);border-bottom:none;
+}
+.pat-row{
+  display:flex;align-items:center;gap:0;
+  padding:6px 10px;
+  background:var(--s2);border:0.5px solid var(--border);border-top:0.5px solid var(--border);
+  cursor:pointer;transition:background .1s;
+  font-size:12px;
+}
+.pat-row:last-child{border-radius:0 0 8px 8px;}
+.pat-group .pat-row:first-child{border-top:none;}
+.pat-row:active{background:rgba(240,165,0,.06);}
+.pr-size{flex:2.5;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pr-qty{width:40px;text-align:center;font-weight:800;color:var(--accent);}
+.pr-loc{width:42px;text-align:center;font-size:10px;color:var(--muted);}
+.pr-date{width:50px;font-size:10px;color:var(--muted);text-align:center;}
+.pr-due{width:50px;font-size:10px;color:var(--muted);text-align:center;}
+.pr-memo{flex:1;font-size:10px;color:var(--muted);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.pr-btn{flex-shrink:0;margin-left:4px;}
+.pr-btn button{
+  background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.30);
+  border-radius:7px;padding:4px 10px;color:#22c55e;
+  font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;
+}
+.pr-btn button:active{background:rgba(34,197,94,.22);}
+.pr-badges{display:flex;gap:3px;margin-left:auto;flex-shrink:0;}
+
 /* ── 空表示 ── */
 .empty-state{
   text-align:center;padding:48px 20px;
@@ -1662,10 +1702,7 @@ function renderPending() {
         el.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div>未入荷の発注はありません</div>';
         return;
       }
-      el.innerHTML = '<div class="sec-label">未入荷（'+pending.length+'件）</div>' + pending.map(o => {
-      try { return orderCardHTML(o); }
-      catch(e) { console.error('card error:', o.id, e); return ''; }
-    }).join('');
+      el.innerHTML = renderPendingGrouped(pending);
     } catch(e) {
       console.error('renderPending error:', e);
       el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div>表示エラー<br><span style="font-size:11px;word-break:break-all;">${e.message}</span></div>`;
@@ -1674,6 +1711,91 @@ function renderPending() {
     console.error('renderPending catch:', e);
     el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div>読み込みエラー<br><span style="font-size:11px;word-break:break-all;">${e.message}</span></div>`;
   });
+}
+
+function renderPendingGrouped(pending) {
+  // メーカー順序
+  const makerOrder = ['BRIDGESTONE','TOYO','DUNLOP','MICHELIN',''];
+  const makerColors = {BRIDGESTONE:'var(--blue)',TOYO:'var(--accent)',DUNLOP:'#7c3aed',MICHELIN:'#059669'};
+
+  // メーカー→パターン→アイテムのツリー構築
+  const tree = {};
+  pending.forEach(o => {
+    const maker = propStr(o,'タイヤメーカー') || propStr(o,'仕入先') || 'その他';
+    const pat   = propStr(o,'パターン') || '—';
+    if (!tree[maker]) tree[maker] = {};
+    if (!tree[maker][pat]) tree[maker][pat] = [];
+    tree[maker][pat].push(o);
+  });
+
+  // メーカーソート
+  const makers = Object.keys(tree).sort((a,b) => {
+    const ai = makerOrder.indexOf(a), bi = makerOrder.indexOf(b);
+    return (ai===-1?99:ai) - (bi===-1?99:bi);
+  });
+
+  const totalQty = pending.reduce((s,o) => s + (Number(propStr(o,'数量'))||0), 0);
+  let html = `<div class="sec-label">未入荷（${pending.length}件 / ${totalQty}本）</div>`;
+
+  makers.forEach(maker => {
+    const pats = tree[maker];
+    const makerItems = Object.values(pats).flat();
+    const makerQty = makerItems.reduce((s,o) => s + (Number(propStr(o,'数量'))||0), 0);
+    const mColor = makerColors[maker] || 'var(--muted)';
+
+    html += `<div class="maker-group">
+      <div class="maker-header">
+        <span class="maker-label" style="color:${mColor};">${maker}</span>
+        <span class="maker-count">${makerItems.length}件 ${makerQty}本</span>
+        <div class="maker-line"></div>
+      </div>`;
+
+    // パターンをアルファベット順にソート
+    const patKeys = Object.keys(pats).sort();
+    patKeys.forEach(pat => {
+      const items = pats[pat];
+      const patQty = items.reduce((s,o) => s + (Number(propStr(o,'数量'))||0), 0);
+      html += `<div class="pat-group">
+        <div class="pat-header">${pat}<span style="margin-left:6px;font-size:10px;color:var(--muted);font-weight:500;">${items.length}件 ${patQty}本</span></div>`;
+      items.forEach(o => {
+        html += pendingRowHTML(o);
+      });
+      html += `</div>`;
+    });
+
+    html += `</div>`;
+  });
+  return html;
+}
+
+function pendingRowHTML(o) {
+  const st   = propStr(o,'ステータス') || '新規発注';
+  const sizeRaw = propStr(o,'サイズ') || '';
+  const sizeCode = propStr(o,'サイズコード') || '';
+  const dispSize = sizeRaw || sizeCode || propStr(o,'タイヤサイズ') || '—';
+  const qty  = propStr(o,'数量') || '';
+  const loc  = propStr(o,'納入予定場所') || '';
+  const date = (propStr(o,'発注日') || '').slice(5); // MM-DD
+  const due  = (propStr(o,'納期予定日') || '').slice(5);
+  const memo = propStr(o,'備考欄') || '';
+  const badgeCls = STATUS_BADGE[st] || 'badge-new';
+  const noPdfBadge = hasNoPdf(o) ? `<span class="badge badge-nopdf">⚠</span>` : '';
+
+  return `<div class="pat-row" onclick="openDetail('${o.id}')">
+    <div class="pr-size">${dispSize}</div>
+    <div class="pr-qty">${qty}</div>
+    <div class="pr-loc">${loc}</div>
+    <div class="pr-date">${date}</div>
+    <div class="pr-due">${due ? '→'+due : ''}</div>
+    <div class="pr-memo">${memo.slice(0,12)}</div>
+    <div class="pr-badges">
+      <span class="badge ${badgeCls}" style="font-size:8px;padding:1px 5px;">${st === '発注済' ? '済' : '新規'}</span>
+      ${noPdfBadge}
+    </div>
+    <div class="pr-btn">
+      <button onclick="event.stopPropagation(); openNyukoModal('${o.id}')">入庫</button>
+    </div>
+  </div>`;
 }
 
 function orderCardHTML(o) {

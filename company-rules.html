@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>社内ルール | f.o.o</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0e0e10; --s1:#18181b; --s2:#1e1e22; --s3:#27272a;
+  --text:#f0f0f0; --muted:#71717a; --border:#27272a; --border2:#3f3f46;
+  --accent:#f0a500; --green:#22c55e; --red:#ef4444; --blue:#3b82f6; --purple:#a78bfa;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);-webkit-text-size-adjust:100%;min-height:100vh;padding-bottom:80px;}
+.header{position:sticky;top:0;z-index:100;background:rgba(14,14,16,0.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:14px 20px 10px;border-bottom:1px solid var(--border);}
+.header-top{display:flex;align-items:center;gap:10px;}
+.back-btn{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:4px;}
+.header h1{font-size:17px;font-weight:900;color:var(--text);flex:1;}
+.header-sub{font-size:10px;color:var(--muted);margin-top:2px;letter-spacing:.03em;}
+.search-wrap{padding:12px 20px 4px;}
+.search-box{position:relative;}
+.search-box input{width:100%;padding:10px 14px 10px 36px;border-radius:10px;border:1px solid var(--border2);background:var(--s2);color:var(--text);font-size:14px;font-family:inherit;outline:none;}
+.search-box input:focus{border-color:var(--accent);}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;}
+.search-clear{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--s3);border:none;border-radius:6px;padding:4px 10px;font-size:11px;color:var(--muted);cursor:pointer;display:none;}
+
+.content{padding:8px 16px;}
+
+/* Section */
+.section{margin-bottom:6px;}
+.section-header{display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--s1);border:1px solid var(--border);border-radius:12px;cursor:pointer;transition:all 0.2s;user-select:none;-webkit-user-select:none;}
+.section-header:active{background:var(--s3);}
+.section-header.open{border-radius:12px 12px 0 0;border-bottom:none;background:var(--s2);}
+.section-num{font-size:11px;font-weight:900;color:var(--accent);background:color-mix(in srgb,var(--accent) 15%,transparent);width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.section-title{flex:1;font-size:14px;font-weight:700;}
+.section-arrow{color:var(--muted);font-size:12px;transition:transform 0.3s;}
+.section-header.open .section-arrow{transform:rotate(90deg);}
+
+.section-body{display:none;background:var(--s1);border:1px solid var(--border);border-top:none;border-radius:0 0 12px 12px;overflow:hidden;}
+.section-body.open{display:block;}
+
+/* Article card */
+.article{display:flex;align-items:center;gap:10px;padding:13px 16px;border-top:0.5px solid var(--border);cursor:pointer;transition:background 0.15s;}
+.article:first-child{border-top:none;}
+.article:active{background:var(--s3);}
+.article-icon{font-size:16px;flex-shrink:0;}
+.article-title{flex:1;font-size:13px;font-weight:500;line-height:1.5;}
+.article-arrow{color:var(--muted);font-size:11px;}
+
+/* Article viewer (overlay) */
+.viewer{position:fixed;inset:0;z-index:200;background:var(--bg);display:none;flex-direction:column;}
+.viewer.open{display:flex;}
+.viewer-header{position:sticky;top:0;z-index:10;background:rgba(14,14,16,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.viewer-back{background:none;border:none;color:var(--accent);font-size:14px;cursor:pointer;padding:4px 8px;font-weight:700;font-family:inherit;}
+.viewer-title{flex:1;font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.viewer-body{flex:1;overflow-y:auto;padding:20px;-webkit-overflow-scrolling:touch;}
+
+/* Article content styling */
+.article-content{line-height:1.85;font-size:14px;color:var(--text);}
+.article-content h2{font-size:17px;font-weight:900;margin:24px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--accent);color:var(--text);}
+.article-content h2:first-child{margin-top:0;}
+.article-content h3{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--accent);}
+.article-content p{margin:8px 0;}
+.article-content ul,.article-content ol{margin:8px 0 8px 20px;}
+.article-content li{margin:4px 0;line-height:1.7;}
+.article-content li ul{margin:2px 0 2px 16px;}
+.article-content strong{color:var(--accent);font-weight:700;}
+.article-content hr{border:none;border-top:1px solid var(--border2);margin:20px 0;}
+.article-content blockquote{border-left:3px solid var(--accent);padding:8px 14px;margin:12px 0;background:color-mix(in srgb,var(--accent) 8%,transparent);border-radius:0 8px 8px 0;font-size:13px;color:var(--muted);line-height:1.7;}
+
+/* Loading */
+.loading{text-align:center;padding:48px 20px;color:var(--muted);font-size:13px;}
+.spinner{display:inline-block;width:24px;height:24px;border:2.5px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:8px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Search highlight */
+.highlight{background:color-mix(in srgb,var(--accent) 30%,transparent);border-radius:2px;padding:0 2px;}
+.search-result-count{font-size:11px;color:var(--muted);padding:0 20px 8px;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <button class="back-btn" onclick="location.href='index.html'">‹</button>
+    <h1>🦌 社内ルール</h1>
+  </div>
+  <div class="header-sub">会社理念・行動指針・勤務ルール</div>
+</div>
+
+<div class="search-wrap">
+  <div class="search-box">
+    <span class="search-icon">🔍</span>
+    <input id="search" type="text" placeholder="キーワードで検索…" autocomplete="off">
+    <button class="search-clear" id="search-clear" onclick="clearSearch()">✕</button>
+  </div>
+</div>
+<div id="search-result-count" class="search-result-count" style="display:none;"></div>
+
+<div class="content" id="sections-container">
+  <div class="loading"><div class="spinner"></div><br>読み込み中…</div>
+</div>
+
+<!-- Article viewer -->
+<div class="viewer" id="viewer">
+  <div class="viewer-header">
+    <button class="viewer-back" onclick="closeViewer()">‹ 戻る</button>
+    <div class="viewer-title" id="viewer-title"></div>
+  </div>
+  <div class="viewer-body">
+    <div class="article-content" id="viewer-content"></div>
+  </div>
+</div>
+
+<script>
+const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
+const SESSION_KEY = 'foo_portal_session';
+const PARENT_PAGE_ID = '1cea695f8e8880fb8a93c3519a29228d';
+
+// Section structure from Notion
+const SECTIONS = [
+  { num: '1', title: '会社理念・行動指針', icon: '💎', pages: [
+    { id: '1d0a695f8e888023a0e0cc29d466db00', title: 'fooで働くあなたへ（代表より）', icon: '🔹' },
+    { id: '1cea695f8e888034803effcc037fd3f5', title: '会社のミッション／ビジョン', icon: '🔸' },
+    { id: '1cea695f8e88803baf76d5b27a13670d', title: '社員として大切にする考え方', icon: '🔹' },
+    { id: '1cea695f8e8880eb83e5ca68f5902ffa', title: '行動規範（誠実・安全・迅速など）', icon: '🔹' },
+  ]},
+  { num: '2', title: '勤務ルール', icon: '⏰', pages: [
+    { id: '1cea695f8e88802ba2a9f2d8b33639c4', title: '勤務時間・休憩・残業について', icon: '🔹' },
+    { id: '1cea695f8e88807d93b7ecbfc84885aa', title: '出勤／退勤の記録方法', icon: '🔹' },
+    { id: '1cea695f8e8880e0b8cec560bff37718', title: '遅刻・早退・欠勤の連絡ルール', icon: '🔹' },
+  ]},
+  { num: '3', title: '作業ルール', icon: '🔧', pages: [
+    { id: '1cea695f8e88801a8955d9b3e3fccd85', title: '作業服・装備の着用ルール', icon: '🔹' },
+    { id: '1cea695f8e8880a9974af63c6960f50a', title: '使用前／使用後の点検・片付け', icon: '🔹' },
+    { id: '1cea695f8e8880189653d99f436eab1f', title: '機器の正しい使い方', icon: '🔹' },
+    { id: '1cea695f8e888013b21cedf7ad01cacf', title: '事故・破損時の対応', icon: '🔹' },
+  ]},
+  { num: '4', title: '出張・現場ルール', icon: '🚚', pages: [
+    { id: '1cea695f8e888094a3b2c5e4e90d9668', title: '外出時の注意点（顧客対応マナー）', icon: '🔹' },
+    { id: '1cea695f8e88800c8089ef951681f84b', title: '車両管理・運転ルール', icon: '🔹' },
+  ]},
+  { num: '5', title: '情報管理・記録ルール', icon: '🔒', pages: [
+    { id: '1cea695f8e88803297d6d0c657fc0be2', title: '顧客情報の取扱いルール（守秘義務）', icon: '🔹' },
+    { id: '1cea695f8e8880f09713dedfb9662b57', title: '業務記録のツールと運用ルール', icon: '🔹' },
+    { id: '1cfa695f8e888051b65fd922d9eec13f', title: '画像・動画の保存ルール', icon: '🔹' },
+    { id: '31ba695f8e88807fa1f8dbad5dd44ed1', title: 'SNS発信ルール（広報・求人用）', icon: '🔹' },
+  ]},
+  { num: '6', title: '連絡・報告ルール', icon: '📞', pages: [
+    { id: '1cfa695f8e8880a78f0ed0e0a7bfe5fc', title: '誰に・いつ・どの手段で連絡するか', icon: '🔹' },
+    { id: '1cfa695f8e8880b888dfe6aa9ad7f70d', title: '緊急時の連絡フロー', icon: '🔹' },
+    { id: '1cfa695f8e88802cb3ebd4dd1a65796c', title: '社内チャット／電話の使い分け', icon: '🔹' },
+  ]},
+  { num: '7', title: 'エチケットルール', icon: '👔', pages: [
+    { id: '269a695f8e8880ce9149e412e48fabed', title: '身だしなみ・清潔感', icon: '🔹' },
+    { id: '269a695f8e8880b38c35e3fdad8187d4', title: '相手の話を遮らない', icon: '🔹' },
+    { id: '269a695f8e8880a4ac13e6de2060e57f', title: '感謝・ねぎらいの言葉を忘れない', icon: '🔹' },
+    { id: '269a695f8e888003999fc19eea4a58ed', title: '社外での立ち居振る舞い', icon: '🔹' },
+  ]},
+  { num: '8', title: '清掃・整理整頓（5S）', icon: '🧹', pages: [
+    { id: '1cfa695f8e8880e3a7b1c289341d34cb', title: '各作業スペースの清掃基準', icon: '🔹' },
+    { id: '1cfa695f8e8880bbb2afd96ac6bcb8db', title: '清掃・点検の担当分担', icon: '🔹' },
+    { id: '1cfa695f8e8880a5b285fa70b70e8f58', title: '不用品の処分ルール', icon: '🔹' },
+    { id: '269a695f8e888043b6aefe37098b6b22', title: '社用車内の整理整頓清潔', icon: '🔹' },
+  ]},
+  { num: '9', title: '安全・健康管理', icon: '🛡️', pages: [
+    { id: '1cfa695f8e888077978bc947368fcb97', title: '熱中症対策、体調不良時の対応', icon: '🔹' },
+    { id: '1cfa695f8e88800391bdd55910ba3d76', title: 'ケガ・事故時の報告と処置', icon: '🔹' },
+    { id: '1cfa695f8e88802fad2debc427f1cfa5', title: 'ジム・マッサージ制度の利用ルール', icon: '🔹' },
+  ]},
+  { num: '10', title: 'Q&A・例外対応・補足', icon: '❓', pages: [
+    { id: '1cfa695f8e888044986af2c6ce69c5a4', title: 'よくある質問とその回答', icon: '🔹' },
+    { id: '1cfa695f8e8880f1aabfe370e6ceee65', title: '特例・例外の取り扱い', icon: '🔹' },
+    { id: '1cfa695f8e8880cd89dfea0091e601f1', title: '誤解されやすいルールの補足', icon: '🔹' },
+  ]},
+];
+
+// Auth check
+function checkAuth() {
+  try {
+    const s = JSON.parse(sessionStorage.getItem(SESSION_KEY));
+    if (s?.name) return s;
+  } catch(e) {}
+  location.href = 'index.html';
+}
+const currentUser = checkAuth();
+
+// Notion API helper
+async function notionAPI(method, path, body) {
+  const res = await fetch(WORKER + path, { method, headers:{'Content-Type':'application/json'}, body: body ? JSON.stringify(body) : undefined });
+  if (!res.ok) { let msg = 'HTTP ' + res.status; try { const d = await res.json(); if (d.message) msg = d.message; } catch(_){} throw new Error(msg); }
+  return res.json();
+}
+
+// Content cache
+const contentCache = {};
+
+// Render sections
+function renderSections() {
+  const el = document.getElementById('sections-container');
+  let html = '';
+  SECTIONS.forEach((sec, si) => {
+    html += `<div class="section" id="sec-${si}">
+      <div class="section-header" onclick="toggleSection(${si})">
+        <div class="section-num">${sec.num}</div>
+        <div style="display:flex;align-items:center;gap:8px;flex:1;">
+          <span style="font-size:18px;">${sec.icon}</span>
+          <span class="section-title">${sec.title}</span>
+        </div>
+        <span class="section-arrow">›</span>
+      </div>
+      <div class="section-body" id="sec-body-${si}">`;
+    sec.pages.forEach((page, pi) => {
+      html += `<div class="article" onclick="openArticle('${page.id}','${escAttr(page.title)}')" data-title="${escAttr(page.title.toLowerCase())}">
+        <span class="article-icon">${page.icon}</span>
+        <span class="article-title">${page.title}</span>
+        <span class="article-arrow">›</span>
+      </div>`;
+    });
+    html += `</div></div>`;
+  });
+  el.innerHTML = html;
+}
+
+function escAttr(s) { return s.replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+
+function toggleSection(idx) {
+  const header = document.querySelector(`#sec-${idx} .section-header`);
+  const body = document.getElementById(`sec-body-${idx}`);
+  const isOpen = header.classList.contains('open');
+  header.classList.toggle('open', !isOpen);
+  body.classList.toggle('open', !isOpen);
+}
+
+// Open article viewer
+async function openArticle(pageId, title) {
+  const viewer = document.getElementById('viewer');
+  const vTitle = document.getElementById('viewer-title');
+  const vContent = document.getElementById('viewer-content');
+  vTitle.textContent = title;
+  vContent.innerHTML = '<div class="loading"><div class="spinner"></div><br>読み込み中…</div>';
+  viewer.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  if (contentCache[pageId]) {
+    vContent.innerHTML = contentCache[pageId];
+    return;
+  }
+
+  try {
+    const res = await fetch(WORKER + `/blocks/${pageId}/children?page_size=100`);
+    const data = await res.json();
+    const blocks = data.results || [];
+    const html = blocksToHTML(blocks);
+    contentCache[pageId] = html;
+    vContent.innerHTML = html;
+  } catch(e) {
+    vContent.innerHTML = `<div style="color:var(--red);padding:20px;">読み込みエラー: ${e.message}</div>`;
+  }
+}
+
+function closeViewer() {
+  document.getElementById('viewer').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// Convert Notion blocks to HTML
+function blocksToHTML(blocks) {
+  let html = '';
+  let inList = null; // 'bulleted' or 'numbered'
+
+  for (const block of blocks) {
+    const type = block.type;
+
+    // Close list if type changes
+    if (inList && type !== `${inList}_list_item`) {
+      html += inList === 'bulleted' ? '</ul>' : '</ol>';
+      inList = null;
+    }
+
+    if (type === 'heading_2') {
+      html += `<h2>${richTextToHTML(block.heading_2.rich_text)}</h2>`;
+    } else if (type === 'heading_3') {
+      html += `<h3>${richTextToHTML(block.heading_3.rich_text)}</h3>`;
+    } else if (type === 'paragraph') {
+      const text = richTextToHTML(block.paragraph.rich_text);
+      if (text.trim()) html += `<p>${text}</p>`;
+    } else if (type === 'bulleted_list_item') {
+      if (inList !== 'bulleted') { html += '<ul>'; inList = 'bulleted'; }
+      html += `<li>${richTextToHTML(block.bulleted_list_item.rich_text)}</li>`;
+    } else if (type === 'numbered_list_item') {
+      if (inList !== 'numbered') { html += '<ol>'; inList = 'numbered'; }
+      html += `<li>${richTextToHTML(block.numbered_list_item.rich_text)}</li>`;
+    } else if (type === 'divider') {
+      html += '<hr>';
+    } else if (type === 'quote') {
+      html += `<blockquote>${richTextToHTML(block.quote.rich_text)}</blockquote>`;
+    } else if (type === 'callout') {
+      const icon = block.callout.icon?.emoji || '💡';
+      html += `<blockquote>${icon} ${richTextToHTML(block.callout.rich_text)}</blockquote>`;
+    } else if (type === 'toggle') {
+      html += `<details style="margin:8px 0;"><summary style="cursor:pointer;font-weight:700;color:var(--accent);">${richTextToHTML(block.toggle.rich_text)}</summary><div style="padding:8px 0 8px 16px;font-size:13px;color:var(--muted);">（折りたたみ内容はNotion上で確認してください）</div></details>`;
+    }
+  }
+
+  // Close any open list
+  if (inList) {
+    html += inList === 'bulleted' ? '</ul>' : '</ol>';
+  }
+
+  return html || '<p style="color:var(--muted);">（内容はNotionで確認してください）</p>';
+}
+
+function richTextToHTML(richTexts) {
+  if (!richTexts || !richTexts.length) return '';
+  return richTexts.map(rt => {
+    let text = escHtml(rt.plain_text || '');
+    if (rt.annotations) {
+      if (rt.annotations.bold) text = `<strong>${text}</strong>`;
+      if (rt.annotations.italic) text = `<em>${text}</em>`;
+      if (rt.annotations.strikethrough) text = `<s>${text}</s>`;
+      if (rt.annotations.underline) text = `<u>${text}</u>`;
+      if (rt.annotations.code) text = `<code style="background:var(--s3);padding:1px 5px;border-radius:3px;font-size:12px;">${text}</code>`;
+    }
+    if (rt.href) text = `<a href="${rt.href}" target="_blank" style="color:var(--accent);text-decoration:underline;">${text}</a>`;
+    return text;
+  }).join('');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Search
+const searchInput = document.getElementById('search');
+const searchClear = document.getElementById('search-clear');
+let searchTimeout;
+
+searchInput.addEventListener('input', () => {
+  clearTimeout(searchTimeout);
+  const q = searchInput.value.trim();
+  searchClear.style.display = q ? 'block' : 'none';
+  searchTimeout = setTimeout(() => filterArticles(q), 200);
+});
+
+function clearSearch() {
+  searchInput.value = '';
+  searchClear.style.display = 'none';
+  filterArticles('');
+}
+
+function filterArticles(query) {
+  const q = query.toLowerCase();
+  const countEl = document.getElementById('search-result-count');
+  let totalMatch = 0;
+
+  SECTIONS.forEach((sec, si) => {
+    const header = document.querySelector(`#sec-${si} .section-header`);
+    const body = document.getElementById(`sec-body-${si}`);
+    const articles = body.querySelectorAll('.article');
+    let sectionMatch = 0;
+
+    articles.forEach(art => {
+      const title = art.getAttribute('data-title');
+      const match = !q || title.includes(q) || sec.title.toLowerCase().includes(q);
+      art.style.display = match ? '' : 'none';
+      if (match) sectionMatch++;
+    });
+
+    const sectionEl = document.getElementById(`sec-${si}`);
+    sectionEl.style.display = sectionMatch > 0 || !q ? '' : 'none';
+
+    // Auto-open matching sections
+    if (q && sectionMatch > 0) {
+      header.classList.add('open');
+      body.classList.add('open');
+    } else if (!q) {
+      header.classList.remove('open');
+      body.classList.remove('open');
+    }
+
+    totalMatch += sectionMatch;
+  });
+
+  if (q) {
+    countEl.style.display = 'block';
+    countEl.textContent = `「${query}」の検索結果: ${totalMatch}件`;
+  } else {
+    countEl.style.display = 'none';
+  }
+}
+
+// Handle back button in viewer
+window.addEventListener('popstate', () => {
+  if (document.getElementById('viewer').classList.contains('open')) {
+    closeViewer();
+  }
+});
+
+// Init
+renderSections();
+</script>
+</body>
+</html>

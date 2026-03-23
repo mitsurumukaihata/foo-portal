@@ -873,12 +873,10 @@ async function loadStockData(size, catKey) {
 async function fetchAllRecords(dbId, sizeFilter, kurikoshiDate) {
   let all = [], cursor;
   const sizeF = { property: 'サイズコード', select: { equals: sizeFilter } };
+  // 繰越ベースラインに準備・発注中の影響は含まれているため、
+  // 繰越日以降のレコードだけ取得すれば正確（二重計上を防止）
   const filter = kurikoshiDate
-    ? { and: [ sizeF, { or: [
-        { timestamp: 'created_time', created_time: { on_or_after: kurikoshiDate } },
-        { property: '区分', select: { equals: '準備' } },
-        { property: '区分', select: { equals: '発注中' } },
-      ]}]}
+    ? { and: [ sizeF, { timestamp: 'created_time', created_time: { on_or_after: kurikoshiDate } } ]}
     : sizeF;
   while (true) {
     const body = { filter, page_size: 100 };

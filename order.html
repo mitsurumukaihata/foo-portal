@@ -401,7 +401,7 @@ body{
   <button class="tab-btn active" id="tab-pending" onclick="switchTab('pending')">未入荷</button>
   <button class="tab-btn"        id="tab-new"     onclick="switchTab('new')">＋ 新規発注</button>
   <button class="tab-btn"        id="tab-history" onclick="switchTab('history')">履歴</button>
-  <button class="tab-btn"        id="tab-pdf"     onclick="switchTab('pdf')">発注書</button>
+  <button class="tab-btn"        id="tab-pdf"     onclick="switchTab('pdf')">発注書 <span id="unsent-badge" style="display:none;background:#ef4444;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px;"></span></button>
 </div>
 
 <!-- ══ 未入荷タブ ══ -->
@@ -424,6 +424,15 @@ body{
   <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
     メーカーを選んで発注書を作成・ダウンロードできます。<br>
     今回の新規発注＋未入荷の既発注分をまとめて1枚のPDFに出力します。
+  </div>
+
+  <!-- 未送信リスト -->
+  <div id="unsent-section" style="display:none;margin-bottom:14px;">
+    <div class="form-section" style="border-left:3px solid #ef4444;">
+      <div class="form-section-title" style="color:#ef4444;">📨 未送信の発注書</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">発注書PDFをダウンロードまたはGmail送信していない注文です</div>
+      <div id="unsent-list"></div>
+    </div>
   </div>
 
   <!-- メーカー選択 -->
@@ -737,8 +746,9 @@ body{
 <script>
 // ─── 定数 ────────────────────────────────────────────────────────────────────
 const WORKER  = 'https://notion-proxy.33322666666mm.workers.dev';
-const ORDER_DB     = '202a695f-8e88-80aa-92f6-f38d9b47b537';
-const TANTOU_DB    = '1cea695f-8e88-8029-911d-f0eb63102669';  // 中間担当者DB
+const ORDER_DB        = '202a695f-8e88-80aa-92f6-f38d9b47b537';
+const TANTOU_DB       = '1cea695f-8e88-8029-911d-f0eb63102669';  // 中間担当者DB
+const HACCHUSHEET_DB  = 'e400cc4f-87f9-4af7-8392-d794523894d9'; // 発注書（送付用）DB
 
 const DB_MAP = {
   ltl_normal:   {id:'200a695f-8e88-8018-b5f5-eac83fdad412', name:'LTL TB ノーマル',   icon:'🚛', warehouseField:'倉庫',
@@ -887,7 +897,7 @@ function switchTab(tab) {
   if(tab === 'pending') renderPending();
   if(tab === 'history') renderHistory();
   if(tab === 'new') initForm();
-  if(tab === 'pdf') { loadOrders().then(() => onPdfMakerChange()); }
+  if(tab === 'pdf') { loadOrders().then(() => { onPdfMakerChange(); renderUnsentList(); updateUnsentBadge(); }); }
 }
 
 // ─── API ──────────────────────────────────────────────────────────────────────
@@ -1399,6 +1409,8 @@ ${recvSan}
       alert('受注者マスターにメールアドレスが登録されていません。\nNotionの受注者マスターDBにメールアドレスを入力してください。');
     }
     window.open(gmailUrl, '_blank');
+    // Gmail送信後も発注済に更新
+    markOrdersAsSent(maker);
 
   } catch(e) {
     alert('エラーが発生しました: ' + e.message);
@@ -1567,6 +1579,7 @@ async function downloadOrderPdf() {
     if(!targets.length) { alert('対象データがありません'); return; }
 
     const html = buildPdfHtml(maker, targets);
+    _pdfOverlayMaker = maker;
     openPdfOverlay(html, maker);
 
   } catch(e) {
@@ -1654,9 +1667,13 @@ function closePdfOverlay() {
   window.removeEventListener('popstate', _onPopStatePdf);
 }
 
+let _pdfOverlayMaker = '';  // 印刷中のメーカーを記憶
+
 function printPdfOverlay() {
   const frame = document.getElementById('pdf-overlay-frame');
   if (!frame) return;
+  // 印刷後にステータス更新を行う
+  const afterPrint = () => { markOrdersAsSent(_pdfOverlayMaker); };
   try {
     const iframeDoc = frame.contentDocument || frame.contentWindow?.document;
     const htmlContent = iframeDoc?.documentElement?.outerHTML || '';
@@ -1667,7 +1684,7 @@ function printPdfOverlay() {
         printWin.document.write(htmlContent);
         printWin.document.close();
         printWin.document.title = fname;
-        printWin.onafterprint = () => printWin.close();
+        printWin.onafterprint = () => { printWin.close(); afterPrint(); };
         setTimeout(() => { printWin.focus(); printWin.print(); }, 300);
         return;
       }
@@ -1675,6 +1692,116 @@ function printPdfOverlay() {
   } catch(e) { console.warn('新ウィンドウprint失敗:', e); }
   frame.contentWindow.focus();
   frame.contentWindow.print();
+  afterPrint();
+}
+
+// ─── 発注書送信済み処理：新規発注→発注済＋発注書レコード作成 ──────────────────
+async function markOrdersAsSent(maker) {
+  if(!maker) return;
+  try {
+    const targets = orders.filter(o => {
+      const s   = propStr(o,'ステータス');
+      const sup = propStr(o,'仕入先');
+      const match = maker === 'TOYO' ? sup === 'TOYO' : sup === 'BRIDGESTONE';
+      return match && s === '新規発注';
+    });
+    if(!targets.length) return;
+
+    // 新規発注→発注済に更新
+    const patchTasks = targets.map(o =>
+      notionPatch(o.id, { 'ステータス': {select:{name:'発注済'}} }).catch(e => console.error('patch error:', e))
+    );
+    await Promise.all(patchTasks);
+
+    // 発注書（送付用）DBにレコードを作成
+    const pageIds = targets.map(o => o.id);
+    const today = new Date().toISOString().split('T')[0];
+    const supName = maker === 'TOYO' ? 'TOYO' : 'BRIDGESTONE';
+    const sheetName = `発注書_${supName}_${today}`;
+    await notionCreate(HACCHUSHEET_DB, {
+      '発注書名':   {title:[{text:{content: sheetName}}]},
+      '仕入先':     {select:{name: supName}},
+      '作成日':     {date:{start: today}},
+      '発注行 1':   {relation: pageIds.map(id => ({id}))},
+      '送付確認':   {checkbox: true},
+    });
+
+    showFeedback('success', `✓ ${targets.length}件を発注済に更新しました`);
+    // リロード
+    await loadOrders();
+    renderUnsentList();
+    updateUnsentBadge();
+    onPdfMakerChange();
+  } catch(e) {
+    console.error('markOrdersAsSent error:', e);
+    showFeedback('error', '発注済の更新中にエラー: ' + e.message);
+  }
+}
+
+// ─── 未送信リスト表示 ──────────────────────────────────────────────────────────
+function renderUnsentList() {
+  const section = document.getElementById('unsent-section');
+  const listEl  = document.getElementById('unsent-list');
+  if(!section || !listEl) return;
+
+  const unsent = orders.filter(o => hasNoPdf(o));
+  if(unsent.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+
+  // メーカー別にグループ化
+  const groups = {};
+  for(const o of unsent) {
+    const sup = propStr(o,'仕入先') || 'その他';
+    if(!groups[sup]) groups[sup] = [];
+    groups[sup].push(o);
+  }
+
+  let html = '';
+  const makerOrder = ['TOYO','BRIDGESTONE','DUNLOP','MICHELIN'];
+  const sorted = Object.keys(groups).sort((a,b) => {
+    const ia = makerOrder.indexOf(a), ib = makerOrder.indexOf(b);
+    return (ia<0?99:ia) - (ib<0?99:ib);
+  });
+
+  for(const sup of sorted) {
+    const items = groups[sup];
+    const total = items.reduce((s,o) => s + (Number(propStr(o,'数量')) || 0), 0);
+    html += `<div style="margin-bottom:8px;">
+      <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:4px;">${sup} (${items.length}件 / ${total}本)</div>`;
+    for(const o of items) {
+      const pat  = propStr(o,'パターン') || '—';
+      const size = propStr(o,'サイズコード') || propStr(o,'サイズ') || propStr(o,'タイヤサイズ');
+      const qty  = propStr(o,'数量');
+      const st   = propStr(o,'ステータス');
+      const badge = st === '新規発注'
+        ? '<span style="font-size:9px;background:#fef3cd;color:#856404;padding:1px 5px;border-radius:4px;font-weight:600;">新規</span>'
+        : '<span style="font-size:9px;background:#d1ecf1;color:#0c5460;padding:1px 5px;border-radius:4px;font-weight:600;">発注済</span>';
+      html += `<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-bottom:0.5px solid var(--border);font-size:12px;">
+        ${badge}
+        <span style="font-weight:600;">${pat}</span>
+        <span style="color:var(--muted);flex:1;">${size}</span>
+        <span style="font-weight:700;color:var(--accent);">${qty}本</span>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+  listEl.innerHTML = html;
+}
+
+// ─── 未送信バッジ更新 ──────────────────────────────────────────────────────────
+function updateUnsentBadge() {
+  const badge = document.getElementById('unsent-badge');
+  if(!badge) return;
+  const count = orders.filter(o => hasNoPdf(o)).length;
+  if(count > 0) {
+    badge.textContent = count;
+    badge.style.display = 'inline-block';
+  } else {
+    badge.style.display = 'none';
+  }
 }
 
 // ─── 一覧レンダリング ─────────────────────────────────────────────────────────
@@ -2496,6 +2623,8 @@ function hideFeedback() {
 
 // ─── 初期ロード ───────────────────────────────────────────────────────────────
 renderPending();
+// 初回ロード後にバッジ更新（未入荷リスト読み込み完了後に実行される）
+loadOrders().then(() => updateUnsentBadge());
 </script>
 </body>
 </html>

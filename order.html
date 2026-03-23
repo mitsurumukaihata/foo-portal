@@ -149,9 +149,16 @@ body{
 .maker-label{font-size:12px;font-weight:800;letter-spacing:0.04em;}
 .maker-count{font-size:10px;color:var(--muted);font-weight:500;}
 .maker-line{flex:1;height:1px;background:var(--border);}
+.wh-group{margin-bottom:8px;}
+.wh-header{
+  display:flex;align-items:center;gap:6px;
+  padding:4px 4px 2px;
+}
+.wh-label{font-size:11px;font-weight:700;letter-spacing:0.03em;}
+.wh-count{font-size:10px;color:var(--muted);font-weight:500;}
 .pat-group{margin-bottom:6px;}
 .pat-header{
-  font-size:11px;font-weight:700;color:var(--text);
+  font-size:11px;font-weight:700;
   padding:3px 10px;background:var(--s2);border-radius:8px 8px 0 0;
   border:0.5px solid var(--border);border-bottom:none;
 }
@@ -1734,18 +1741,25 @@ function renderPending() {
 }
 
 function renderPendingGrouped(pending) {
-  // メーカー順序
+  // メーカー順序・色
   const makerOrder = ['TOYO','BRIDGESTONE','DUNLOP','MICHELIN',''];
-  const makerColors = {BRIDGESTONE:'var(--blue)',TOYO:'var(--accent)',DUNLOP:'#7c3aed',MICHELIN:'#059669'};
+  const makerColors = {TOYO:'var(--accent)',BRIDGESTONE:'var(--blue)',DUNLOP:'#7c3aed',MICHELIN:'#059669'};
+  // 倉庫色
+  const whColors = {'五日市':'#d97706','志和':'#2563eb','倉庫未定':'var(--muted)'};
+  const whOrder  = ['五日市','志和','倉庫未定',''];
+  // パターン色（メーカー色をベースに少し薄く）
+  const patColors = {TOYO:'#c05800',BRIDGESTONE:'#1d4ed8',DUNLOP:'#6d28d9',MICHELIN:'#047857'};
 
-  // メーカー→パターン→アイテムのツリー構築
+  // メーカー→倉庫→パターン→アイテムのツリー構築
   const tree = {};
   pending.forEach(o => {
     const maker = propStr(o,'タイヤメーカー') || propStr(o,'仕入先') || 'その他';
+    const wh    = propStr(o,'納入予定場所') || '未定';
     const pat   = propStr(o,'パターン') || '—';
     if (!tree[maker]) tree[maker] = {};
-    if (!tree[maker][pat]) tree[maker][pat] = [];
-    tree[maker][pat].push(o);
+    if (!tree[maker][wh]) tree[maker][wh] = {};
+    if (!tree[maker][wh][pat]) tree[maker][wh][pat] = [];
+    tree[maker][wh][pat].push(o);
   });
 
   // メーカーソート
@@ -1758,8 +1772,8 @@ function renderPendingGrouped(pending) {
   let html = `<div class="sec-label">未入荷（${pending.length}件 / ${totalQty}本）</div>`;
 
   makers.forEach(maker => {
-    const pats = tree[maker];
-    const makerItems = Object.values(pats).flat();
+    const whTree = tree[maker];
+    const makerItems = Object.values(whTree).flatMap(wh => Object.values(wh).flat());
     const makerQty = makerItems.reduce((s,o) => s + (Number(propStr(o,'数量'))||0), 0);
     const mColor = makerColors[maker] || 'var(--muted)';
 
@@ -1767,19 +1781,42 @@ function renderPendingGrouped(pending) {
       <div class="maker-header">
         <span class="maker-label" style="color:${mColor};">${maker}</span>
         <span class="maker-count">${makerItems.length}件 ${makerQty}本</span>
-        <div class="maker-line"></div>
+        <div class="maker-line" style="background:${mColor};opacity:0.3;"></div>
       </div>`;
 
-    // パターンをアルファベット順にソート
-    const patKeys = Object.keys(pats).sort();
-    patKeys.forEach(pat => {
-      const items = pats[pat];
-      const patQty = items.reduce((s,o) => s + (Number(propStr(o,'数量'))||0), 0);
-      html += `<div class="pat-group">
-        <div class="pat-header">${pat}<span style="margin-left:6px;font-size:10px;color:var(--muted);font-weight:500;">${items.length}件 ${patQty}本</span></div>`;
-      items.forEach(o => {
-        html += pendingRowHTML(o);
+    // 倉庫ソート
+    const whKeys = Object.keys(whTree).sort((a,b) => {
+      const ai = whOrder.indexOf(a), bi = whOrder.indexOf(b);
+      return (ai===-1?99:ai) - (bi===-1?99:bi);
+    });
+
+    whKeys.forEach(wh => {
+      const patTree = whTree[wh];
+      const whItems = Object.values(patTree).flat();
+      const whQty = whItems.reduce((s,o) => s + (Number(propStr(o,'数量'))||0), 0);
+      const wColor = whColors[wh] || 'var(--muted)';
+
+      html += `<div class="wh-group">
+        <div class="wh-header">
+          <span class="wh-label" style="color:${wColor};">📍 ${wh}</span>
+          <span class="wh-count">${whItems.length}件 ${whQty}本</span>
+        </div>`;
+
+      // パターンをアルファベット順にソート
+      const patKeys = Object.keys(patTree).sort();
+      const pColor = patColors[maker] || 'var(--text)';
+
+      patKeys.forEach(pat => {
+        const items = patTree[pat];
+        const patQty = items.reduce((s,o) => s + (Number(propStr(o,'数量'))||0), 0);
+        html += `<div class="pat-group">
+          <div class="pat-header"><span style="color:${pColor};">${pat}</span><span style="margin-left:6px;font-size:10px;color:var(--muted);font-weight:500;">${items.length}件 ${patQty}本</span></div>`;
+        items.forEach(o => {
+          html += pendingRowHTML(o);
+        });
+        html += `</div>`;
       });
+
       html += `</div>`;
     });
 

@@ -177,11 +177,14 @@ const SECTIONS = [
   ]},
 ];
 
-// Auth check
+// Auth check (portal uses localStorage)
 function checkAuth() {
   try {
-    const s = JSON.parse(sessionStorage.getItem(SESSION_KEY));
-    if (s?.name) return s;
+    const s = JSON.parse(localStorage.getItem(SESSION_KEY));
+    if (s?.name) {
+      if (new Date(s.expires) < new Date()) { localStorage.removeItem(SESSION_KEY); }
+      else return s;
+    }
   } catch(e) {}
   location.href = 'index.html';
 }

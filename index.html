@@ -1439,8 +1439,7 @@ const APP_DEFS = [
   // 管理系（管理者のみ表示）
   { key: '🔄 DB繰越管理',         id: 'kurikoshi', label: 'DB繰越管理',       sub: '在庫DB繰越 · データ最適化',  section: '管理',   url: 'https://mitsurumukaihata.github.io/foo-portal/db-renewal.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>` },
-  { key: '📦 発注データ取込',     id: 'hacchu_import', label: '発注データ取込', sub: '発注DB → 在庫DB連携',       section: '管理',   url: 'https://mitsurumukaihata.github.io/foo-portal/hacchu-import.html',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>` },
+  // 📦 発注データ取込 → 自動発注で在庫DB連携するようになったため廃止（2026-03-23）
   // 給与明細は特殊（別途処理）
   { key: '💴 給与明細',          id: 'payslip', label: '給与明細',           sub: '自分の明細を確認',          section: '給与',         action: 'openPayslip()',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>` },

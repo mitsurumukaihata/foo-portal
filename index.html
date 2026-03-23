@@ -1416,9 +1416,8 @@ const APP_DEFS = [
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L3 7v10l9 5 9-5V7z"/><polyline points="3 7 12 12 21 7"/><line x1="12" y1="12" x2="12" y2="22"/></svg>` },
   { key: '🤖 自動発注',          id: 'auto',    label: '自動発注',           sub: '在庫アラート · 発注書PDF',  section: '事務',   url: 'https://mitsurumukaihata.github.io/foo-portal/auto-order.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>` },
-  // 資金繰りは現在非表示
-  // { key: '資金繰り',              id: 'cashflow',label: '資金繰り',           sub: '入出金管理 · 残高 · 返済',  section: '経理',   url: 'https://mitsurumukaihata.github.io/foo-portal/cashflow.html',
-  //   icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>` },
+  { key: '💰 資金繰り',              id: 'cashflow',label: '資金繰り',           sub: '入出金管理 · 残高 · 返済',  section: '経理',   url: 'https://mitsurumukaihata.github.io/foo-portal/cashflow.html',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>` },
   { key: '✅ タスク管理',         id: 'task',    label: 'タスク管理',         sub: 'スポット · シーズン · 定期', section: '現場・業務', url: 'https://mitsurumukaihata.github.io/foo-portal/task-manager-app.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>` },
   { key: '📣 会議内容',          id: 'meeting', label: '会議内容',           sub: '準備中',                   section: 'コミュニティ', coming: true,
@@ -1437,6 +1436,11 @@ const APP_DEFS = [
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>` },
   { key: '📘 社内制度・ルール',   id: 'rules',   label: '社内制度・ルール',   sub: '準備中',                   section: 'マニュアル',   coming: true,
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="14" y2="11"/></svg>` },
+  // 管理系（管理者のみ表示）
+  { key: '🔄 DB繰越管理',         id: 'kurikoshi', label: 'DB繰越管理',       sub: '在庫DB繰越 · データ最適化',  section: '管理',   url: 'https://mitsurumukaihata.github.io/foo-portal/db-renewal.html',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>` },
+  { key: '📦 発注データ取込',     id: 'hacchu_import', label: '発注データ取込', sub: '発注DB → 在庫DB連携',       section: '管理',   url: 'https://mitsurumukaihata.github.io/foo-portal/hacchu-import.html',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>` },
   // 給与明細は特殊（別途処理）
   { key: '💴 給与明細',          id: 'payslip', label: '給与明細',           sub: '自分の明細を確認',          section: '給与',         action: 'openPayslip()',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>` },
@@ -1589,6 +1593,12 @@ function renderPortalApps(user) {
   const sections = {};
   APP_DEFS.forEach(def => {
     if (def.id === 'payslip') return;
+    // 管理セクションはチェックボックス不要（管理者グループで制御）
+    if (def.section === '管理') {
+      if (!sections[def.section]) sections[def.section] = [];
+      sections[def.section].push(def);
+      return;
+    }
     if (!def.coming && !apps[def.id]) return;
     if (!sections[def.section]) sections[def.section] = [];
     sections[def.section].push(def);
@@ -1598,15 +1608,20 @@ function renderPortalApps(user) {
 
   let html = '';
 
-  const sectionOrder = ['現場・業務', '事務', 'EC/マーケ', 'コミュニティ', 'マニュアル'];
+  const sectionOrder = ['現場・業務', '事務', '経理', 'EC/マーケ', 'コミュニティ', 'マニュアル', '管理'];
 
   sectionOrder.forEach(secName => {
     const items = sections[secName];
     if (!items || !items.length) return;
 
+    // 管理セクションは管理者のみ表示
+    if (secName === '管理' && !isAdmin) return;
+    // 経理セクションは管理者・経理のみ表示
+    if (secName === '経理' && !isAdmin && !isKeiri) return;
+
     html += `<div class="sec"><div class="sec-label">${secName}</div>`;
 
-    const useGrid = (secName === 'コミュニティ' || secName === 'マニュアル' || secName === 'EC/マーケ');
+    const useGrid = (secName === 'コミュニティ' || secName === 'マニュアル' || secName === 'EC/マーケ' || secName === '管理');
 
     if (useGrid) {
       html += `<div class="grid2">`;

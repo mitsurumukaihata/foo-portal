@@ -105,27 +105,40 @@ body{
 /* ── 発注カード ── */
 .order-card{
   background:var(--s2);border:0.5px solid var(--border);
-  border-radius:12px;padding:12px 14px;margin-bottom:8px;
+  border-radius:12px;padding:10px 12px;margin-bottom:6px;
   cursor:pointer;transition:border-color .15s;
+  display:flex;align-items:stretch;gap:10px;
 }
 .order-card:active{border-color:var(--accent);}
-.card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;}
-.card-num{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;}
+.card-info{flex:1;min-width:0;}
+.card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;}
+.card-num{font-size:9px;color:var(--muted);font-family:'DM Mono',monospace;}
 .badge{
-  font-size:9px;font-weight:700;padding:3px 9px;
-  border-radius:8px;white-space:nowrap;flex-shrink:0;
+  font-size:9px;font-weight:700;padding:2px 7px;
+  border-radius:6px;white-space:nowrap;flex-shrink:0;
 }
 .badge-new    {background:rgba(240,165,0,.15); color:var(--accent);}
 .badge-sent   {background:rgba(59,130,246,.15);color:var(--blue);}
 .badge-done   {background:rgba(34,197,94,.15); color:var(--green);}
-.badge-nopdf  {background:rgba(239,68,68,.15); color:#ef4444; font-size:10px; display:inline-flex; align-items:center; gap:3px;}
+.badge-nopdf  {background:rgba(239,68,68,.15); color:#ef4444; font-size:9px; display:inline-flex; align-items:center; gap:2px;}
 .badge-cancel{background:rgba(239,68,68,.1);  color:var(--red);}
-.card-main{display:flex;align-items:baseline;gap:8px;margin-bottom:5px;}
+.card-main{display:flex;align-items:baseline;gap:8px;margin-bottom:3px;}
 .card-maker{font-size:14px;font-weight:700;color:var(--text);}
 .card-size {font-size:11px;color:var(--muted);}
-.card-meta{display:flex;flex-wrap:wrap;gap:8px;}
+.card-meta{display:flex;flex-wrap:wrap;gap:6px 10px;}
 .meta-item{font-size:10px;color:var(--muted);}
 .meta-val{color:var(--text);font-weight:500;}
+.card-nyuko{
+  display:flex;align-items:center;flex-shrink:0;
+}
+.nyuko-btn{
+  background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.35);
+  border-radius:10px;padding:10px 14px;color:#22c55e;
+  font-size:12px;font-weight:700;cursor:pointer;
+  white-space:nowrap;transition:background .15s;
+  font-family:inherit;
+}
+.nyuko-btn:active{background:rgba(34,197,94,.22);}
 
 /* ── 空表示 ── */
 .empty-state{
@@ -1671,43 +1684,48 @@ function orderCardHTML(o) {
   const pat  = propStr(o,'パターン') || '';
   const memo = propStr(o,'備考欄');
   const date = propStr(o,'発注日');
+  const loc  = propStr(o,'納入予定場所') || '';
+  const due  = propStr(o,'納期予定日') || '';
   const num  = o.id.slice(-8).toUpperCase();
   const badgeCls  = STATUS_BADGE[st] || 'badge-new';
   const noPdfBadge = hasNoPdf(o)
-    ? `<span class="badge badge-nopdf">⚠ 発注書未発行</span>`
+    ? `<span class="badge badge-nopdf">⚠ 未発行</span>`
     : '';
   // 未入荷（新規発注・発注済）のみ入庫ボタンを表示
   const isPending = (st === '新規発注' || st === '発注済');
   const nyukoBtn = isPending ? `
-    <div style="border-top:0.5px solid var(--border);margin-top:8px;padding-top:8px;">
-      <button onclick="event.stopPropagation(); openNyukoModal('${o.id}')"
-        style="width:100%;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.4);
-        border-radius:8px;padding:8px;color:#22c55e;font-size:13px;font-weight:700;cursor:pointer;">
-        📦 入庫登録
+    <div class="card-nyuko">
+      <button class="nyuko-btn" onclick="event.stopPropagation(); openNyukoModal('${o.id}')">
+        📦 入庫
       </button>
     </div>` : '';
 
+  // メーカー色分け
+  const supColor = sup === 'BRIDGESTONE' ? 'var(--blue)' : sup === 'TOYO' ? 'var(--accent)' : 'var(--muted)';
+
   return `<div class="order-card" onclick="openDetail('${o.id}')">
-    <div class="card-top">
-      <div class="card-num">PO-${num}</div>
-      <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
-        <div class="badge ${badgeCls}">${st}</div>
-        ${noPdfBadge}
+    <div class="card-info">
+      <div class="card-top">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="card-num">PO-${num}</span>
+          <span style="font-size:10px;font-weight:700;color:${supColor};">${sup || ''}</span>
+        </div>
+        <div style="display:flex;gap:4px;align-items:center;">
+          <div class="badge ${badgeCls}">${st}</div>
+          ${noPdfBadge}
+        </div>
       </div>
-    </div>
-    <div class="card-main" style="padding:4px 0 0;">
-      <!-- メーカー -->
-      <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:2px;">${sup || '—'}</div>
-      <!-- パターン + サイズ 太文字 -->
-      <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;">
-        ${pat ? `<span style="font-size:13px;font-weight:700;color:var(--text);">${pat}</span>` : ''}
-        <span style="font-size:15px;font-weight:700;color:var(--text);">${size || '—'}</span>
+      <div style="display:flex;align-items:baseline;gap:5px;flex-wrap:wrap;margin-bottom:2px;">
+        ${pat ? `<span style="font-size:13px;font-weight:800;color:var(--text);">${pat}</span>` : ''}
+        <span style="font-size:13px;font-weight:700;color:var(--text);">${size || '—'}</span>
       </div>
-    </div>
-    <div class="card-meta" style="margin-top:4px;">
-      ${qty ? `<div class="meta-item">数量 <span class="meta-val" style="font-weight:700;color:var(--accent);">${qty}本</span></div>` : ''}
-      ${memo ? `<div class="meta-item"><span class="meta-val">${memo.slice(0,20)}</span></div>` : ''}
-      ${date ? `<div class="meta-item">${date}</div>` : ''}
+      <div class="card-meta">
+        ${qty ? `<div class="meta-item"><span class="meta-val" style="font-weight:700;color:var(--accent);">${qty}本</span></div>` : ''}
+        ${loc ? `<div class="meta-item">${loc}</div>` : ''}
+        ${date ? `<div class="meta-item">${date}</div>` : ''}
+        ${due ? `<div class="meta-item">納期 ${due}</div>` : ''}
+        ${memo ? `<div class="meta-item" style="color:var(--text);font-style:italic;">${memo.slice(0,15)}</div>` : ''}
+      </div>
     </div>
     ${nyukoBtn}
   </div>`;

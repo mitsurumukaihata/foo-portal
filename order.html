@@ -215,6 +215,60 @@ body{
 .empty-icon{font-size:36px;margin-bottom:8px;}
 .loading-state{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
 
+/* ── 未入荷 検索窓 ── */
+.pending-search-wrap{
+  position:relative;margin-bottom:10px;
+}
+.pending-search{
+  width:100%;padding:10px 36px 10px 12px;
+  border:1px solid var(--border2);border-radius:10px;
+  background:var(--s2);color:var(--text);
+  font-size:13px;font-family:inherit;
+  outline:none;transition:border-color .15s;
+}
+.pending-search:focus{border-color:var(--accent);}
+.pending-search::placeholder{color:var(--muted);font-size:12px;}
+.pending-search-icon{
+  position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  font-size:15px;color:var(--muted);pointer-events:none;
+}
+.pending-search-clear{
+  position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  background:none;border:none;color:var(--muted);font-size:16px;
+  cursor:pointer;padding:2px 4px;display:none;font-family:inherit;
+}
+.pending-suggest{
+  position:absolute;top:100%;left:0;right:0;
+  background:var(--s1);border:1px solid var(--border2);
+  border-radius:0 0 10px 10px;max-height:220px;overflow-y:auto;
+  z-index:50;display:none;
+  box-shadow:0 8px 24px rgba(0,0,0,.25);
+}
+.pending-suggest-item{
+  padding:9px 12px;font-size:12px;cursor:pointer;
+  border-bottom:0.5px solid var(--border);color:var(--text);
+  display:flex;align-items:center;gap:8px;
+}
+.pending-suggest-item:last-child{border-bottom:none;}
+.pending-suggest-item:active{background:rgba(240,165,0,.08);}
+.pending-suggest-cat{
+  font-size:9px;font-weight:700;color:var(--muted);
+  background:var(--s3);padding:1px 6px;border-radius:4px;flex-shrink:0;
+}
+.pending-filter-chips{
+  display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;display:none;
+}
+.pending-filter-chip{
+  display:flex;align-items:center;gap:4px;
+  padding:4px 10px;border-radius:12px;
+  background:rgba(240,165,0,.12);border:1px solid rgba(240,165,0,.3);
+  color:var(--accent);font-size:11px;font-weight:600;
+}
+.pending-filter-chip button{
+  background:none;border:none;color:var(--accent);
+  font-size:13px;cursor:pointer;padding:0;margin-left:2px;font-family:inherit;
+}
+
 /* ── セクションラベル ── */
 .sec-label{
   font-size:10px;font-weight:700;color:var(--muted);
@@ -406,6 +460,17 @@ body{
 
 <!-- ══ 未入荷タブ ══ -->
 <div class="body" id="pane-pending">
+  <div class="pending-search-wrap">
+    <input type="text" class="pending-search" id="pending-search-input"
+           placeholder="パターン・サイズ・メーカーで検索..."
+           oninput="onPendingSearch(this.value)"
+           onkeydown="if(event.key==='Enter'){pendingSearchQuery=this.value.trim();document.getElementById('pending-suggest').style.display='none';reRenderPending();}"
+           autocomplete="off">
+    <span class="pending-search-icon" id="pending-search-icon">🔍</span>
+    <button class="pending-search-clear" id="pending-search-clear" onclick="clearPendingSearch()">✕</button>
+    <div class="pending-suggest" id="pending-suggest"></div>
+  </div>
+  <div class="pending-filter-chips" id="pending-filter-chips"></div>
   <div id="pending-container">
     <div class="loading-state">読み込み中...</div>
   </div>
@@ -1848,15 +1913,8 @@ function renderPending() {
       return;
     }
     try {
-      const pending = orders.filter(o => {
-        const s = propStr(o,'ステータス');
-        return s === '新規発注' || s === '発注済';
-      });
-      if(!pending.length) {
-        el.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div>未入荷の発注はありません</div>';
-        return;
-      }
-      el.innerHTML = renderPendingGrouped(pending);
+      // 検索クエリがあればフィルタ適用
+      reRenderPending();
     } catch(e) {
       console.error('renderPending error:', e);
       el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div>表示エラー<br><span style="font-size:11px;word-break:break-all;">${e.message}</span></div>`;
@@ -2035,6 +2093,168 @@ function orderCardHTML(o) {
     ${nyukoBtn}
   </div>`;
 }
+
+// ─── 未入荷 検索 ─────────────────────────────────────────────────────────────
+let pendingSearchQuery = '';
+let pendingSearchTimer = null;
+
+function onPendingSearch(val) {
+  const q = val.trim();
+  const clearBtn = document.getElementById('pending-search-clear');
+  const iconEl   = document.getElementById('pending-search-icon');
+  if (q) { clearBtn.style.display = 'block'; iconEl.style.display = 'none'; }
+  else   { clearBtn.style.display = 'none';  iconEl.style.display = ''; }
+
+  // デバウンス
+  clearTimeout(pendingSearchTimer);
+  pendingSearchTimer = setTimeout(() => {
+    showPendingSuggestions(q);
+  }, 150);
+}
+
+function showPendingSuggestions(q) {
+  const dd = document.getElementById('pending-suggest');
+  if (!q) { dd.style.display = 'none'; pendingSearchQuery = ''; reRenderPending(); return; }
+
+  // orders配列から未入荷のみ
+  const pending = (orders || []).filter(o => {
+    const s = propStr(o,'ステータス');
+    return s === '新規発注' || s === '発注済';
+  });
+  if (!pending.length) { dd.style.display = 'none'; return; }
+
+  const ql = q.toLowerCase();
+
+  // 候補を収集: パターン名、サイズ、メーカー、倉庫
+  const suggestions = [];
+  const seen = new Set();
+
+  // パターン候補
+  pending.forEach(o => {
+    const pat = propStr(o,'パターン');
+    if (pat && !seen.has('pat:'+pat) && pat.toLowerCase().includes(ql)) {
+      seen.add('pat:'+pat);
+      suggestions.push({ label: pat, cat: 'パターン', value: pat });
+    }
+  });
+
+  // サイズ候補
+  pending.forEach(o => {
+    const sz = propStr(o,'サイズ') || propStr(o,'サイズコード') || propStr(o,'タイヤサイズ');
+    if (sz && !seen.has('sz:'+sz) && sz.toLowerCase().includes(ql)) {
+      seen.add('sz:'+sz);
+      suggestions.push({ label: sz, cat: 'サイズ', value: sz });
+    }
+  });
+
+  // メーカー候補
+  pending.forEach(o => {
+    const mk = propStr(o,'タイヤメーカー') || propStr(o,'仕入先');
+    if (mk && !seen.has('mk:'+mk) && mk.toLowerCase().includes(ql)) {
+      seen.add('mk:'+mk);
+      suggestions.push({ label: mk, cat: 'メーカー', value: mk });
+    }
+  });
+
+  // 倉庫候補
+  pending.forEach(o => {
+    const wh = propStr(o,'納入予定場所');
+    if (wh && !seen.has('wh:'+wh) && wh.toLowerCase().includes(ql)) {
+      seen.add('wh:'+wh);
+      suggestions.push({ label: wh, cat: '倉庫', value: wh });
+    }
+  });
+
+  if (!suggestions.length) {
+    // 候補がなくてもフリーテキストで絞り込み
+    pendingSearchQuery = q;
+    reRenderPending();
+    dd.style.display = 'none';
+    return;
+  }
+
+  // 最大12件
+  const top = suggestions.slice(0, 12);
+  dd.innerHTML = top.map(s =>
+    `<div class="pending-suggest-item" onclick="pickPendingSuggestion('${s.value.replace(/'/g, "\\'")}')">` +
+    `<span class="pending-suggest-cat">${s.cat}</span>` +
+    `<span>${highlightMatch(s.label, q)}</span></div>`
+  ).join('');
+  dd.style.display = 'block';
+}
+
+function highlightMatch(text, q) {
+  if (!q) return text;
+  const idx = text.toLowerCase().indexOf(q.toLowerCase());
+  if (idx === -1) return text;
+  const before = text.slice(0, idx);
+  const match  = text.slice(idx, idx + q.length);
+  const after  = text.slice(idx + q.length);
+  return `${before}<strong style="color:var(--accent);">${match}</strong>${after}`;
+}
+
+function pickPendingSuggestion(val) {
+  const input = document.getElementById('pending-search-input');
+  input.value = val;
+  pendingSearchQuery = val;
+  document.getElementById('pending-suggest').style.display = 'none';
+  const clearBtn = document.getElementById('pending-search-clear');
+  const iconEl   = document.getElementById('pending-search-icon');
+  clearBtn.style.display = 'block';
+  iconEl.style.display = 'none';
+  reRenderPending();
+}
+
+function clearPendingSearch() {
+  const input = document.getElementById('pending-search-input');
+  input.value = '';
+  pendingSearchQuery = '';
+  document.getElementById('pending-suggest').style.display = 'none';
+  document.getElementById('pending-search-clear').style.display = 'none';
+  document.getElementById('pending-search-icon').style.display = '';
+  reRenderPending();
+  input.focus();
+}
+
+function reRenderPending() {
+  const el = document.getElementById('pending-container');
+  if (!orders || !orders.length) return;
+  try {
+    let pending = orders.filter(o => {
+      const s = propStr(o,'ステータス');
+      return s === '新規発注' || s === '発注済';
+    });
+    if (pendingSearchQuery) {
+      const ql = pendingSearchQuery.toLowerCase();
+      pending = pending.filter(o => {
+        const pat  = (propStr(o,'パターン') || '').toLowerCase();
+        const sz   = (propStr(o,'サイズ') || propStr(o,'サイズコード') || propStr(o,'タイヤサイズ') || '').toLowerCase();
+        const mk   = (propStr(o,'タイヤメーカー') || propStr(o,'仕入先') || '').toLowerCase();
+        const wh   = (propStr(o,'納入予定場所') || '').toLowerCase();
+        const memo = (propStr(o,'備考欄') || '').toLowerCase();
+        return pat.includes(ql) || sz.includes(ql) || mk.includes(ql) || wh.includes(ql) || memo.includes(ql);
+      });
+    }
+    if (!pending.length) {
+      const msg = pendingSearchQuery
+        ? `「${pendingSearchQuery}」に該当する未入荷はありません`
+        : '未入荷の発注はありません';
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">${pendingSearchQuery ? '🔍' : '✅'}</div>${msg}</div>`;
+      return;
+    }
+    el.innerHTML = renderPendingGrouped(pending);
+  } catch(e) {
+    console.error('reRenderPending error:', e);
+  }
+}
+
+// ドロップダウンを外クリックで閉じる
+document.addEventListener('click', function(e) {
+  const wrap = document.querySelector('.pending-search-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById('pending-suggest').style.display = 'none';
+  }
+});
 
 // ─── フィルター ───────────────────────────────────────────────────────────────
 function filterMaker(btn) {

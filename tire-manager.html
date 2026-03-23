@@ -344,22 +344,13 @@ const CAT_KEY_TO_NAME = {
   'lift':         'リフト',
 };
 
+// ── 繰越システム稼働後：スナップショットの在庫数更新は不要 ──
+// スナップショットDBは「しきい値専用」として残す。
+// 在庫はリアルタイムで各在庫DBから計算する。
 async function updateSnapshot(catKey, pattern, size, kubun, qty, warehouse, moveDir) {
-  try {
-    const catName = CAT_KEY_TO_NAME[catKey];
-    if (!catName) return;
-    if (kubun === '発注中') return;
-    const sign = KUBUN_SIGN[kubun] ?? 0;
-    if (moveDir) {
-      await _updateSnapshotRecord(catName, pattern, size, moveDir.from, -qty);
-      await _updateSnapshotRecord(catName, pattern, size, moveDir.to,   +qty);
-    } else {
-      if (sign === 0) return;
-      await _updateSnapshotRecord(catName, pattern, size, warehouse, sign * qty);
-    }
-  } catch(e) {
-    console.warn('スナップショット更新エラー（メイン処理に影響なし）:', e.message);
-  }
+  // 繰越システム稼働中のため、在庫数更新はスキップ
+  console.log('[繰越モード] スナップショット在庫更新スキップ:', pattern, size, kubun, qty);
+  return;
 }
 
 async function _updateSnapshotRecord(catName, pattern, size, warehouse, delta) {
@@ -1225,23 +1216,44 @@ async function submitEntry() {
 let historyLoaded = false;
 let historyRecords = [];
 
-async function loadHistory() {
+// ── 履歴フィルター状態 ──
+let historyYear = new Date().getFullYear();
+let historyMonth = new Date().getMonth() + 1; // 1-12, 0=全月
+
+async function loadHistory(forceReload) {
   const el = document.getElementById('history-content');
-  if (historyLoaded && historyRecords.length) {
-    // 再描画のみ
+  if (historyLoaded && historyRecords.length && !forceReload) {
+    renderHistory();
     return;
   }
   el.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--muted);font-size:14px;">履歴を読み込み中...</div>';
 
   try {
-    // 全カテゴリDBから直近レコードを取得
+    // 年月フィルターでNotion APIクエリを構築
+    const startDate = historyMonth > 0
+      ? `${historyYear}-${String(historyMonth).padStart(2,'0')}-01T00:00:00+09:00`
+      : `${historyYear}-01-01T00:00:00+09:00`;
+    const endDate = historyMonth > 0
+      ? (historyMonth < 12
+          ? `${historyYear}-${String(historyMonth+1).padStart(2,'0')}-01T00:00:00+09:00`
+          : `${historyYear+1}-01-01T00:00:00+09:00`)
+      : `${historyYear+1}-01-01T00:00:00+09:00`;
+
+    const dateFilter = {
+      and: [
+        { timestamp: 'created_time', created_time: { on_or_after: startDate } },
+        { timestamp: 'created_time', created_time: { before: endDate } },
+      ]
+    };
+
     const allRecords = [];
     const catKeys = Object.keys(DB_MAP);
     const fetches = catKeys.map(async (key) => {
       const db = DB_MAP[key];
       const res = await notionAPI('POST', `/databases/${db.id}/query`, {
+        filter: dateFilter,
         sorts: [{ timestamp: 'created_time', direction: 'descending' }],
-        page_size: 5,
+        page_size: 10,
       });
       (res.results || []).forEach(r => {
         r._catKey = key;
@@ -1251,14 +1263,20 @@ async function loadHistory() {
     });
     await Promise.all(fetches);
 
-    // 作成日時で降順ソート
     allRecords.sort((a, b) => (b.created_time || '').localeCompare(a.created_time || ''));
-    historyRecords = allRecords.slice(0, 20);
+    historyRecords = allRecords.slice(0, 50);
     historyLoaded = true;
     renderHistory();
   } catch(e) {
     el.innerHTML = `<div class="error-box">履歴の取得に失敗しました。<br><small>${e.message}</small></div>`;
   }
+}
+
+function changeHistoryPeriod(year, month) {
+  historyYear = year;
+  historyMonth = month;
+  historyLoaded = false;
+  loadHistory(true);
 }
 
 function renderHistory() {
@@ -1296,15 +1314,31 @@ function renderHistory() {
   // サイズ候補リストを全カテゴリから生成（重複排除）
   const allSizes = [...new Set(Object.values(DB_MAP).flatMap(db => db.sizes || []))].sort();
 
+  // 年月セレクターを生成
+  const now = new Date();
+  const curYear = now.getFullYear();
+  let yearOpts = '';
+  for (let y = curYear; y >= curYear - 3; y--) {
+    yearOpts += `<option value="${y}"${y === historyYear ? ' selected' : ''}>${y}年</option>`;
+  }
+  let monthOpts = `<option value="0"${historyMonth === 0 ? ' selected' : ''}>全月</option>`;
+  for (let m = 1; m <= 12; m++) {
+    monthOpts += `<option value="${m}"${m === historyMonth ? ' selected' : ''}>${m}月</option>`;
+  }
+
   let html = `
+    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">
+      <select id="hist-year" onchange="changeHistoryPeriod(+this.value, +document.getElementById('hist-month').value)" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);font-size:13px;font-family:inherit;color:var(--text);">${yearOpts}</select>
+      <select id="hist-month" onchange="changeHistoryPeriod(+document.getElementById('hist-year').value, +this.value)" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);font-size:13px;font-family:inherit;color:var(--text);">${monthOpts}</select>
+    </div>
     <div class="search-box">
       <input id="history-search" type="text" inputmode="numeric" placeholder="例：275 または 27580" autocomplete="off">
       <button class="search-clear" onclick="window._historySelectedSize='';document.getElementById('history-search').value='';filterHistorySizes('');applyHistoryFilter('')">✕</button>
     </div>
     <div id="history-candidates" class="candidates"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-      <div style="font-size:12px;color:var(--muted);" id="history-count">直近の入出庫履歴（最新${historyRecords.length}件）</div>
-      <button onclick="historyLoaded=false;loadHistory()" style="background:var(--s3);border:1px solid var(--border2);border-radius:6px;padding:5px 10px;font-size:11px;color:var(--text);cursor:pointer;font-family:inherit;">↻ 更新</button>
+      <div style="font-size:12px;color:var(--muted);" id="history-count">${historyYear}年${historyMonth > 0 ? historyMonth+'月' : ''}の履歴（${historyRecords.length}件）</div>
+      <button onclick="loadHistory(true)" style="background:var(--s3);border:1px solid var(--border2);border-radius:6px;padding:5px 10px;font-size:11px;color:var(--text);cursor:pointer;font-family:inherit;">↻ 更新</button>
     </div>`;
 
   // サイズ候補をグローバルに保持

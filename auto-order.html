@@ -2056,13 +2056,13 @@ async function showItemHistory(idx) {
         { property: 'サイズコード', select: { equals: item.size } },
         { property: 'パターン名', select: { equals: item.pattern } },
         { property: wField, select: { equals: item.warehouse } },
-        { property: '区分', select: { does_not_equal: '繰越' } },
       ]},
       sorts: [{ timestamp: 'created_time', direction: 'descending' }],
-      page_size: 30,
+      page_size: 40,
     });
 
-    const records = res.results || [];
+    // 繰越はクライアント側で除外（DBにオプションが無い場合APIエラーになるため）
+    const records = (res.results || []).filter(r => r.properties['区分']?.select?.name !== '繰越').slice(0, 30);
     const body = document.getElementById('history-modal-body');
 
     if (!records.length) {

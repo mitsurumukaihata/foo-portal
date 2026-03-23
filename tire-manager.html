@@ -883,7 +883,11 @@ async function fetchAllRecords(dbId, sizeFilter, kurikoshiDate) {
   let all = [], cursor;
   const sizeF = { property: 'サイズコード', select: { equals: sizeFilter } };
   const filter = kurikoshiDate
-    ? { and: [ sizeF, { timestamp: 'created_time', created_time: { on_or_after: kurikoshiDate } } ] }
+    ? { and: [ sizeF, { or: [
+        { timestamp: 'created_time', created_time: { on_or_after: kurikoshiDate } },
+        { property: '区分', select: { equals: '準備' } },
+        { property: '区分', select: { equals: '発注中' } },
+      ]}]}
     : sizeF;
   while (true) {
     const body = { filter, page_size: 100 };

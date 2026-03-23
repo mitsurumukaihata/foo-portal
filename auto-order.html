@@ -786,7 +786,11 @@ async function fetchStockForCat(cat, dbInfo, stockMap, kurikoshiDate) {
     ]
   };
   const filter = kurikoshiDate
-    ? { and: [ whFilter, { timestamp: 'created_time', created_time: { on_or_after: kurikoshiDate } } ] }
+    ? { and: [ whFilter, { or: [
+        { timestamp: 'created_time', created_time: { on_or_after: kurikoshiDate } },
+        { property: '区分', select: { equals: '準備' } },
+        { property: '区分', select: { equals: '発注中' } },
+      ]}]}
     : whFilter;
 
   let all = [], cursor;

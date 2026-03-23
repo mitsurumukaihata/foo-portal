@@ -225,7 +225,8 @@ async function runKurikoshi() {
         const qty     = props['数量']?.number || 0;
 
         if (kubun === '繰越') { oldKurikoshi.push(r.id); }
-        if (kubun === '発注中') return;
+        // 準備・発注中は「進行中」なので繰越に含めない（在庫クエリで常に取得される）
+        if (kubun === '発注中' || kubun === '準備') return;
         if (!pattern || !size || !wh) return;
 
         const key = `${pattern}|${size}|${wh}`;

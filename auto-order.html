@@ -860,9 +860,9 @@ function renderAlertPage() {
     html += `<div class="notice-box" style="border-color:rgba(239,68,68,0.4);color:var(--red);">⚠️ 取得できなかったカテゴリ: ${window._skippedCats.join(' / ')}<br><small style="opacity:0.8;">Notionの接続設定を確認してください</small></div>`;
   }
 
-  // 倉庫別グルーピング
+  // 倉庫別グルーピング（選択中の仕入先でフィルター）
   WAREHOUSES.forEach(wh => {
-    const items = alertItems.filter(i => i.warehouse === wh);
+    const items = alertItems.filter(i => i.warehouse === wh && isCurrentSupplierItem(i));
     if (!items.length) return;
     const dotColor = wh === '五日市倉庫' ? 'var(--green)' : 'var(--blue)';
     html += `<div class="wh-section"><div class="wh-dot" style="background:${dotColor};"></div>${wh}</div>`;
@@ -1190,6 +1190,7 @@ async function createHacchuRecords(items, tantou, nouki, biko, method) {
       'ステータス':   { select: { name: '発注済' } },
       '納入予定場所': { select: { name: warehouseLabel } },
       '注文担当':     { select: { name: tantou.includes('岡崎') ? '岡崎' : '向畑' } },
+      '発注日':       { date: { start: new Date().toISOString().split('T')[0] } },
     };
     if (nouki) props['納期予定日'] = { date: { start: nouki } };
     if (biko)  props['備考欄'] = { rich_text: [{ text: { content: biko } }] };
@@ -1341,10 +1342,15 @@ async function _fetchAndInjectPending() {
   const tdS = (i,ex='') => `padding:2px 3px;font-size:5pt;text-align:center;border:0.3px solid #b8cfe8;${i%2===1?'background:#f0f5fc;':'background:#fff;'}white-space:nowrap;${ex}`;
 
   try {
+    // 現在の仕入先に合わせてフィルター
+    const supNotionName = SUPPLIER_CONFIG[currentSupplier]?.notionName || 'TOYO';
     const body = {
-      filter: { or: [
-        { property: 'ステータス', select: { equals: '新規発注' } },
-        { property: 'ステータス', select: { equals: '発注済' } },
+      filter: { and: [
+        { or: [
+          { property: 'ステータス', select: { equals: '新規発注' } },
+          { property: 'ステータス', select: { equals: '発注済' } },
+        ]},
+        { property: '仕入先', select: { equals: supNotionName } },
       ]},
       sorts: [{ property: '発注日', direction: 'descending' }],
       page_size: 100,
@@ -1878,7 +1884,7 @@ function thUpdateSaveVisibility() {
 
 async function saveNewThreshold() {
   const pattern = document.getElementById('th-pattern-input').value.trim() || thSelPattern;
-  const size    = thSelSize;
+  let   size    = thSelSize;
   const cat     = thNewCat;
   const wh      = thNewWh;
   const val     = thNewQty;
@@ -1886,9 +1892,11 @@ async function saveNewThreshold() {
   const btn     = document.getElementById('th-save-btn');
 
   // サイズが未選択の場合、入力欄の値をそのまま使う
-  const sizeVal = size || document.getElementById('th-size-input')?.value.trim();
-  if (!sizeVal || !cat) { errEl.textContent='サイズとカテゴリを選択してください'; errEl.style.display='block'; return; }
-  if (!size) thSelSize = sizeVal;
+  if (!size) {
+    size = document.getElementById('th-size-input')?.value.trim() || '';
+    thSelSize = size;
+  }
+  if (!size || !cat) { errEl.textContent='サイズとカテゴリを選択してください'; errEl.style.display='block'; return; }
   errEl.style.display = 'none';
   btn.disabled = true; btn.textContent = '保存中…';
 

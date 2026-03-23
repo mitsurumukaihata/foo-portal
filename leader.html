@@ -111,6 +111,23 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .detail-btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
 .detail-btn.danger { background:rgba(239,68,68,0.15); color:var(--red); }
 
+/* ── 返信セクション ── */
+.reply-section { margin-top:18px; border-top:1px solid var(--border); padding-top:14px; }
+.reply-title { font-size:12px; font-weight:700; color:var(--muted); margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+.reply-count { background:var(--accent); color:#fff; border-radius:10px; padding:1px 7px; font-size:10px; font-weight:700; }
+.reply-list { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+.reply-item { background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:10px 12px; }
+.reply-item.mine { border-left:3px solid var(--accent); }
+.reply-author { font-size:11px; font-weight:700; margin-bottom:3px; }
+.reply-text { font-size:13px; color:var(--text); line-height:1.6; word-break:break-word; white-space:pre-wrap; }
+.reply-time { font-size:10px; color:var(--muted); margin-top:4px; }
+.reply-input-wrap { display:flex; gap:8px; align-items:flex-end; }
+.reply-input { flex:1; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; font-size:13px; color:var(--text); outline:none; font-family:inherit; resize:none; min-height:42px; max-height:120px; }
+.reply-input:focus { border-color:var(--accent); }
+.reply-send { background:var(--accent); border:none; border-radius:10px; padding:10px 16px; color:#fff; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; flex-shrink:0; }
+.reply-send:disabled { opacity:0.4; cursor:default; }
+.reply-empty { font-size:12px; color:var(--muted); text-align:center; padding:12px 0; }
+
 /* ── フォーム ── */
 .form-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:100; justify-content:center; align-items:flex-end; }
 .form-overlay.show { display:flex; }
@@ -534,9 +551,15 @@ async function loadComm() {
     }
     list.innerHTML = '';
     const seen = new Set();
+    const uniquePages = [];
     for (const p of pages) {
       if (seen.has(p.id)) continue;
       seen.add(p.id);
+      uniquePages.push(p);
+    }
+    // 返信数を並列で取得
+    await loadReplyCountsForBadge(uniquePages);
+    for (const p of uniquePages) {
       const title = getPropValue(p, 'タイトル');
       const status = getPropValue(p, '状態');
       const kind = getPropValue(p, '種別');
@@ -547,6 +570,7 @@ async function loadComm() {
       const confirmed = getPropValue(p, '確認者') || [];
       const isAuthor = currentUserName && author === currentUserName;
       const needConfirm = !isAuthor && currentUserName && !confirmed.includes(currentUserName);
+      const rc = _replyCountCache[p.id] || { total: 0, unseen: 0 };
       const card = document.createElement('div');
       card.className = 'card';
       card.style.position = 'relative';
@@ -564,19 +588,27 @@ async function loadComm() {
         statusBadge = '<span class="status-badge ' + scs + '">' + escapeHtml(status) + '</span>';
       }
       const authorHtml = author ? '<span style="font-size:10px;color:var(--accent);font-weight:600;">' + escapeHtml(author) + '</span>' : '';
-      const unreadDot = needConfirm ? '<span style="position:absolute;top:8px;right:8px;width:10px;height:10px;background:var(--red);border-radius:50%;"></span>' : '';
+      // 未読: 未確認 or 新しい返信
+      const hasUnread = needConfirm || rc.unseen > 0;
+      const unreadDot = hasUnread ? '<span style="position:absolute;top:8px;right:8px;width:10px;height:10px;background:var(--red);border-radius:50%;"></span>' : '';
       let confirmedHtml = '';
       if (confirmed.length > 0) {
         confirmedHtml = '<div style="margin-top:6px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;"><span style="font-size:10px;color:var(--green);">✓</span>';
         for (const c of confirmed) confirmedHtml += '<span style="font-size:10px;color:var(--green);font-weight:600;">' + escapeHtml(c) + '</span>';
         confirmedHtml += '</div>';
       }
+      // 返信バッジ
+      let replyBadge = '';
+      if (rc.total > 0) {
+        const unseenStyle = rc.unseen > 0 ? 'background:var(--accent);color:#fff;' : 'background:rgba(107,114,128,0.2);color:var(--muted);';
+        replyBadge = '<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:8px;' + unseenStyle + '">💬 ' + rc.total + (rc.unseen > 0 ? ' (新着' + rc.unseen + ')' : '') + '</span>';
+      }
       card.innerHTML = unreadDot +
         '<div class="card-header"><div><div class="card-title">' + escapeHtml(title) + '</div>' + authorHtml + '</div><div>' + statusBadge + '</div></div>' +
         '<div class="card-tags">' + tags + '</div>' +
         '<div class="card-content">' + escapeHtml(content || '') + '</div>' +
         confirmedHtml +
-        '<div class="card-footer"><div>' + relTags + '</div></div>';
+        '<div class="card-footer"><div>' + relTags + '</div><div>' + replyBadge + '</div></div>';
       card.onclick = () => showCommDetail(p);
       list.appendChild(card);
     }
@@ -604,6 +636,9 @@ async function updateNavBadge() {
       const poster = p.properties['投稿者']?.select?.name || p.created_by?.name || '';
       if (poster !== currentUserName) count++;
     }
+    // 返信の未読分も加算
+    const unseenReplies = Object.values(_replyCountCache).reduce((s, rc) => s + rc.unseen, 0);
+    count += unseenReplies;
     if (count > 0) {
       el.textContent = count > 9 ? '9+' : count;
       el.style.display = 'flex';
@@ -655,9 +690,21 @@ function showCommDetail(page) {
     '<button class="detail-btn primary" onclick="updateCommStatus(\'未着手\')">未着手</button>' +
     '<button class="detail-btn primary" onclick="updateCommStatus(\'進行中\')">進行中</button>' +
     '<button class="detail-btn" onclick="updateCommStatus(\'完了\')">完了</button>' +
+    '</div>' +
+    // 返信セクション
+    '<div class="reply-section">' +
+    '<div class="reply-title">💬 返信 <span class="reply-count" id="reply-count" style="display:none;">0</span></div>' +
+    '<div class="reply-list" id="reply-list"><div class="reply-empty">読み込み中...</div></div>' +
+    '<div class="reply-input-wrap">' +
+    '<textarea class="reply-input" id="reply-input" placeholder="返信を入力…" rows="1" oninput="this.style.height=\'auto\';this.style.height=this.scrollHeight+\'px\';"></textarea>' +
+    '<button class="reply-send" id="reply-send" onclick="submitReply()">送信</button>' +
+    '</div>' +
+    (currentUserName ? '<div style="font-size:10px;color:var(--muted);margin-top:4px;">投稿者: ' + escapeHtml(currentUserName) + '</div>' : '') +
     '</div>';
   document.getElementById('detail-overlay').classList.add('show');
   document.getElementById('detail-sheet').classList.add('show');
+  // 返信を読み込む
+  loadReplies(page.id);
 }
 
 async function confirmComm() {
@@ -675,6 +722,104 @@ async function confirmComm() {
   } catch(e) {
     showToast(e.message, 'error');
   }
+}
+
+// ─── 返信（コメント）機能 ─────────────────────────────────────────────────────
+async function loadReplies(pageId) {
+  const listEl = document.getElementById('reply-list');
+  const countEl = document.getElementById('reply-count');
+  try {
+    const res = await notionAPI('GET', '/comments?block_id=' + pageId);
+    const comments = res.results || [];
+    if (comments.length === 0) {
+      listEl.innerHTML = '<div class="reply-empty">まだ返信はありません</div>';
+      countEl.style.display = 'none';
+    } else {
+      countEl.textContent = comments.length;
+      countEl.style.display = 'inline-block';
+      listEl.innerHTML = '';
+      for (const c of comments) {
+        const text = (c.rich_text || []).map(t => t.plain_text).join('');
+        const createdAt = c.created_time ? new Date(c.created_time) : null;
+        const timeStr = createdAt ? `${createdAt.getMonth()+1}/${createdAt.getDate()} ${String(createdAt.getHours()).padStart(2,'0')}:${String(createdAt.getMinutes()).padStart(2,'0')}` : '';
+        // テキストから投稿者名を抽出（フォーマット: 【名前】メッセージ）
+        let author = '';
+        let body = text;
+        const m = text.match(/^【(.+?)】\s*([\s\S]*)$/);
+        if (m) { author = m[1]; body = m[2]; }
+        const isMine = currentUserName && author === currentUserName;
+        const el = document.createElement('div');
+        el.className = 'reply-item' + (isMine ? ' mine' : '');
+        el.innerHTML =
+          (author ? '<div class="reply-author" style="color:' + (isMine ? 'var(--accent)' : 'var(--blue)') + ';">' + escapeHtml(author) + '</div>' : '') +
+          '<div class="reply-text">' + escapeHtml(body) + '</div>' +
+          '<div class="reply-time">' + escapeHtml(timeStr) + '</div>';
+        listEl.appendChild(el);
+      }
+      // 最下部にスクロール
+      listEl.scrollTop = listEl.scrollHeight;
+    }
+    // 既読記録を更新
+    markRepliesSeen(pageId, comments.length);
+  } catch(e) {
+    listEl.innerHTML = '<div class="reply-empty">返信の読み込みに失敗しました</div>';
+    console.error('loadReplies error:', e);
+  }
+}
+
+async function submitReply() {
+  if (!detailData || !currentUserName) { showToast('ログインが必要です', 'error'); return; }
+  const input = document.getElementById('reply-input');
+  const btn = document.getElementById('reply-send');
+  const text = input.value.trim();
+  if (!text) return;
+  btn.disabled = true; btn.textContent = '送信中…';
+  try {
+    // 【名前】をプレフィックスとして付与
+    const fullText = '【' + currentUserName + '】 ' + text;
+    await notionAPI('POST', '/comments', {
+      parent: { page_id: detailData.id },
+      rich_text: [{ text: { content: fullText } }]
+    });
+    input.value = '';
+    input.style.height = 'auto';
+    showToast('返信しました', 'success');
+    // 返信リストを再読み込み
+    await loadReplies(detailData.id);
+  } catch(e) {
+    showToast('送信エラー: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '送信';
+  }
+}
+
+// 返信の既読管理（localStorage）
+function getReplySeenMap() {
+  try { return JSON.parse(localStorage.getItem('foo_leader_reply_seen') || '{}'); } catch(e) { return {}; }
+}
+function markRepliesSeen(pageId, count) {
+  const map = getReplySeenMap();
+  map[pageId] = count;
+  localStorage.setItem('foo_leader_reply_seen', JSON.stringify(map));
+}
+
+// カード表示で返信バッジを表示するためのキャッシュ
+let _replyCountCache = {};
+async function loadReplyCountsForBadge(pages) {
+  _replyCountCache = {};
+  const seenMap = getReplySeenMap();
+  // 並列で全ページのコメント数を取得（最大20件に制限）
+  const targets = pages.slice(0, 20);
+  const results = await Promise.allSettled(
+    targets.map(async p => {
+      try {
+        const res = await notionAPI('GET', '/comments?block_id=' + p.id);
+        const count = (res.results || []).length;
+        const seen = seenMap[p.id] || 0;
+        _replyCountCache[p.id] = { total: count, unseen: Math.max(0, count - seen) };
+      } catch(e) { /* silent */ }
+    })
+  );
 }
 
 async function updateCommStatus(status) {

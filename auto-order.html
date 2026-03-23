@@ -933,7 +933,8 @@ function renderAlertPage() {
       if (item.prepQty > 0) stockInfo += `（うち準備中 ${item.prepQty}本）`;
       if (item.orderInFlight > 0) stockInfo += ` + 発注中 ${item.orderInFlight}本入荷予定`;
 
-      html += `<div class="alert-card ${cls}">
+      const globalIdx = alertItems.indexOf(item);
+      html += `<div class="alert-card ${cls}" onclick="showItemHistory(${globalIdx})" style="cursor:pointer;">
         <div class="alert-card-inner">
           <div class="alert-dot-big" style="background:${dotColor2};"></div>
           <div class="alert-info">
@@ -953,6 +954,7 @@ function renderAlertPage() {
           </div>
         </div>
         <div class="alert-bar"><div class="alert-bar-fill" style="width:${Math.min(pct,100)}%;background:${barColor};"></div></div>
+        <div style="text-align:right;padding:2px 4px 0;font-size:10px;color:var(--muted);">タップで履歴 ›</div>
       </div>`;
     });
   });
@@ -2007,6 +2009,102 @@ async function saveNewThreshold() {
     errEl.textContent = '保存エラー: ' + e.message;
     errEl.style.display = 'block';
     btn.disabled = false; btn.textContent = 'Notionに保存する';
+  }
+}
+
+// ─── 入出庫履歴モーダル ─────────────────────────────────────────────────────
+async function showItemHistory(idx) {
+  const item = alertItems[idx];
+  if (!item) return;
+
+  const dbInfo = CAT_DB_MAP[item.category];
+  if (!dbInfo) { alert('DBが見つかりません: ' + item.category); return; }
+
+  // モーダル生成
+  let modal = document.getElementById('history-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'history-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;justify-content:center;';
+    document.body.appendChild(modal);
+  }
+  modal.style.display = 'flex';
+  modal.innerHTML = `
+    <div style="background:var(--bg);width:100%;max-width:480px;max-height:80vh;border-radius:16px 16px 0 0;overflow:hidden;display:flex;flex-direction:column;">
+      <div style="padding:16px 20px 10px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--text);">${item.pattern} ${item.size}</div>
+          <div style="font-size:11px;color:var(--muted);">${item.category} · ${item.warehouse}</div>
+        </div>
+        <button onclick="document.getElementById('history-modal').style.display='none'" style="background:var(--s3);border:none;border-radius:8px;padding:6px 14px;font-size:13px;color:var(--text);cursor:pointer;">✕</button>
+      </div>
+      <div id="history-modal-body" style="flex:1;overflow-y:auto;padding:12px 20px;">
+        <div style="text-align:center;padding:30px 0;color:var(--muted);font-size:13px;">読み込み中...</div>
+      </div>
+    </div>`;
+
+  // 背景タップで閉じる
+  modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+
+  try {
+    // 在庫DBから該当パターン/サイズの履歴を取得（繰越除外）
+    const stockDbId = dbInfo.id;
+    const wField = dbInfo.wField;
+
+    const res = await notionAPI('POST', `/databases/${stockDbId}/query`, {
+      filter: { and: [
+        { property: 'サイズコード', select: { equals: item.size } },
+        { property: 'パターン名', select: { equals: item.pattern } },
+        { property: wField, select: { equals: item.warehouse } },
+        { property: '区分', select: { does_not_equal: '繰越' } },
+      ]},
+      sorts: [{ timestamp: 'created_time', direction: 'descending' }],
+      page_size: 30,
+    });
+
+    const records = res.results || [];
+    const body = document.getElementById('history-modal-body');
+
+    if (!records.length) {
+      body.innerHTML = '<div style="text-align:center;padding:30px 0;color:var(--muted);font-size:13px;">履歴がありません</div>';
+      return;
+    }
+
+    const kubunColor = (k) => {
+      if (k.includes('入庫') || k.includes('返品（倉庫')) return 'var(--green)';
+      if (k.includes('出庫') || k.includes('準備')) return 'var(--red)';
+      if (k === '発注中') return 'var(--blue)';
+      return 'var(--muted)';
+    };
+
+    let html = `<div style="font-size:11px;color:var(--muted);margin-bottom:8px;">直近 ${records.length} 件の入出庫履歴</div>`;
+    records.forEach(r => {
+      const p = r.properties;
+      const kubun = p['区分']?.select?.name || '';
+      const qty = p['数量']?.number || 0;
+      const creator = p['作成者']?.select?.name || '';
+      const memo = p['メモ']?.rich_text?.[0]?.plain_text || p['出庫先']?.rich_text?.[0]?.plain_text || '';
+      const d = new Date(r.created_time);
+      const dateStr = `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+      const sign = KUBUN_SIGN[kubun] ?? 0;
+      const signStr = sign > 0 ? '+' : sign < 0 ? '-' : '';
+      const signColor = sign > 0 ? 'var(--green)' : sign < 0 ? 'var(--red)' : 'var(--muted)';
+
+      html += `<div style="background:var(--s2);border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:11px;font-weight:600;color:${kubunColor(kubun)};background:color-mix(in srgb,${kubunColor(kubun)} 12%,transparent);padding:2px 8px;border-radius:4px;">${kubun}</span>
+          <span style="font-size:10px;color:var(--muted);">${dateStr}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+          <span style="font-size:14px;font-weight:700;color:${signColor};">${signStr}${qty}本</span>
+          <span style="font-size:10px;color:var(--muted);">${creator ? '担当:'+creator : ''}${memo ? '　'+memo : ''}</span>
+        </div>
+      </div>`;
+    });
+
+    body.innerHTML = html;
+  } catch(e) {
+    document.getElementById('history-modal-body').innerHTML = `<div style="color:var(--red);padding:20px;font-size:13px;">取得エラー: ${e.message}</div>`;
   }
 }
 

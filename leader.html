@@ -405,13 +405,18 @@ async function notionAPI(method, path, body) {
       body: body ? JSON.stringify(body) : undefined, signal: ctrl.signal
     });
     clearTimeout(timer);
+    if (!res.ok) {
+      let msg = 'HTTP ' + res.status;
+      try { const d = await res.json(); if (d.message) msg = d.message; } catch(_){}
+      throw new Error(msg);
+    }
     const data = await res.json();
-    if (data.object === 'error') throw new Error(data.message);
+    if (data.object === 'error') throw new Error(data.message || 'Notion API error');
     return data;
   } catch(e) {
     clearTimeout(timer);
     if (e.name === 'AbortError') throw new Error('タイムアウト');
-    throw new Error('通信エラー: ' + e.message);
+    throw e;
   }
 }
 
@@ -685,13 +690,7 @@ function showCommDetail(page) {
     '<div class="detail-section"><div class="detail-section-title">関係者</div><div class="detail-tag-group">' + relHtml + '</div></div>' +
     '<div class="detail-section"><div class="detail-section-title">フェーズ</div><div class="detail-section-content">' + escapeHtml(phase || '') + '</div></div>' +
     confirmedHtml +
-    '<div class="detail-buttons">' +
-    confirmBtn +
-    '<button class="detail-btn primary" onclick="updateCommStatus(\'未着手\')">未着手</button>' +
-    '<button class="detail-btn primary" onclick="updateCommStatus(\'進行中\')">進行中</button>' +
-    '<button class="detail-btn" onclick="updateCommStatus(\'完了\')">完了</button>' +
-    '</div>' +
-    // 返信セクション
+    // 返信セクション（確認済みの直下）
     '<div class="reply-section">' +
     '<div class="reply-title">💬 返信 <span class="reply-count" id="reply-count" style="display:none;">0</span></div>' +
     '<div class="reply-list" id="reply-list"><div class="reply-empty">読み込み中...</div></div>' +
@@ -700,6 +699,12 @@ function showCommDetail(page) {
     '<button class="reply-send" id="reply-send" onclick="submitReply()">送信</button>' +
     '</div>' +
     (currentUserName ? '<div style="font-size:10px;color:var(--muted);margin-top:4px;">投稿者: ' + escapeHtml(currentUserName) + '</div>' : '') +
+    '</div>' +
+    '<div class="detail-buttons">' +
+    confirmBtn +
+    '<button class="detail-btn primary" onclick="updateCommStatus(\'未着手\')">未着手</button>' +
+    '<button class="detail-btn primary" onclick="updateCommStatus(\'進行中\')">進行中</button>' +
+    '<button class="detail-btn" onclick="updateCommStatus(\'完了\')">完了</button>' +
     '</div>';
   document.getElementById('detail-overlay').classList.add('show');
   document.getElementById('detail-sheet').classList.add('show');
@@ -779,7 +784,7 @@ async function submitReply() {
     const fullText = '【' + currentUserName + '】 ' + text;
     await notionAPI('POST', '/comments', {
       parent: { page_id: detailData.id },
-      rich_text: [{ text: { content: fullText } }]
+      rich_text: [{ type: 'text', text: { content: fullText } }]
     });
     input.value = '';
     input.style.height = 'auto';

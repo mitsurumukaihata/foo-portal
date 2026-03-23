@@ -321,6 +321,14 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
         </div>
         <div class="df-row">
           <div class="df-field">
+            <div class="df-label">注文方法</div>
+            <select class="df-select" id="order-method">
+              <option value="自動">自動</option>
+              <option value="電話">電話</option>
+              <option value="口頭">口頭</option>
+            </select>
+          </div>
+          <div class="df-field">
             <div class="df-label">備考（任意）</div>
             <input class="df-input" type="text" id="order-biko" placeholder="特記事項があれば…">
           </div>
@@ -1000,6 +1008,7 @@ function previewOrderPdf() {
   const tantou = document.getElementById('order-tantou').value;
   const nouki  = document.getElementById('order-nouki').value;
   const biko   = document.getElementById('order-biko').value.trim();
+  const method = document.getElementById('order-method').value || '自動';
   if (!tantou) { alert('担当者を選択してください'); return; }
   if (!nouki)  { alert('希望納期を入力してください'); return; }
   const selectedItems = alertItems.filter(i => i.selected && i.orderQty > 0);
@@ -1018,7 +1027,7 @@ function previewOrderPdf() {
   window._pdfFilename = defaultFilename;
 
   // PDF生成
-  buildPrintSheet(selectedItems, tantou, nouki, biko);
+  buildPrintSheet(selectedItems, tantou, nouki, biko, method);
 
   // iframeにセット（インライン用はorder-inline-frame）
   const frame = document.getElementById('order-inline-frame');
@@ -1033,7 +1042,7 @@ function previewOrderPdf() {
   document.getElementById('order-submit-btn').disabled = false;
 
   // 発注データを保持
-  window._pendingOrder = { selectedItems, tantou, nouki, biko };
+  window._pendingOrder = { selectedItems, tantou, nouki, biko, method };
 
   // 未入荷データを注入
   _fetchAndInjectPending();
@@ -1121,14 +1130,14 @@ function closeOrderPreviewOverlay() {
 async function confirmAndSaveOrder() {
   const pending = window._pendingOrder;
   if (!pending) return;
-  const { selectedItems, tantou, nouki, biko } = pending;
+  const { selectedItems, tantou, nouki, biko, method } = pending;
 
   const btn = document.getElementById('order-confirm-btn');
   if (btn) { btn.disabled = true; btn.textContent = '保存中…'; }
   const errEl = document.getElementById('order-preview-error');
 
   try {
-    await createHacchuRecords(selectedItems, tantou, nouki, biko);
+    await createHacchuRecords(selectedItems, tantou, nouki, biko, method);
 
     // オーバーレイを閉じる（開いている場合）
     const overlay = document.getElementById('order-preview-overlay');
@@ -1165,7 +1174,8 @@ async function submitOrders() {
   previewOrderPdf();
 }
 
-async function createHacchuRecords(items, tantou, nouki, biko) {
+async function createHacchuRecords(items, tantou, nouki, biko, method) {
+  method = method || '自動';
   // 並列で作成
   await Promise.all(items.map(item => {
     const warehouseLabel = item.warehouse === '五日市倉庫' ? '五日市' : '志和';
@@ -1184,6 +1194,9 @@ async function createHacchuRecords(items, tantou, nouki, biko) {
     if (nouki) props['納期予定日'] = { date: { start: nouki } };
     if (biko)  props['備考欄'] = { rich_text: [{ text: { content: biko } }] };
     props['サイズコード'] = { rich_text: [{ text: { content: item.size } }] };
+    // 注文方法チェックボックス
+    if (method === '電話') props['電話注文済'] = { checkbox: true };
+    if (method === '口頭') props['口頭注文済'] = { checkbox: true };
     return notionAPI('POST', '/pages', { parent: { database_id: HACCHU_DB }, properties: props });
   }));
 }
@@ -1191,7 +1204,8 @@ async function createHacchuRecords(items, tantou, nouki, biko) {
 // ──────────────────────────────────────
 // PDF発注書生成
 // ──────────────────────────────────────
-function buildPrintSheet(items, tantou, nouki, biko) {
+function buildPrintSheet(items, tantou, nouki, biko, method) {
+  method = method || '自動';
   const now = new Date();
   const issued = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   const noukiStr = nouki
@@ -1240,16 +1254,18 @@ function buildPrintSheet(items, tantou, nouki, biko) {
     <td style="${tdS(i)}">${item.warehouse.replace('倉庫','')}</td>
     <td style="${tdS(i)}">${tantouShort}</td>
     <td style="${tdS(i)}">自動</td>
+    <td style="${tdS(i)}">${method}</td>
     <td style="${tdS(i)}">${todayStr}</td>
     <td style="${tdS(i)}">${noukiStr}</td>
     <td style="${tdS(i,'color:#888;white-space:normal;text-align:left;')}">${escHtml(biko||'')}</td>
   </tr>`;
 
   const theadNew = `<tr>
-    <th style="${TH('10%')}">パターン</th><th style="${TH('14%')}">サイズ</th>
-    <th style="${TH('5%')}">本数</th><th style="${TH('8%')}">納入場所</th>
-    <th style="${TH('7%')}">発注者</th><th style="${TH('7%')}">受注者</th>
-    <th style="${TH('11%')}">発注日</th><th style="${TH('11%')}">納期予定</th>
+    <th style="${TH('10%')}">パターン</th><th style="${TH('13%')}">サイズ</th>
+    <th style="${TH('5%')}">本数</th><th style="${TH('7%')}">納入場所</th>
+    <th style="${TH('6%')}">発注者</th><th style="${TH('6%')}">受注者</th>
+    <th style="${TH('6%')}">注文方法</th>
+    <th style="${TH('10%')}">発注日</th><th style="${TH('10%')}">納期予定</th>
     <th style="${TH('27%')}">備考</th>
   </tr>`;
 
@@ -1379,6 +1395,9 @@ async function _fetchAndInjectPending() {
       const recv   = p['受注者']?.rich_text?.[0]?.plain_text || p['担当者']?.select?.name || '—';
       const tantouR= p['注文担当']?.select?.name || '—';
       const memo   = p['備考欄']?.rich_text?.[0]?.plain_text || '';
+      const isPhone = p['電話注文済']?.checkbox === true;
+      const isVerbal = p['口頭注文済']?.checkbox === true;
+      const meth   = isPhone ? '電話' : isVerbal ? '口頭' : '自動';
       return `<tr>
         <td style="${tdS(i)}">${pat}</td>
         <td style="${tdS(i)}">${size}</td>
@@ -1386,6 +1405,7 @@ async function _fetchAndInjectPending() {
         <td style="${tdS(i)}">${place}</td>
         <td style="${tdS(i)}">${tantouR}</td>
         <td style="${tdS(i)}">${recv}</td>
+        <td style="${tdS(i)}">${meth}</td>
         <td style="${tdS(i)}">${fmt(odate)}</td>
         <td style="${tdS(i)}">${fmt(nouki)}</td>
         <td style="${tdS(i,'color:#888;white-space:normal;text-align:left;')}">${memo}</td>
@@ -1397,10 +1417,11 @@ async function _fetchAndInjectPending() {
     const pendingHtml = records.length === 0 ? '' : `
 <div style="font-size:4pt;font-weight:bold;color:#2563a8;margin-bottom:2px;">■ 未入荷（既発注分）</div>
 <table style="width:100%;border-collapse:collapse;table-layout:fixed;"><thead><tr>
-  <th style="${TH('10%')}">パターン</th><th style="${TH('14%')}">サイズ</th>
-  <th style="${TH('5%')}">本数</th><th style="${TH('8%')}">納入場所</th>
-  <th style="${TH('7%')}">発注者</th><th style="${TH('7%')}">受注者</th>
-  <th style="${TH('11%')}">発注日</th><th style="${TH('11%')}">納期予定</th>
+  <th style="${TH('10%')}">パターン</th><th style="${TH('13%')}">サイズ</th>
+  <th style="${TH('5%')}">本数</th><th style="${TH('7%')}">納入場所</th>
+  <th style="${TH('6%')}">発注者</th><th style="${TH('6%')}">受注者</th>
+  <th style="${TH('6%')}">注文方法</th>
+  <th style="${TH('10%')}">発注日</th><th style="${TH('10%')}">納期予定</th>
   <th style="${TH('27%')}">備考</th>
 </tr></thead><tbody>${pendingRows}</tbody></table>
 <div style="text-align:right;margin-top:2px;padding-top:2px;border-top:0.5px solid #e0dcd6;font-size:3pt;color:#666;">

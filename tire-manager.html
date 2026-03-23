@@ -327,7 +327,7 @@ const WAREHOUSES = ['五日市倉庫','志和倉庫','海田倉庫'];
 const KUBUN_SIGN = {
   '入庫':1,'移動入庫':1,'返品（倉庫へ）':1,'返品':1,
   '出庫':-1,'準備':-1,'移動出庫':-1,'返品（メーカーへ）':-1,
-  '発注中':0
+  '発注中':0,'繰越':1
 };
 
 // ─── スナップショットDB ───────────────────────────────────────────────────────
@@ -856,17 +856,37 @@ function renderStockCatSelect(size, matching) {
   const el = document.getElementById('stock-content');
   el.innerHTML = `<div class="content"><div class="screen-label">在庫確認</div><div class="screen-title">カテゴリーを選択</div><div class="screen-sub">${size}</div><div class="cat-select-grid">${matching.map(([k, db]) => `<div class="cat-sel-btn" onclick="loadStockData('${size}','${k}')"><span class="csb-icon">${db.icon}</span><div class="csb-name">${db.name}</div><div class="csb-sub">${db.sub}</div></div>`).join('')}</div><div style="padding:0 20px;"><button class="btn-secondary" onclick="renderStockHome()">← 戻る</button></div></div>`;
 }
+// ── 繰越日を取得（DBから区分="繰越"の最新レコードを探す）──
+async function getKurikoshiDate(dbId) {
+  try {
+    const res = await notionAPI('POST', `/databases/${dbId}/query`, {
+      filter: { property: '区分', select: { equals: '繰越' } },
+      sorts: [{ timestamp: 'created_time', direction: 'descending' }],
+      page_size: 1
+    });
+    if (res.results?.length) return res.results[0].created_time;
+  } catch(e) { console.warn('繰越日取得失敗:', e); }
+  return null;
+}
 async function loadStockData(size, catKey) {
   const el = document.getElementById('stock-content');
   el.innerHTML = `<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">在庫データを取得中…</div></div>`;
   const db = DB_MAP[catKey];
-  try { const records = await fetchAllRecords(db.id, size); renderStockResult(size, catKey, records); }
+  try {
+    const kurikoshiDate = await getKurikoshiDate(db.id);
+    const records = await fetchAllRecords(db.id, size, kurikoshiDate);
+    renderStockResult(size, catKey, records);
+  }
   catch(e) { el.innerHTML = `<div class="content"><div class="error-box">データの取得に失敗しました。<br>${e.message}</div><button class="btn-secondary" onclick="renderStockHome()">← 戻る</button></div>`; }
 }
-async function fetchAllRecords(dbId, sizeFilter) {
+async function fetchAllRecords(dbId, sizeFilter, kurikoshiDate) {
   let all = [], cursor;
+  const sizeF = { property: 'サイズコード', select: { equals: sizeFilter } };
+  const filter = kurikoshiDate
+    ? { and: [ sizeF, { timestamp: 'created_time', created_time: { on_or_after: kurikoshiDate } } ] }
+    : sizeF;
   while (true) {
-    const body = { filter: { property: 'サイズコード', select: { equals: sizeFilter } }, page_size: 100 };
+    const body = { filter, page_size: 100 };
     if (cursor) body.start_cursor = cursor;
     const res = await notionAPI('POST', `/databases/${dbId}/query`, body);
     if (res.object === 'error') throw new Error(res.message);

@@ -427,9 +427,22 @@ const CAT_DB_MAP = {
 const KUBUN_SIGN = {
   '入庫':1,'移動入庫':1,'返品（倉庫へ）':1,'返品':1,
   '出庫':-1,'準備':-1,'移動出庫':-1,'返品（メーカーへ）':-1,
-  '発注中':0
+  '発注中':0,'繰越':1
 };
 const WAREHOUSES = ['五日市倉庫','志和倉庫'];
+
+// ── 繰越日を取得（DBから区分="繰越"の最新レコードを探す）──
+async function getKurikoshiDate(dbId) {
+  try {
+    const res = await notionAPI('POST', `/databases/${dbId}/query`, {
+      filter: { property: '区分', select: { equals: '繰越' } },
+      sorts: [{ timestamp: 'created_time', direction: 'descending' }],
+      page_size: 1
+    });
+    if (res.results?.length) return res.results[0].created_time;
+  } catch(e) { console.warn('繰越日取得失敗:', e); }
+  return null;
+}
 
 // ──────────────────────────────────────
 // State
@@ -589,42 +602,12 @@ async function fetchInFlightOrders() {
 
 async function loadAlerts() {
   const el = document.getElementById('alert-content');
-  el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">スナップショットを取得中…</div></div>';
+  el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">在庫データを取得中…</div></div>';
   await new Promise(r => setTimeout(r, 30));
 
   try {
-    // スナップショットDBから全データ取得（在庫数＋しきい値）
+    // しきい値DBから全データ取得（しきい値タブ用にsnapshotCacheも保持）
     snapshotCache = await fetchAllSnapshotsWithThreshold();
-
-    // 発注管理表から「発注中」「新規発注」の数量を取得（二重発注防止）
-    const inFlightMap = await fetchInFlightOrders();
-
-    // しきい値が設定されているレコードでアラート判定
-    const allItems = [];
-    for (const [key, snap] of Object.entries(snapshotCache)) {
-      const threshold = snap.threshold;
-      if (!threshold || threshold <= 0) continue; // しきい値未設定はスキップ
-      const realStock = snap.stock ?? 0;
-      if (realStock < threshold) {
-        const [cat, pattern, size, warehouse] = key.split('|');
-        const shortWh = warehouse === '五日市倉庫' ? '五日市' : '志和';
-        const inFlightKey = `${pattern}|${size}|${shortWh}`;
-        const inFlight = inFlightMap[inFlightKey] || 0;
-        const needed = threshold - realStock - inFlight;
-        if (needed <= 0) continue; // 発注中の数量で足りる→アラート不要
-        const maker = guessMaker(pattern);
-        allItems.push({
-          pageId: snap.pageId,
-          kijunId: key,
-          pattern, size, category: cat, warehouse,
-          threshold, realStock,
-          actualStock: realStock, prepQty: 0, orderInFlight: inFlight,
-          orderQty: needed,
-          selected: needed > 0 && SUPPLIER_CONFIG[currentSupplier].makerKeys.includes(maker),
-          maker,
-        });
-      }
-    }
 
     // しきい値が1件もDBに設定されていない場合→初回マイグレーション
     const hasAnyThreshold = Object.values(snapshotCache).some(s => s.threshold > 0);
@@ -633,6 +616,62 @@ async function loadAlerts() {
       await migrateDefaultThresholds(snapshotCache);
       snapshotCache = await fetchAllSnapshotsWithThreshold();
       return loadAlerts();
+    }
+
+    // しきい値が設定されているカテゴリを特定
+    const catsNeeded = new Set();
+    for (const [key, snap] of Object.entries(snapshotCache)) {
+      if (snap.threshold > 0) catsNeeded.add(key.split('|')[0]);
+    }
+
+    // 各カテゴリからリアルタイム在庫を取得
+    el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">リアルタイム在庫を計算中…</div></div>';
+    const realStockMap = {};
+    for (const cat of catsNeeded) {
+      const dbInfo = CAT_DB_MAP[cat];
+      if (!dbInfo) continue;
+      const stockDbId = dbInfo.stockId || dbInfo.id;
+      const kurikoshiDate = await getKurikoshiDate(stockDbId);
+      const catStockMap = {};
+      await fetchStockForCat(cat, dbInfo, catStockMap, kurikoshiDate);
+      for (const [k, v] of Object.entries(catStockMap)) {
+        realStockMap[`${cat}|${k}`] = v;
+      }
+    }
+
+    // 発注管理表から「発注中」「新規発注」の数量を取得（二重発注防止）
+    const inFlightMap = await fetchInFlightOrders();
+
+    // アラート判定（リアルタイム在庫 vs しきい値）
+    const allItems = [];
+    for (const [key, snap] of Object.entries(snapshotCache)) {
+      const threshold = snap.threshold;
+      if (!threshold || threshold <= 0) continue;
+
+      const [cat, pattern, size, warehouse] = key.split('|');
+      const stockData = realStockMap[key];
+      const realStock = stockData?.actual ?? 0;
+      const prepQty   = stockData?.prepQty ?? 0;
+
+      if (realStock >= threshold) continue;
+
+      const shortWh = warehouse === '五日市倉庫' ? '五日市' : '志和';
+      const inFlightKey = `${pattern}|${size}|${shortWh}`;
+      const inFlight = inFlightMap[inFlightKey] || 0;
+      const needed = threshold - realStock - inFlight;
+      if (needed <= 0) continue;
+
+      const maker = guessMaker(pattern);
+      allItems.push({
+        pageId: snap.pageId,
+        kijunId: key,
+        pattern, size, category: cat, warehouse,
+        threshold, realStock,
+        actualStock: realStock, prepQty, orderInFlight: inFlight,
+        orderQty: needed,
+        selected: needed > 0 && SUPPLIER_CONFIG[currentSupplier].makerKeys.includes(maker),
+        maker,
+      });
     }
 
     alertItems = allItems;
@@ -733,23 +772,26 @@ async function fetchKijunForCat(catName, kijunDbId) {
   }
 }
 
-async function fetchStockForCat(cat, dbInfo, stockMap) {
+async function fetchStockForCat(cat, dbInfo, stockMap, kurikoshiDate) {
   const info = dbInfo || CAT_DB_MAP[cat];
   if (!info) return;
   const stockDbId = info.stockId || info.id;
 
   const warehouseField = info.wField;
-  const filter = {
+  const whFilter = {
     or: [
       { property: warehouseField, select: { equals: '五日市倉庫' } },
       { property: warehouseField, select: { equals: '志和倉庫' } },
       { property: '区分', select: { equals: '発注中' } },
     ]
   };
+  const filter = kurikoshiDate
+    ? { and: [ whFilter, { timestamp: 'created_time', created_time: { on_or_after: kurikoshiDate } } ] }
+    : whFilter;
 
   let all = [], cursor;
   let pageNum = 0;
-  while (pageNum < 5) {
+  while (pageNum < 20) {
     pageNum++;
     const body = { filter, page_size: 100 };
     if (cursor) body.start_cursor = cursor;

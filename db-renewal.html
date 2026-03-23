@@ -192,10 +192,14 @@ function confirmAndRun() {
 // ── 在庫DBのレコードからリアルタイム在庫を計算 ──
 function calcStockFromRecords(records, wField) {
   const stockMap = {}; // key: "pattern|size|warehouse" → stock number
+  // 繰越に含めない区分: 繰越（旧データ）、準備、発注中
+  // 準備・発注中は繰越後も日付を問わず取得して表示時に適用するため、
+  // 繰越ベースラインには含めない（二重計上防止）
+  const SKIP_IN_KURIKOSHI = new Set(['繰越', '準備', '発注中']);
   for (const r of records) {
     const p = r.properties;
     const kubun = p['区分']?.select?.name || '';
-    if (kubun === '繰越') continue; // 旧繰越は除外して純粋な入出庫で計算
+    if (SKIP_IN_KURIKOSHI.has(kubun)) continue;
     const pattern = p['パターン名']?.select?.name || '';
     const size = p['サイズコード']?.select?.name || '';
     const wh = p[wField]?.select?.name || '';

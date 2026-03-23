@@ -269,6 +269,7 @@ const PROXY = 'https://notion-proxy.33322666666mm.workers.dev';
 const DB = {
   comm: '295feb96730a410a8d7ad8c2a9ad7abe',
   task: 'e0663ce07e5a4b99894622199b064f5a',
+  reply: 'b48824ec42d74a9b99d58f5fc97a9a0f',
 };
 
 const MSG_PAGES = [
@@ -734,24 +735,23 @@ async function loadReplies(pageId) {
   const listEl = document.getElementById('reply-list');
   const countEl = document.getElementById('reply-count');
   try {
-    const res = await notionAPI('GET', '/comments?block_id=' + pageId);
-    const comments = res.results || [];
-    if (comments.length === 0) {
+    const res = await notionAPI('POST', `/databases/${DB.reply}/query`, {
+      filter: { property: '投稿ID', rich_text: { equals: pageId } },
+      sorts: [{ timestamp: 'created_time', direction: 'ascending' }]
+    });
+    const replies = res.results || [];
+    if (replies.length === 0) {
       listEl.innerHTML = '<div class="reply-empty">まだ返信はありません</div>';
       countEl.style.display = 'none';
     } else {
-      countEl.textContent = comments.length;
+      countEl.textContent = replies.length;
       countEl.style.display = 'inline-block';
       listEl.innerHTML = '';
-      for (const c of comments) {
-        const text = (c.rich_text || []).map(t => t.plain_text).join('');
-        const createdAt = c.created_time ? new Date(c.created_time) : null;
+      for (const r of replies) {
+        const body = (r.properties['返信内容']?.title || []).map(t => t.plain_text).join('');
+        const author = (r.properties['投稿者']?.rich_text || []).map(t => t.plain_text).join('');
+        const createdAt = r.created_time ? new Date(r.created_time) : null;
         const timeStr = createdAt ? `${createdAt.getMonth()+1}/${createdAt.getDate()} ${String(createdAt.getHours()).padStart(2,'0')}:${String(createdAt.getMinutes()).padStart(2,'0')}` : '';
-        // テキストから投稿者名を抽出（フォーマット: 【名前】メッセージ）
-        let author = '';
-        let body = text;
-        const m = text.match(/^【(.+?)】\s*([\s\S]*)$/);
-        if (m) { author = m[1]; body = m[2]; }
         const isMine = currentUserName && author === currentUserName;
         const el = document.createElement('div');
         el.className = 'reply-item' + (isMine ? ' mine' : '');
@@ -761,11 +761,9 @@ async function loadReplies(pageId) {
           '<div class="reply-time">' + escapeHtml(timeStr) + '</div>';
         listEl.appendChild(el);
       }
-      // 最下部にスクロール
       listEl.scrollTop = listEl.scrollHeight;
     }
-    // 既読記録を更新
-    markRepliesSeen(pageId, comments.length);
+    markRepliesSeen(pageId, replies.length);
   } catch(e) {
     listEl.innerHTML = '<div class="reply-empty">返信の読み込みに失敗しました</div>';
     console.error('loadReplies error:', e);
@@ -780,16 +778,17 @@ async function submitReply() {
   if (!text) return;
   btn.disabled = true; btn.textContent = '送信中…';
   try {
-    // 【名前】をプレフィックスとして付与
-    const fullText = '【' + currentUserName + '】 ' + text;
-    await notionAPI('POST', '/comments', {
-      parent: { page_id: detailData.id },
-      rich_text: [{ type: 'text', text: { content: fullText } }]
+    await notionAPI('POST', '/pages', {
+      parent: { database_id: DB.reply },
+      properties: {
+        '返信内容': { title: [{ text: { content: text } }] },
+        '投稿ID':   { rich_text: [{ text: { content: detailData.id } }] },
+        '投稿者':   { rich_text: [{ text: { content: currentUserName } }] },
+      }
     });
     input.value = '';
     input.style.height = 'auto';
     showToast('返信しました', 'success');
-    // 返信リストを再読み込み
     await loadReplies(detailData.id);
   } catch(e) {
     showToast('送信エラー: ' + e.message, 'error');
@@ -813,18 +812,28 @@ let _replyCountCache = {};
 async function loadReplyCountsForBadge(pages) {
   _replyCountCache = {};
   const seenMap = getReplySeenMap();
-  // 並列で全ページのコメント数を取得（最大20件に制限）
-  const targets = pages.slice(0, 20);
-  const results = await Promise.allSettled(
-    targets.map(async p => {
-      try {
-        const res = await notionAPI('GET', '/comments?block_id=' + p.id);
-        const count = (res.results || []).length;
-        const seen = seenMap[p.id] || 0;
-        _replyCountCache[p.id] = { total: count, unseen: Math.max(0, count - seen) };
-      } catch(e) { /* silent */ }
-    })
-  );
+  try {
+    // 全返信を一括取得（1回のクエリで済む）
+    const pageIds = pages.slice(0, 50).map(p => p.id);
+    const res = await notionAPI('POST', `/databases/${DB.reply}/query`, {
+      filter: { or: pageIds.map(id => ({ property: '投稿ID', rich_text: { equals: id } })) },
+      page_size: 100
+    });
+    const replies = res.results || [];
+    // 投稿IDごとにカウント
+    const countMap = {};
+    for (const r of replies) {
+      const pid = (r.properties['投稿ID']?.rich_text || []).map(t => t.plain_text).join('');
+      if (pid) countMap[pid] = (countMap[pid] || 0) + 1;
+    }
+    for (const id of pageIds) {
+      const total = countMap[id] || 0;
+      const seen = seenMap[id] || 0;
+      _replyCountCache[id] = { total, unseen: Math.max(0, total - seen) };
+    }
+  } catch(e) {
+    console.error('loadReplyCountsForBadge error:', e);
+  }
 }
 
 async function updateCommStatus(status) {

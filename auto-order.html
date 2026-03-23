@@ -128,6 +128,15 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 .qty-btn { width:26px; height:26px; border-radius:6px; border:1px solid var(--border2); background:var(--s3); color:var(--text); font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:'Noto Sans JP',sans-serif; flex-shrink:0; }
 .qty-num { font-size:16px; font-weight:700; font-family:'DM Mono',monospace; color:var(--accent); width:30px; text-align:center; }
 
+/* ── Supplier toggle ── */
+.supplier-toggle { display:flex; gap:0; background:var(--s2); border:1px solid var(--border); border-radius:12px; padding:3px; margin-bottom:14px; }
+.supplier-btn { flex:1; padding:10px 8px; border-radius:9px; border:none; font-size:12px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.2s; background:transparent; color:var(--muted); display:flex; align-items:center; justify-content:center; gap:6px; }
+.supplier-btn.active-toyo { background:rgba(240,165,0,0.15); color:var(--accent); box-shadow:0 1px 4px rgba(240,165,0,0.15); }
+.supplier-btn.active-bs { background:rgba(59,130,246,0.15); color:var(--blue); box-shadow:0 1px 4px rgba(59,130,246,0.15); }
+.supplier-btn .sup-count { font-size:10px; font-weight:700; padding:1px 6px; border-radius:8px; background:rgba(255,255,255,0.1); }
+.supplier-btn.active-toyo .sup-count { background:rgba(240,165,0,0.2); }
+.supplier-btn.active-bs .sup-count { background:rgba(59,130,246,0.2); }
+
 /* ── PDF options ── */
 .pdf-options { display:flex; gap:8px; margin-bottom:12px; }
 .pdf-opt-btn { flex:1; padding:11px 8px; border-radius:10px; font-size:12px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; }
@@ -418,6 +427,12 @@ const WAREHOUSES = ['五日市倉庫','志和倉庫'];
 let alertItems    = [];  // {kijunId, pattern, size, category, warehouse, threshold, realStock, orderQty, selected, maker}
 let orderItems    = [];  // alertItemsのselectedなもの（発注確認ページ用）
 let currentUser   = '';
+let currentSupplier = 'TOYO'; // 'TOYO' or 'BS'
+
+const SUPPLIER_CONFIG = {
+  TOYO: { label: 'TOYO', fullLabel: 'TOYO TIRE', color: 'var(--accent)', makerKeys: ['TOYO'], notionName: 'TOYO' },
+  BS:   { label: 'BRIDGESTONE', fullLabel: 'BRIDGESTONE', color: 'var(--blue)', makerKeys: ['BS','BRIDGESTONE'], notionName: 'BRIDGESTONE' },
+};
 
 // ──────────────────────────────────────
 // 初期化
@@ -595,7 +610,7 @@ async function loadAlerts() {
           threshold, realStock,
           actualStock: realStock, prepQty: 0, orderInFlight: inFlight,
           orderQty: needed,
-          selected: needed > 0 && maker === 'TOYO',
+          selected: needed > 0 && SUPPLIER_CONFIG[currentSupplier].makerKeys.includes(maker),
           maker,
         });
       }
@@ -771,21 +786,55 @@ function guessMaker(pattern) {
 }
 
 // ──────────────────────────────────────
+// 仕入先切替
+// ──────────────────────────────────────
+function switchSupplier(sup) {
+  if (sup === currentSupplier) return;
+  currentSupplier = sup;
+  // 選択状態を切替先の仕入先に合わせて更新
+  const cfg = SUPPLIER_CONFIG[sup];
+  alertItems.forEach(item => {
+    item.selected = cfg.makerKeys.includes(item.maker) && item.orderQty > 0;
+  });
+  renderAlertPage();
+  renderOrderPage();
+}
+
+function isCurrentSupplierItem(item) {
+  return SUPPLIER_CONFIG[currentSupplier].makerKeys.includes(item.maker);
+}
+
+// ──────────────────────────────────────
 // アラートページ描画
 // ──────────────────────────────────────
 function renderAlertPage() {
   const el = document.getElementById('alert-content');
   const critical = alertItems.filter(i => i.realStock === 0).length;
   const warning  = alertItems.filter(i => i.realStock > 0).length;
-  const toyo     = alertItems.filter(i => i.maker === 'TOYO').length;
+  const toyoCount = alertItems.filter(i => i.maker === 'TOYO').length;
+  const bsCount   = alertItems.filter(i => SUPPLIER_CONFIG.BS.makerKeys.includes(i.maker)).length;
+
+  const cfg = SUPPLIER_CONFIG[currentSupplier];
+  const activeCount = currentSupplier === 'TOYO' ? toyoCount : bsCount;
 
   let html = '<div style="padding:12px 0 0;">';
 
+  // 仕入先トグル
+  html += `<div class="supplier-toggle">
+    <button class="supplier-btn ${currentSupplier === 'TOYO' ? 'active-toyo' : ''}" onclick="switchSupplier('TOYO')">
+      TOYO <span class="sup-count">${toyoCount}</span>
+    </button>
+    <button class="supplier-btn ${currentSupplier === 'BS' ? 'active-bs' : ''}" onclick="switchSupplier('BS')">
+      BRIDGESTONE <span class="sup-count">${bsCount}</span>
+    </button>
+  </div>`;
+
   // サマリー
+  const supColor = cfg.color;
   html += `<div class="summary-bar">
     <div class="summ-card"><div class="summ-num" style="color:var(--red);">${critical}</div><div class="summ-lbl">在庫ゼロ</div></div>
     <div class="summ-card"><div class="summ-num" style="color:var(--yellow);">${warning}</div><div class="summ-lbl">不足</div></div>
-    <div class="summ-card"><div class="summ-num" style="color:var(--accent);">${toyo}</div><div class="summ-lbl">TOYO要発注</div></div>
+    <div class="summ-card"><div class="summ-num" style="color:${supColor};">${activeCount}</div><div class="summ-lbl">${cfg.label}要発注</div></div>
   </div>`;
 
   // カテゴリ別取得件数（デバッグ用折りたたみ）
@@ -851,9 +900,10 @@ function renderAlertPage() {
     });
   });
 
-  const toyoCount = alertItems.filter(i => i.maker === 'TOYO' && i.orderQty > 0).length;
-  html += `<button class="btn-primary" onclick="goToOrderTab()" ${toyoCount ? '' : 'disabled'}>
-    TOYO 発注対象 ${toyoCount}品目 を確認する →
+  const supItems = alertItems.filter(i => isCurrentSupplierItem(i) && i.orderQty > 0);
+  const supBtnColor = currentSupplier === 'BS' ? 'background:var(--blue);' : '';
+  html += `<button class="btn-primary" onclick="goToOrderTab()" style="${supBtnColor}" ${supItems.length ? '' : 'disabled'}>
+    ${cfg.label} 発注対象 ${supItems.length}品目 を確認する →
   </button>`;
   html += '<div style="height:16px;"></div>';
   html += '</div>';
@@ -861,6 +911,11 @@ function renderAlertPage() {
 }
 
 function goToOrderTab() {
+  // 現在の仕入先のアイテムだけ選択状態にする
+  const cfg = SUPPLIER_CONFIG[currentSupplier];
+  alertItems.forEach(item => {
+    item.selected = cfg.makerKeys.includes(item.maker) && item.orderQty > 0;
+  });
   renderOrderPage();
   switchTab('order');
 }
@@ -950,10 +1005,15 @@ function previewOrderPdf() {
   const selectedItems = alertItems.filter(i => i.selected && i.orderQty > 0);
   if (!selectedItems.length) { alert('発注対象を選択してください'); return; }
 
-  // ファイル名生成 — TMFoo_発注書_発注者_日付
+  // ファイル名生成 — TMFoo_発注書_仕入先_日付
   const now2 = new Date();
   const ds = `${now2.getFullYear()}${String(now2.getMonth()+1).padStart(2,'0')}${String(now2.getDate()).padStart(2,'0')}`;
-  const defaultFilename = `TMFoo_発注書_自動_${ds}`;
+  const MAKER_SHORT = {'TOYO':'TOYO','BS':'BS','BRIDGESTONE':'BS','DUNLOP':'DUNLOP'};
+  const makerCounts0 = {};
+  selectedItems.forEach(i => { makerCounts0[i.maker] = (makerCounts0[i.maker]||0)+1; });
+  const mainMaker0 = Object.entries(makerCounts0).sort((a,b)=>b[1]-a[1])[0]?.[0] || 'TOYO';
+  const makerTag0 = MAKER_SHORT[mainMaker0] || mainMaker0;
+  const defaultFilename = `TMFoo_発注書_自動_${makerTag0}_${ds}`;
   document.getElementById('pdf-filename-input').value = defaultFilename;
   window._pdfFilename = defaultFilename;
 
@@ -1115,7 +1175,7 @@ async function createHacchuRecords(items, tantou, nouki, biko) {
       'パターン':     { select: { name: item.pattern } },
       'サイズ':       { select: { name: item.size } },
       '数量':         { number: item.orderQty },
-      '仕入先':       { select: { name: 'TOYO' } },
+      '仕入先':       { select: { name: SUPPLIER_CONFIG[item.maker === 'TOYO' ? 'TOYO' : 'BS']?.notionName || item.maker } },
       '種別':         { select: { name: 'タイヤ' } },
       'ステータス':   { select: { name: '発注済' } },
       '納入予定場所': { select: { name: warehouseLabel } },

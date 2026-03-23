@@ -436,7 +436,7 @@ async function getKurikoshiDate(dbId) {
   try {
     const res = await notionAPI('POST', `/databases/${dbId}/query`, {
       filter: { property: '区分', select: { equals: '繰越' } },
-      sorts: [{ timestamp: 'created_time', direction: 'descending' }],
+      sorts: [{ timestamp: 'created_time', direction: 'ascending' }],
       page_size: 1
     });
     if (res.results?.length) return res.results[0].created_time;

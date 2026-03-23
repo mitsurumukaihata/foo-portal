@@ -786,10 +786,13 @@ async function fetchStockForCat(cat, dbInfo, stockMap) {
 
 function guessMaker(pattern) {
   const p = (pattern || '').toUpperCase();
-  if (p.startsWith('W') || p.startsWith('G539') || p.startsWith('R') ||
-      ['LV01','W300','RTM810','RTM804','RTM807','RTM81C-170','RTM890','RTW910','RTW911','RTW970','RTG610'].includes(pattern)) return 'BS';
+  // BS系: Wシリーズ, Rシリーズ, G539, 及び BS専用Mパターン
+  const BS_PATTERNS = new Set(['M888','M899','M801','M746','M804','R225','R241','G539','W910','W900S','W911','W970','W999','R207','W989','LV01','K370','R710','V600','W300']);
+  if (BS_PATTERNS.has(pattern)) return 'BS';
+  if (p.startsWith('W') || p.startsWith('G539') || (p.startsWith('R') && !p.startsWith('RT'))) return 'BS';
+  if (p.startsWith('RT')) return 'BS'; // 再生タイヤ
   if (['LT01','SV01','VAN01','SPLT50','SPLT21','SPLT22'].includes(p) || p.startsWith('SP')) return 'DUNLOP';
-  if (pattern === 'XJE4') return 'MICHELIN';
+  if (pattern === 'XJE4' || pattern === 'XDW') return 'MICHELIN';
   return 'TOYO';
 }
 

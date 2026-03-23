@@ -52,9 +52,9 @@ h1 span{font-weight:400;font-size:16px;color:#888}
 
 <div class="content">
   <div class="info-box">
-    在庫DBの全レコードを集計し「繰越」レコードを作成します。<br>
+    <b>スナップショットDBの在庫値</b>をベースに「繰越」レコードを作成します。<br>
     過去データは<b>削除されません</b>。過去の繰越レコードのみアーカイブされます。<br>
-    繰越後、在庫計算は繰越以降のレコードだけで行われるため<b>表示速度が向上</b>します。
+    繰越後、在庫計算は繰越＋準備＋発注中＋新規レコードだけで行われ<b>表示速度が向上</b>します。
   </div>
 
   <div id="last-run-info"></div>
@@ -79,15 +79,17 @@ const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
 const SESSION_KEY = 'foo_portal_session';
 const KURIKOSHI_KEY = 'foo_kurikoshi_date';
 
+const SNAPSHOT_DB = '1123c46301764238a511114ed59159bd';
+
 const DB_MAP = {
-  ltl_normal:   { id:'200a695f8e888018b5f5eac83fdad412', name:'LTL TB ノーマル',     icon:'🚛', wField:'倉庫' },
-  ltl_studless: { id:'201a695f8e888171abb8e349ad4d055a', name:'LTL TB スタッドレス', icon:'❄️', wField:'倉庫' },
-  lts_normal:   { id:'201a695f8e8881adb144cd3a1639132d', name:'LTS ノーマル',        icon:'🚐', wField:'倉庫' },
-  lts_studless: { id:'201a695f8e8881a299e8fb57bad707f6', name:'LTS スタッドレス',    icon:'❄️', wField:'倉庫' },
-  rt:           { id:'201a695f8e888104bb47c7103d5909dc', name:'RT 再生',             icon:'♻️', wField:'倉庫' },
-  tt:           { id:'201a695f8e8881a6930fcf2bd752e676', name:'T/T チューブタイプ',  icon:'🔧', wField:'倉庫' },
-  van:          { id:'201a695f8e8881f3a958cead42156e07', name:'バン',                icon:'🚌', wField:'出庫倉庫' },
-  lift:         { id:'201a695f8e8881c5b2c3d9e9ce2ffd21', name:'リフト',             icon:'🏗️', wField:'出庫倉庫' },
+  ltl_normal:   { id:'200a695f8e888018b5f5eac83fdad412', name:'LTL TB ノーマル',     catName:'LTL TB　ノーマル',     icon:'🚛', wField:'倉庫' },
+  ltl_studless: { id:'201a695f8e888171abb8e349ad4d055a', name:'LTL TB スタッドレス', catName:'LTL TB　スタッドレス', icon:'❄️', wField:'倉庫' },
+  lts_normal:   { id:'201a695f8e8881adb144cd3a1639132d', name:'LTS ノーマル',        catName:'LTS　ノーマル',        icon:'🚐', wField:'倉庫' },
+  lts_studless: { id:'201a695f8e8881a299e8fb57bad707f6', name:'LTS スタッドレス',    catName:'LTS　スタッドレス',    icon:'❄️', wField:'倉庫' },
+  rt:           { id:'201a695f8e888104bb47c7103d5909dc', name:'RT 再生',             catName:'RT 再生',             icon:'♻️', wField:'倉庫' },
+  tt:           { id:'201a695f8e8881a6930fcf2bd752e676', name:'T/T チューブタイプ',  catName:'T/T チューブタイプ',  icon:'🔧', wField:'倉庫' },
+  van:          { id:'201a695f8e8881f3a958cead42156e07', name:'バン',                catName:'バン',                icon:'🚌', wField:'出庫倉庫' },
+  lift:         { id:'201a695f8e8881c5b2c3d9e9ce2ffd21', name:'リフト',             catName:'リフト',             icon:'🏗️', wField:'出庫倉庫' },
 };
 
 const KUBUN_SIGN = {
@@ -187,6 +189,33 @@ function confirmAndRun() {
   }
 }
 
+// ── Fetch all snapshot records ──
+async function fetchAllSnapshots() {
+  const map = {};
+  let cursor, page = 0;
+  while (page < 20) {
+    page++;
+    const body = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    const res = await notionAPI('POST', `/databases/${SNAPSHOT_DB}/query`, body);
+    for (const p of (res.results || [])) {
+      const props = p.properties;
+      const catName   = props['カテゴリ']?.select?.name || '';
+      const pattern   = props['パターン名']?.rich_text?.[0]?.plain_text || '';
+      const size      = props['サイズコード']?.rich_text?.[0]?.plain_text || '';
+      const warehouse = props['倉庫']?.select?.name || '';
+      const stock     = props['在庫数']?.number ?? 0;
+      if (catName && pattern && size && warehouse) {
+        const key = `${catName}|${pattern}|${size}|${warehouse}`;
+        map[key] = stock;
+      }
+    }
+    if (!res.has_more) break;
+    cursor = res.next_cursor;
+  }
+  return map;
+}
+
 // ── Main 繰越 processing ──
 async function runKurikoshi() {
   const user = checkAuth();
@@ -198,108 +227,106 @@ async function runKurikoshi() {
   document.getElementById('log').innerHTML = '';
   document.getElementById('summary-wrap').innerHTML = '';
 
-  const cats = Object.entries(DB_MAP);
-  let totalCreated = 0, totalArchived = 0, totalOriginal = 0;
-  let done = 0;
+  try {
+    // ── Step 1: スナップショットDBから現在の在庫数を取得 ──
+    addLog('スナップショットDBから在庫データを取得中…');
+    const snapMap = await fetchAllSnapshots();
+    const snapCount = Object.keys(snapMap).length;
+    addLog(`${snapCount} 件の在庫データを取得`, 'ok');
 
-  for (const [catKey, db] of cats) {
-    updateProgress(done, cats.length, `${db.icon} ${db.name} を処理中… (${done+1}/${cats.length})`);
+    const cats = Object.entries(DB_MAP);
+    let totalCreated = 0, totalArchived = 0;
+    let done = 0;
 
-    try {
-      addLog(`━━ ${db.icon} ${db.name} ━━`);
-      addLog('レコード取得中…');
-      const records = await fetchAll(db.id);
-      addLog(`${records.length} 件取得完了`);
-      totalOriginal += records.length;
+    for (const [catKey, db] of cats) {
+      updateProgress(done, cats.length, `${db.icon} ${db.name} を処理中… (${done+1}/${cats.length})`);
 
-      // Calculate stock per pattern/size/warehouse
-      const stockMap = {};
-      const oldKurikoshi = [];
+      try {
+        addLog(`━━ ${db.icon} ${db.name} ━━`);
 
-      records.forEach(r => {
-        const props = r.properties;
-        const kubun   = props['区分']?.select?.name || '';
-        const pattern = props['パターン名']?.select?.name || '';
-        const size    = props['サイズコード']?.select?.name || '';
-        const wh      = props[db.wField]?.select?.name || '';
-        const qty     = props['数量']?.number || 0;
-
-        if (kubun === '繰越') { oldKurikoshi.push(r.id); }
-        // 準備・発注中は「進行中」なので繰越に含めない（在庫クエリで常に取得される）
-        if (kubun === '発注中' || kubun === '準備') return;
-        if (!pattern || !size || !wh) return;
-
-        const key = `${pattern}|${size}|${wh}`;
-        const sign = KUBUN_SIGN[kubun] ?? 0;
-        stockMap[key] = (stockMap[key] || 0) + sign * qty;
-      });
-
-      // Archive old 繰越 records
-      if (oldKurikoshi.length) {
-        addLog(`旧繰越 ${oldKurikoshi.length} 件をアーカイブ…`);
-        for (const pid of oldKurikoshi) {
-          await notionAPI('PATCH', `/pages/${pid}`, { archived: true });
-        }
-        totalArchived += oldKurikoshi.length;
-      }
-
-      // Create new 繰越 records
-      const entries = Object.entries(stockMap).filter(([,v]) => v !== 0);
-      addLog(`繰越レコード ${entries.length} 件を作成中…`);
-      let created = 0;
-      for (const [key, stock] of entries) {
-        const [pattern, size, wh] = key.split('|');
-        await notionAPI('POST', '/pages', {
-          parent: { database_id: db.id },
-          properties: {
-            'タイトル': { title: [{ text: { content: `${size} ${pattern} 繰越 ${wh}` } }] },
-            'サイズコード': { select: { name: size } },
-            'パターン名': { select: { name: pattern } },
-            '区分': { select: { name: '繰越' } },
-            '数量': { number: stock },
-            [db.wField]: { select: { name: wh } },
-            '作成者': { select: { name: user.name } },
+        // ── Step 2: スナップショットからこのカテゴリの在庫を抽出 ──
+        const catSnaps = {};
+        for (const [key, stock] of Object.entries(snapMap)) {
+          if (key.startsWith(db.catName + '|')) {
+            const rest = key.substring(db.catName.length + 1); // "pattern|size|warehouse"
+            catSnaps[rest] = stock;
           }
-        });
-        created++;
-        if (created % 10 === 0 || created === entries.length) {
-          addLog(`  ${created}/${entries.length} 作成完了`, 'ok');
         }
-      }
+        addLog(`スナップショット: ${Object.keys(catSnaps).length} 組合せ`);
 
-      totalCreated += created;
-      addLog(`${db.name} 完了`, 'ok');
+        // ── Step 3: 既存の繰越レコードをアーカイブ ──
+        const oldKuri = await fetchAll(db.id, { property: '区分', select: { equals: '繰越' } });
+        if (oldKuri.length) {
+          addLog(`旧繰越 ${oldKuri.length} 件をアーカイブ…`);
+          for (const r of oldKuri) {
+            await notionAPI('PATCH', `/pages/${r.id}`, { archived: true });
+          }
+          totalArchived += oldKuri.length;
+        }
 
-      // Update card
-      const card = document.getElementById(`card-${catKey}`);
-      if (card) {
-        const countDiv = card.querySelector('.cat-count');
-        if (countDiv) countDiv.innerHTML = `<span class="num">${created}</span><br>繰越作成`;
+        // ── Step 4: スナップショットの値で繰越レコードを作成 ──
+        const entries = Object.entries(catSnaps).filter(([, v]) => v !== 0);
+        addLog(`繰越レコード ${entries.length} 件を作成中…`);
+        let created = 0;
+        for (const [combo, stock] of entries) {
+          const [pattern, size, wh] = combo.split('|');
+          if (!pattern || !size || !wh) continue;
+          await notionAPI('POST', '/pages', {
+            parent: { database_id: db.id },
+            properties: {
+              'タイトル': { title: [{ text: { content: `${size} ${pattern} 繰越 ${wh}` } }] },
+              'サイズコード': { select: { name: size } },
+              'パターン名': { select: { name: pattern } },
+              '区分': { select: { name: '繰越' } },
+              '数量': { number: stock },
+              [db.wField]: { select: { name: wh } },
+              '作成者': { select: { name: user.name } },
+            }
+          });
+          created++;
+          if (created % 10 === 0 || created === entries.length) {
+            addLog(`  ${created}/${entries.length} 作成完了`, 'ok');
+          }
+        }
+
+        totalCreated += created;
+        addLog(`${db.name} 完了`, 'ok');
+
+        const card = document.getElementById(`card-${catKey}`);
+        if (card) {
+          const countDiv = card.querySelector('.cat-count');
+          if (countDiv) countDiv.innerHTML = `<span class="num">${created}</span><br>繰越作成`;
+        }
+      } catch(e) {
+        addLog(`${db.name} エラー: ${e.message}`, 'err');
       }
-    } catch(e) {
-      addLog(`${db.name} エラー: ${e.message}`, 'err');
+      done++;
     }
-    done++;
+
+    // Save 繰越 date
+    const now = new Date().toISOString();
+    localStorage.setItem(KURIKOSHI_KEY, now);
+
+    updateProgress(cats.length, cats.length, '全カテゴリの繰越処理が完了しました');
+    addLog('━━━━━━━━━━━━━━━━━━━━━━━━━━', 'ok');
+    addLog('全カテゴリ処理完了', 'ok');
+
+    document.getElementById('summary-wrap').innerHTML = `
+      <div class="summary">
+        <b>繰越処理サマリー</b><br>
+        スナップショットから取得: ${snapCount} 件<br>
+        作成した繰越レコード: ${totalCreated.toLocaleString()} 件<br>
+        アーカイブした旧繰越: ${totalArchived.toLocaleString()} 件<br><br>
+        スナップショットの実績値をベースに繰越レコードを作成しました。<br>
+        以降の在庫計算は繰越＋準備＋発注中＋新規レコードで正確に行われます。
+      </div>`;
+
+    showLastRun();
+
+  } catch(e) {
+    addLog(`致命的エラー: ${e.message}`, 'err');
   }
 
-  // Save 繰越 date
-  const now = new Date().toISOString();
-  localStorage.setItem(KURIKOSHI_KEY, now);
-
-  updateProgress(cats.length, cats.length, '全カテゴリの繰越処理が完了しました');
-  addLog('━━━━━━━━━━━━━━━━━━━━━━━━━━', 'ok');
-  addLog('全カテゴリ処理完了', 'ok');
-
-  document.getElementById('summary-wrap').innerHTML = `
-    <div class="summary">
-      <b>繰越処理サマリー</b><br>
-      処理前の総レコード数: ${totalOriginal.toLocaleString()} 件<br>
-      作成した繰越レコード: ${totalCreated.toLocaleString()} 件<br>
-      アーカイブした旧繰越: ${totalArchived.toLocaleString()} 件<br><br>
-      次回の在庫計算は繰越レコード＋新規レコードのみで行われるため高速化されます。
-    </div>`;
-
-  showLastRun();
   btn.textContent = '繰越処理を実行';
   btn.disabled = false;
 }

@@ -255,13 +255,17 @@ async function runKurikoshi() {
         addLog(`スナップショット: ${Object.keys(catSnaps).length} 組合せ`);
 
         // ── Step 3: 既存の繰越レコードをアーカイブ ──
-        const oldKuri = await fetchAll(db.id, { property: '区分', select: { equals: '繰越' } });
-        if (oldKuri.length) {
-          addLog(`旧繰越 ${oldKuri.length} 件をアーカイブ…`);
-          for (const r of oldKuri) {
-            await notionAPI('PATCH', `/pages/${r.id}`, { archived: true });
+        try {
+          const oldKuri = await fetchAll(db.id, { property: '区分', select: { equals: '繰越' } });
+          if (oldKuri.length) {
+            addLog(`旧繰越 ${oldKuri.length} 件をアーカイブ…`);
+            for (const r of oldKuri) {
+              await notionAPI('PATCH', `/pages/${r.id}`, { archived: true });
+            }
+            totalArchived += oldKuri.length;
           }
-          totalArchived += oldKuri.length;
+        } catch(archiveErr) {
+          addLog(`旧繰越なし（初回実行）`, 'info');
         }
 
         // ── Step 4: スナップショットの値で繰越レコードを作成 ──

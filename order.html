@@ -179,6 +179,26 @@ body{
 }
 .pr-btn button:active{background:rgba(34,197,94,.22);}
 .pr-badges{display:flex;gap:3px;margin-left:auto;flex-shrink:0;}
+.pr-cancel button{
+  background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);
+  border-radius:7px;padding:4px 8px;color:#ef4444;
+  font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;
+}
+.pr-cancel button:active{background:rgba(239,68,68,.18);}
+/* 取消確認オーバーレイ */
+.cancel-confirm{
+  position:fixed;top:0;left:0;right:0;bottom:0;
+  background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:1000;
+}
+.cancel-box{
+  background:var(--s1);border-radius:16px;padding:24px 20px;width:min(320px,90vw);text-align:center;
+}
+.cancel-box .cb-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;}
+.cancel-box .cb-desc{font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5;}
+.cancel-box .cb-btns{display:flex;gap:8px;}
+.cancel-box .cb-btns button{flex:1;padding:11px;border-radius:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+.cancel-box .cb-no{background:var(--s2);color:var(--text);}
+.cancel-box .cb-yes{background:#ef4444;color:#fff;}
 
 /* ── 空表示 ── */
 .empty-state{
@@ -1715,7 +1735,7 @@ function renderPending() {
 
 function renderPendingGrouped(pending) {
   // メーカー順序
-  const makerOrder = ['BRIDGESTONE','TOYO','DUNLOP','MICHELIN',''];
+  const makerOrder = ['TOYO','BRIDGESTONE','DUNLOP','MICHELIN',''];
   const makerColors = {BRIDGESTONE:'var(--blue)',TOYO:'var(--accent)',DUNLOP:'#7c3aed',MICHELIN:'#059669'};
 
   // メーカー→パターン→アイテムのツリー構築
@@ -1788,9 +1808,8 @@ function pendingRowHTML(o) {
     <div class="pr-date">${date}</div>
     <div class="pr-due">${due ? '→'+due : ''}</div>
     <div class="pr-memo">${memo.slice(0,12)}</div>
-    <div class="pr-badges">
-      <span class="badge ${badgeCls}" style="font-size:8px;padding:1px 5px;">${st === '発注済' ? '済' : '新規'}</span>
-      ${noPdfBadge}
+    <div class="pr-cancel">
+      <button onclick="event.stopPropagation(); confirmCancel('${o.id}')">取消</button>
     </div>
     <div class="pr-btn">
       <button onclick="event.stopPropagation(); openNyukoModal('${o.id}')">入庫</button>
@@ -1985,6 +2004,47 @@ async function updateDetail() {
 function closeModal(e) {
   if(e && e.target !== document.getElementById('detail-modal')) return;
   document.getElementById('detail-modal').classList.remove('open');
+}
+
+// ─── 取り消し確認 ─────────────────────────────────────────────────────────────
+function confirmCancel(id) {
+  const o = orders.find(x => x.id === id);
+  if (!o) return;
+  const pat  = propStr(o,'パターン') || '';
+  const size = propStr(o,'サイズ') || propStr(o,'サイズコード') || propStr(o,'タイヤサイズ');
+  const qty  = propStr(o,'数量') || '';
+  const loc  = propStr(o,'納入予定場所') || '';
+
+  const overlay = document.createElement('div');
+  overlay.className = 'cancel-confirm';
+  overlay.innerHTML = `<div class="cancel-box">
+    <div class="cb-title">発注を取り消しますか？</div>
+    <div class="cb-desc">${pat} ${size}<br>${qty}本 / ${loc}</div>
+    <div class="cb-btns">
+      <button class="cb-no" id="cancel-no">戻る</button>
+      <button class="cb-yes" id="cancel-yes">取り消す</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+
+  document.getElementById('cancel-no').onclick = () => overlay.remove();
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  document.getElementById('cancel-yes').onclick = async () => {
+    const yesBtn = document.getElementById('cancel-yes');
+    yesBtn.disabled = true; yesBtn.textContent = '処理中…';
+    try {
+      await notionPatch(id, { 'ステータス': { select: { name: 'キャンセル' } } });
+      // ローカル更新
+      const idx = orders.findIndex(x => x.id === id);
+      if (idx >= 0) orders[idx].properties['ステータス'].select = { name: 'キャンセル' };
+      overlay.remove();
+      renderPending();
+      showFeedback('success', '取り消しました');
+    } catch(e) {
+      yesBtn.textContent = 'エラー';
+      setTimeout(() => overlay.remove(), 1500);
+    }
+  };
 }
 
 // ─── 新規発注フォーム ─────────────────────────────────────────────────────────

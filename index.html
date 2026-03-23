@@ -1593,12 +1593,7 @@ function renderPortalApps(user) {
   const sections = {};
   APP_DEFS.forEach(def => {
     if (def.id === 'payslip') return;
-    // 管理セクションはチェックボックス不要（管理者グループで制御）
-    if (def.section === '管理') {
-      if (!sections[def.section]) sections[def.section] = [];
-      sections[def.section].push(def);
-      return;
-    }
+    // 全て社員マスタのチェックボックスで制御（coming=trueは常に表示）
     if (!def.coming && !apps[def.id]) return;
     if (!sections[def.section]) sections[def.section] = [];
     sections[def.section].push(def);
@@ -1614,10 +1609,8 @@ function renderPortalApps(user) {
     const items = sections[secName];
     if (!items || !items.length) return;
 
-    // 管理セクションは管理者のみ表示
-    if (secName === '管理' && !isAdmin) return;
-    // 経理セクションは管理者・経理のみ表示
-    if (secName === '経理' && !isAdmin && !isKeiri) return;
+    // セクション表示は社員マスタのチェックボックスに従う
+    // （チェックが入っているアプリがあればそのセクションが表示される）
 
     html += `<div class="sec"><div class="sec-label">${secName}</div>`;
 

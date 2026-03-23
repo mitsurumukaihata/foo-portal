@@ -1234,7 +1234,6 @@ async function submitNyuko() {
     const sizeCode = propStr(nyukoOrderData,'サイズコード') || size;
     const pattern  = propStr(nyukoOrderData,'パターン') || '';
     const now      = new Date();
-    const ym       = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}`;
     const creator  = (loginUser || '').replace(/ /g,'　');
 
     // ① 入出庫DBに「入庫」レコード作成
@@ -1243,9 +1242,7 @@ async function submitNyuko() {
     const props  = {
       'タイトル':   {title:[{text:{content: title}}]},
       '区分':       {select:{name:'入庫'}},
-      '処理タイプ': {select:{name:'入庫'}},
       '数量':       {number: nyukoQty},
-      '年月':       {rich_text:[{text:{content: ym}}]},
     };
     props[wField] = {select:{name: warehouse}};
     if(creator)   props['作成者']      = {select:{name: creator}};
@@ -2756,7 +2753,6 @@ async function submitOrder() {
 
     // 2) 入出庫DBに「発注中」レコードを並列作成
     const now = new Date();
-    const ym  = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}`;
 
     // パターン+サイズからDBを自動判定（手動選択はフォールバック）
     const autoKeys = detectDbKeys(selSize, pattern);
@@ -2770,7 +2766,6 @@ async function submitOrder() {
         'タイトル': {title:[{text:{content: titleText}}]},
         '区分':     {select:{name:'発注中'}},
         '数量':     {number: qty},
-        '年月':     {rich_text:[{text:{content: ym}}]},
       };
       if(loginUser)  props['作成者']    = {select:{name: loginUser}};
       if(memo)       props['メモ']      = {rich_text:[{text:{content: memo}}]};

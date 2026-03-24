@@ -1114,11 +1114,10 @@ async function submitSkipOrders() {
     }));
 
     // 2. 在庫DBに「発注中」レコード作成（CAT_DB_MAP使用）
-    const now = new Date();
-    const ym = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}`;
+    const stockErrors = [];
     const stockTasks = items.map(item => {
       const catInfo = CAT_DB_MAP[item.category];
-      if (!catInfo) { console.warn('在庫DB不明（スキップ発注）:', item.category); return null; }
+      if (!catInfo) { stockErrors.push(`DB不明: ${item.category} ${item.pattern} ${item.size}`); return null; }
       const wField = catInfo.wField;
       const props = {
         'タイトル':     { title: [{ text: { content: `${item.size} ${item.pattern} 発注中 ${item.warehouse}` } }] },
@@ -1127,13 +1126,23 @@ async function submitSkipOrders() {
         '区分':         { select: { name: '発注中' } },
         '数量':         { number: item.orderQty },
         [wField]:       { select: { name: item.warehouse } },
-        '作成者':       { select: { name: '自動発注' } },
-        '年月':         { rich_text: [{ text: { content: ym } }] },
+        '作成者':       { select: { name: '自動取込' } },
       };
       return notionAPI('POST', '/pages', { parent: { database_id: catInfo.id }, properties: props })
-        .catch(e => { console.error('在庫DB発注中レコード作成失敗:', item.pattern, item.size, e.message); return null; });
+        .then(res => {
+          if (res.object === 'error') {
+            stockErrors.push(`${item.pattern} ${item.size}: ${res.message || JSON.stringify(res)}`);
+            return null;
+          }
+          return res;
+        })
+        .catch(e => { stockErrors.push(`${item.pattern} ${item.size}: ${e.message}`); return null; });
     }).filter(Boolean);
     await Promise.all(stockTasks);
+    if (stockErrors.length) {
+      console.warn('在庫DB発注中レコード作成エラー:', stockErrors);
+      alert('⚠ 在庫DB「発注中」の一部登録に失敗:\n' + stockErrors.join('\n'));
+    }
 
     // 3. アラートリストから除外して再描画
     alertItems = alertItems.filter(i => !items.includes(i));
@@ -1144,10 +1153,12 @@ async function submitSkipOrders() {
     const el = document.getElementById('alert-content');
     const msgDiv = document.createElement('div');
     msgDiv.className = 'success-box';
+    const stockOk = items.length - stockErrors.length;
+    const stockMsg = stockErrors.length ? `（⚠ 在庫DB: ${stockOk}/${items.length}件成功）` : '（在庫DB発注中も登録済）';
     msgDiv.style.cssText = 'margin:8px 0;padding:10px 14px;background:var(--green-dim,#e8f5e9);border:1px solid var(--green,#4caf50);border-radius:10px;font-size:13px;color:var(--green,#2e7d32);';
-    msgDiv.textContent = `✓ ${items.length}品目を「発注済」にしました（発注書なし）`;
+    msgDiv.textContent = `✓ ${items.length}品目を「発注済」にしました（発注書なし）${stockMsg}`;
     el.prepend(msgDiv);
-    setTimeout(() => msgDiv.remove(), 5000);
+    setTimeout(() => msgDiv.remove(), 8000);
 
   } catch(e) {
     alert('エラー: ' + e.message);
@@ -1303,11 +1314,10 @@ async function confirmAndSaveOrder() {
     }
 
     // 3) 各在庫DBに「発注中」レコードを作成（在庫表示に反映するため）
-    const now = new Date();
-    const ym  = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}`;
+    const stockDbErrors = [];
     const stockDbTasks = selectedItems.map(item => {
       const catInfo = CAT_DB_MAP[item.category];
-      if (!catInfo) { console.warn('在庫DB不明:', item.category); return null; }
+      if (!catInfo) { stockDbErrors.push(`DB不明: ${item.category}`); return null; }
       const wField = catInfo.wField;
       const whFull = item.warehouse; // 五日市倉庫 or 志和倉庫
       const props = {
@@ -1317,13 +1327,23 @@ async function confirmAndSaveOrder() {
         '区分':         { select: { name: '発注中' } },
         '数量':         { number: item.orderQty },
         [wField]:       { select: { name: whFull } },
-        '作成者':       { select: { name: '自動発注' } },
-        '年月':         { rich_text: [{ text: { content: ym } }] },
+        '作成者':       { select: { name: '自動取込' } },
       };
       return notionAPI('POST', '/pages', { parent: { database_id: catInfo.id }, properties: props })
-        .catch(e => { console.error('発注中レコード作成失敗:', item.pattern, item.size, e.message); return null; });
+        .then(res => {
+          if (res.object === 'error') {
+            stockDbErrors.push(`${item.pattern} ${item.size}: ${res.message || JSON.stringify(res)}`);
+            return null;
+          }
+          return res;
+        })
+        .catch(e => { stockDbErrors.push(`${item.pattern} ${item.size}: ${e.message}`); return null; });
     }).filter(Boolean);
     await Promise.all(stockDbTasks);
+    if (stockDbErrors.length) {
+      console.warn('在庫DB発注中レコード作成エラー:', stockDbErrors);
+      alert('⚠ 在庫DB「発注中」の一部登録に失敗:\n' + stockDbErrors.join('\n'));
+    }
     console.log(`在庫DB「発注中」レコード ${stockDbTasks.length}件 作成完了`);
 
     // オーバーレイを閉じる（開いている場合）

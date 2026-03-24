@@ -487,6 +487,9 @@ async function notionAPI(method, path, body) {
   }
 }
 
+// サイズコードの全角/半角スペースを正規化（キーの統一用）
+function normalizeSize(s) { return (s||'').replace(/\u3000/g, ' '); }
+
 // ──────────────────────────────────────
 // 在庫アラート読み込み（DBのしきい値を使用）
 // ──────────────────────────────────────
@@ -697,7 +700,7 @@ async function fetchAllSnapshotsWithThreshold() {
       const p = page.properties;
       const catName   = p['カテゴリ']?.select?.name || '';
       const pattern   = p['パターン名']?.rich_text?.[0]?.plain_text || '';
-      const size      = p['サイズコード']?.rich_text?.[0]?.plain_text || '';
+      const size      = normalizeSize(p['サイズコード']?.rich_text?.[0]?.plain_text || '');
       const warehouse = p['倉庫']?.select?.name || '';
       const stock     = p['在庫数']?.number ?? 0;
       const threshold = p['しきい値']?.number ?? 0;
@@ -742,7 +745,7 @@ async function fetchKijunForCat(catName, kijunDbId) {
       return {
         id: page.id,
         pattern: p['パターン名']?.select?.name || '',
-        size: p['サイズコード']?.rich_text?.[0]?.plain_text || '',
+        size: normalizeSize(p['サイズコード']?.rich_text?.[0]?.plain_text || ''),
         warehouse: p['倉庫']?.select?.name || '',
         threshold: p['しきい値']?.number ?? 0,
       };
@@ -795,7 +798,7 @@ async function fetchStockForCat(cat, dbInfo, stockMap, kurikoshiDate) {
   all.forEach(r => {
     const p = r.properties;
     const pattern = p['パターン名']?.select?.name || '';
-    const size = p['サイズコード']?.select?.name || '';
+    const size = normalizeSize(p['サイズコード']?.select?.name || '');
     const qty = p['数量']?.number || 0;
     const kubun = p['区分']?.select?.name || '';
     if (!pattern || !size) return;
@@ -1988,8 +1991,9 @@ function thViewPickSize(size) {
   const byPattern = {};
   matches.forEach(([key, snap]) => {
     const [cat, pattern, sz, wh] = key.split('|');
-    const pKey = `${cat}|${pattern}|${sz}`;
-    if (!byPattern[pKey]) byPattern[pKey] = { cat, pattern, size: sz, items: {} };
+    const nSz = normalizeSize(sz);
+    const pKey = `${cat}|${pattern}|${nSz}`;
+    if (!byPattern[pKey]) byPattern[pKey] = { cat, pattern, size: nSz, items: {} };
     byPattern[pKey].items[wh] = { key, snap };
   });
 
@@ -2173,6 +2177,7 @@ async function saveNewThreshold() {
   errEl.style.display = 'none';
   btn.disabled = true; btn.textContent = '保存中…';
 
+  size = normalizeSize(size);
   const key = `${cat}|${pattern}|${size}|${wh}`;
   const snap = snapshotCache?.[key];
 

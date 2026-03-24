@@ -1196,12 +1196,32 @@ async function submitNyuko() {
       });
     }
 
+    // ②-b 入出庫DBの「発注中」レコードを削除（入庫数分）
+    let stockCleanMsg = '';
+    try {
+      const delQty = (nokori > 0 && nokoriChk) ? nyukoQty : undefined; // 残数あり→入庫分だけ削除、全数→全削除
+      const delResult = await fooDeleteStockOrders({
+        size:      sizeCode || size,
+        pattern:   pattern,
+        warehouse: warehouse,
+        qty:       delQty,
+      });
+      if (delResult.deleted > 0) {
+        stockCleanMsg = `\n発注中${delResult.deleted}件を削除`;
+      }
+      if (delResult.errors.length > 0) {
+        stockCleanMsg += '\n⚠️ ' + delResult.errors.join(', ');
+      }
+    } catch (stockErr) {
+      console.warn('発注中レコード削除エラー:', stockErr);
+    }
+
     // ③ 完了
     document.getElementById('nyuko-modal').style.display = 'none';
     const nokoriMsg = (nokori > 0 && nokoriChk)
       ? `（残り${nokori}本を発注リストに残しました）`
       : '';
-    showFeedback('success', `✓ 入庫登録しました（${size} ${nyukoQty}本 → ${warehouse}）${nokoriMsg}`);
+    showFeedback('success', `✓ 入庫登録しました（${size} ${nyukoQty}本 → ${warehouse}）${nokoriMsg}${stockCleanMsg}`);
     loadOrders().then(() => renderPending());
 
   } catch(e) {

@@ -1009,7 +1009,9 @@ async function notionCreate(dbId, props) {
     })
   });
   if(!r.ok) throw new Error(await r.text());
-  return r.json();
+  const data = await r.json();
+  if(data.object === 'error') throw new Error(data.message || JSON.stringify(data));
+  return data;
 }
 
 async function notionPatch(pageId, props) {
@@ -1019,7 +1021,9 @@ async function notionPatch(pageId, props) {
     body: JSON.stringify({properties: props})
   });
   if(!r.ok) throw new Error(await r.text());
-  return r.json();
+  const data = await r.json();
+  if(data.object === 'error') throw new Error(data.message || JSON.stringify(data));
+  return data;
 }
 
 function propStr(page, key) {
@@ -1780,25 +1784,39 @@ async function markOrdersAsSent(maker) {
     if(!targets.length) return;
 
     // 新規発注→発注済に更新
+    const patchErrors = [];
     const patchTasks = targets.map(o =>
-      notionPatch(o.id, { 'ステータス': {select:{name:'発注済'}} }).catch(e => console.error('patch error:', e))
+      notionPatch(o.id, { 'ステータス': {select:{name:'発注済'}} })
+        .catch(e => { patchErrors.push(`${propStr(o,'タイヤサイズ')}: ${e.message}`); return null; })
     );
     await Promise.all(patchTasks);
 
+    if(patchErrors.length) {
+      console.warn('markOrdersAsSent patch errors:', patchErrors);
+    }
+
     // 発注書（送付用）DBにレコードを作成
-    const pageIds = targets.map(o => o.id);
+    const successTargets = targets.filter((o, i) => !patchErrors.some(e => e.startsWith(propStr(o,'タイヤサイズ'))));
+    const pageIds = successTargets.map(o => o.id);
     const today = new Date().toISOString().split('T')[0];
     const supName = maker === 'TOYO' ? 'TOYO' : 'BRIDGESTONE';
     const sheetName = `発注書_${supName}_${today}`;
-    await notionCreate(HACCHUSHEET_DB, {
-      '発注書名':   {title:[{text:{content: sheetName}}]},
-      '仕入先':     {select:{name: supName}},
-      '作成日':     {date:{start: today}},
-      '発注行 1':   {relation: pageIds.map(id => ({id}))},
-      '送付確認':   {checkbox: true},
-    });
+    if(pageIds.length) {
+      await notionCreate(HACCHUSHEET_DB, {
+        '発注書名':   {title:[{text:{content: sheetName}}]},
+        '仕入先':     {select:{name: supName}},
+        '作成日':     {date:{start: today}},
+        '発注行 1':   {relation: pageIds.map(id => ({id}))},
+        '送付確認':   {checkbox: true},
+      });
+    }
 
-    showFeedback('success', `✓ ${targets.length}件を発注済に更新しました`);
+    const okCount = targets.length - patchErrors.length;
+    if(patchErrors.length) {
+      showFeedback('error', `⚠ ${okCount}/${targets.length}件を発注済に更新（${patchErrors.length}件失敗）\n` + patchErrors.join('\n'));
+    } else {
+      showFeedback('success', `✓ ${targets.length}件を発注済に更新しました`);
+    }
     // リロード
     await loadOrders();
     renderUnsentList();
@@ -2433,7 +2451,8 @@ function confirmCancel(id) {
       showFeedback('success', '取り消しました');
     } catch(e) {
       yesBtn.textContent = 'エラー';
-      setTimeout(() => overlay.remove(), 1500);
+      showFeedback('error', '取り消しに失敗: ' + e.message);
+      setTimeout(() => overlay.remove(), 2000);
     }
   };
 }

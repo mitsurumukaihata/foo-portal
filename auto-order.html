@@ -398,7 +398,7 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
   </div>
 </div>
 
-<script src="foo-common.js?v=20260324f"></script>
+<script src="foo-common.js?v=20260324g"></script>
 <script>
 // ──────────────────────────────────────
 // 設定（foo-common.js から共通定数を参照）
@@ -469,13 +469,8 @@ window.onload = () => {
     }
   }
 
-  // デフォルト納期：今日から7日後
-  const d = new Date();
-  d.setDate(d.getDate() + 7);
-  document.getElementById('order-nouki').value = d.toISOString().slice(0,10);
-
-  // 納期確認チェック解除時にデフォルト復帰するための値を保持
-  window._defaultNouki = document.getElementById('order-nouki').value;
+  // 納期は空欄スタート（日付入力 or 納期確認チェック必須）
+  document.getElementById('order-nouki').value = '';
 
   loadAlerts();
 };
@@ -1159,7 +1154,7 @@ function toggleNoukiKakunin(cb) {
   } else {
     inp.disabled = false;
     inp.style.opacity = '1';
-    inp.value = window._defaultNouki || '';
+    inp.value = '';
   }
 }
 

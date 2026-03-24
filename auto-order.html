@@ -938,8 +938,9 @@ function renderAlertPage() {
       if (item.orderInFlight > 0) stockInfo += ` + 発注中 ${item.orderInFlight}本入荷予定`;
 
       const globalIdx = alertItems.indexOf(item);
-      html += `<div class="alert-card ${cls}" onclick="showItemHistory(${globalIdx})" style="cursor:pointer;">
-        <div class="alert-card-inner">
+      const checked = item._skipChecked ? 'checked' : '';
+      html += `<div class="alert-card ${cls}" style="cursor:pointer;">
+        <div class="alert-card-inner" onclick="showItemHistory(${globalIdx})">
           <div class="alert-dot-big" style="background:${dotColor2};"></div>
           <div class="alert-info">
             <div class="alert-pattern">${item.pattern} &nbsp;${makerTag}</div>
@@ -958,10 +959,24 @@ function renderAlertPage() {
           </div>
         </div>
         <div class="alert-bar"><div class="alert-bar-fill" style="width:${Math.min(pct,100)}%;background:${barColor};"></div></div>
-        <div style="text-align:right;padding:2px 4px 0;font-size:10px;color:var(--muted);">タップで履歴 ›</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 6px 2px;">
+          <label onclick="event.stopPropagation();" style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);cursor:pointer;">
+            <input type="checkbox" ${checked} onchange="toggleSkipOrder(${globalIdx}, this.checked)" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;">
+            発注書なしで発注済にする
+          </label>
+          <div style="font-size:10px;color:var(--muted);">タップで履歴 ›</div>
+        </div>
       </div>`;
     });
   });
+
+  // 「発注書なしで発注済にする」ボタン
+  const skipItems = alertItems.filter(i => i._skipChecked);
+  if (skipItems.length > 0) {
+    html += `<button class="btn-primary" onclick="submitSkipOrders()" style="background:var(--orange,#e67e22);margin-bottom:8px;">
+      ✓ チェック済み ${skipItems.length}品目 を発注済にする（発注書なし）
+    </button>`;
+  }
 
   const supItems = alertItems.filter(i => isCurrentSupplierItem(i) && i.orderQty > 0);
   const supBtnColor = currentSupplier === 'BS' ? 'background:var(--blue);' : '';
@@ -1053,6 +1068,95 @@ function changeQty(idx, delta) {
   alertItems[idx].orderQty = Math.max(1, alertItems[idx].orderQty + delta);
   const el = document.getElementById(`qty-${idx}`);
   if (el) el.textContent = alertItems[idx].orderQty;
+}
+
+// ──────────────────────────────────────
+// 発注書なしで発注済にする
+// ──────────────────────────────────────
+function toggleSkipOrder(idx, checked) {
+  alertItems[idx]._skipChecked = checked;
+  renderAlertPage();
+}
+
+async function submitSkipOrders() {
+  const items = alertItems.filter(i => i._skipChecked);
+  if (!items.length) return;
+  if (!confirm(`${items.length}品目を「発注済」にします（発注書なし）。\nよろしいですか？`)) return;
+
+  // ボタンを無効化
+  const btns = document.querySelectorAll('.btn-primary');
+  btns.forEach(b => b.disabled = true);
+
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const creator = (loginUser || '向畑　充').replace(/ /g,'　');
+
+    // 1. 発注管理表にレコード作成（ステータス=発注済、注文方法=口頭 等）
+    await Promise.all(items.map(item => {
+      const titleText = `${item.pattern} ${item.size} ${item.warehouse}`;
+      const props = {
+        'タイヤサイズ': { title: [{ text: { content: titleText } }] },
+        'パターン':     { select: { name: item.pattern } },
+        'サイズ':       { select: { name: item.size } },
+        '数量':         { number: item.orderQty },
+        '仕入先':       { select: { name: SUPPLIER_CONFIG[item.maker === 'TOYO' ? 'TOYO' : 'BS']?.notionName || item.maker } },
+        'タイヤメーカー': { select: { name: ({'BS':'BRIDGESTONE','TOYO':'TOYO','DUNLOP':'DUNLOP','MICHELIN':'MICHELIN'})[item.maker] || item.maker } },
+        '種別':         { select: { name: 'タイヤ' } },
+        'ステータス':   { select: { name: '発注済' } },
+        '納入予定場所': { select: { name: item.warehouse === '五日市倉庫' ? '五日市' : '志和' } },
+        '注文担当':     { select: { name: creator.includes('岡崎') ? '岡崎' : '向畑' } },
+        '発注日':       { date: { start: today } },
+        'サイズコード': { rich_text: [{ text: { content: item.size } }] },
+        '備考欄':       { rich_text: [{ text: { content: '発注書なし（アラートから直接発注済）' } }] },
+      };
+      return notionAPI('POST', '/pages', { parent: { database_id: HACCHU_DB }, properties: props })
+        .catch(e => { console.error('発注済レコード作成失敗:', item.pattern, e.message); return null; });
+    }));
+
+    // 2. 在庫DBに「発注中」レコード作成
+    const norm = str => (str || '').replace(/[\u3000\s]+/g, ' ').trim();
+    const ym = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
+    await Promise.all(items.map(item => {
+      const autoKeys = detectDbKeys(item.size, item.pattern);
+      const dbKey = autoKeys[0];
+      if (!dbKey || !DB_MAP[dbKey]) return null;
+      const db = DB_MAP[dbKey];
+      const wField = db.warehouseField;
+      const title = `${item.size} ${item.pattern} 入庫予定 ${item.warehouse}`.trim();
+      const props = {
+        'タイトル':   {title:[{text:{content: title}}]},
+        '区分':       {select:{name:'発注中'}},
+        '数量':       {number: item.orderQty},
+        '年月':       {rich_text:[{text:{content: ym}}]},
+      };
+      props[wField] = {select:{name: item.warehouse}};
+      if (item.size) props['サイズコード'] = {select:{name: item.size}};
+      if (item.pattern) props['パターン'] = {select:{name: item.pattern}};
+      if (creator) props['作成者'] = {select:{name:'自動発注'}};
+      return notionAPI('POST', '/pages', { parent: { database_id: db.id }, properties: props })
+        .catch(e => { console.error('在庫DB発注中レコード作成失敗:', e.message); return null; });
+    }).filter(Boolean));
+
+    // 3. アラートリストから除外して再描画
+    alertItems = alertItems.filter(i => !items.includes(i));
+    renderAlertPage();
+    renderOrderPage();
+
+    // 成功メッセージ
+    const el = document.getElementById('alert-content');
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'success-box';
+    msgDiv.style.cssText = 'margin:8px 0;padding:10px 14px;background:var(--green-dim,#e8f5e9);border:1px solid var(--green,#4caf50);border-radius:10px;font-size:13px;color:var(--green,#2e7d32);';
+    msgDiv.textContent = `✓ ${items.length}品目を「発注済」にしました（発注書なし）`;
+    el.prepend(msgDiv);
+    setTimeout(() => msgDiv.remove(), 5000);
+
+  } catch(e) {
+    alert('エラー: ' + e.message);
+  } finally {
+    const btns2 = document.querySelectorAll('.btn-primary');
+    btns2.forEach(b => b.disabled = false);
+  }
 }
 
 // ──────────────────────────────────────

@@ -1319,19 +1319,42 @@ function switchFormType(type) {
   suggestNextMgmt();
 }
 
-function suggestNextMgmt() {
-  if (!allRecords.length) return;
+async function suggestNextMgmt() {
+  // 完了済み（受取連絡）を含む全レコードから最大番号を取得
   const prefixes = {};
+  // まず画面上のレコードから集計
   allRecords.forEach(r => {
     const mg = p(r, '管理番号');
     if (mg) {
       const pr = mg[0].toUpperCase();
       const num = parseInt(mg.slice(1));
-      if (!isNaN(num)) {
-        prefixes[pr] = Math.max(prefixes[pr] || 0, num);
-      }
+      if (!isNaN(num)) prefixes[pr] = Math.max(prefixes[pr] || 0, num);
     }
   });
+  // 完了済み（受取連絡）のレコードも取得して最大番号をマージ
+  try {
+    let cursor = undefined;
+    for (let pg = 0; pg < 20; pg++) {
+      const payload = {
+        page_size: 100,
+        filter: { property: '進捗', select: { equals: '受取連絡' } },
+      };
+      if (cursor) payload.start_cursor = cursor;
+      const data = await notionQuery(payload);
+      if (!data?.results) break;
+      data.results.forEach(r => {
+        const mg = p(r, '管理番号');
+        if (mg) {
+          const pr = mg[0].toUpperCase();
+          const num = parseInt(mg.slice(1));
+          if (!isNaN(num)) prefixes[pr] = Math.max(prefixes[pr] || 0, num);
+        }
+      });
+      if (!data.has_more) break;
+      cursor = data.next_cursor;
+    }
+  } catch(_) { /* 取得失敗時は画面上のレコードのみで候補を出す */ }
+
   const hints = Object.entries(prefixes).sort().map(([pr, max]) => `${pr}${max + 1}`);
   const hintText = hints.length ? `次の番号候補: ${hints.join(' / ')}` : '';
   ['mgmt-hint','mgmt-hint-w','mgmt-hint-k','mgmt-hint-s'].forEach(id => {

@@ -1874,6 +1874,11 @@ function renderShipList() {
   const unposted = allRecords
     .filter(r => p(r, '進捗') === '未掲載')
     .sort((a, b) => {
+      // エラー・警告なし（出品コードだけ）を上に、編集が必要なものを下に
+      const wA = checkMissingFields(a).length > 0 ? 1 : 0;
+      const wB = checkMissingFields(b).length > 0 ? 1 : 0;
+      if (wA !== wB) return wA - wB;
+      // 同グループ内は管理番号順
       const ma = p(a, '管理番号') || '';
       const mb = p(b, '管理番号') || '';
       const pa = ma.match(/^([A-Za-z]+)(\d+)$/);

@@ -315,7 +315,14 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
             </select>
           </div>
           <div class="df-field">
-            <div class="df-label">希望納期</div>
+            <div class="df-label">希望納期
+              <label style="display:inline-flex;align-items:center;gap:4px;margin-left:8px;font-weight:400;color:var(--muted);cursor:pointer;">
+                <input type="checkbox" id="order-nouki-kakunin"
+                  style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer;"
+                  onchange="toggleNoukiKakunin(this)">
+                <span style="font-size:10px;">納期確認</span>
+              </label>
+            </div>
             <input class="df-input" type="date" id="order-nouki">
           </div>
         </div>
@@ -391,7 +398,7 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
   </div>
 </div>
 
-<script src="foo-common.js?v=20260324e"></script>
+<script src="foo-common.js?v=20260324f"></script>
 <script>
 // ──────────────────────────────────────
 // 設定（foo-common.js から共通定数を参照）
@@ -466,6 +473,9 @@ window.onload = () => {
   const d = new Date();
   d.setDate(d.getDate() + 7);
   document.getElementById('order-nouki').value = d.toISOString().slice(0,10);
+
+  // 納期確認チェック解除時にデフォルト復帰するための値を保持
+  window._defaultNouki = document.getElementById('order-nouki').value;
 
   loadAlerts();
 };
@@ -1139,17 +1149,32 @@ async function submitSkipOrders() {
   }
 }
 
+// 納期確認チェックボックス切替
+function toggleNoukiKakunin(cb) {
+  const inp = document.getElementById('order-nouki');
+  if (cb.checked) {
+    inp.value = '';
+    inp.disabled = true;
+    inp.style.opacity = '0.4';
+  } else {
+    inp.disabled = false;
+    inp.style.opacity = '1';
+    inp.value = window._defaultNouki || '';
+  }
+}
+
 // ──────────────────────────────────────
 // 発注処理
 // ──────────────────────────────────────
 // PDFプレビュー表示（Notionへの保存はまだしない）
 function previewOrderPdf() {
   const tantou = document.getElementById('order-tantou').value;
-  const nouki  = document.getElementById('order-nouki').value;
+  const noukiKakunin = document.getElementById('order-nouki-kakunin').checked;
+  const nouki  = noukiKakunin ? '' : document.getElementById('order-nouki').value;
   const biko   = document.getElementById('order-biko').value.trim();
   const method = document.getElementById('order-method').value || '自動';
   if (!tantou) { alert('担当者を選択してください'); return; }
-  if (!nouki)  { alert('希望納期を入力してください'); return; }
+  if (!nouki && !noukiKakunin)  { alert('希望納期を入力してください'); return; }
   const selectedItems = alertItems.filter(i => i.selected && i.orderQty > 0);
   if (!selectedItems.length) { alert('発注対象を選択してください'); return; }
 
@@ -1388,7 +1413,7 @@ function buildPrintSheet(items, tantou, nouki, biko, method) {
   const issued = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   const noukiStr = nouki
     ? (() => { const d=new Date(nouki); return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`; })()
-    : '未定';
+    : '納期確認';
   const todayStr = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()}`;
   const totalQty = items.reduce((s,i) => s + i.orderQty, 0);
 
@@ -1488,7 +1513,7 @@ td,th{overflow:hidden;text-overflow:ellipsis;word-break:break-all;}
 <div style="font-size:7pt;font-weight:bold;color:#2563a8;margin:4px 0 2px;">■ 今回発注分</div>
 <table style="width:100%;border-collapse:collapse;table-layout:fixed;"><thead>${theadNew}</thead><tbody>${newRows}</tbody></table>
 <div style="text-align:right;margin-top:3px;padding-top:2px;border-top:0.5px solid #e0dcd6;font-size:6pt;color:#666;">
-  今回発注合計：<span style="font-size:8pt;font-weight:bold;color:#2563a8;">${totalQty}本</span>
+  今回発注合計：<span style="font-size:8pt;font-weight:bold;color:#2563a8;">${totalQty}</span>
 </div>
 <div id="pending-section" style="margin-top:6px;">
   <div style="font-size:6pt;color:#888;padding:3px 5px;border:0.3px solid #ccc;border-radius:2px;background:#f8f8f8;">未入荷（既発注分）を読み込み中…</div>
@@ -1577,8 +1602,8 @@ async function _fetchAndInjectPending() {
       const odate  = p['発注日']?.date?.start || '';
       const recv   = p['受注者']?.rich_text?.[0]?.plain_text || p['担当者']?.select?.name || '—';
       const tantouR= p['注文担当']?.select?.name || '—';
-      const memoRaw = p['備考欄']?.rich_text?.[0]?.plain_text || '';
-      const memo   = /発注書なし/.test(memoRaw) ? '' : memoRaw;
+      const memoRaw = (p['備考欄']?.rich_text || []).map(t=>t.plain_text).join('') || '';
+      const memo   = /発注書なし|アラートから直接/.test(memoRaw) ? '' : memoRaw;
       const isPhone = p['電話注文済']?.checkbox === true;
       const isVerbal = p['口頭注文済']?.checkbox === true;
       const meth   = isPhone ? '電話' : isVerbal ? '口頭' : '自動';
@@ -1609,7 +1634,7 @@ async function _fetchAndInjectPending() {
   <th style="${TH('27%')}">備考</th>
 </tr></thead><tbody>${pendingRows}</tbody></table>
 <div style="text-align:right;margin-top:2px;padding-top:2px;border-top:0.5px solid #e0dcd6;font-size:3pt;color:#666;">
-  未入荷合計：<span style="font-size:6pt;font-weight:bold;color:#1a1a18;">${totalPending}本</span>
+  未入荷合計：<span style="font-size:6pt;font-weight:bold;color:#1a1a18;">${totalPending}</span>
 </div>`;
 
     // iframeのcontentDocumentのDOMを直接書き換える

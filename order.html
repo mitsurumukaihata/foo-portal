@@ -627,7 +627,7 @@ body{
           <label style="display:inline-flex;align-items:center;gap:4px;margin-left:8px;font-weight:400;color:var(--muted);cursor:pointer;">
             <input type="checkbox" id="f-duedate-unknown" onchange="toggleDueDate(this)"
               style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer;">
-            <span style="font-size:10px;">未定</span>
+            <span style="font-size:10px;">納期確認</span>
           </label>
         </div>
         <input class="finput" id="f-duedate" type="date">
@@ -799,7 +799,7 @@ body{
   </div>
 </div>
 
-<script src="foo-common.js?v=20260324e"></script>
+<script src="foo-common.js?v=20260324f"></script>
 <script>
 // ─── 定数（foo-common.js から共通定数を参照）──────────────────────────────────
 const WORKER  = FOO_WORKER;
@@ -1451,7 +1451,7 @@ function buildPdfHtml(maker, targets) {
     return `<tr>
       <td style="${tdSF(i)}">${pat}</td>
       <td style="${tdSF(i)}">${size}</td>
-      <td style="${tdSF(i,'font-weight:bold;color:#1a1a18;')}">${qty}本</td>
+      <td style="${tdSF(i,'font-weight:bold;color:#1a1a18;')}">${qty}</td>
       <td style="${tdSF(i)}">${loc}</td>
       <td style="${tdSF(i)}">${os}</td>
       <td style="${tdSF(i)}">${rv}</td>
@@ -1539,8 +1539,8 @@ function buildPdfHtml(maker, targets) {
 
   <!-- 合計 -->
   <div style="text-align:right;margin-top:3px;padding-top:2px;border-top:0.5px solid #e0dcd6;font-size:6pt;color:#666;">
-    今回発注合計：<span style="font-size:8pt;font-weight:bold;color:#2563a8;">${totalNew}本</span>
-    　　未入荷合計：<span style="font-size:7pt;font-weight:bold;color:#1a1a18;">${totalPending}本</span>
+    今回発注合計：<span style="font-size:8pt;font-weight:bold;color:#2563a8;">${totalNew}</span>
+    　　未入荷合計：<span style="font-size:7pt;font-weight:bold;color:#1a1a18;">${totalPending}</span>
   </div>
 
   <!-- 注意欄 -->

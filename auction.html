@@ -758,7 +758,11 @@ async function notionCreate(props) {
       properties: props
     })
   });
-  if (!res.ok) throw new Error(`POST error: ${res.status}`);
+  if (!res.ok) {
+    let detail = '';
+    try { const d = await res.json(); detail = d.message || JSON.stringify(d); } catch(_){}
+    throw new Error(`POST error: ${res.status} - ${detail}`);
+  }
   return res.json();
 }
 

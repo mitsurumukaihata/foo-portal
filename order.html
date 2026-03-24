@@ -799,7 +799,7 @@ body{
   </div>
 </div>
 
-<script src="foo-common.js?v=20260324f"></script>
+<script src="foo-common.js?v=20260324g"></script>
 <script>
 // ─── 定数（foo-common.js から共通定数を参照）──────────────────────────────────
 const WORKER  = FOO_WORKER;
@@ -2636,12 +2636,14 @@ async function submitOrder() {
   const pattern   = document.getElementById('f-pattern')?.value || '';
   const location  = document.getElementById('f-location').value;
   const orderdate = document.getElementById('f-orderdate').value;
-  const duedate   = document.getElementById('f-duedate').value;
+  const noukiKakunin = document.getElementById('f-duedate-unknown').checked;
+  const duedate   = noukiKakunin ? '' : document.getElementById('f-duedate').value;
   const memo      = document.getElementById('f-memo').value.trim();
 
   if(!supplier)         { showFeedback('error','仕入先を選択してください'); return; }
   if(!selSize)          { showFeedback('error','タイヤサイズを選択してください'); return; }
   if(selDBs.size === 0) { showFeedback('error','連携するDBを1つ以上選択してください'); return; }
+  if(!duedate && !noukiKakunin) { showFeedback('error','納期予定日を入力するか「納期確認」にチェックしてください'); return; }
 
   const btn = document.getElementById('btn-submit');
   btn.disabled = true;

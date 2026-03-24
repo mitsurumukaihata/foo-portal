@@ -808,7 +808,7 @@ body{
   </div>
 </div>
 
-<script src="foo-common.js"></script>
+<script src="foo-common.js?v=20260324b"></script>
 <script>
 // ─── 定数（foo-common.js から共通定数を参照）──────────────────────────────────
 const WORKER  = FOO_WORKER;
@@ -2720,14 +2720,18 @@ async function submitOrder() {
       };
     }).filter(Boolean);
 
-    const stockResult = await fooCreateStockOrdersBatch(stockItems);
-    const failed = stockResult.errors;
-
-    if(failed.length) {
-      showFeedback('success', `発注管理表に登録しました ✓\n入出庫DBへの書き込みに一部失敗:\n${failed.join('\n')}`);
+    if (!stockItems.length) {
+      showFeedback('success', `発注管理表に登録しました ✓\n⚠️ 対応する入出庫DBが見つからなかったため「発注中」は未登録です`);
     } else {
-      const dbNames = targetKeys.map(k => DB_MAP[k]?.name).filter(Boolean).join('、');
-      showFeedback('success', `登録完了 ✓\n発注管理表 ＋ 入出庫DB（${dbNames}）に「発注中」を記録しました`);
+      const stockResult = await fooCreateStockOrdersBatch(stockItems);
+      const failed = stockResult.errors;
+
+      if(failed.length) {
+        showFeedback('success', `発注管理表に登録しました ✓\n入出庫DBへの書き込みに一部失敗:\n${failed.join('\n')}`);
+      } else {
+        const dbNames = targetKeys.map(k => DB_MAP[k]?.name).filter(Boolean).join('、');
+        showFeedback('success', `登録完了 ✓\n発注管理表 ＋ 入出庫DB（${dbNames}）に「発注中」を記録しました`);
+      }
     }
 
     resetForm();

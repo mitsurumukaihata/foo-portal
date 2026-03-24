@@ -302,6 +302,37 @@ body {
 .user-role { font-size: 11px; color: var(--accent); font-weight: 500; }
 
 .portal-body { padding: 0 0 48px; }
+
+/* ── Pull to Refresh ── */
+#ptr-indicator {
+  position: fixed;
+  top: -50px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 999;
+  transition: top 0.25s cubic-bezier(.2,.8,.4,1);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+}
+#ptr-indicator svg {
+  width: 20px; height: 20px;
+  stroke: var(--accent);
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  transition: transform 0.2s;
+}
+#ptr-indicator.refreshing svg {
+  animation: ptr-spin 0.7s linear infinite;
+}
+@keyframes ptr-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
 .sec { padding: 24px 20px 0; }
 .sec-label { font-size: 10px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 12px; }
 
@@ -1046,6 +1077,9 @@ body {
 </div>
 
 <!-- ── ポータル画面 ── -->
+<div id="ptr-indicator">
+  <svg viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+</div>
 <div id="portal-screen">
   <div class="portal-header">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
@@ -2822,6 +2856,84 @@ async function saveCustomer() {
     btn.textContent = '保存';
   }
 }
+
+// ─── Pull to Refresh ─────────────────────────────────────────────────────────
+(function() {
+  const THRESHOLD = 80;      // 引っ張り距離の閾値 (px)
+  const MAX_PULL   = 120;    // 最大引っ張り距離
+  const indicator  = document.getElementById('ptr-indicator');
+  let startY = 0, pulling = false, distance = 0;
+
+  function isAtTop() {
+    return window.scrollY <= 0;
+  }
+
+  function isPortalVisible() {
+    const ps = document.getElementById('portal-screen');
+    return ps && ps.style.display !== 'none';
+  }
+
+  document.addEventListener('touchstart', function(e) {
+    if (!isPortalVisible() || !isAtTop()) return;
+    startY = e.touches[0].clientY;
+    pulling = true;
+    distance = 0;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', function(e) {
+    if (!pulling || !isPortalVisible()) return;
+    const currentY = e.touches[0].clientY;
+    distance = Math.max(0, currentY - startY);
+
+    if (distance > 10 && isAtTop()) {
+      const pull = Math.min(distance, MAX_PULL);
+      const ratio = pull / THRESHOLD;
+      // インジケーター位置
+      const top = Math.min(pull * 0.6, 60);
+      indicator.style.top = top + 'px';
+      indicator.style.transition = 'none';
+      // 矢印回転（引っ張り具合に応じて）
+      const arrow = indicator.querySelector('svg');
+      arrow.style.transform = 'rotate(' + (ratio * 180) + 'deg)';
+      // 閾値超えたら色変更
+      indicator.style.borderColor = ratio >= 1 ? 'var(--accent)' : 'var(--border)';
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', function() {
+    if (!pulling) return;
+    pulling = false;
+
+    if (distance >= THRESHOLD && isPortalVisible()) {
+      // リフレッシュ実行
+      indicator.style.transition = 'top 0.25s cubic-bezier(.2,.8,.4,1)';
+      indicator.style.top = '20px';
+      indicator.classList.add('refreshing');
+      indicator.style.borderColor = 'var(--accent)';
+
+      // ポータルのデータ再読み込み
+      const session = loadSession();
+      if (session) {
+        renderPortalApps(session);
+        checkBadges(session);
+      }
+
+      // 0.8秒後にインジケーター非表示
+      setTimeout(function() {
+        indicator.style.transition = 'top 0.25s cubic-bezier(.2,.8,.4,1)';
+        indicator.style.top = '-50px';
+        indicator.classList.remove('refreshing');
+        indicator.style.borderColor = 'var(--border)';
+      }, 800);
+    } else {
+      // 閾値に達しなかった → 戻す
+      indicator.style.transition = 'top 0.25s cubic-bezier(.2,.8,.4,1)';
+      indicator.style.top = '-50px';
+      indicator.style.borderColor = 'var(--border)';
+    }
+    distance = 0;
+  }, { passive: true });
+})();
 </script>
 </body>
 </html>

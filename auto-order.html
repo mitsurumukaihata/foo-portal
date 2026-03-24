@@ -391,45 +391,29 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
   </div>
 </div>
 
+<script src="foo-common.js"></script>
 <script>
 // ──────────────────────────────────────
-// 設定
+// 設定（foo-common.js から共通定数を参照）
 // ──────────────────────────────────────
-const WORKER      = 'https://notion-proxy.33322666666mm.workers.dev';
-const SNAPSHOT_DB  = '1123c46301764238a511114ed59159bd';   // しきい値管理DB（旧スナップショット）※在庫数は参考値、しきい値のみ使用
-const HACCHU_DB   = '202a695f8e8880aa92f6f38d9b47b537';   // 発注管理表DB
-const HACCHUSHEET_DB = 'e400cc4f87f94af78392d794523894d9'; // 発注書（送付用）DB
-const SESSION_KEY = 'foo_portal_session';
+const WORKER       = FOO_WORKER;
+const SNAPSHOT_DB  = '1123c46301764238a511114ed59159bd';   // しきい値管理DB（旧スナップショット）
+const HACCHU_DB    = FOO_HACCHU_DB;
+const HACCHUSHEET_DB = FOO_HACCHUSHEET_DB;
+const SESSION_KEY  = 'foo_portal_session';
 
-// 在庫基準設定DB（カテゴリごとに別DB）
-// カテゴリ名 → { kijunId: 在庫基準設定のDB ID, stockId: 入出庫記録のDB ID, wField: 倉庫フィールド名 }
-const KIJUN_DB_MAP = {
-  'LTL TB　ノーマル':    { kijunId:'520fe8fa034543428c0e9fff3c5cb511', stockId:'200a695f8e888018b5f5eac83fdad412', wField:'倉庫' },
-  'LTL TB　スタッドレス':{ kijunId:'4e3a978bf93d466ea7c267085fe9d93b', stockId:'201a695f8e888171abb8e349ad4d055a', wField:'倉庫' },
-  'LTS　ノーマル':       { kijunId:'2fea695f8e88813ca455d96295acc4c5', stockId:'201a695f8e8881adb144cd3a1639132d', wField:'倉庫' },
-  'LTS　スタッドレス':   { kijunId:'301a695f8e888161af6afe3e6636c3e3', stockId:'201a695f8e8881a299e8fb57bad707f6', wField:'倉庫' },
-  'RT 再生':             { kijunId:'302a695f8e8881f49821faa32d2708b4', stockId:'201a695f8e888104bb47c7103d5909dc', wField:'倉庫' },
-  'バン':                { kijunId:'301a695f8e8881b7ad64e2cb9ad06e66', stockId:'201a695f8e8881f3a958cead42156e07', wField:'出庫倉庫' },
-};
+// foo-common.js の FOO_STOCK_DB_MAP から互換マップを生成
+const KIJUN_DB_MAP = {};
+const CAT_DB_MAP   = {};
+for (const [cat, info] of Object.entries(FOO_STOCK_DB_MAP)) {
+  if (info.kijunId) {
+    KIJUN_DB_MAP[cat] = { kijunId: info.kijunId, stockId: info.stockId, wField: info.wField };
+  }
+  CAT_DB_MAP[cat] = { id: info.stockId, wField: info.wField };
+}
 
-// 後方互換（発注確認で使用）
-const CAT_DB_MAP = {
-  'LTL TB　ノーマル':    { id:'200a695f8e888018b5f5eac83fdad412', wField:'倉庫' },
-  'LTL TB　スタッドレス':{ id:'201a695f8e888171abb8e349ad4d055a', wField:'倉庫' },
-  'LTS　ノーマル':       { id:'201a695f8e8881adb144cd3a1639132d', wField:'倉庫' },
-  'LTS　スタッドレス':   { id:'201a695f8e8881a299e8fb57bad707f6', wField:'倉庫' },
-  'RT 再生':             { id:'201a695f8e888104bb47c7103d5909dc', wField:'倉庫' },
-  'T/T チューブタイプ':  { id:'201a695f8e8881a6930fcf2bd752e676', wField:'倉庫' },
-  'バン':                { id:'201a695f8e8881f3a958cead42156e07', wField:'出庫倉庫' },
-  'リフト':              { id:'201a695f8e8881c5b2c3d9e9ce2ffd21', wField:'出庫倉庫' },
-};
-
-const KUBUN_SIGN = {
-  '入庫':1,'移動入庫':1,'返品（倉庫へ）':1,'返品':1,
-  '出庫':-1,'準備':-1,'移動出庫':-1,'返品（メーカーへ）':-1,
-  '発注中':0,'繰越':1
-};
-const WAREHOUSES = ['五日市倉庫','志和倉庫'];
+const KUBUN_SIGN = FOO_KUBUN_SIGN;
+const WAREHOUSES = FOO_WAREHOUSES;
 
 // ── 繰越日を取得（DBから区分="繰越"の最新レコードを探す）──
 async function getKurikoshiDate(dbId) {
@@ -489,18 +473,18 @@ window.onload = () => {
 // ──────────────────────────────────────
 // Notion API
 // ──────────────────────────────────────
+// notionAPI: foo-common.js の fooNotionRequest をラップ
+// ※ 旧実装はエラーをresolveしていたが、新実装はthrowする
+// ※ 既存コードの .then(data => { if(data.object==='error')... }) パターンとの互換のため、
+//    レスポンスをそのまま返す（throwしない）モードを維持
 async function notionAPI(method, path, body) {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('タイムアウト(25秒): ' + path)), 25000);
-    fetch(WORKER + path, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined,
-    })
-    .then(r => r.json())
-    .then(data => { clearTimeout(timer); resolve(data); })
-    .catch(e => { clearTimeout(timer); reject(e); });
-  });
+  try {
+    return await fooNotionRequest(method, path, body, 25000);
+  } catch (e) {
+    // 旧互換: Notion APIエラーは resolve していた（object:'error'）
+    // → 呼び出し側が res.object==='error' でチェックしているので、エラーオブジェクトを返す
+    return { object: 'error', message: e.message };
+  }
 }
 
 // ──────────────────────────────────────
@@ -1113,35 +1097,19 @@ async function submitSkipOrders() {
         .catch(e => { console.error('発注済レコード作成失敗:', item.pattern, e.message); return null; });
     }));
 
-    // 2. 在庫DBに「発注中」レコード作成（CAT_DB_MAP使用）
-    const stockErrors = [];
-    const stockTasks = items.map(item => {
-      const catInfo = CAT_DB_MAP[item.category];
-      if (!catInfo) { stockErrors.push(`DB不明: ${item.category} ${item.pattern} ${item.size}`); return null; }
-      const wField = catInfo.wField;
-      const props = {
-        'タイトル':     { title: [{ text: { content: `${item.size} ${item.pattern} 発注中 ${item.warehouse}` } }] },
-        'サイズコード': { select: { name: item.size } },
-        'パターン名':   { select: { name: item.pattern } },
-        '区分':         { select: { name: '発注中' } },
-        '数量':         { number: item.orderQty },
-        [wField]:       { select: { name: item.warehouse } },
-        '作成者':       { select: { name: '自動取込' } },
-      };
-      return notionAPI('POST', '/pages', { parent: { database_id: catInfo.id }, properties: props })
-        .then(res => {
-          if (res.object === 'error') {
-            stockErrors.push(`${item.pattern} ${item.size}: ${res.message || JSON.stringify(res)}`);
-            return null;
-          }
-          return res;
-        })
-        .catch(e => { stockErrors.push(`${item.pattern} ${item.size}: ${e.message}`); return null; });
-    }).filter(Boolean);
-    await Promise.all(stockTasks);
-    if (stockErrors.length) {
-      console.warn('在庫DB発注中レコード作成エラー:', stockErrors);
-      alert('⚠ 在庫DB「発注中」の一部登録に失敗:\n' + stockErrors.join('\n'));
+    // 2. 在庫DBに「発注中」レコード作成（foo-common.js 共通関数使用）
+    const stockBatchItems = items.map(item => ({
+      category:  item.category,
+      size:      item.size,
+      pattern:   item.pattern,
+      warehouse: item.warehouse,
+      qty:       item.orderQty,
+      creator:   '自動取込',
+    }));
+    const stockResult = await fooCreateStockOrdersBatch(stockBatchItems);
+    if (stockResult.errors.length) {
+      console.warn('在庫DB発注中レコード作成エラー:', stockResult.errors);
+      alert('⚠ 在庫DB「発注中」の一部登録に失敗:\n' + stockResult.errors.join('\n'));
     }
 
     // 3. アラートリストから除外して再描画
@@ -1153,8 +1121,8 @@ async function submitSkipOrders() {
     const el = document.getElementById('alert-content');
     const msgDiv = document.createElement('div');
     msgDiv.className = 'success-box';
-    const stockOk = items.length - stockErrors.length;
-    const stockMsg = stockErrors.length ? `（⚠ 在庫DB: ${stockOk}/${items.length}件成功）` : '（在庫DB発注中も登録済）';
+    const stockOk = stockResult.ok;
+    const stockMsg = stockResult.errors.length ? `（⚠ 在庫DB: ${stockOk}/${items.length}件成功）` : '（在庫DB発注中も登録済）';
     msgDiv.style.cssText = 'margin:8px 0;padding:10px 14px;background:var(--green-dim,#e8f5e9);border:1px solid var(--green,#4caf50);border-radius:10px;font-size:13px;color:var(--green,#2e7d32);';
     msgDiv.textContent = `✓ ${items.length}品目を「発注済」にしました（発注書なし）${stockMsg}`;
     el.prepend(msgDiv);
@@ -1313,38 +1281,21 @@ async function confirmAndSaveOrder() {
       await createHacchuSheetRecord(pageIds, supName);
     }
 
-    // 3) 各在庫DBに「発注中」レコードを作成（在庫表示に反映するため）
-    const stockDbErrors = [];
-    const stockDbTasks = selectedItems.map(item => {
-      const catInfo = CAT_DB_MAP[item.category];
-      if (!catInfo) { stockDbErrors.push(`DB不明: ${item.category}`); return null; }
-      const wField = catInfo.wField;
-      const whFull = item.warehouse; // 五日市倉庫 or 志和倉庫
-      const props = {
-        'タイトル':     { title: [{ text: { content: `${item.size} ${item.pattern} 発注中 ${whFull}` } }] },
-        'サイズコード': { select: { name: item.size } },
-        'パターン名':   { select: { name: item.pattern } },
-        '区分':         { select: { name: '発注中' } },
-        '数量':         { number: item.orderQty },
-        [wField]:       { select: { name: whFull } },
-        '作成者':       { select: { name: '自動取込' } },
-      };
-      return notionAPI('POST', '/pages', { parent: { database_id: catInfo.id }, properties: props })
-        .then(res => {
-          if (res.object === 'error') {
-            stockDbErrors.push(`${item.pattern} ${item.size}: ${res.message || JSON.stringify(res)}`);
-            return null;
-          }
-          return res;
-        })
-        .catch(e => { stockDbErrors.push(`${item.pattern} ${item.size}: ${e.message}`); return null; });
-    }).filter(Boolean);
-    await Promise.all(stockDbTasks);
-    if (stockDbErrors.length) {
-      console.warn('在庫DB発注中レコード作成エラー:', stockDbErrors);
-      alert('⚠ 在庫DB「発注中」の一部登録に失敗:\n' + stockDbErrors.join('\n'));
+    // 3) 各在庫DBに「発注中」レコードを作成（foo-common.js 共通関数使用）
+    const stockDbBatch = selectedItems.map(item => ({
+      category:  item.category,
+      size:      item.size,
+      pattern:   item.pattern,
+      warehouse: item.warehouse,
+      qty:       item.orderQty,
+      creator:   '自動取込',
+    }));
+    const stockDbResult = await fooCreateStockOrdersBatch(stockDbBatch);
+    if (stockDbResult.errors.length) {
+      console.warn('在庫DB発注中レコード作成エラー:', stockDbResult.errors);
+      alert('⚠ 在庫DB「発注中」の一部登録に失敗:\n' + stockDbResult.errors.join('\n'));
     }
-    console.log(`在庫DB「発注中」レコード ${stockDbTasks.length}件 作成完了`);
+    console.log(`在庫DB「発注中」レコード ${stockDbResult.ok}/${stockDbBatch.length}件 作成完了`);
 
     // オーバーレイを閉じる（開いている場合）
     const overlay = document.getElementById('order-preview-overlay');

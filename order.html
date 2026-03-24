@@ -808,40 +808,19 @@ body{
   </div>
 </div>
 
+<script src="foo-common.js"></script>
 <script>
-// ─── 定数 ────────────────────────────────────────────────────────────────────
-const WORKER  = 'https://notion-proxy.33322666666mm.workers.dev';
-const ORDER_DB        = '202a695f-8e88-80aa-92f6-f38d9b47b537';
+// ─── 定数（foo-common.js から共通定数を参照）──────────────────────────────────
+const WORKER  = FOO_WORKER;
+const ORDER_DB        = FOO_HACCHU_DB;
 const TANTOU_DB       = '1cea695f-8e88-8029-911d-f0eb63102669';  // 中間担当者DB
-const HACCHUSHEET_DB  = 'e400cc4f-87f9-4af7-8392-d794523894d9'; // 発注書（送付用）DB
+const HACCHUSHEET_DB  = FOO_HACCHUSHEET_DB;
 
-const DB_MAP = {
-  ltl_normal:   {id:'200a695f-8e88-8018-b5f5-eac83fdad412', name:'LTL TB ノーマル',   icon:'🚛', warehouseField:'倉庫',
-    sizes:['225/80R17.5','225/90R17.5','215/70R17.5 123/121','235/70R17.5','245/80R17.5','245/70R19.5','265/70R19.5','9R19.5','275/70R22.5','275/80R22.5','295/70R22.5','295/80R22.5','255/70R22.5','315/80R22.5','385/65R22.5','11R22.5','10R22.5'],
-    patterns:['M646','M676','M125','M317','M323','M319','M320','M619','M626','M888','M899','M801','M746','R225','R241','G539','SP680','SP122','XJE4']},
-  ltl_studless: {id:'201a695f-8e88-8171-abb8-e349ad4d055a', name:'LTL TB スタッドレス', icon:'❄️', warehouseField:'倉庫',
-    sizes:['225/80R17.5','225/90R17.5','215/70R17.5 123/121','235/70R17.5','245/80R17.5','245/70R19.5','265/70R19.5','9R19.5','275/70R22.5','275/80R22.5','295/70R22.5','295/80R22.5','255/70R22.5','315/80R22.5','385/65R22.5','11R22.5','10R22.5'],
-    patterns:['M929','M919','M966','M920','M939','W910','W900S','W911','W970','W999','SP001','SP081','SP088','XDW']},
-  lts_normal:   {id:'201a695f-8e88-81ad-b144-cd3a1639132d', name:'LTS ノーマル',       icon:'🚐', warehouseField:'倉庫',
-    sizes:['175/75R15','185/65R15','185/75R15','195/75R15','195/85R15','205/80R15','185/70R16','185/85R16','195/85R16','205/65R16','205/70R16','225/70R16','205/75R16','205/85R16','215/85R16','225/85R16','195/60R17.5','195/70R17.5','205/60R17.5','225/60R17.5','205/70R17.5','205/80R17.5','215/70R17.5 118/116'],
-    patterns:['M634','M135','M134e','M131','M319','M804','R207','SPLT50','SPLT21','SPLT22']},
-  lts_studless: {id:'201a695f-8e88-81a2-99e8-fb57bad707f6', name:'LTS スタッドレス',   icon:'🌨️', warehouseField:'倉庫',
-    sizes:['175/75R15','185/65R15','185/75R15','195/75R15','195/85R15','205/80R15','185/70R16','185/85R16','195/85R16','205/65R16','205/70R16','225/70R16','205/75R16','205/85R16','215/85R16','225/85R16','195/60R17.5','195/70R17.5','205/60R17.5','225/60R17.5','205/70R17.5','205/80R17.5','215/70R17.5 118/116'],
-    patterns:['M935','M937','M934','LV01','W989','LT01']},
-  rt:           {id:'201a695f-8e88-8104-bb47-c7103d5909dc', name:'RT 再生',             icon:'♻️', warehouseField:'倉庫',
-    sizes:['195/85R16','205/75R16','205/85R16','225/80R17.5','225/90R17.5','245/80R17.5','245/70R19.5','265/70R19.5','275/70R22.5','275/80R22.5','11R22.5 14P','11R22.5 16P'],
-    patterns:['RTM919','RTM810','RTM804','RTM807','RTM81C-170','RTM890','RTW910','RTW911','RTW970','RTG610']},
-  // PIRELLI: 発注ほぼなし・除外
-  tt:           {id:'201a695f-8e88-81a6-930f-cf2bd752e676', name:'T/T チューブタイプ', icon:'🔧', warehouseField:'倉庫',
-    sizes:['7.00R15　10P','7.00R15　12P','6.50R16　10P','6.50R16　12P','7.00R16　10P','7.00R16　12P','7.50R16　12P','7.50R16　14P','8.25R16　14P'],
-    patterns:['M614','M626','M125','M131','M134','M319','M501','M504','M519','M919','M935','M890','R225','SP185']},
-  van:          {id:'201a695f-8e88-81f3-a958-cead42156e07', name:'バン',                icon:'🚌', warehouseField:'出庫倉庫',
-    sizes:['145/80R12　86/84','145/80R12　80/78','145R12　6P','145R12　8P','155R12　8P','165/80R13　90/88','165/80R13　94/93','165R13　6P','165R13　8P','145R13　6P','145R13　8P','155R13　6P','155R13　8P','175R13　8P','155/80R14　88/86','165/80R14　91/90','165/80R14　97/95','165R14　6P','165R14　8P','175/80R14　99/98','175R14　6P','175R14　8P','185/80R14　97N','185/80R14　102/10','185R14　6P','185R14　8P','195R14　8P','195/80R15　103/101','185/75R15　106/104','195/70R15　106/104','215/70R15　107/105','185/80R15　103/101','195/80R15　107/105','205/80R15　109/107'],
-    patterns:['V03e','V02e','M935','K370','R710','V600','W300','W989','LV01','VL10A','VAN01','SV01']},
-  lift:         {id:'201a695f-8e88-81c5-b2c3-d9e9ce2ffd21', name:'リフト',              icon:'🏗️', warehouseField:'出庫倉庫',
-    sizes:['4.00-8　8P','5.00-8　8P','6.00-9　10P','6.50-10　10P','4.50-12　8P','7.00-12　12P','7.00-12　14P','5.50-15　8P','6.00-15　10P','7.00-15MS','7.00-15','8.25-15','7.50-16','17*8.00-8　4P','18*7-8　8P','21*8-9　14P','23*9-10　16P','27*8.50-15　4P','27*8.50-15　6P','28*8-15　12P','28*9-15','250-15','300-15'],
-    patterns:['G-8','G-8P','G-15']},
-};
+// DB_MAP: foo-common.js の FOO_DB_BY_KEY から生成（互換レイヤー）
+const DB_MAP = {};
+for (const [key, info] of Object.entries(FOO_DB_BY_KEY)) {
+  DB_MAP[key] = { id: info.stockId, name: info.name, icon: info.icon, warehouseField: info.wField, sizes: info.sizes, patterns: info.patterns };
+}
 
 // ─── メーカー×パターン マスター ─────────────────────────────────────────────────
 // 仕入先を選んだとき、該当カテゴリ内のパターンをこのリストで絞り込む
@@ -910,33 +889,9 @@ const RECEIVER_DB = '752cb60a-d01c-43f5-b3d1-8b4978756c23';
 })();
 
 
-// ─── パターン+サイズからDB自動判定 ────────────────────────────────────────────
+// ─── パターン+サイズからDB自動判定（foo-common.js の共通関数を使用）────────────
 function detectDbKeys(sizeStr, patternStr) {
-  // 全角スペース↔半角スペースの揺れを吸収して比較
-  const norm = str => (str || '').replace(/[\u3000\s]+/g, ' ').trim();
-  const nSize = norm(sizeStr);
-
-  const matched = [];
-  for(const [key, db] of Object.entries(DB_MAP)) {
-    const sizeMatch = db.sizes.some(s => {
-      const ns = norm(s);
-      return ns === nSize || nSize.includes(ns) || ns.includes(nSize);
-    });
-    const patternMatch = !patternStr || !db.patterns || db.patterns.includes(patternStr);
-    if(sizeMatch && patternMatch) matched.push(key);
-  }
-  // パターンでも絞れなかった場合はサイズのみで判定
-  if(!matched.length) {
-    for(const [key, db] of Object.entries(DB_MAP)) {
-      if(db.sizes.some(s => {
-        const ns = norm(s);
-        return ns === nSize || nSize.includes(ns) || ns.includes(nSize);
-      })) {
-        matched.push(key);
-      }
-    }
-  }
-  return matched;
+  return fooDetectDbKeys(sizeStr, patternStr);
 }
 
 // ─── テーマ（ポータルと共通キー foo_portal_theme）─────────────────────────────
@@ -976,56 +931,23 @@ function switchTab(tab) {
 }
 
 // ─── API ──────────────────────────────────────────────────────────────────────
+// notionQuery: foo-common.js の統一関数をラップ
 async function notionQuery(dbId, filter=null, sorts=null) {
-  const body = {page_size:100};
-  if(filter) body.filter = filter;
-  if(sorts)  body.sorts  = sorts;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 15000);
-  try {
-    const r = await fetch(`${WORKER}/databases/${dbId}/query`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json','Notion-Version':'2022-06-28'},
-      body: JSON.stringify(body),
-      signal: ctrl.signal
-    });
-    clearTimeout(timer);
-    if(!r.ok) throw new Error(await r.text());
-    return r.json();
-  } catch(e) {
-    clearTimeout(timer);
-    if(e.name === 'AbortError') throw new Error('タイムアウト（15秒）。通信環境を確認してください。');
-    throw e;
-  }
+  const body = { page_size: 100 };
+  if (filter) body.filter = filter;
+  if (sorts)  body.sorts  = sorts;
+  return fooNotionQuery(dbId, body, 15000);
 }
 
+// notionCreate / notionPatch: foo-common.js の統一関数をラップ
 async function notionCreate(dbId, props) {
-  const r = await fetch(`${WORKER}/pages`, {
-    method:'POST',
-    headers:{'Content-Type':'application/json','Notion-Version':'2022-06-28'},
-    body: JSON.stringify({
-      parent:{database_id: dbId},
-      properties: props
-    })
-  });
-  if(!r.ok) throw new Error(await r.text());
-  const data = await r.json();
-  if(data.object === 'error') throw new Error(data.message || JSON.stringify(data));
-  return data;
+  return fooNotionCreate(dbId, props);
 }
-
 async function notionPatch(pageId, props) {
-  const r = await fetch(`${WORKER}/pages/${pageId}`, {
-    method:'PATCH',
-    headers:{'Content-Type':'application/json','Notion-Version':'2022-06-28'},
-    body: JSON.stringify({properties: props})
-  });
-  if(!r.ok) throw new Error(await r.text());
-  const data = await r.json();
-  if(data.object === 'error') throw new Error(data.message || JSON.stringify(data));
-  return data;
+  return fooNotionPatch(pageId, props);
 }
 
+// propStr: fooPropStr (foo-common.js) の拡張版（multi_select等の追加型対応）
 function propStr(page, key) {
   try {
     const p = page.properties[key];
@@ -2780,36 +2702,29 @@ async function submitOrder() {
 
     await notionCreate(ORDER_DB, orderProps);
 
-    // 2) 入出庫DBに「発注中」レコードを並列作成
-    const now = new Date();
-
-    // パターン+サイズからDBを自動判定（手動選択はフォールバック）
+    // 2) 入出庫DBに「発注中」レコードを並列作成（foo-common.js 共通関数使用）
     const autoKeys = detectDbKeys(selSize, pattern);
     const targetKeys = autoKeys.length ? autoKeys : Array.from(selDBs);
 
-    const dbTasks = targetKeys.map(key => {
+    const stockItems = targetKeys.map(key => {
       const db = DB_MAP[key];
-      if(!db) return Promise.resolve(null);
-      const wField = db.warehouseField;
-      const props = {
-        'タイトル': {title:[{text:{content: titleText}}]},
-        '区分':     {select:{name:'発注中'}},
-        '数量':     {number: qty},
+      if (!db) return null;
+      return {
+        dbKey:     key,
+        size:      selSize,
+        pattern:   pattern,
+        warehouse: fooWarehouseFull(location),
+        qty:       qty,
+        creator:   loginUser || '自動取込',
+        memo:      memo,
       };
-      if(loginUser)  props['作成者']    = {select:{name: loginUser}};
-      if(memo)       props['メモ']      = {rich_text:[{text:{content: memo}}]};
-      if(selSize)    props['サイズコード'] = {select:{name: selSize}};
-      if(pattern)    props['パターン名']   = {select:{name: pattern}};
-      if(location)   props[wField]      = {select:{name: location === '五日市' ? '五日市倉庫' : location === '志和' ? '志和倉庫' : location === '海田' ? '海田倉庫' : location === '未定' ? '未定' : location}};
-      return notionCreate(db.id, props).catch(e => ({error:e.message, db: db.name}));
     }).filter(Boolean);
 
-    const results = await Promise.all(dbTasks);
-    const failed  = results.filter(r => r?.error);
+    const stockResult = await fooCreateStockOrdersBatch(stockItems);
+    const failed = stockResult.errors;
 
     if(failed.length) {
-      const names = failed.map(f => f.db).join('、');
-      showFeedback('success', `発注管理表に登録しました ✓\n入出庫DB（${names}）への書き込みに一部失敗しました`);
+      showFeedback('success', `発注管理表に登録しました ✓\n入出庫DBへの書き込みに一部失敗:\n${failed.join('\n')}`);
     } else {
       const dbNames = targetKeys.map(k => DB_MAP[k]?.name).filter(Boolean).join('、');
       showFeedback('success', `登録完了 ✓\n発注管理表 ＋ 入出庫DB（${dbNames}）に「発注中」を記録しました`);

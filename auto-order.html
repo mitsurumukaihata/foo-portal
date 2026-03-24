@@ -1089,7 +1089,7 @@ async function submitSkipOrders() {
 
   try {
     const today = new Date().toISOString().split('T')[0];
-    const creator = (loginUser || '向畑　充').replace(/ /g,'　');
+    const creator = (currentUser || '向畑　充').replace(/ /g,'　');
 
     // 1. 発注管理表にレコード作成（ステータス=発注済、注文方法=口頭 等）
     await Promise.all(items.map(item => {

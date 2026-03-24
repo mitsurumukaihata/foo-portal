@@ -2361,13 +2361,34 @@ function confirmCancel(id) {
     const yesBtn = document.getElementById('cancel-yes');
     yesBtn.disabled = true; yesBtn.textContent = '処理中…';
     try {
+      // 1) 発注管理表のステータスを「キャンセル」に更新
       await notionPatch(id, { 'ステータス': { select: { name: 'キャンセル' } } });
+
+      // 2) 入出庫DBの「発注中」レコードをアーカイブ（削除）
+      let stockMsg = '';
+      try {
+        const delResult = await fooDeleteStockOrders({
+          size:      size,
+          pattern:   pat,
+          warehouse: loc,
+          qty:       parseInt(qty, 10) || undefined,
+        });
+        if (delResult.deleted > 0) {
+          stockMsg = '\n入出庫DB「発注中」' + delResult.deleted + '件を削除しました';
+        }
+        if (delResult.errors.length > 0) {
+          stockMsg += '\n⚠️ 一部エラー: ' + delResult.errors.join(', ');
+        }
+      } catch (stockErr) {
+        stockMsg = '\n⚠️ 入出庫DBの削除に失敗: ' + stockErr.message;
+      }
+
       // ローカル更新
       const idx = orders.findIndex(x => x.id === id);
       if (idx >= 0) orders[idx].properties['ステータス'].select = { name: 'キャンセル' };
       overlay.remove();
       renderPending();
-      showFeedback('success', '取り消しました');
+      showFeedback('success', '取り消しました' + stockMsg);
     } catch(e) {
       yesBtn.textContent = 'エラー';
       showFeedback('error', '取り消しに失敗: ' + e.message);

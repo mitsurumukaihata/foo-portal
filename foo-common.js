@@ -339,6 +339,71 @@ async function fooCreateStockOrdersBatch(items) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// 在庫DB「発注中」レコード削除（キャンセル時用）
+// ══════════════════════════════════════════════════════════════════════
+
+/**
+ * 在庫DBから「発注中」レコードを検索してアーカイブ（削除）する
+ * @param {object} params
+ * @param {string} params.size      - サイズコード
+ * @param {string} params.pattern   - パターン名
+ * @param {string} [params.warehouse] - 倉庫名（指定があればフィルタ）
+ * @param {number} [params.qty]     - 数量（指定があればその本数分だけ削除）
+ * @returns {Promise<{deleted:number, errors:string[]}>}
+ */
+async function fooDeleteStockOrders(params) {
+  const dbKeys = fooDetectDbKeys(params.size, params.pattern);
+  if (!dbKeys.length) return { deleted: 0, errors: ['該当DBが見つかりません: ' + params.size + ' ' + params.pattern] };
+
+  const wh = params.warehouse ? fooWarehouseFull(params.warehouse) : null;
+  let deleted = 0;
+  const errors = [];
+
+  for (const key of dbKeys) {
+    const dbInfo = FOO_DB_BY_KEY[key];
+    if (!dbInfo) continue;
+
+    // 区分=発注中 & サイズコード一致 でクエリ
+    const filter = {
+      and: [
+        { property: '区分', select: { equals: '発注中' } },
+        { property: 'サイズコード', select: { equals: params.size } },
+      ]
+    };
+    // パターン名フィルタ
+    if (params.pattern) {
+      filter.and.push({ property: 'パターン名', select: { equals: params.pattern } });
+    }
+    // 倉庫フィルタ
+    if (wh && dbInfo.wField) {
+      filter.and.push({ property: dbInfo.wField, select: { equals: wh } });
+    }
+
+    try {
+      const res = await fooNotionQuery(dbInfo.stockId, { filter, page_size: 100 });
+      const pages = (res.results || []).filter(p => !p.archived);
+
+      // qty指定があればその数だけ、なければ全件アーカイブ
+      const limit = params.qty ? params.qty : pages.length;
+      const targets = pages.slice(0, limit);
+
+      for (const page of targets) {
+        try {
+          await fooNotionRequest('PATCH', '/pages/' + page.id, { archived: true });
+          deleted++;
+        } catch (e) {
+          errors.push('アーカイブ失敗(' + page.id + '): ' + e.message);
+        }
+      }
+    } catch (e) {
+      errors.push('クエリ失敗(' + key + '): ' + e.message);
+    }
+  }
+
+  return { deleted, errors };
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // プロパティ取得ヘルパー
 // ══════════════════════════════════════════════════════════════════════
 function fooPropStr(page, key) {

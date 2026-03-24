@@ -1757,23 +1757,22 @@ function buildEditPanel(r) {
 }
 
 function toggleEditPanel(pageId) {
-  const pid = pageId.replace(/-/g, '');
-  const panel = document.getElementById(`panel-${pid}`);
+  const panel = document.getElementById(`panel-${pageId}`);
   if (!panel) return;
   panel.classList.toggle('open');
 }
 
 async function saveEditPanel(pageId) {
-  const pid = pageId.replace(/-/g, '');
-  const btn = document.getElementById(`sep-btn-${pid}`);
-  const msg = document.getElementById(`sep-msg-${pid}`);
+  const btn = document.getElementById(`sep-btn-${pageId}`);
+  const msg = document.getElementById(`sep-msg-${pageId}`);
+  if (!btn || !msg) { console.error('saveEditPanel: btn/msg not found for', pageId); return; }
   btn.disabled = true;
   btn.textContent = '保存中…';
   msg.textContent = '';
   msg.className = 'sep-msg';
 
-  const g = (id) => document.getElementById(`${id}-${pid}`)?.value?.trim() || '';
-  const gn = (id) => { const v = document.getElementById(`${id}-${pid}`)?.value; return v ? parseFloat(v) : null; };
+  const g = (id) => document.getElementById(`${id}-${pageId}`)?.value?.trim() || '';
+  const gn = (id) => { const v = document.getElementById(`${id}-${pageId}`)?.value; return v ? parseFloat(v) : null; };
 
   const props = {};
   const mgmt = g('sep-mgmt');
@@ -1800,7 +1799,7 @@ async function saveEditPanel(pageId) {
   if (price !== null) props['値段'] = { number: price };
   const storage = g('sep-storage');
   if (storage) props['保管場所'] = { select: { name: storage } };
-  const wheel = document.getElementById(`sep-wheel-${pid}`)?.value;
+  const wheel = document.getElementById(`sep-wheel-${pageId}`)?.value;
   if (wheel) props['ホイール付き？'] = { checkbox: wheel === '__YES__' };
   const wsize = g('sep-wsize');
   props['ホイールサイズ'] = { rich_text: [{ text: { content: wsize } }] };
@@ -1838,9 +1837,14 @@ async function saveEditPanel(pageId) {
     msg.textContent = '✅ 保存しました';
     msg.className = 'sep-msg ok';
     showToast('Notionに保存しました');
+    btn.disabled = false;
+    btn.textContent = '保存してNotionに反映';
 
     // カードの入力漏れバッジを再描画
     renderShipList();
+
+    // 保存成功メッセージを3秒後に消す
+    setTimeout(() => { if (msg.textContent.includes('保存しました')) { msg.textContent = ''; msg.className = 'sep-msg'; } }, 3000);
 
   } catch(e) {
     msg.textContent = 'エラー: ' + e.message;
@@ -1926,8 +1930,8 @@ function renderShipList() {
           `<span class="ship-warn-badge ${w.level === 'warn' ? 'warn' : ''}">${w.text}</span>`
         ).join('')}</div>`
       : '';
-    const cardId = `card-${r.id.replace(/-/g,'')}`;
-    const panelId = `panel-${r.id.replace(/-/g,'')}`;
+    const cardId = `card-${r.id}`;
+    const panelId = `panel-${r.id}`;
     return `<div class="ship-card" id="${cardId}" style="${hasError ? 'border-color:rgba(239,68,68,.4);' : ''}">
       <div class="ship-card-top">
         <div class="ship-card-info">

@@ -1113,29 +1113,27 @@ async function submitSkipOrders() {
         .catch(e => { console.error('発注済レコード作成失敗:', item.pattern, e.message); return null; });
     }));
 
-    // 2. 在庫DBに「発注中」レコード作成
-    const norm = str => (str || '').replace(/[\u3000\s]+/g, ' ').trim();
-    const ym = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
-    await Promise.all(items.map(item => {
-      const autoKeys = detectDbKeys(item.size, item.pattern);
-      const dbKey = autoKeys[0];
-      if (!dbKey || !DB_MAP[dbKey]) return null;
-      const db = DB_MAP[dbKey];
-      const wField = db.warehouseField;
-      const title = `${item.size} ${item.pattern} 入庫予定 ${item.warehouse}`.trim();
+    // 2. 在庫DBに「発注中」レコード作成（CAT_DB_MAP使用）
+    const now = new Date();
+    const ym = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}`;
+    const stockTasks = items.map(item => {
+      const catInfo = CAT_DB_MAP[item.category];
+      if (!catInfo) { console.warn('在庫DB不明（スキップ発注）:', item.category); return null; }
+      const wField = catInfo.wField;
       const props = {
-        'タイトル':   {title:[{text:{content: title}}]},
-        '区分':       {select:{name:'発注中'}},
-        '数量':       {number: item.orderQty},
-        '年月':       {rich_text:[{text:{content: ym}}]},
+        'タイトル':     { title: [{ text: { content: `${item.size} ${item.pattern} 発注中 ${item.warehouse}` } }] },
+        'サイズコード': { select: { name: item.size } },
+        'パターン名':   { select: { name: item.pattern } },
+        '区分':         { select: { name: '発注中' } },
+        '数量':         { number: item.orderQty },
+        [wField]:       { select: { name: item.warehouse } },
+        '作成者':       { select: { name: '自動発注' } },
+        '年月':         { rich_text: [{ text: { content: ym } }] },
       };
-      props[wField] = {select:{name: item.warehouse}};
-      if (item.size) props['サイズコード'] = {select:{name: item.size}};
-      if (item.pattern) props['パターン'] = {select:{name: item.pattern}};
-      if (creator) props['作成者'] = {select:{name:'自動発注'}};
-      return notionAPI('POST', '/pages', { parent: { database_id: db.id }, properties: props })
-        .catch(e => { console.error('在庫DB発注中レコード作成失敗:', e.message); return null; });
-    }).filter(Boolean));
+      return notionAPI('POST', '/pages', { parent: { database_id: catInfo.id }, properties: props })
+        .catch(e => { console.error('在庫DB発注中レコード作成失敗:', item.pattern, item.size, e.message); return null; });
+    }).filter(Boolean);
+    await Promise.all(stockTasks);
 
     // 3. アラートリストから除外して再描画
     alertItems = alertItems.filter(i => !items.includes(i));

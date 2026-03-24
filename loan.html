@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>金融機関借入一覧 | f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --red: #ef4444; --blue: #3b82f6;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+    --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208; --muted: #a08060;
+    --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --red: #dc2626; --blue: #2563eb;
+  }
+}
+[data-theme="dark"] {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --red: #ef4444; --blue: #3b82f6;
+}
+[data-theme="light"] {
+  --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+  --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208; --muted: #a08060;
+  --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --red: #dc2626; --blue: #2563eb;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; }
+
+/* ── ヘッダー ── */
+.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:100; }
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+.header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+.header-back { font-size:11px; color:var(--muted); text-decoration:none; border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; }
+.header-title { font-size:17px; font-weight:900; letter-spacing:-0.02em; }
+.header-title span { color:var(--accent); }
+
+/* ── ナビタブ ── */
+.nav { display:flex; background:var(--s1); border-bottom:0.5px solid var(--border); }
+.nav-btn { flex:1; padding:10px 6px 8px; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--muted); font-size:12px; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; font-weight:500; }
+.nav-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+/* ── 共通 ── */
+.content { padding:16px 20px 60px; max-width:900px; margin:0 auto; }
+.screen-label { font-size:10px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:6px; }
+
+.spinner { width:28px; height:28px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 12px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-wrap { text-align:center; padding:48px 20px; }
+.loading-text { font-size:13px; color:var(--muted); }
+
+/* ── サマリーカード ── */
+.summary-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px; }
+.summary-card { background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:14px; }
+.summary-card.wide { grid-column:1/-1; }
+.sc-label { font-size:10px; color:var(--muted); margin-bottom:4px; letter-spacing:0.06em; }
+.sc-value { font-family:'DM Mono',monospace; font-size:20px; font-weight:700; }
+.sc-value.accent { color:var(--accent); }
+.sc-value.green { color:var(--green); }
+.sc-value.red { color:var(--red); }
+.sc-sub { font-size:10px; color:var(--muted); margin-top:2px; }
+
+/* ── 引落日カレンダー ── */
+.hikiotoshi-section { margin-bottom:16px; }
+.hiki-row { display:flex; align-items:center; gap:10px; background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:6px; }
+.hiki-day { font-family:'DM Mono',monospace; font-size:18px; font-weight:900; color:var(--accent); min-width:36px; text-align:center; }
+.hiki-items { flex:1; }
+.hiki-item { font-size:12px; color:var(--text); line-height:1.6; }
+.hiki-item .bank { color:var(--muted); font-size:11px; }
+.hiki-total { font-family:'DM Mono',monospace; font-size:14px; font-weight:700; color:var(--accent); white-space:nowrap; }
+
+/* ── ローンカード ── */
+.loan-card { background:var(--s2); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:10px; cursor:pointer; transition:all 0.15s; }
+.loan-card:active { transform:scale(0.99); border-color:var(--accent); }
+.loan-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; }
+.loan-name { font-size:14px; font-weight:700; }
+.loan-bank { font-size:11px; color:var(--muted); margin-top:2px; }
+.loan-badge { font-size:10px; font-weight:700; padding:2px 10px; border-radius:20px; white-space:nowrap; }
+.badge-active { background:rgba(240,165,0,0.12); color:var(--accent2); }
+.badge-done { background:rgba(34,197,94,0.12); color:var(--green); }
+.badge-overdue { background:rgba(239,68,68,0.12); color:var(--red); }
+
+.loan-meta { display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; }
+.lm-item { display:flex; justify-content:space-between; font-size:12px; padding:3px 0; border-bottom:0.5px solid var(--border); }
+.lm-label { color:var(--muted); }
+.lm-value { font-family:'DM Mono',monospace; font-weight:500; text-align:right; }
+.lm-value.red { color:var(--red); }
+
+/* ── 進捗バー ── */
+.progress-wrap { margin-top:8px; }
+.progress-bar { height:6px; background:var(--s3); border-radius:3px; overflow:hidden; }
+.progress-fill { height:100%; border-radius:3px; background:var(--accent); transition:width 0.5s; }
+.progress-fill.green { background:var(--green); }
+.progress-label { display:flex; justify-content:space-between; font-size:10px; color:var(--muted); margin-top:3px; }
+
+/* ── 詳細モーダル ── */
+.modal-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6); z-index:200; align-items:flex-end; justify-content:center; }
+.modal-overlay.show { display:flex; }
+.modal-body { background:var(--bg); border-radius:16px 16px 0 0; width:100%; max-width:600px; max-height:85vh; overflow-y:auto; padding:20px; }
+.modal-handle { width:40px; height:4px; background:var(--border2); border-radius:2px; margin:0 auto 16px; }
+.modal-title { font-size:18px; font-weight:900; margin-bottom:4px; }
+.modal-sub { font-size:12px; color:var(--muted); margin-bottom:16px; }
+.detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px; }
+.detail-item { background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
+.detail-item.wide { grid-column:1/-1; }
+.di-label { font-size:10px; color:var(--muted); margin-bottom:2px; }
+.di-value { font-size:14px; font-weight:700; font-family:'DM Mono',monospace; }
+.di-value.text { font-family:'Noto Sans JP',sans-serif; font-weight:500; font-size:13px; }
+.tag { display:inline-block; font-size:10px; font-weight:700; padding:2px 8px; border-radius:12px; margin-right:4px; }
+.tag-hosho { background:rgba(59,130,246,0.12); color:var(--blue); }
+.tag-tanpo { background:rgba(240,165,0,0.12); color:var(--accent); }
+
+.btn-close { width:100%; background:transparent; border:1.5px solid var(--border2); border-radius:10px; padding:12px; color:var(--text); font-size:14px; font-family:'Noto Sans JP',sans-serif; cursor:pointer; font-weight:500; }
+
+/* ── フィルター ── */
+.filter-row { display:flex; gap:6px; overflow-x:auto; margin-bottom:12px; scrollbar-width:none; }
+.filter-row::-webkit-scrollbar { display:none; }
+.filter-chip { flex-shrink:0; background:var(--s2); border:1.5px solid var(--border); border-radius:20px; padding:6px 14px; font-size:11px; font-weight:500; color:var(--muted); cursor:pointer; }
+.filter-chip.active { border-color:var(--accent); background:rgba(240,165,0,0.1); color:var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="header-brand">f.o.o · 経理</div>
+    <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
+  </div>
+  <div class="header-title">金融機関<span>借入一覧</span></div>
+</div>
+
+<div class="nav">
+  <button class="nav-btn active" onclick="switchTab('dashboard')">ダッシュボード</button>
+  <button class="nav-btn" onclick="switchTab('list')">借入一覧</button>
+  <button class="nav-btn" onclick="switchTab('schedule')">引落予定</button>
+</div>
+
+<div id="tab-dashboard" class="content"></div>
+<div id="tab-list" class="content" style="display:none;"></div>
+<div id="tab-schedule" class="content" style="display:none;"></div>
+
+<!-- 詳細モーダル -->
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal-body" id="modal-content"></div>
+</div>
+
+<script>
+// ── テーマ同期 ──
+(function(){
+  const t = localStorage.getItem('foo_portal_theme') || 'auto';
+  if (t !== 'auto') document.documentElement.setAttribute('data-theme', t);
+})();
+
+// ── 設定 ──
+const WORKER_URL = 'https://notion-proxy.33322666666mm.workers.dev';
+const LOAN_DB = '1f1a695f8e88808bb8d3d57acf8ea6e7';
+
+let allLoans = [];
+let currentFilter = 'all';
+
+// ── Notion API ──
+async function notionAPI(method, path, body) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 15000);
+  try {
+    const res = await fetch(WORKER_URL + path, {
+      method, headers:{'Content-Type':'application/json'},
+      body: body ? JSON.stringify(body) : undefined,
+      signal: ctrl.signal
+    });
+    clearTimeout(t);
+    const data = await res.json();
+    if (data.object === 'error') throw new Error(data.message);
+    return data;
+  } catch(e) {
+    clearTimeout(t);
+    if (e.name === 'AbortError') throw new Error('タイムアウト');
+    throw e;
+  }
+}
+
+// ── ユーティリティ ──
+function fmt(n) { return n != null ? Number(n).toLocaleString('ja-JP') : '—'; }
+function fmtDate(s) { if (!s) return '—'; const [y,m,d] = s.split('-'); return `${y}/${parseInt(m)}/${parseInt(d)}`; }
+function pct(n) { return n != null ? (n * 100).toFixed(2) + '%' : '—'; }
+
+function propStr(r, key) {
+  const p = r.properties[key];
+  if (!p) return '';
+  if (p.type === 'title') return (p.title||[])[0]?.plain_text || '';
+  if (p.type === 'select') return p.select?.name || '';
+  if (p.type === 'number') return p.number;
+  if (p.type === 'date') return p.date?.start || '';
+  if (p.type === 'checkbox') return p.checkbox || false;
+  if (p.type === 'rich_text') return (p.rich_text||[])[0]?.plain_text || '';
+  if (p.type === 'formula') {
+    const f = p.formula;
+    if (f.type === 'number') return f.number;
+    if (f.type === 'string') return f.string || '';
+    if (f.type === 'boolean') return f.boolean;
+    if (f.type === 'date') return f.date?.start || '';
+    return '';
+  }
+  return '';
+}
+
+// ── データ読込 ──
+async function loadLoans() {
+  const allResults = [];
+  let cursor = undefined;
+  do {
+    const body = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    const res = await notionAPI('POST', `/databases/${LOAN_DB}/query`, body);
+    allResults.push(...(res.results || []));
+    cursor = res.has_more ? res.next_cursor : undefined;
+  } while (cursor);
+
+  allLoans = allResults.map(r => ({
+    id: r.id,
+    name: propStr(r, '名前'),
+    bank: propStr(r, '銀行名'),
+    amount: propStr(r, '借入額'),
+    monthly: propStr(r, '毎月返済額'),
+    rate: propStr(r, '金利'),
+    status: propStr(r, 'ステータス'),
+    purpose: propStr(r, '目的'),
+    repayType: propStr(r, '返済形式'),
+    hikiotoshi: propStr(r, '引落日'),
+    borrowDate: propStr(r, '借入日'),
+    repayDate: propStr(r, '返済期日'),
+    hosho: propStr(r, '保証協会'),
+    tanpo: propStr(r, '担保'),
+    memo: propStr(r, 'メモ'),
+    remaining: propStr(r, '支払残高（概算）'),
+    totalPaid: propStr(r, '支払済総額'),
+    totalPayment: propStr(r, '支払総額'),
+    alert: propStr(r, '期限超過アラート'),
+    elapsedMonths: propStr(r, '経過月数'),
+    totalMonths: propStr(r, '総支払月数'),
+  }));
+
+  renderAll();
+}
+
+// ── タブ切替 ──
+function switchTab(tab) {
+  ['dashboard','list','schedule'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('.nav-btn').forEach((b,i) => {
+    b.classList.toggle('active', ['dashboard','list','schedule'][i] === tab);
+  });
+}
+
+// ── 全レンダリング ──
+function renderAll() {
+  renderDashboard();
+  renderList();
+  renderSchedule();
+}
+
+// ── ダッシュボード ──
+function renderDashboard() {
+  const el = document.getElementById('tab-dashboard');
+  const active = allLoans.filter(l => l.status === '返済中');
+  const done = allLoans.filter(l => l.status === '完済');
+  const overdue = allLoans.filter(l => l.status === '延滞中');
+
+  const totalBorrowed = active.reduce((s,l) => s + (l.amount || 0), 0);
+  const totalRemaining = active.reduce((s,l) => s + (l.remaining || 0), 0);
+  const totalMonthly = active.reduce((s,l) => s + (l.monthly || 0), 0);
+  const totalPaidAll = active.reduce((s,l) => s + (l.totalPaid || 0), 0);
+
+  // 今月の引落予定
+  const now = new Date();
+  const today = now.getDate();
+  const upcomingThis = active.filter(l => {
+    const day = parseInt(l.hikiotoshi);
+    return !isNaN(day) && day >= today;
+  });
+  const upcomingTotal = upcomingThis.reduce((s,l) => s + (l.monthly || 0), 0);
+
+  // アラート
+  const alerts = active.filter(l => l.alert && l.alert !== '' && l.alert !== false && l.alert !== '—');
+
+  el.innerHTML = `
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="sc-label">返済中件数</div>
+        <div class="sc-value accent">${active.length}<span style="font-size:12px;color:var(--muted);">件</span></div>
+        ${overdue.length ? `<div class="sc-sub" style="color:var(--red);">⚠ 延滞中 ${overdue.length}件</div>` : ''}
+      </div>
+      <div class="summary-card">
+        <div class="sc-label">完済</div>
+        <div class="sc-value green">${done.length}<span style="font-size:12px;color:var(--muted);">件</span></div>
+      </div>
+      <div class="summary-card">
+        <div class="sc-label">借入総額（返済中）</div>
+        <div class="sc-value">¥${fmt(totalBorrowed)}</div>
+      </div>
+      <div class="summary-card">
+        <div class="sc-label">支払残高（概算）</div>
+        <div class="sc-value red">¥${fmt(totalRemaining)}</div>
+      </div>
+      <div class="summary-card">
+        <div class="sc-label">毎月返済合計</div>
+        <div class="sc-value accent">¥${fmt(totalMonthly)}</div>
+      </div>
+      <div class="summary-card">
+        <div class="sc-label">今月残りの引落</div>
+        <div class="sc-value">${upcomingThis.length > 0 ? '¥' + fmt(upcomingTotal) : '—'}</div>
+        <div class="sc-sub">${upcomingThis.length}件</div>
+      </div>
+    </div>
+
+    ${alerts.length ? `
+    <div class="screen-label" style="color:var(--red);">⚠ アラート</div>
+    ${alerts.map(l => `
+      <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:10px 12px;margin-bottom:6px;font-size:12px;color:var(--red);line-height:1.6;">
+        <strong>${l.name}</strong>（${l.bank}）— ${l.alert}
+      </div>`).join('')}` : ''}
+
+    <div class="screen-label" style="margin-top:12px;">返済中の借入</div>
+    ${active.map(l => loanCardHTML(l)).join('')}
+
+    ${done.length ? `
+    <div class="screen-label" style="margin-top:12px;">完済済み</div>
+    ${done.map(l => loanCardHTML(l)).join('')}` : ''}
+  `;
+}
+
+// ── 借入一覧 ──
+function renderList() {
+  const el = document.getElementById('tab-list');
+  const banks = [...new Set(allLoans.map(l => l.bank).filter(Boolean))];
+
+  let filtered = allLoans;
+  if (currentFilter === '返済中') filtered = allLoans.filter(l => l.status === '返済中');
+  else if (currentFilter === '完済') filtered = allLoans.filter(l => l.status === '完済');
+  else if (banks.includes(currentFilter)) filtered = allLoans.filter(l => l.bank === currentFilter);
+
+  el.innerHTML = `
+    <div class="screen-label">フィルター</div>
+    <div class="filter-row">
+      <div class="filter-chip ${currentFilter==='all'?'active':''}" onclick="setFilter('all')">すべて</div>
+      <div class="filter-chip ${currentFilter==='返済中'?'active':''}" onclick="setFilter('返済中')">返済中</div>
+      <div class="filter-chip ${currentFilter==='完済'?'active':''}" onclick="setFilter('完済')">完済</div>
+      ${banks.map(b => `<div class="filter-chip ${currentFilter===b?'active':''}" onclick="setFilter('${b}')">${b}</div>`).join('')}
+    </div>
+    <div class="screen-label">${filtered.length}件</div>
+    ${filtered.map(l => loanCardHTML(l)).join('')}
+    ${filtered.length === 0 ? '<div style="text-align:center;padding:32px;color:var(--muted);font-size:13px;">該当する借入がありません</div>' : ''}
+  `;
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  renderList();
+}
+
+// ── 引落予定 ──
+function renderSchedule() {
+  const el = document.getElementById('tab-schedule');
+  const active = allLoans.filter(l => l.status === '返済中');
+
+  // 引落日でグループ化
+  const groups = {};
+  active.forEach(l => {
+    const day = l.hikiotoshi || '不明';
+    if (!groups[day]) groups[day] = [];
+    groups[day].push(l);
+  });
+
+  // 日付順にソート
+  const dayOrder = ['5日','10日','15日','29日','不明'];
+  const sorted = Object.entries(groups).sort((a,b) => dayOrder.indexOf(a[0]) - dayOrder.indexOf(b[0]));
+
+  const totalMonthly = active.reduce((s,l) => s + (l.monthly || 0), 0);
+
+  el.innerHTML = `
+    <div class="summary-grid">
+      <div class="summary-card wide">
+        <div class="sc-label">毎月引落合計</div>
+        <div class="sc-value accent">¥${fmt(totalMonthly)}</div>
+      </div>
+    </div>
+    <div class="screen-label">引落日ごとの内訳</div>
+    ${sorted.map(([day, loans]) => {
+      const total = loans.reduce((s,l) => s + (l.monthly || 0), 0);
+      return `
+      <div class="hiki-row">
+        <div class="hiki-day">${day}</div>
+        <div class="hiki-items">
+          ${loans.map(l => `
+            <div class="hiki-item" onclick="openDetail('${l.id}')" style="cursor:pointer;">
+              ${l.name} <span class="bank">${l.bank}</span> — ¥${fmt(l.monthly)}
+            </div>`).join('')}
+        </div>
+        <div class="hiki-total">¥${fmt(total)}</div>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+// ── ローンカードHTML ──
+function loanCardHTML(l) {
+  const badgeClass = l.status === '返済中' ? 'badge-active' : l.status === '完済' ? 'badge-done' : 'badge-overdue';
+  const elapsed = l.elapsedMonths || 0;
+  const total = l.totalMonths || 1;
+  const pctVal = total > 0 ? Math.min(100, Math.round(elapsed / total * 100)) : 0;
+  const progressClass = l.status === '完済' ? 'green' : '';
+
+  return `
+    <div class="loan-card" onclick="openDetail('${l.id}')">
+      <div class="loan-header">
+        <div>
+          <div class="loan-name">${l.name || '—'}</div>
+          <div class="loan-bank">${l.bank || '—'}</div>
+        </div>
+        <div class="loan-badge ${badgeClass}">${l.status || '—'}</div>
+      </div>
+      <div class="loan-meta">
+        <div class="lm-item"><span class="lm-label">借入額</span><span class="lm-value">¥${fmt(l.amount)}</span></div>
+        <div class="lm-item"><span class="lm-label">月返済</span><span class="lm-value">¥${fmt(l.monthly)}</span></div>
+        <div class="lm-item"><span class="lm-label">金利</span><span class="lm-value">${pct(l.rate)}</span></div>
+        <div class="lm-item"><span class="lm-label">残高</span><span class="lm-value ${l.remaining > 0 ? 'red' : ''}">¥${fmt(l.remaining)}</span></div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar"><div class="progress-fill ${progressClass}" style="width:${pctVal}%"></div></div>
+        <div class="progress-label">
+          <span>${elapsed}ヶ月経過</span>
+          <span>${total}ヶ月中 (${pctVal}%)</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── 詳細モーダル ──
+function openDetail(id) {
+  const l = allLoans.find(x => x.id === id);
+  if (!l) return;
+  const el = document.getElementById('modal-content');
+
+  const tags = [];
+  if (l.hosho) tags.push('<span class="tag tag-hosho">保証協会</span>');
+  if (l.tanpo) tags.push('<span class="tag tag-tanpo">担保あり</span>');
+
+  const elapsed = l.elapsedMonths || 0;
+  const total = l.totalMonths || 1;
+  const pctVal = total > 0 ? Math.min(100, Math.round(elapsed / total * 100)) : 0;
+
+  el.innerHTML = `
+    <div class="modal-handle"></div>
+    <div class="modal-title">${l.name || '—'}</div>
+    <div class="modal-sub">${l.bank || '—'} ${tags.join('')}</div>
+
+    <div class="detail-grid">
+      <div class="detail-item">
+        <div class="di-label">借入額</div>
+        <div class="di-value">¥${fmt(l.amount)}</div>
+      </div>
+      <div class="detail-item">
+        <div class="di-label">毎月返済額</div>
+        <div class="di-value">¥${fmt(l.monthly)}</div>
+      </div>
+      <div class="detail-item">
+        <div class="di-label">金利</div>
+        <div class="di-value">${pct(l.rate)}</div>
+      </div>
+      <div class="detail-item">
+        <div class="di-label">返済形式</div>
+        <div class="di-value text">${l.repayType || '—'}</div>
+      </div>
+      <div class="detail-item">
+        <div class="di-label">借入日</div>
+        <div class="di-value">${fmtDate(l.borrowDate)}</div>
+      </div>
+      <div class="detail-item">
+        <div class="di-label">返済期日</div>
+        <div class="di-value">${fmtDate(l.repayDate)}</div>
+      </div>
+      <div class="detail-item">
+        <div class="di-label">引落日</div>
+        <div class="di-value text">毎月 ${l.hikiotoshi || '—'}</div>
+      </div>
+      <div class="detail-item">
+        <div class="di-label">目的</div>
+        <div class="di-value text">${l.purpose || '—'}</div>
+      </div>
+      <div class="detail-item">
+        <div class="di-label">支払残高（概算）</div>
+        <div class="di-value" style="color:var(--red);">¥${fmt(l.remaining)}</div>
+      </div>
+      <div class="detail-item">
+        <div class="di-label">支払済総額</div>
+        <div class="di-value" style="color:var(--green);">¥${fmt(l.totalPaid)}</div>
+      </div>
+      <div class="detail-item wide">
+        <div class="di-label">返済進捗</div>
+        <div class="progress-wrap" style="margin-top:6px;">
+          <div class="progress-bar"><div class="progress-fill" style="width:${pctVal}%"></div></div>
+          <div class="progress-label">
+            <span>${elapsed}ヶ月経過</span>
+            <span>${total}ヶ月中 (${pctVal}%)</span>
+          </div>
+        </div>
+      </div>
+      ${l.memo ? `
+      <div class="detail-item wide">
+        <div class="di-label">メモ</div>
+        <div class="di-value text" style="white-space:pre-wrap;line-height:1.6;">${l.memo}</div>
+      </div>` : ''}
+    </div>
+
+    <button class="btn-close" onclick="closeModal()">閉じる</button>
+  `;
+  document.getElementById('modal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+}
+
+// ── 初期化 ──
+(async function init() {
+  // ローディング表示
+  document.getElementById('tab-dashboard').innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">借入データを読み込み中…</div></div>';
+  try {
+    await loadLoans();
+  } catch(e) {
+    document.getElementById('tab-dashboard').innerHTML = `<div style="text-align:center;padding:48px 20px;color:var(--red);font-size:13px;">データの読み込みに失敗しました<br><small>${e.message}</small></div>`;
+  }
+})();
+</script>
+</body>
+</html>

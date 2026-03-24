@@ -455,7 +455,7 @@ body{
   <button class="tab-btn active" id="tab-pending" onclick="switchTab('pending')">未入荷</button>
   <button class="tab-btn"        id="tab-new"     onclick="switchTab('new')">＋ 新規発注</button>
   <button class="tab-btn"        id="tab-history" onclick="switchTab('history')">履歴</button>
-  <button class="tab-btn"        id="tab-pdf"     onclick="switchTab('pdf')">発注書 <span id="unsent-badge" style="display:none;background:#ef4444;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px;"></span></button>
+  <button class="tab-btn"        id="tab-pdf"     onclick="switchTab('pdf')">発注書</button>
 </div>
 
 <!-- ══ 未入荷タブ ══ -->
@@ -489,15 +489,6 @@ body{
   <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
     メーカーを選んで発注書を作成・ダウンロードできます。<br>
     今回の新規発注＋未入荷の既発注分をまとめて1枚のPDFに出力します。
-  </div>
-
-  <!-- 未送信リスト -->
-  <div id="unsent-section" style="display:none;margin-bottom:14px;">
-    <div class="form-section" style="border-left:3px solid #ef4444;">
-      <div class="form-section-title" style="color:#ef4444;">📨 未送信の発注書</div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">発注書PDFをダウンロードまたはGmail送信していない注文です</div>
-      <div id="unsent-list"></div>
-    </div>
   </div>
 
   <!-- メーカー選択 -->
@@ -808,7 +799,7 @@ body{
   </div>
 </div>
 
-<script src="foo-common.js?v=20260324c"></script>
+<script src="foo-common.js?v=20260324d"></script>
 <script>
 // ─── 定数（foo-common.js から共通定数を参照）──────────────────────────────────
 const WORKER  = FOO_WORKER;
@@ -927,7 +918,7 @@ function switchTab(tab) {
   if(tab === 'pending') renderPending();
   if(tab === 'history') renderHistory();
   if(tab === 'new') initForm();
-  if(tab === 'pdf') { loadOrders().then(() => { onPdfMakerChange(); renderUnsentList(); updateUnsentBadge(); }); }
+  if(tab === 'pdf') { loadOrders().then(() => { onPdfMakerChange(); }); }
 }
 
 // ─── API ──────────────────────────────────────────────────────────────────────
@@ -1440,8 +1431,8 @@ function buildPdfHtml(maker, targets) {
   const totalNew      = newOrders.reduce((s,o)=>s+(Number(propStr(o,'数量'))||0),0);
   const totalPending  = pendingOrders.reduce((s,o)=>s+(Number(propStr(o,'数量'))||0),0);
 
-  const TH = (w='') => `padding:2px 3px;font-size:5pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;white-space:nowrap;${w?'width:'+w+';':''}`;
-  const tdSF = (i,ex='') => `padding:2px 3px;font-size:5pt;text-align:center;border:0.3px solid #b8cfe8;${i%2===1?'background:#f0f5fc;':'background:#fff;'}white-space:nowrap;${ex}`;
+  const TH = (w='') => `padding:3px 4px;font-size:7pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;white-space:nowrap;${w?'width:'+w+';':''}`;
+  const tdSF = (i,ex='') => `padding:3px 4px;font-size:7pt;text-align:center;border:0.3px solid #b8cfe8;${i%2===1?'background:#f0f5fc;':'background:#fff;'}white-space:nowrap;${ex}`;
 
   const mkRow = (o, i, showOrderDate) => {
     const pat  = propStr(o,'パターン') || '—';
@@ -1457,7 +1448,7 @@ function buildPdfHtml(maker, targets) {
     return `<tr>
       <td style="${tdSF(i)}">${pat}</td>
       <td style="${tdSF(i)}">${size}</td>
-      <td style="${tdSF(i,'font-weight:bold;color:#e07000;')}">${qty}本</td>
+      <td style="${tdSF(i,'font-weight:bold;color:#1a1a18;')}">${qty}本</td>
       <td style="${tdSF(i)}">${os}</td>
       <td style="${tdSF(i)}">${rv}</td>
       ${dateTd}
@@ -1468,7 +1459,7 @@ function buildPdfHtml(maker, targets) {
   };
 
   const newTable = newOrders.length ? `
-    <div style="font-size:5pt;font-weight:bold;color:#2563a8;margin:4px 0 2px;">■ 今回発注分</div>
+    <div style="font-size:7pt;font-weight:bold;color:#2563a8;margin:4px 0 2px;">■ 今回発注分</div>
     <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
       <thead><tr>
         <th style="${TH('10%')}">パターン</th><th style="${TH('14%')}">サイズ</th>
@@ -1480,7 +1471,7 @@ function buildPdfHtml(maker, targets) {
     </table>` : '';
 
   const pendingTable = pendingOrders.length ? `
-    <div style="font-size:4pt;font-weight:bold;color:#2563a8;margin:6px 0 2px;">■ 未入荷（既発注分）</div>
+    <div style="font-size:6pt;font-weight:bold;color:#2563a8;margin:6px 0 2px;">■ 未入荷（既発注分）</div>
     <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
       <thead><tr>
         <th style="${TH('10%')}">パターン</th><th style="${TH('14%')}">サイズ</th>
@@ -1502,7 +1493,7 @@ function buildPdfHtml(maker, targets) {
   <title>${pdfFilename}</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'Hiragino Kaku Gothic ProN','IPAGothic',sans-serif;padding:10mm 8mm;font-size:5pt;color:#1a1a18;}
+    body{font-family:'Hiragino Kaku Gothic ProN','IPAGothic',sans-serif;padding:10mm 8mm;font-size:7pt;color:#1a1a18;}
     table{width:100%;border-collapse:collapse;table-layout:fixed;}
     td,th{overflow:hidden;text-overflow:ellipsis;word-break:break-all;}
   </style></head><body>
@@ -1511,11 +1502,11 @@ function buildPdfHtml(maker, targets) {
     <tr>
       <td style="vertical-align:middle;">
         <div style="font-size:13pt;font-weight:bold;color:#2563a8;">発　注　書</div>
-        <div style="font-size:5pt;color:#666;margin-top:2px;">発行日：${issued}　発行者：${issuerShort}</div>
+        <div style="font-size:7pt;color:#666;margin-top:2px;">発行日：${issued}　発行者：${issuerShort}</div>
       </td>
       <td style="text-align:right;vertical-align:top;">
-        <div style="font-size:7pt;font-weight:bold;">(有)タイヤマネージャーフー</div>
-        <div style="font-size:5pt;color:#666;line-height:1.5;">〒731-5141 広島県広島市佐伯区千同３丁目３９４－１　TEL：082-942-3730</div>
+        <div style="font-size:9pt;font-weight:bold;">(有)タイヤマネージャーフー</div>
+        <div style="font-size:6.5pt;color:#666;line-height:1.5;">〒731-5141 広島県広島市佐伯区千同３丁目３９４－１　TEL：082-942-3730</div>
       </td>
     </tr>
   </table>
@@ -1524,13 +1515,13 @@ function buildPdfHtml(maker, targets) {
   <table style="width:100%;border-collapse:collapse;border:1.5px solid #2563a8;background:#e8f0fa;margin-bottom:8px;">
     <tr>
       <td style="padding:3px 7px;width:65%;border-right:0.5px solid #b8cfe8;">
-        <div style="font-size:4.5pt;color:#2563a8;font-weight:bold;margin-bottom:1px;">発注先</div>
+        <div style="font-size:6pt;color:#2563a8;font-weight:bold;margin-bottom:1px;">発注先</div>
         <div style="font-size:7pt;font-weight:bold;">${MAKER_LABEL[maker] || maker}　御中</div>
-        <div style="font-size:4.5pt;margin-top:1px;">受注担当：${recvSan}</div>
+        <div style="font-size:6pt;margin-top:1px;">受注担当：${recvSan}</div>
       </td>
       <td style="padding:3px 7px;">
-        <div style="font-size:4.5pt;color:#2563a8;font-weight:bold;margin-bottom:1px;">注文方法</div>
-        <div style="font-size:5.5pt;font-weight:bold;color:#084298;">${method}</div>
+        <div style="font-size:6pt;color:#2563a8;font-weight:bold;margin-bottom:1px;">注文方法</div>
+        <div style="font-size:7pt;font-weight:bold;color:#084298;">${method}</div>
       </td>
     </tr>
   </table>
@@ -1539,20 +1530,20 @@ function buildPdfHtml(maker, targets) {
   ${pendingTable}
 
   <!-- 合計 -->
-  <div style="text-align:right;margin-top:3px;padding-top:2px;border-top:0.5px solid #e0dcd6;font-size:4.5pt;color:#666;">
-    今回発注合計：<span style="font-size:7pt;font-weight:bold;color:#2563a8;">${totalNew}本</span>
-    　　未入荷合計：<span style="font-size:6pt;font-weight:bold;color:#1a1a18;">${totalPending}本</span>
+  <div style="text-align:right;margin-top:3px;padding-top:2px;border-top:0.5px solid #e0dcd6;font-size:6pt;color:#666;">
+    今回発注合計：<span style="font-size:8pt;font-weight:bold;color:#2563a8;">${totalNew}本</span>
+    　　未入荷合計：<span style="font-size:7pt;font-weight:bold;color:#1a1a18;">${totalPending}本</span>
   </div>
 
   <!-- 注意欄 -->
-  <div style="background:#e8f0fa;border:0.5px solid #b8cfe8;padding:3px 6px;margin-top:5px;font-size:4.5pt;color:#666;line-height:1.5;">
+  <div style="background:#e8f0fa;border:0.5px solid #b8cfe8;padding:3px 6px;margin-top:5px;font-size:6pt;color:#666;line-height:1.5;">
     <div>※ 未入荷分は引き続きよろしくお願いいたします。</div>
     <div>※ 納期等に変更がある場合はご連絡ください。</div>
     <div style="margin-top:2px;">※ 「未入荷（既発注分）」の一覧は、弊社の社内入庫処理が完了していないものを表示しております。実際にはすでに入荷・納品済みの場合でも、社内処理のタイミングにより未入荷として表示されることがございます。ご確認の際はあらかじめご了承ください。</div>
   </div>
 
   <!-- フッター -->
-  <div style="border-top:0.5px solid #e0dcd6;margin-top:4px;padding-top:2px;display:flex;justify-content:space-between;font-size:4pt;color:#aaa;">
+  <div style="border-top:0.5px solid #e0dcd6;margin-top:4px;padding-top:2px;display:flex;justify-content:space-between;font-size:5.5pt;color:#aaa;">
     <span>(有)タイヤマネージャーフー　広島市佐伯区千同３-３９４-１　TEL：082-942-3730</span>
     <span>自動生成　${issued}</span>
   </div>
@@ -1741,8 +1732,6 @@ async function markOrdersAsSent(maker) {
     }
     // リロード
     await loadOrders();
-    renderUnsentList();
-    updateUnsentBadge();
     onPdfMakerChange();
   } catch(e) {
     console.error('markOrdersAsSent error:', e);
@@ -2675,7 +2664,7 @@ async function submitOrder() {
     // 1) 発注管理表 に登録
     const orderProps = {
       'タイヤサイズ': {title:[{text:{content: titleText}}]},
-      'ステータス':   {select:{name:'新規発注'}},
+      'ステータス':   {select:{name:'発注済'}},
       '数量':         {number: qty},
       '種別':         {select:{name:'タイヤ'}},
     };
@@ -2735,7 +2724,12 @@ async function submitOrder() {
     }
 
     resetForm();
-    loadOrders();
+    // 発注書プレビュータブに遷移（仕入先を自動選択）
+    await loadOrders();
+    switchTab('pdf');
+    // メーカーラジオを自動選択してプレビュー表示
+    const makerRadio = document.querySelector(`input[name="pdf-maker"][value="${supplier}"]`);
+    if (makerRadio) { makerRadio.checked = true; onPdfMakerChange(); }
 
   } catch(e) {
     showFeedback('error', '登録に失敗しました: ' + e.message);
@@ -2786,8 +2780,7 @@ function hideFeedback() {
 
 // ─── 初期ロード ───────────────────────────────────────────────────────────────
 renderPending();
-// 初回ロード後にバッジ更新（未入荷リスト読み込み完了後に実行される）
-loadOrders().then(() => updateUnsentBadge());
+loadOrders();
 </script>
 </body>
 </html>

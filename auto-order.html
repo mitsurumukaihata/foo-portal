@@ -391,7 +391,7 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
   </div>
 </div>
 
-<script src="foo-common.js?v=20260324d"></script>
+<script src="foo-common.js?v=20260324e"></script>
 <script>
 // ──────────────────────────────────────
 // 設定（foo-common.js から共通定数を参照）
@@ -1094,7 +1094,7 @@ async function submitSkipOrders() {
         '注文担当':     { select: { name: creator.includes('岡崎') ? '岡崎' : '向畑' } },
         '発注日':       { date: { start: today } },
         'サイズコード': { rich_text: [{ text: { content: item.size } }] },
-        '備考欄':       { rich_text: [{ text: { content: '発注書なし（アラートから直接発注済）' } }] },
+        // 備考欄はユーザー入力分のみ — 自動文言は入れない
       };
       return notionAPI('POST', '/pages', { parent: { database_id: HACCHU_DB }, properties: props })
         .catch(e => { console.error('発注済レコード作成失敗:', item.pattern, e.message); return null; });
@@ -1577,7 +1577,8 @@ async function _fetchAndInjectPending() {
       const odate  = p['発注日']?.date?.start || '';
       const recv   = p['受注者']?.rich_text?.[0]?.plain_text || p['担当者']?.select?.name || '—';
       const tantouR= p['注文担当']?.select?.name || '—';
-      const memo   = p['備考欄']?.rich_text?.[0]?.plain_text || '';
+      const memoRaw = p['備考欄']?.rich_text?.[0]?.plain_text || '';
+      const memo   = /発注書なし/.test(memoRaw) ? '' : memoRaw;
       const isPhone = p['電話注文済']?.checkbox === true;
       const isVerbal = p['口頭注文済']?.checkbox === true;
       const meth   = isPhone ? '電話' : isVerbal ? '口頭' : '自動';

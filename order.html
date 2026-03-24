@@ -799,7 +799,7 @@ body{
   </div>
 </div>
 
-<script src="foo-common.js?v=20260324d"></script>
+<script src="foo-common.js?v=20260324e"></script>
 <script>
 // ─── 定数（foo-common.js から共通定数を参照）──────────────────────────────────
 const WORKER  = FOO_WORKER;
@@ -1436,23 +1436,27 @@ function buildPdfHtml(maker, targets) {
 
   const mkRow = (o, i, showOrderDate) => {
     const pat  = propStr(o,'パターン') || '—';
-    const size = propStr(o,'タイヤサイズ');
+    const size = propStr(o,'サイズコード') || propStr(o,'サイズ') || (propStr(o,'タイヤサイズ')||'').replace(/\s+\S+$/,'') || '—';
     const qty  = propStr(o,'数量');
+    const loc  = propStr(o,'納入予定場所') || '—';
     const os   = propStr(o,'注文担当') || '—';
     const rv   = (propStr(o,'受注者') || '—') + (propStr(o,'受注者') && !propStr(o,'受注者').endsWith('様') ? ' 様' : '');
-    const loc  = propStr(o,'納入予定場所') || '—';
-    const due  = fmt(propStr(o,'納期予定日')) || '未定';
+    const isPhone  = o.properties['電話注文済']?.checkbox === true;
+    const isVerbal = o.properties['口頭注文済']?.checkbox === true;
+    const meth = isPhone ? '電話' : isVerbal ? '口頭' : '—';
     const od   = fmt(propStr(o,'発注日'));
-    const memo = propStr(o,'備考欄') || '';
-    const dateTd = showOrderDate ? `<td style="${tdSF(i)}">${od}</td>` : '';
+    const due  = fmt(propStr(o,'納期予定日')) || '未定';
+    const memoRaw = propStr(o,'備考欄') || '';
+    const memo = /発注書なし/.test(memoRaw) ? '' : memoRaw;
     return `<tr>
       <td style="${tdSF(i)}">${pat}</td>
       <td style="${tdSF(i)}">${size}</td>
       <td style="${tdSF(i,'font-weight:bold;color:#1a1a18;')}">${qty}本</td>
+      <td style="${tdSF(i)}">${loc}</td>
       <td style="${tdSF(i)}">${os}</td>
       <td style="${tdSF(i)}">${rv}</td>
-      ${dateTd}
-      <td style="${tdSF(i)}">${loc}</td>
+      <td style="${tdSF(i)}">${meth}</td>
+      <td style="${tdSF(i)}">${od}</td>
       <td style="${tdSF(i)}">${due}</td>
       <td style="${tdSF(i,'color:#888;white-space:normal;text-align:left;')}">${memo}</td>
     </tr>`;
@@ -1462,10 +1466,12 @@ function buildPdfHtml(maker, targets) {
     <div style="font-size:7pt;font-weight:bold;color:#2563a8;margin:4px 0 2px;">■ 今回発注分</div>
     <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
       <thead><tr>
-        <th style="${TH('10%')}">パターン</th><th style="${TH('14%')}">サイズ</th>
-        <th style="${TH('5%')}">本数</th><th style="${TH('7%')}">発注者</th>
-        <th style="${TH('7%')}">受注者</th><th style="${TH('8%')}">納入場所</th>
-        <th style="${TH('11%')}">納期予定</th><th style="${TH('27%')}">備考</th>
+        <th style="${TH('10%')}">パターン</th><th style="${TH('13%')}">サイズ</th>
+        <th style="${TH('5%')}">本数</th><th style="${TH('7%')}">納入場所</th>
+        <th style="${TH('6%')}">発注者</th><th style="${TH('6%')}">受注者</th>
+        <th style="${TH('6%')}">注文方法</th>
+        <th style="${TH('10%')}">発注日</th><th style="${TH('10%')}">納期予定</th>
+        <th style="${TH('27%')}">備考</th>
       </tr></thead>
       <tbody>${newOrders.map((o,i)=>mkRow(o,i,false)).join('')}</tbody>
     </table>` : '';
@@ -1474,10 +1480,12 @@ function buildPdfHtml(maker, targets) {
     <div style="font-size:6pt;font-weight:bold;color:#2563a8;margin:6px 0 2px;">■ 未入荷（既発注分）</div>
     <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
       <thead><tr>
-        <th style="${TH('10%')}">パターン</th><th style="${TH('14%')}">サイズ</th>
-        <th style="${TH('5%')}">本数</th><th style="${TH('7%')}">発注者</th>
-        <th style="${TH('7%')}">受注者</th><th style="${TH('11%')}">発注日</th>
-        <th style="${TH('8%')}">納入場所</th><th style="${TH('11%')}">納期予定</th><th style="${TH('27%')}">備考</th>
+        <th style="${TH('10%')}">パターン</th><th style="${TH('13%')}">サイズ</th>
+        <th style="${TH('5%')}">本数</th><th style="${TH('7%')}">納入場所</th>
+        <th style="${TH('6%')}">発注者</th><th style="${TH('6%')}">受注者</th>
+        <th style="${TH('6%')}">注文方法</th>
+        <th style="${TH('10%')}">発注日</th><th style="${TH('10%')}">納期予定</th>
+        <th style="${TH('27%')}">備考</th>
       </tr></thead>
       <tbody>${pendingOrders.map((o,i)=>mkRow(o,i,true)).join('')}</tbody>
     </table>` : '';

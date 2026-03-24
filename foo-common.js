@@ -299,9 +299,9 @@ async function fooCreateStockOrder(params) {
   }
   if (!dbInfo) throw new Error('DB不明: ' + (params.category || params.dbKey));
 
-  const wh = fooWarehouseFull(params.warehouse);
+  const wh = fooWarehouseFull(params.warehouse || '');
   const creator = params.creator || '自動取込';
-  const title = `${params.size} ${params.pattern} 発注中 ${wh}`;
+  const title = `${params.size} ${params.pattern} 発注中${wh ? ' ' + wh : ''}`;
 
   const props = {
     'タイトル':     { title: [{ text: { content: title } }] },
@@ -311,7 +311,7 @@ async function fooCreateStockOrder(params) {
     '数量':         { number: params.qty },
     '作成者':       { select: { name: creator } },
   };
-  props[dbInfo.wField] = { select: { name: wh } };
+  if (wh) props[dbInfo.wField] = { select: { name: wh } };
   if (params.memo) {
     props['メモ'] = { rich_text: [{ text: { content: params.memo } }] };
   }

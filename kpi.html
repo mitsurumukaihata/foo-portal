@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>月次KPI管理 | f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+:root{--bg:#18181f;--s1:#101015;--s2:#1e1e26;--s3:#26262f;--border:#2c2c38;--text:#f0f0f2;--muted:#8a8a9a;--accent:#f0a500;--red:#ef4444;--green:#22c55e;--blue:#3b82f6;--amber:#f59e0b}
+@media(prefers-color-scheme:light){:root{--bg:#f5efe6;--s1:#ede4d4;--s2:#f0e8da;--s3:#e8dcc8;--border:#e8d8c4;--text:#2c1810;--muted:#8a7a6a}}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);max-width:480px;margin:0 auto;min-height:100dvh;overflow-x:hidden}
+.header{background:var(--s1);border-bottom:0.5px solid var(--border);padding:14px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100}
+.back-btn{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:0 4px}
+.header-title{font-size:15px;font-weight:700}
+.header-title span{color:var(--accent)}
+
+/* 月切り替え */
+.month-nav{display:flex;align-items:center;justify-content:center;gap:16px;padding:14px 16px;background:var(--s1);border-bottom:0.5px solid var(--border)}
+.month-nav button{background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;padding:4px 8px}
+.month-label{font-size:15px;font-weight:700;min-width:140px;text-align:center}
+
+/* タブ */
+.tabs{display:flex;background:var(--s1);border-bottom:0.5px solid var(--border);padding:0 12px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:10px 14px;font-size:12px;font-weight:500;color:var(--muted);border:none;background:none;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;transition:.15s}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* サマリーカード */
+.summary{padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sum-card{background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:14px}
+.sum-card.full{grid-column:1/-1}
+.sum-label{font-size:10px;color:var(--muted);letter-spacing:.06em;margin-bottom:6px}
+.sum-value{font-size:22px;font-weight:900;font-family:'DM Mono',monospace}
+.sum-sub{font-size:10px;color:var(--muted);margin-top:4px}
+
+/* RAGバッジ */
+.rag{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;flex-shrink:0}
+.rag.green{background:var(--green)}.rag.amber{background:var(--amber)}.rag.red{background:var(--red)}.rag.gray{background:var(--muted)}
+
+/* KPIリスト */
+.kpi-list{padding:0 16px 100px}
+.kpi-section{margin-top:16px}
+.kpi-section-label{font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;padding-left:2px}
+.kpi-card{background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
+.kpi-card:hover{border-color:rgba(240,165,0,0.5)}
+.kpi-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.kpi-name{font-size:13px;font-weight:700;flex:1}
+.kpi-badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:500}
+.kpi-badge.green{background:rgba(34,197,94,0.12);color:var(--green);border:1px solid rgba(34,197,94,0.25)}
+.kpi-badge.amber{background:rgba(245,158,11,0.12);color:var(--amber);border:1px solid rgba(245,158,11,0.25)}
+.kpi-badge.red{background:rgba(239,68,68,0.12);color:var(--red);border:1px solid rgba(239,68,68,0.25)}
+.kpi-badge.gray{background:rgba(138,138,154,0.12);color:var(--muted);border:1px solid rgba(138,138,154,0.25)}
+.kpi-metrics{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.kpi-metric{text-align:center}
+.kpi-metric-label{font-size:9px;color:var(--muted);margin-bottom:2px}
+.kpi-metric-value{font-size:13px;font-weight:700;font-family:'DM Mono',monospace}
+.kpi-bar{height:4px;background:var(--s3);border-radius:2px;margin-top:10px;overflow:hidden}
+.kpi-bar-fill{height:100%;border-radius:2px;transition:width .5s ease}
+
+/* 詳細モーダル */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200}
+.modal-overlay.open{display:flex;align-items:flex-end;justify-content:center}
+.modal{background:var(--bg);border-radius:16px 16px 0 0;width:100%;max-width:480px;max-height:85vh;overflow-y:auto;padding:0 0 40px}
+.modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:10px auto 0}
+.modal-header{padding:16px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:16px;font-weight:900}
+.modal-close{background:none;border:none;color:var(--muted);font-size:24px;cursor:pointer}
+.modal-body{padding:16px}
+.detail-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--border)}
+.detail-label{font-size:12px;color:var(--muted)}
+.detail-value{font-size:13px;font-weight:700;font-family:'DM Mono',monospace}
+
+/* チャートエリア */
+.chart-area{background:var(--s2);border:1px solid var(--border);border-radius:12px;margin:12px 0;padding:14px;overflow:hidden}
+.chart-title{font-size:11px;color:var(--muted);margin-bottom:10px}
+.bar-chart{display:flex;align-items:flex-end;gap:4px;height:100px;padding-top:8px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.bar{width:100%;border-radius:3px 3px 0 0;min-height:2px;transition:height .4s ease}
+.bar-label{font-size:8px;color:var(--muted);writing-mode:vertical-rl;text-orientation:mixed;height:40px;overflow:hidden}
+.bar-val{font-size:8px;font-family:'DM Mono',monospace;color:var(--text)}
+
+/* ロード */
+.loading{text-align:center;padding:40px;color:var(--muted);font-size:13px}
+.spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* 空 */
+.empty-state{text-align:center;padding:40px 20px;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <button class="back-btn" onclick="location.href='https://mitsurumukaihata.github.io/foo-portal/'">‹</button>
+  <div class="header-title">📊 月次<span>KPI</span>管理</div>
+</div>
+
+<div class="month-nav">
+  <button onclick="changeMonth(-1)">‹</button>
+  <div class="month-label" id="month-label"></div>
+  <button onclick="changeMonth(1)">›</button>
+</div>
+
+<div class="tabs" id="tabs">
+  <button class="tab active" data-cat="all" onclick="selectCat('all',this)">全体</button>
+  <button class="tab" data-cat="営業" onclick="selectCat('営業',this)">営業</button>
+  <button class="tab" data-cat="作業" onclick="selectCat('作業',this)">作業</button>
+  <button class="tab" data-cat="在庫" onclick="selectCat('在庫',this)">在庫</button>
+  <button class="tab" data-cat="人材" onclick="selectCat('人材',this)">人材</button>
+  <button class="tab" data-cat="顧客対応" onclick="selectCat('顧客対応',this)">顧客対応</button>
+  <button class="tab" data-cat="マーケティング" onclick="selectCat('マーケティング',this)">マーケ</button>
+</div>
+
+<div id="content">
+  <div class="loading"><span class="spinner"></span><br>読み込み中…</div>
+</div>
+
+<!-- 詳細モーダル -->
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title"></div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+const PROXY = 'https://notion-proxy.33322666666mm.workers.dev';
+const KPI_DB = '222a695f8e88806a875dc15abd9f9f8d';
+
+let allData = [];
+let currentMonth = new Date();
+currentMonth.setDate(1);
+// デフォルトで前月を表示（当月データはまだ無い場合が多い）
+currentMonth.setMonth(currentMonth.getMonth() - 1);
+let selectedCat = 'all';
+
+// ─── Notion API ─────────────────────────
+async function notionAPI(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(PROXY + path, opts);
+  return r.json();
+}
+
+async function fetchAllKPI() {
+  let all = [];
+  let cursor = undefined;
+  do {
+    const body = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    const res = await notionAPI('POST', `/databases/${KPI_DB}/query`, body);
+    if (res.object === 'error') throw new Error(res.message);
+    all = all.concat(res.results || []);
+    cursor = res.has_more ? res.next_cursor : null;
+  } while (cursor);
+  return all;
+}
+
+function parseRecord(page) {
+  const p = page.properties;
+  const titleArr = p['KPI名']?.title || [];
+  const name = titleArr.map(t => t.plain_text).join('') || '';
+  const cat = p['カテゴリ']?.select?.name || '';
+  const dateObj = p['対象月']?.date;
+  const month = dateObj?.start || '';
+  const val = p['実績値']?.number;
+  const memo = (p['メモ']?.rich_text || []).map(t => t.plain_text).join('') || '';
+  const updDate = p['更新日']?.date?.start || '';
+
+  // 前年同月実績値（rollup）
+  let prevVal = null;
+  const rollup = p['前年同月実績値']?.rollup;
+  if (rollup) {
+    if (rollup.type === 'number') prevVal = rollup.number;
+    else if (rollup.type === 'array' && rollup.array?.length) {
+      const first = rollup.array[0];
+      if (first.type === 'number') prevVal = first.number;
+    }
+  }
+
+  // formula fields - try to extract
+  let targetRate = null;
+  let yoyRate = null;
+  let ragText = '';
+  let targetVal = null;
+
+  const fTarget = p['目標達成率']?.formula;
+  if (fTarget?.type === 'number') targetRate = fTarget.number;
+  else if (fTarget?.type === 'string') targetRate = parseFloat(fTarget.string);
+
+  const fYoy = p['前年同月比']?.formula;
+  if (fYoy?.type === 'number') yoyRate = fYoy.number;
+  else if (fYoy?.type === 'string') yoyRate = parseFloat(fYoy.string);
+
+  const fRag = p['RAG']?.formula;
+  if (fRag?.type === 'string') ragText = fRag.string;
+
+  const fGoal = p['目標（前年110％）']?.formula;
+  if (fGoal?.type === 'number') targetVal = fGoal.number;
+
+  return { id: page.id, name, cat, month, val, prevVal, targetRate, yoyRate, ragText, targetVal, memo, updDate };
+}
+
+// ─── 計算ヘルパー ─────────────────────────
+function calcMetrics(rec) {
+  // 前年同月を自力で探す
+  if (rec.prevVal == null && rec.month) {
+    const prevMonth = getPrevYearMonth(rec.month);
+    const prev = allData.find(d => d.name === rec.name && d.month === prevMonth);
+    if (prev && prev.val != null) rec.prevVal = prev.val;
+  }
+  // 目標 = 前年×1.1
+  if (rec.targetVal == null && rec.prevVal != null) {
+    rec.targetVal = rec.prevVal * 1.1;
+  }
+  // 達成率
+  if (rec.targetRate == null && rec.val != null && rec.targetVal) {
+    rec.targetRate = rec.val / rec.targetVal;
+  }
+  // 前年同月比
+  if (rec.yoyRate == null && rec.val != null && rec.prevVal) {
+    rec.yoyRate = rec.val / rec.prevVal;
+  }
+  // RAG
+  if (!rec.ragText && rec.targetRate != null) {
+    if (rec.targetRate >= 1.0) rec.ragText = '🟢';
+    else if (rec.targetRate >= 0.8) rec.ragText = '🟡';
+    else rec.ragText = '🔴';
+  }
+  return rec;
+}
+
+function getPrevYearMonth(monthStr) {
+  const d = new Date(monthStr);
+  d.setFullYear(d.getFullYear() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
+function getMonthStr(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}-01`;
+}
+
+function fmtNum(n) {
+  if (n == null || isNaN(n)) return '—';
+  if (Math.abs(n) >= 10000) return (n / 10000).toFixed(1).replace(/\.0$/, '') + '万';
+  return n.toLocaleString('ja-JP');
+}
+
+function fmtPct(n) {
+  if (n == null || isNaN(n)) return '—';
+  return (n * 100).toFixed(1) + '%';
+}
+
+function ragClass(rec) {
+  if (!rec.ragText) return 'gray';
+  if (rec.ragText.includes('🟢') || rec.targetRate >= 1.0) return 'green';
+  if (rec.ragText.includes('🟡') || (rec.targetRate >= 0.8 && rec.targetRate < 1.0)) return 'amber';
+  if (rec.ragText.includes('🔴') || rec.targetRate < 0.8) return 'red';
+  return 'gray';
+}
+
+// ─── UI ─────────────────────────
+function changeMonth(delta) {
+  currentMonth.setMonth(currentMonth.getMonth() + delta);
+  updateMonthLabel();
+  render();
+}
+
+function updateMonthLabel() {
+  const y = currentMonth.getFullYear();
+  const m = currentMonth.getMonth() + 1;
+  document.getElementById('month-label').textContent = `${y}年 ${m}月`;
+}
+
+function selectCat(cat, el) {
+  selectedCat = cat;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+function render() {
+  const monthStr = getMonthStr(currentMonth);
+  let items = allData.filter(d => d.month === monthStr).map(d => calcMetrics(d));
+
+  if (selectedCat !== 'all') {
+    items = items.filter(d => d.cat === selectedCat);
+  }
+
+  const container = document.getElementById('content');
+
+  if (!items.length) {
+    container.innerHTML = '<div class="empty-state">この月のKPIデータはありません</div>';
+    return;
+  }
+
+  // サマリー
+  const filled = items.filter(d => d.val != null);
+  const greenCount = filled.filter(d => ragClass(d) === 'green').length;
+  const amberCount = filled.filter(d => ragClass(d) === 'amber').length;
+  const redCount = filled.filter(d => ragClass(d) === 'red').length;
+  const avgRate = filled.filter(d => d.targetRate != null).length
+    ? filled.filter(d => d.targetRate != null).reduce((s, d) => s + d.targetRate, 0) / filled.filter(d => d.targetRate != null).length
+    : null;
+
+  let html = '<div class="summary">';
+  html += `<div class="sum-card"><div class="sum-label">KPI項目数</div><div class="sum-value">${items.length}<span style="font-size:13px;color:var(--muted);font-weight:400"> 件</span></div><div class="sum-sub">入力済: ${filled.length} / ${items.length}</div></div>`;
+  html += `<div class="sum-card"><div class="sum-label">平均達成率</div><div class="sum-value" style="color:${avgRate != null ? (avgRate >= 1 ? 'var(--green)' : avgRate >= 0.8 ? 'var(--amber)' : 'var(--red)') : 'var(--muted)'}">${fmtPct(avgRate)}</div><div class="sum-sub"><span class="rag green"></span>${greenCount} <span class="rag amber"></span>${amberCount} <span class="rag red"></span>${redCount}</div></div>`;
+
+  // 売上系サマリー
+  const uriage = items.find(d => d.name === '月間売上高');
+  const arari = items.find(d => d.name === '粗利益' || d.name === '粗利');
+  if (uriage || arari) {
+    html += `<div class="sum-card"><div class="sum-label">月間売上高</div><div class="sum-value">${uriage && uriage.val != null ? fmtNum(uriage.val) : '—'}</div>${uriage && uriage.yoyRate != null ? `<div class="sum-sub">前年比 ${fmtPct(uriage.yoyRate)}</div>` : ''}</div>`;
+    html += `<div class="sum-card"><div class="sum-label">粗利益</div><div class="sum-value">${arari && arari.val != null ? fmtNum(arari.val) : '—'}</div>${arari && arari.yoyRate != null ? `<div class="sum-sub">前年比 ${fmtPct(arari.yoyRate)}</div>` : ''}</div>`;
+  }
+  html += '</div>';
+
+  // KPIリスト（カテゴリごと）
+  html += '<div class="kpi-list">';
+  const cats = selectedCat === 'all'
+    ? ['営業', '作業', '在庫', '人材', '顧客対応', 'マーケティング', '']
+    : [selectedCat];
+
+  cats.forEach(cat => {
+    const catItems = items.filter(d => (d.cat || '') === cat || (cat === '' && !d.cat));
+    if (!catItems.length) return;
+    const label = cat || '未分類';
+    html += `<div class="kpi-section"><div class="kpi-section-label">${label}</div>`;
+    catItems.forEach(d => {
+      const rc = ragClass(d);
+      const barW = d.targetRate != null ? Math.min(d.targetRate * 100, 150) : 0;
+      const barColor = rc === 'green' ? 'var(--green)' : rc === 'amber' ? 'var(--amber)' : rc === 'red' ? 'var(--red)' : 'var(--muted)';
+      html += `<div class="kpi-card" onclick="openDetail('${d.id}')">
+        <div class="kpi-top">
+          <span class="rag ${rc}"></span>
+          <span class="kpi-name">${d.name}</span>
+          <span class="kpi-badge ${rc}">${d.targetRate != null ? fmtPct(d.targetRate) : '未入力'}</span>
+        </div>
+        <div class="kpi-metrics">
+          <div class="kpi-metric"><div class="kpi-metric-label">実績</div><div class="kpi-metric-value">${d.val != null ? fmtNum(d.val) : '—'}</div></div>
+          <div class="kpi-metric"><div class="kpi-metric-label">目標</div><div class="kpi-metric-value">${d.targetVal != null ? fmtNum(d.targetVal) : '—'}</div></div>
+          <div class="kpi-metric"><div class="kpi-metric-label">前年比</div><div class="kpi-metric-value" style="color:${d.yoyRate != null ? (d.yoyRate >= 1 ? 'var(--green)' : 'var(--red)') : ''}">${fmtPct(d.yoyRate)}</div></div>
+        </div>
+        <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${barW}%;background:${barColor}"></div></div>
+      </div>`;
+    });
+    html += '</div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+// ─── 詳細モーダル ─────────────────────────
+function openDetail(id) {
+  const rec = allData.find(d => d.id === id);
+  if (!rec) return;
+  calcMetrics(rec);
+
+  document.getElementById('modal-title').textContent = rec.name;
+
+  // 過去12か月のデータ取得
+  const history = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(currentMonth);
+    d.setMonth(d.getMonth() - i);
+    const ms = getMonthStr(d);
+    const found = allData.find(x => x.name === rec.name && x.month === ms);
+    history.push({
+      month: (d.getMonth() + 1) + '月',
+      year: d.getFullYear(),
+      val: found ? found.val : null,
+      rate: found ? calcMetrics(found).targetRate : null
+    });
+  }
+
+  let body = '';
+
+  // 基本情報
+  body += '<div style="margin-bottom:16px">';
+  body += detailRow('カテゴリ', rec.cat || '—');
+  body += detailRow('対象月', rec.month ? rec.month.slice(0, 7).replace('-', '年') + '月' : '—');
+  body += detailRow('実績値', rec.val != null ? rec.val.toLocaleString('ja-JP') : '—');
+  body += detailRow('目標（前年110%）', rec.targetVal != null ? Math.round(rec.targetVal).toLocaleString('ja-JP') : '—');
+  body += detailRow('目標達成率', fmtPct(rec.targetRate));
+  body += detailRow('前年同月実績', rec.prevVal != null ? rec.prevVal.toLocaleString('ja-JP') : '—');
+  body += detailRow('前年同月比', fmtPct(rec.yoyRate));
+  body += detailRow('メモ', rec.memo || '—');
+  body += '</div>';
+
+  // バーチャート（実績推移）
+  const maxVal = Math.max(...history.map(h => h.val || 0), 1);
+  body += '<div class="chart-area"><div class="chart-title">実績推移（過去12か月）</div><div class="bar-chart">';
+  history.forEach(h => {
+    const pct = h.val != null ? (h.val / maxVal * 100) : 0;
+    const currentMonthMatch = h.month === (currentMonth.getMonth() + 1) + '月' && h.year === currentMonth.getFullYear();
+    const color = currentMonthMatch ? 'var(--accent)' : 'rgba(240,165,0,0.35)';
+    body += `<div class="bar-col">
+      <div class="bar-val">${h.val != null ? fmtNum(h.val) : ''}</div>
+      <div class="bar" style="height:${pct}%;background:${color}"></div>
+      <div class="bar-label">${h.month}</div>
+    </div>`;
+  });
+  body += '</div></div>';
+
+  // 達成率推移
+  const rates = history.filter(h => h.rate != null);
+  if (rates.length > 1) {
+    body += '<div class="chart-area"><div class="chart-title">達成率推移</div><div class="bar-chart">';
+    history.forEach(h => {
+      const pct = h.rate != null ? Math.min(h.rate * 100, 150) : 0;
+      const color = h.rate != null ? (h.rate >= 1 ? 'var(--green)' : h.rate >= 0.8 ? 'var(--amber)' : 'var(--red)') : 'transparent';
+      const currentMonthMatch = h.month === (currentMonth.getMonth() + 1) + '月' && h.year === currentMonth.getFullYear();
+      body += `<div class="bar-col">
+        <div class="bar-val">${h.rate != null ? fmtPct(h.rate) : ''}</div>
+        <div class="bar" style="height:${pct}%;background:${color};${currentMonthMatch ? 'opacity:1' : 'opacity:0.6'}"></div>
+        <div class="bar-label">${h.month}</div>
+      </div>`;
+    });
+    body += '</div></div>';
+  }
+
+  document.getElementById('modal-body').innerHTML = body;
+  document.getElementById('modal').classList.add('open');
+}
+
+function detailRow(label, value) {
+  return `<div class="detail-row"><span class="detail-label">${label}</span><span class="detail-value">${value}</span></div>`;
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+}
+
+// ─── テーマ同期 ─────────────────────────
+function syncTheme() {
+  const saved = localStorage.getItem('foo_portal_theme');
+  if (saved === 'dark') document.documentElement.style.colorScheme = 'dark';
+  else if (saved === 'light') document.documentElement.style.colorScheme = 'light';
+}
+
+// ─── 初期化 ─────────────────────────
+async function init() {
+  syncTheme();
+  updateMonthLabel();
+  try {
+    const raw = await fetchAllKPI();
+    allData = raw.map(parseRecord);
+
+    // データがある最新月に自動移動
+    const months = allData.filter(d => d.val != null).map(d => d.month).sort();
+    if (months.length) {
+      const latest = months[months.length - 1];
+      const d = new Date(latest);
+      currentMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+      updateMonthLabel();
+    }
+
+    render();
+  } catch (e) {
+    document.getElementById('content').innerHTML = `<div class="empty-state" style="color:var(--red)">読み込みエラー<br>${e.message}<br><button onclick="init()" style="margin-top:12px;background:var(--accent);border:none;border-radius:8px;color:#fff;padding:8px 16px;cursor:pointer">再試行</button></div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>

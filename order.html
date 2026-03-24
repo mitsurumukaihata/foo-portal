@@ -912,16 +912,26 @@ const RECEIVER_DB = '752cb60a-d01c-43f5-b3d1-8b4978756c23';
 
 // ─── パターン+サイズからDB自動判定 ────────────────────────────────────────────
 function detectDbKeys(sizeStr, patternStr) {
+  // 全角スペース↔半角スペースの揺れを吸収して比較
+  const norm = str => (str || '').replace(/[\u3000\s]+/g, ' ').trim();
+  const nSize = norm(sizeStr);
+
   const matched = [];
   for(const [key, db] of Object.entries(DB_MAP)) {
-    const sizeMatch    = db.sizes.some(s => s === sizeStr || sizeStr.includes(s) || s.includes(sizeStr));
+    const sizeMatch = db.sizes.some(s => {
+      const ns = norm(s);
+      return ns === nSize || nSize.includes(ns) || ns.includes(nSize);
+    });
     const patternMatch = !patternStr || !db.patterns || db.patterns.includes(patternStr);
     if(sizeMatch && patternMatch) matched.push(key);
   }
   // パターンでも絞れなかった場合はサイズのみで判定
   if(!matched.length) {
     for(const [key, db] of Object.entries(DB_MAP)) {
-      if(db.sizes.some(s => s === sizeStr || sizeStr.includes(s) || s.includes(sizeStr))) {
+      if(db.sizes.some(s => {
+        const ns = norm(s);
+        return ns === nSize || nSize.includes(ns) || ns.includes(nSize);
+      })) {
         matched.push(key);
       }
     }

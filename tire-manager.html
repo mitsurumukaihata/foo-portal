@@ -69,12 +69,19 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .prep-qty { font-size:12px; color:var(--green); font-weight:700; }
 .prep-warehouse { font-size:12px; color:var(--muted); }
 .prep-empty { text-align:center; padding:32px 20px; color:var(--muted); font-size:14px; }
-.prep-dest-group { margin-bottom:16px; }
-.prep-dest-header { display:flex; justify-content:space-between; align-items:center; padding:8px 4px 6px; border-bottom:2px solid var(--accent); margin-bottom:8px; }
-.prep-dest-name { font-size:15px; font-weight:700; color:var(--accent); }
-.prep-dest-total { font-size:13px; font-weight:700; color:var(--muted); }
-.prep-size-main { font-size:14px; font-weight:700; color:var(--text); flex:1; font-family:'DM Mono',monospace; letter-spacing:0.02em; }
-.prep-qty-badge { font-size:13px; font-weight:700; color:var(--green); background:rgba(39,174,96,0.1); padding:2px 8px; border-radius:4px; }
+.prep-wh-group { margin-bottom:20px; }
+.prep-wh-header { font-size:16px; font-weight:700; color:var(--text); padding:10px 0 8px; border-bottom:2.5px solid var(--text); margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
+.prep-wh-total { font-size:13px; font-weight:700; color:var(--muted); }
+.prep-dest-group { margin-bottom:12px; margin-left:4px; }
+.prep-dest-header { display:flex; justify-content:space-between; align-items:center; padding:6px 4px 4px; border-bottom:1.5px solid var(--accent); margin-bottom:6px; }
+.prep-dest-name { font-size:14px; font-weight:700; color:var(--accent); }
+.prep-dest-total { font-size:12px; font-weight:700; color:var(--muted); }
+.prep-all-item { background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:6px; cursor:pointer; transition:all 0.12s; }
+.prep-all-item:active { transform:scale(0.98); border-color:var(--accent); }
+.prep-all-row1 { display:flex; justify-content:space-between; align-items:center; margin-bottom:3px; }
+.prep-all-size { font-size:15px; font-weight:700; color:var(--text); font-family:'DM Mono',monospace; }
+.prep-all-qty { font-size:14px; font-weight:700; color:var(--green); }
+.prep-all-row2 { display:flex; gap:8px; align-items:center; }
 .prep-cat-tag { font-size:10px; color:var(--muted); background:var(--s1); border:1px solid var(--border); padding:1px 6px; border-radius:4px; }
 .prep-row3 { font-size:11px; color:var(--muted); margin-top:3px; }
 #app { display: none; flex-direction: column; min-height: 100vh; }
@@ -790,43 +797,64 @@ function renderAllPrepList(items) {
     return;
   }
 
-  // 出庫先でグループ化
-  const grouped = {};
+  // 倉庫 → 出庫先 → タイヤ でグループ化
+  const byWarehouse = {};
   items.forEach(item => {
+    const wh = item.warehouse || '不明';
     const dest = item.dest || '（出庫先なし）';
-    if (!grouped[dest]) grouped[dest] = [];
-    grouped[dest].push(item);
+    if (!byWarehouse[wh]) byWarehouse[wh] = {};
+    if (!byWarehouse[wh][dest]) byWarehouse[wh][dest] = [];
+    byWarehouse[wh][dest].push(item);
   });
 
-  // 出庫先を五十音順にソート（出庫先なしは末尾）
-  const sortedDests = Object.keys(grouped).sort((a, b) => {
-    if (a === '（出庫先なし）') return 1;
-    if (b === '（出庫先なし）') return -1;
+  const whOrder = ['五日市倉庫','志和倉庫','海田倉庫'];
+  const sortedWh = Object.keys(byWarehouse).sort((a, b) => {
+    const ia = whOrder.indexOf(a), ib = whOrder.indexOf(b);
+    if (ia >= 0 && ib >= 0) return ia - ib;
+    if (ia >= 0) return -1;
+    if (ib >= 0) return 1;
     return a.localeCompare(b, 'ja');
   });
 
   let totalQty = items.reduce((s, i) => s + (i.qty || 0), 0);
 
   let html = '';
-  sortedDests.forEach(dest => {
-    const destItems = grouped[dest];
-    const destQty = destItems.reduce((s, i) => s + (i.qty || 0), 0);
+  sortedWh.forEach(wh => {
+    const dests = byWarehouse[wh];
+    const whQty = Object.values(dests).flat().reduce((s, i) => s + (i.qty || 0), 0);
 
-    html += `<div class="prep-dest-group">`;
-    html += `<div class="prep-dest-header"><span class="prep-dest-name">${dest}</span><span class="prep-dest-total">${destQty}本</span></div>`;
+    html += `<div class="prep-wh-group">`;
+    html += `<div class="prep-wh-header">${wh}<span class="prep-wh-total">${whQty}本</span></div>`;
 
-    destItems.forEach(item => {
-      html += `<div class="prep-list-item" onclick="renderPrepEdit('${item.id}','${item.catKey}')">`;
-      html += `<div class="prep-row1"><span class="prep-size-main">${item.size}</span><span class="prep-qty-badge">${item.qty}本</span></div>`;
-      html += `<div class="prep-row2"><span class="prep-pattern">${item.pattern}</span><span class="prep-cat-tag">${item.catIcon} ${item.catName}</span><span class="prep-warehouse">🏭 ${item.warehouse}</span></div>`;
-      if (item.memo) html += `<div class="prep-row3">📝 ${item.memo}</div>`;
+    // 出庫先を五十音順にソート（出庫先なしは末尾）
+    const sortedDests = Object.keys(dests).sort((a, b) => {
+      if (a === '（出庫先なし）') return 1;
+      if (b === '（出庫先なし）') return -1;
+      return a.localeCompare(b, 'ja');
+    });
+
+    sortedDests.forEach(dest => {
+      const destItems = dests[dest];
+      const destQty = destItems.reduce((s, i) => s + (i.qty || 0), 0);
+
+      html += `<div class="prep-dest-group">`;
+      html += `<div class="prep-dest-header"><span class="prep-dest-name">${dest}</span><span class="prep-dest-total">${destQty}本</span></div>`;
+
+      destItems.forEach(item => {
+        html += `<div class="prep-all-item" onclick="renderPrepEdit('${item.id}','${item.catKey}')">`;
+        html += `<div class="prep-all-row1"><span class="prep-all-size">${item.size}</span><span class="prep-all-qty">${item.qty}本</span></div>`;
+        html += `<div class="prep-all-row2"><span class="prep-pattern">${item.pattern}</span><span class="prep-cat-tag">${item.catIcon} ${item.catName}</span></div>`;
+        if (item.memo) html += `<div class="prep-row3">📝 ${item.memo}</div>`;
+        html += `</div>`;
+      });
+
       html += `</div>`;
     });
 
     html += `</div>`;
   });
 
-  el.innerHTML = `<div class="content"><div class="screen-label">準備中タイヤ一覧</div><div class="screen-title">全カテゴリ</div><div style="font-size:12px;color:var(--muted);margin-bottom:12px;">合計 ${items.length}件 ／ ${totalQty}本</div>${html}<button class="btn-secondary" style="margin-top:8px;" onclick="renderEntry()">← 戻る</button></div>`;
+  el.innerHTML = `<div class="content"><div class="screen-label">準備中タイヤ一覧</div><div class="screen-title">全カテゴリ</div><div style="font-size:12px;color:var(--muted);margin-bottom:12px;">合計 ${items.length}件 ／ ${totalQty}本</div>${html}<button class="btn-secondary" style="margin-top:12px;" onclick="renderEntry()">← 戻る</button></div>`;
 }
 
 function renderPrepEdit(pageId, catKey) {

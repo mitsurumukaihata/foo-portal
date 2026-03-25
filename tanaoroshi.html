@@ -199,6 +199,27 @@ async function collectData() {
       updateProgress(i / total, cat.name + ' を読み込み中...');
       const records = await queryAllRecords(dbInfo.stockId);
 
+      // ── レコードの作成日時を取得するヘルパー ──
+      // r.created_time（Notion API標準）→ プロパティ内のcreated_time → last_edited_time の順で探す
+      function getCreatedTime(r) {
+        // 1) ページレベルの created_time
+        if (r.created_time) return r.created_time;
+        // 2) properties から created_time 型を探す（日付プロパティなど）
+        if (r.properties) {
+          for (const p of Object.values(r.properties)) {
+            if (p && p.type === 'created_time' && p.created_time) return p.created_time;
+          }
+        }
+        // 3) last_edited_time フォールバック
+        if (r.last_edited_time) return r.last_edited_time;
+        if (r.properties) {
+          for (const p of Object.values(r.properties)) {
+            if (p && p.type === 'last_edited_time' && p.last_edited_time) return p.last_edited_time;
+          }
+        }
+        return '';
+      }
+
       // ── STEP 1: 繰越の最新日時を探す ──
       // 繰越レコードがある場合、それ以前の入出庫は繰越に含まれているので無視する
       let kurikoshiDate = null;
@@ -206,14 +227,16 @@ async function collectData() {
         if (r.archived) return;
         const kubun = fooPropStr(r, '区分');
         if (kubun === '繰越') {
-          const created = r.created_time || '';
+          const created = getCreatedTime(r);
           if (created && (!kurikoshiDate || created > kurikoshiDate)) {
             kurikoshiDate = created;
           }
         }
       });
+      console.log(cat.name, '繰越基準日:', kurikoshiDate);
 
       // ── STEP 2: レコードを集計 ──
+      let skipCount = 0, useCount = 0;
       records.forEach(r => {
         if (r.archived) return;
         const kubun = fooPropStr(r, '区分');
@@ -229,9 +252,13 @@ async function collectData() {
 
         // 繰越がある場合: 繰越レコードはOK、それ以前の入出庫は無視
         if (kurikoshiDate && kubun !== '繰越') {
-          const created = r.created_time || '';
-          if (created < kurikoshiDate) return; // 繰越より前 → スキップ
+          const created = getCreatedTime(r);
+          if (!created || created < kurikoshiDate) {
+            skipCount++;
+            return; // 繰越より前 or 日時不明 → スキップ
+          }
         }
+        useCount++;
 
         // データ構造を初期化
         if (!stockData[warehouse]) stockData[warehouse] = {};
@@ -249,6 +276,7 @@ async function collectData() {
           cell.stock += qty * sign;
         }
       });
+      console.log(cat.name, '使用:', useCount, 'スキップ:', skipCount);
     }
 
     updateProgress(1, '集計完了');

@@ -54,6 +54,11 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .prep-divider { text-align:center; color:var(--muted); font-size:12px; margin:12px 0; letter-spacing:0.05em; }
 .btn-prep { width:100%; background:rgba(240,165,0,0.1); border:1.5px solid var(--accent); border-radius:10px; padding:13px; color:var(--accent); font-size:14px; font-family:'Noto Sans JP',sans-serif; cursor:pointer; font-weight:700; transition:all 0.15s; }
 .btn-prep:active { transform:scale(0.97); }
+.prep-cat-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:4px; }
+.prep-cat-btn { background:rgba(240,165,0,0.08); border:1.5px solid var(--accent); border-radius:8px; padding:10px 6px; color:var(--accent); font-size:11px; font-family:'Noto Sans JP',sans-serif; cursor:pointer; font-weight:700; transition:all 0.15s; line-height:1.3; }
+.prep-cat-btn:active { transform:scale(0.96); }
+.btn-prep-list { width:100%; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:13px; color:var(--text); font-size:14px; font-family:'Noto Sans JP',sans-serif; cursor:pointer; font-weight:700; transition:all 0.15s; }
+.btn-prep-list:active { transform:scale(0.97); }
 .prep-list-item { background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:8px; cursor:pointer; transition:all 0.15s; }
 .prep-list-item:active { transform:scale(0.98); border-color:var(--accent); }
 .prep-row1 { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
@@ -453,8 +458,10 @@ function renderSize(el) {
       </div>
       <div id="sz-candidates" class="candidates"></div>
       <button class="btn-primary" id="sz-next" onclick="goStep(1)" disabled>次へ →</button>
-      <div class="prep-divider">または</div>
-      <button class="btn-prep" onclick="renderPrepCatSelect()">📋 準備中タイヤを出庫する</button>
+      <div class="prep-divider">準備中タイヤを出庫する</div>
+      <div class="prep-cat-grid">${Object.entries(DB_MAP).map(([k, db]) => `<button class="prep-cat-btn" onclick="loadPrepList('${k}')">${db.icon} ${db.name}</button>`).join('')}</div>
+      <div class="prep-divider" style="margin-top:8px;">準備中タイヤを確認する</div>
+      <button class="btn-prep-list" onclick="renderPrepCatSelect()">📋 準備中タイヤ一覧</button>
     </div>`;
   const inp = document.getElementById('sz-input');
   inp.addEventListener('input', e => filterSizes(e.target.value));

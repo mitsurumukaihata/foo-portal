@@ -230,6 +230,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .stock-count { text-align: center; flex: 1; min-width: 0; }
 .stock-count-num { font-size: 16px; font-weight: 700; font-family: 'DM Mono', monospace; }
 .stock-count-num.zero { color: var(--muted); }
+.stock-count-num.has-history { color: var(--text); }
 .stock-count-num.positive { color: var(--green); }
 .stock-count-label { font-size: 9px; color: var(--muted); margin-top: 1px; }
 .stock-empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; }
@@ -1069,9 +1070,12 @@ function renderStockResult(size, catKey, records) {
     var prep = prepStock[p] || 0; var ord = orderStock[p] || 0;
     html += '<div class="stock-row"><div class="stock-pattern"><span style="font-weight:600;">' + p + '</span></div><div class="stock-counts">';
     WAREHOUSES.forEach(function(w) {
-      var n = stock[p]?.[w] || 0; var cls = n > 0 ? 'positive' : 'zero';
-      html += '<div class="stock-count" style="cursor:' + (n>0?'pointer':'default') + ';" ';
-      if (n > 0) html += 'data-pattern="' + p.replace(/"/g,'&quot;') + '" data-mode="' + w + '" onclick="onStockTap(this)"';
+      var n = stock[p]?.[w] || 0;
+      var hasHistory = records.some(function(r) { return r.properties['パターン名']?.select?.name === p && r.properties[db.warehouseField]?.select?.name === w; });
+      var clickable = n > 0 || hasHistory;
+      var cls = n > 0 ? 'positive' : (hasHistory ? 'has-history' : 'zero');
+      html += '<div class="stock-count" style="cursor:' + (clickable?'pointer':'default') + ';" ';
+      if (clickable) html += 'data-pattern="' + p.replace(/"/g,'&quot;') + '" data-mode="' + w + '" onclick="onStockTap(this)"';
       html += '><div class="stock-count-num ' + cls + '">' + n + '</div><div class="stock-count-label">本</div></div>';
     });
     html += '<div class="stock-count" style="cursor:' + (prep>0?'pointer':'default') + ';border-left:1px solid var(--border);" ';

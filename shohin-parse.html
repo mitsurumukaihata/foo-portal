@@ -94,6 +94,12 @@ const MAKER_MAP = {
   'RTM919':'TOYO','RTM810':'TOYO','RTM804':'TOYO','RTM807':'TOYO','RTM81C-170':'TOYO',
   'RTM890':'TOYO','RTW910':'TOYO','RTW911':'TOYO','RTW970':'TOYO','RTG610':'TOYO',
   'RT919':'TOYO','RT810':'TOYO','RT804':'TOYO',
+  // ─── 追加パターン（みつさん確認済み） ───
+  'C1S':'TOYO','G5':'TOYO','TX':'TOYO','SPORT':'TOYO','CF2':'TOYO',
+  'GIZ':'TOYO','DRB':'TOYO','TEO+':'TOYO','M748':'TOYO','ML':'TOYO',
+  'MPZ':'TOYO','R1R':'TOYO','Gsi-5':'TOYO','３PLUS':'TOYO','3PLUS':'TOYO',
+  'M917':'TOYO','M810':'TOYO',
+  'R221Ⅱ':'BRIDGESTONE','R221II':'BRIDGESTONE','R02':'BRIDGESTONE',
 };
 
 // ─── メーカー推定（半角カナ対応） ───
@@ -113,7 +119,11 @@ const SIZE_RX = /(\d{2,3}[\/.]\d{2}R\d{1,2}[\./]?\d{0,1}(?:\s*\d{2,3}\/\d{2,3})?
 
 // パターン名をソートして長い順にマッチ（SP688ACE > SP688 > SP68）
 const PATTERN_NAMES = Object.keys(MAKER_MAP).sort((a, b) => b.length - a.length);
-const PATTERN_RX = new RegExp('\\b(' + PATTERN_NAMES.map(p => p.replace(/[-\/]/g, m => '\\' + m)).join('|') + ')\\b', 'i');
+// 特殊文字エスケープ（+, -, / 等）＆全角数字・Ⅱも考慮
+const PATTERN_RX_STR = PATTERN_NAMES.map(p => p.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&')).join('|');
+const PATTERN_RX = new RegExp('(?:^|[\\s　])(' + PATTERN_RX_STR + ')(?=[\\s　]|$)', 'i');
+// 全角数字→半角変換後にもマッチするようフォールバック
+const PATTERN_RX2 = new RegExp('(?:^|[\\s　])(' + PATTERN_RX_STR + ')(?=[\\s　]|$|\\d)', 'i');
 
 // ─── 非タイヤ判定 ───
 const SKIP_KEYWORDS = [
@@ -218,11 +228,23 @@ function parseItem(title) {
     }
   }
 
-  // 2. パターン名マッチ
-  const pm = t.match(PATTERN_RX);
+  // 2. パターン名マッチ（全角→半角変換後もトライ）
+  // 全角数字/カナを半角に変換したバージョンも用意
+  let tNorm = t.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+  tNorm = tNorm.replace(/３/g, '3').replace(/＋/g, '+').replace(/Ⅱ/g, 'II');
+
+  let pm = t.match(PATTERN_RX) || t.match(PATTERN_RX2) || tNorm.match(PATTERN_RX) || tNorm.match(PATTERN_RX2);
+  // フォールバック: スペース区切りの各トークンをMAKER_MAPで直接照合
+  if (!pm) {
+    const tokens = tNorm.split(/[\s　]+/);
+    for (const tok of tokens) {
+      const key = PATTERN_NAMES.find(p => p.toLowerCase() === tok.toLowerCase() || p === tok);
+      if (key) { pm = [null, key]; break; }
+    }
+  }
   if (pm) {
     // 正規化: MAKER_MAPのキーで大文字小文字を揃える
-    const matchedRaw = pm[1];
+    const matchedRaw = (pm[1] || '').trim();
     const normalized = PATTERN_NAMES.find(p => p.toLowerCase() === matchedRaw.toLowerCase()) || matchedRaw;
     pattern = normalized;
     if (!maker && MAKER_MAP[normalized]) maker = MAKER_MAP[normalized];
@@ -247,9 +269,15 @@ function parseItem(title) {
     if (size) return { type: 'parsed', maker: maker || null, pattern: null, size };
   }
 
+  // サイズだけの商品名（パターンなし）→タイヤとして扱う
+  if (!pattern && size) {
+    // サイズが取れていればタイヤ商品として振り分け（パターン空白）
+    return { type: 'parsed', maker: maker || null, pattern: null, size };
+  }
+
   // パターンもサイズも取れなかった
   if (!pattern && !size) {
-    // もしかしてタイヤ名っぽい？
+    // 数字が含まれてたらタイヤっぽい→要確認
     if (/\d{2,}/.test(t)) {
       return { type: 'nomatch' };
     }

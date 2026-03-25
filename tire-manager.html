@@ -69,6 +69,14 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .prep-qty { font-size:12px; color:var(--green); font-weight:700; }
 .prep-warehouse { font-size:12px; color:var(--muted); }
 .prep-empty { text-align:center; padding:32px 20px; color:var(--muted); font-size:14px; }
+.prep-dest-group { margin-bottom:16px; }
+.prep-dest-header { display:flex; justify-content:space-between; align-items:center; padding:8px 4px 6px; border-bottom:2px solid var(--accent); margin-bottom:8px; }
+.prep-dest-name { font-size:15px; font-weight:700; color:var(--accent); }
+.prep-dest-total { font-size:13px; font-weight:700; color:var(--muted); }
+.prep-size-main { font-size:14px; font-weight:700; color:var(--text); flex:1; font-family:'DM Mono',monospace; letter-spacing:0.02em; }
+.prep-qty-badge { font-size:13px; font-weight:700; color:var(--green); background:rgba(39,174,96,0.1); padding:2px 8px; border-radius:4px; }
+.prep-cat-tag { font-size:10px; color:var(--muted); background:var(--s1); border:1px solid var(--border); padding:1px 6px; border-radius:4px; }
+.prep-row3 { font-size:11px; color:var(--muted); margin-top:3px; }
 #app { display: none; flex-direction: column; min-height: 100vh; }
 .header { background: var(--s1); border-bottom: 0.5px solid var(--border); padding: 14px 20px 10px; position: sticky; top: 0; z-index: 100; }
 .header-brand { font-size: 10px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 2px; }
@@ -461,7 +469,7 @@ function renderSize(el) {
       <div class="prep-divider">準備中タイヤを出庫する</div>
       <div class="prep-cat-grid">${Object.entries(DB_MAP).map(([k, db]) => `<button class="prep-cat-btn" onclick="loadPrepList('${k}')">${db.icon} ${db.name}</button>`).join('')}</div>
       <div class="prep-divider" style="margin-top:8px;">準備中タイヤを確認する</div>
-      <button class="btn-prep-list" onclick="renderPrepCatSelect()">📋 準備中タイヤ一覧</button>
+      <button class="btn-prep-list" onclick="loadAllPrepList()">📋 準備中タイヤ一覧</button>
     </div>`;
   const inp = document.getElementById('sz-input');
   inp.addEventListener('input', e => filterSizes(e.target.value));
@@ -699,11 +707,8 @@ function cancelEntry() { resetState(); renderEntry(); }
 function newEntry() { resetState(); renderEntry(); }
 
 // ─── 準備リスト機能 ──────────────────────────────────────────────────────────
-function renderPrepCatSelect() {
-  const el = document.getElementById('entry-content');
-  el.innerHTML = `<div class="content"><div class="screen-label">準備中タイヤを出庫する</div><div class="screen-title">カテゴリーを選択</div><div class="cat-grid">${Object.entries(DB_MAP).map(([k, db]) => `<div class="cat-card" onclick="loadPrepList('${k}')"><span class="cat-icon">${db.icon}</span><div class="cat-name">${db.name}</div><div class="cat-sub">${db.sub}</div></div>`).join('')}</div><button class="btn-secondary" onclick="renderEntry()">← 戻る</button></div>`;
-}
 
+// カテゴリ別の準備リスト（出庫ボタンから直接）
 async function loadPrepList(catKey) {
   const el = document.getElementById('entry-content');
   el.innerHTML = `<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">準備中タイヤを取得中…</div></div>`;
@@ -719,13 +724,13 @@ async function loadPrepList(catKey) {
       if (!res.has_more) break;
       cursor = res.next_cursor;
     }
-    renderPrepList(catKey, all);
+    renderPrepListByCat(catKey, all);
   } catch(e) {
-    el.innerHTML = `<div class="content"><div class="error-box">データの取得に失敗しました。<br><small>${e.message}</small></div><button class="btn-secondary" onclick="renderPrepCatSelect()">← 戻る</button></div>`;
+    el.innerHTML = `<div class="content"><div class="error-box">データの取得に失敗しました。<br><small>${e.message}</small></div><button class="btn-secondary" onclick="renderEntry()">← 戻る</button></div>`;
   }
 }
 
-function renderPrepList(catKey, records) {
+function renderPrepListByCat(catKey, records) {
   const el = document.getElementById('entry-content');
   const db = DB_MAP[catKey];
   let listHtml = records.length === 0 ? `<div class="prep-empty">準備中のタイヤはありません</div>` : records.map(r => {
@@ -737,7 +742,91 @@ function renderPrepList(catKey, records) {
     const warehouse = p[db.warehouseField]?.select?.name || '―';
     return `<div class="prep-list-item" onclick="renderPrepEdit('${r.id}','${catKey}')"><div class="prep-row1"><span class="prep-dest">${dest}</span><span class="prep-pattern">${pattern}</span><span class="prep-size">${size}</span></div><div class="prep-row2"><span class="prep-qty">📦 ${qty}本</span><span class="prep-warehouse">🏭 ${warehouse}</span></div></div>`;
   }).join('');
-  el.innerHTML = `<div class="content"><div class="screen-label">準備中タイヤ一覧</div><div class="screen-title">${db.icon} ${db.name}</div><div style="font-size:12px;color:var(--muted);margin-bottom:12px;">${records.length}件の準備中タイヤ</div>${listHtml}<button class="btn-secondary" style="margin-top:8px;" onclick="renderPrepCatSelect()">← カテゴリーに戻る</button></div>`;
+  el.innerHTML = `<div class="content"><div class="screen-label">準備中タイヤ一覧</div><div class="screen-title">${db.icon} ${db.name}</div><div style="font-size:12px;color:var(--muted);margin-bottom:12px;">${records.length}件の準備中タイヤ</div>${listHtml}<button class="btn-secondary" style="margin-top:8px;" onclick="renderEntry()">← 戻る</button></div>`;
+}
+
+// ─── 全カテゴリ横断：準備中タイヤ一覧（出庫先別） ───────────────────────────
+async function loadAllPrepList() {
+  const el = document.getElementById('entry-content');
+  el.innerHTML = `<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">全カテゴリの準備中タイヤを取得中…</div></div>`;
+  const allItems = [];
+  try {
+    for (const [catKey, db] of Object.entries(DB_MAP)) {
+      let cursor;
+      while (true) {
+        const body = { filter: { property: '区分', select: { equals: '準備' } }, sorts: [{ property: '日付', direction: 'descending' }], page_size: 100 };
+        if (cursor) body.start_cursor = cursor;
+        const res = await notionAPI('POST', `/databases/${db.id}/query`, body);
+        if (res.object === 'error') break;
+        res.results.forEach(r => {
+          const p = r.properties;
+          allItems.push({
+            id: r.id,
+            catKey,
+            catName: db.name,
+            catIcon: db.icon,
+            dest: p['出庫先']?.rich_text?.[0]?.plain_text || '',
+            pattern: p['パターン名']?.select?.name || '―',
+            size: p['サイズコード']?.select?.name || '―',
+            qty: p['数量']?.number ?? 0,
+            warehouse: p[db.warehouseField]?.select?.name || '―',
+            memo: p['メモ']?.rich_text?.[0]?.plain_text || '',
+          });
+        });
+        if (!res.has_more) break;
+        cursor = res.next_cursor;
+      }
+    }
+    renderAllPrepList(allItems);
+  } catch(e) {
+    el.innerHTML = `<div class="content"><div class="error-box">データの取得に失敗しました。<br><small>${e.message}</small></div><button class="btn-secondary" onclick="renderEntry()">← 戻る</button></div>`;
+  }
+}
+
+function renderAllPrepList(items) {
+  const el = document.getElementById('entry-content');
+  if (items.length === 0) {
+    el.innerHTML = `<div class="content"><div class="screen-label">準備中タイヤ一覧</div><div class="prep-empty">準備中のタイヤはありません</div><button class="btn-secondary" onclick="renderEntry()">← 戻る</button></div>`;
+    return;
+  }
+
+  // 出庫先でグループ化
+  const grouped = {};
+  items.forEach(item => {
+    const dest = item.dest || '（出庫先なし）';
+    if (!grouped[dest]) grouped[dest] = [];
+    grouped[dest].push(item);
+  });
+
+  // 出庫先を五十音順にソート（出庫先なしは末尾）
+  const sortedDests = Object.keys(grouped).sort((a, b) => {
+    if (a === '（出庫先なし）') return 1;
+    if (b === '（出庫先なし）') return -1;
+    return a.localeCompare(b, 'ja');
+  });
+
+  let totalQty = items.reduce((s, i) => s + (i.qty || 0), 0);
+
+  let html = '';
+  sortedDests.forEach(dest => {
+    const destItems = grouped[dest];
+    const destQty = destItems.reduce((s, i) => s + (i.qty || 0), 0);
+
+    html += `<div class="prep-dest-group">`;
+    html += `<div class="prep-dest-header"><span class="prep-dest-name">${dest}</span><span class="prep-dest-total">${destQty}本</span></div>`;
+
+    destItems.forEach(item => {
+      html += `<div class="prep-list-item" onclick="renderPrepEdit('${item.id}','${item.catKey}')">`;
+      html += `<div class="prep-row1"><span class="prep-size-main">${item.size}</span><span class="prep-qty-badge">${item.qty}本</span></div>`;
+      html += `<div class="prep-row2"><span class="prep-pattern">${item.pattern}</span><span class="prep-cat-tag">${item.catIcon} ${item.catName}</span><span class="prep-warehouse">🏭 ${item.warehouse}</span></div>`;
+      if (item.memo) html += `<div class="prep-row3">📝 ${item.memo}</div>`;
+      html += `</div>`;
+    });
+
+    html += `</div>`;
+  });
+
+  el.innerHTML = `<div class="content"><div class="screen-label">準備中タイヤ一覧</div><div class="screen-title">全カテゴリ</div><div style="font-size:12px;color:var(--muted);margin-bottom:12px;">合計 ${items.length}件 ／ ${totalQty}本</div>${html}<button class="btn-secondary" style="margin-top:8px;" onclick="renderEntry()">← 戻る</button></div>`;
 }
 
 function renderPrepEdit(pageId, catKey) {

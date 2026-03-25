@@ -577,7 +577,7 @@ body {
 <!-- ════════ MAIN APP ════════ -->
 <div id="app">
   <div class="app-header">
-    <button class="back-btn" onclick="location.href='/'">← ポータルへ戻る</button>
+    <button class="back-btn" onclick="location.href='https://mitsurumukaihata.github.io/foo-portal/'">← ポータルへ戻る</button>
     <div class="app-title">棚卸集計</div>
     <div class="app-date" id="app-date"></div>
   </div>
@@ -941,17 +941,25 @@ async function generatePDF() {
     pdfTemplate.appendChild(page);
   });
 
-  // 一時的に表示（display:noneだとhtml2canvasが白紙になる）
+  // html2canvasはdisplay:noneやビューポート外の要素をレンダリングできないので
+  // 一時的にbodyへ追加し、可視状態にしてからキャプチャする
   pdfTemplate.style.display = 'block';
-  pdfTemplate.style.position = 'absolute';
-  pdfTemplate.style.left = '-9999px';
+  pdfTemplate.style.position = 'fixed';
+  pdfTemplate.style.left = '0';
   pdfTemplate.style.top = '0';
+  pdfTemplate.style.zIndex = '-1';
+  pdfTemplate.style.opacity = '0.01';
+  pdfTemplate.style.width = '210mm';
+  pdfTemplate.style.overflow = 'visible';
+
+  // 描画完了を待つ
+  await new Promise(r => setTimeout(r, 500));
 
   const opt = {
     margin: 0,
     filename: 'tanaoroshi_' + today.getFullYear() + (today.getMonth()+1).toString().padStart(2,'0') + today.getDate().toString().padStart(2,'0') + '.pdf',
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, logging: false },
+    html2canvas: { scale: 2, useCORS: true, logging: true, scrollX: 0, scrollY: 0, windowWidth: 794, windowHeight: 1123 },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
     pagebreak: { mode: ['css', 'legacy'], avoid: '.pdf-cat-block' },
   };
@@ -962,6 +970,11 @@ async function generatePDF() {
     pdfTemplate.style.display = 'none';
     pdfTemplate.style.position = '';
     pdfTemplate.style.left = '';
+    pdfTemplate.style.top = '';
+    pdfTemplate.style.zIndex = '';
+    pdfTemplate.style.opacity = '';
+    pdfTemplate.style.width = '';
+    pdfTemplate.style.overflow = '';
   }
 }
 

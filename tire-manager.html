@@ -1097,7 +1097,7 @@ function stockHistory(mode) {
   else {
     filtered = records.filter(function(r) { return r.properties['パターン名']?.select?.name === pattern && r.properties['サイズコード']?.select?.name === size && r.properties[wField]?.select?.name === mode && r.properties['区分']?.select?.name !== '発注中'; });
     filtered.sort(function(a,b){ return new Date(b.created_time)-new Date(a.created_time); });
-    filtered = filtered.slice(0,10);
+    filtered = filtered.slice(0,15);
   }
   var modeLabel = mode === '準備' ? '準備中' : mode === '発注中' ? '発注中' : mode;
   var modeColor = mode === '準備' ? 'var(--yellow)' : mode === '発注中' ? 'var(--purple)' : 'var(--accent)';
@@ -1113,7 +1113,7 @@ function stockHistory(mode) {
     var cName = creator.split('\u3000')[0];
     return '<div style="border-bottom:1px solid var(--border);padding:10px 0;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><span style="font-size:11px;color:var(--muted);">' + date + '</span><span style="font-size:10px;color:' + kColor + ';border:1px solid ' + kColor + ';border-radius:4px;padding:1px 6px;">' + kubun + '</span></div><div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:13px;color:var(--text);flex:1;">' + dest + '</span><span style="font-size:16px;font-weight:700;color:var(--accent);font-family:\'DM Mono\',monospace;margin:0 12px;">' + qty + '本</span><span style="font-size:11px;color:var(--muted);">' + cName + '</span></div></div>';
   }).join('');
-  var limitNote = (mode !== '準備' && mode !== '発注中') ? '<div style="font-size:11px;color:var(--muted);margin-top:8px;">最新10件表示</div>' : '';
+  var limitNote = (mode !== '準備' && mode !== '発注中') ? '<div style="font-size:11px;color:var(--muted);margin-top:8px;">最新15件表示</div>' : '';
   var html = '<div class="content">';
   html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><button id="hist-back" style="background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:0;">&#8592;</button><div class="screen-label" style="margin:0;">履歴</div></div>';
   html += '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:2px;"><div style="font-size:22px;font-weight:900;color:var(--text);">' + pattern + '</div><div style="font-size:14px;font-weight:700;color:var(--accent);font-family:\'DM Mono\',monospace;">' + size + '</div></div>';

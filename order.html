@@ -1199,15 +1199,18 @@ async function submitNyuko() {
     // ②-b 入出庫DBの「発注中」レコードを削除（入庫数分）
     let stockCleanMsg = '';
     try {
-      const delQty = (nokori > 0 && nokoriChk) ? nyukoQty : undefined; // 残数あり→入庫分だけ削除、全数→全削除
+      const isPartial = nokori > 0 && nokoriChk;
       const delResult = await fooDeleteStockOrders({
         size:      sizeCode || size,
         pattern:   pattern,
         warehouse: warehouse,
-        qty:       delQty,
+        qty:       isPartial ? nyukoQty : undefined,
+        remainQty: isPartial ? nokori : undefined,
       });
       if (delResult.deleted > 0) {
-        stockCleanMsg = `\n発注中${delResult.deleted}件を削除`;
+        stockCleanMsg = isPartial
+          ? `\n発注中を残数${nokori}本に更新`
+          : `\n発注中${delResult.deleted}件を削除`;
       }
       if (delResult.errors.length > 0) {
         stockCleanMsg += '\n⚠️ ' + delResult.errors.join(', ');

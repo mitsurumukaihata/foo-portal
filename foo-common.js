@@ -383,16 +383,38 @@ async function fooDeleteStockOrders(params) {
       const res = await fooNotionQuery(dbInfo.stockId, { filter, page_size: 100 });
       const pages = (res.results || []).filter(p => !p.archived);
 
-      // qty指定があればその数だけ、なければ全件アーカイブ
-      const limit = params.qty ? params.qty : pages.length;
-      const targets = pages.slice(0, limit);
-
-      for (const page of targets) {
-        try {
-          await fooNotionRequest('PATCH', '/pages/' + page.id, { archived: true });
-          deleted++;
-        } catch (e) {
-          errors.push('アーカイブ失敗(' + page.id + '): ' + e.message);
+      if (params.qty && params.remainQty) {
+        // ★ 部分入庫: レコードを削除せず、数量を残数に更新する
+        for (const page of pages) {
+          try {
+            const pageQty = page.properties['数量']?.number || 0;
+            if (pageQty > params.qty) {
+              // 数量を残数に更新
+              await fooNotionRequest('PATCH', '/pages/' + page.id, {
+                properties: {
+                  '数量': { number: params.remainQty },
+                  'タイトル': { title: [{ text: { content: `${params.size} ${params.pattern} 発注中${wh ? ' ' + wh : ''}`.trim() } }] },
+                }
+              });
+              deleted++; // updated count
+            } else {
+              // レコードの数量が入庫数以下なら全削除
+              await fooNotionRequest('PATCH', '/pages/' + page.id, { archived: true });
+              deleted++;
+            }
+          } catch (e) {
+            errors.push('更新失敗(' + page.id + '): ' + e.message);
+          }
+        }
+      } else {
+        // 全数入庫: 全件アーカイブ（従来通り）
+        for (const page of pages) {
+          try {
+            await fooNotionRequest('PATCH', '/pages/' + page.id, { archived: true });
+            deleted++;
+          } catch (e) {
+            errors.push('アーカイブ失敗(' + page.id + '): ' + e.message);
+          }
         }
       }
     } catch (e) {

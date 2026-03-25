@@ -1087,7 +1087,7 @@ function renderStockResult(size, catKey, records) {
   el.innerHTML = html;
 }
 function onStockTap(el) { _currentPattern = el.getAttribute('data-pattern'); stockHistory(el.getAttribute('data-mode')); }
-function stockHistory(mode) {
+async function stockHistory(mode) {
   var catKey = _stockCatKey, pattern = _currentPattern, size = _stockSize, records = _stockRecords;
   var el = document.getElementById('stock-content');
   var db = DB_MAP[catKey], wField = db.warehouseField;
@@ -1095,9 +1095,27 @@ function stockHistory(mode) {
   if (mode === '準備') { filtered = records.filter(function(r) { return r.properties['区分']?.select?.name === '準備' && r.properties['パターン名']?.select?.name === pattern && r.properties['サイズコード']?.select?.name === size; }); }
   else if (mode === '発注中') { filtered = records.filter(function(r) { return r.properties['区分']?.select?.name === '発注中' && r.properties['パターン名']?.select?.name === pattern && r.properties['サイズコード']?.select?.name === size; }); }
   else {
-    filtered = records.filter(function(r) { return r.properties['パターン名']?.select?.name === pattern && r.properties['サイズコード']?.select?.name === size && r.properties[wField]?.select?.name === mode && r.properties['区分']?.select?.name !== '発注中'; });
-    filtered.sort(function(a,b){ return new Date(b.created_time)-new Date(a.created_time); });
-    filtered = filtered.slice(0,15);
+    // 繰越日フィルタに制限されないよう、Notion APIから直接最新15件を取得
+    try {
+      el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">履歴を取得中…</div></div>';
+      var filters = { and: [
+        { property: 'パターン名', select: { equals: pattern } },
+        { property: 'サイズコード', select: { equals: size } },
+        { property: wField, select: { equals: mode } },
+        { property: '区分', select: { does_not_equal: '発注中' } }
+      ]};
+      var res = await notionAPI('POST', '/databases/' + db.id + '/query', {
+        filter: filters,
+        sorts: [{ timestamp: 'created_time', direction: 'descending' }],
+        page_size: 15
+      });
+      filtered = res.results || [];
+    } catch(e) {
+      // API取得失敗時はローカルデータにフォールバック
+      filtered = records.filter(function(r) { return r.properties['パターン名']?.select?.name === pattern && r.properties['サイズコード']?.select?.name === size && r.properties[wField]?.select?.name === mode && r.properties['区分']?.select?.name !== '発注中'; });
+      filtered.sort(function(a,b){ return new Date(b.created_time)-new Date(a.created_time); });
+      filtered = filtered.slice(0,15);
+    }
   }
   var modeLabel = mode === '準備' ? '準備中' : mode === '発注中' ? '発注中' : mode;
   var modeColor = mode === '準備' ? 'var(--yellow)' : mode === '発注中' ? 'var(--purple)' : 'var(--accent)';

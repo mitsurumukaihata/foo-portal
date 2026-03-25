@@ -199,6 +199,21 @@ async function collectData() {
       updateProgress(i / total, cat.name + ' を読み込み中...');
       const records = await queryAllRecords(dbInfo.stockId);
 
+      // ── STEP 1: 繰越の最新日時を探す ──
+      // 繰越レコードがある場合、それ以前の入出庫は繰越に含まれているので無視する
+      let kurikoshiDate = null;
+      records.forEach(r => {
+        if (r.archived) return;
+        const kubun = fooPropStr(r, '区分');
+        if (kubun === '繰越') {
+          const created = r.created_time || '';
+          if (created && (!kurikoshiDate || created > kurikoshiDate)) {
+            kurikoshiDate = created;
+          }
+        }
+      });
+
+      // ── STEP 2: レコードを集計 ──
       records.forEach(r => {
         if (r.archived) return;
         const kubun = fooPropStr(r, '区分');
@@ -209,9 +224,14 @@ async function collectData() {
 
         if (!kubun || !size || !pattern || !warehouse || warehouse === '未定') return;
 
-        // 発注中・繰越以外の不明な区分は無視
         const sign = FOO_KUBUN_SIGN[kubun];
         if (sign === undefined || sign === 0) return; // 発注中(0)は除外
+
+        // 繰越がある場合: 繰越レコードはOK、それ以前の入出庫は無視
+        if (kurikoshiDate && kubun !== '繰越') {
+          const created = r.created_time || '';
+          if (created < kurikoshiDate) return; // 繰越より前 → スキップ
+        }
 
         // データ構造を初期化
         if (!stockData[warehouse]) stockData[warehouse] = {};
@@ -224,7 +244,7 @@ async function collectData() {
         if (kubun === '準備') {
           // 準備は別トラック: junbiに加算、stockからは引く
           cell.junbi += qty;
-          cell.stock -= qty; // sign=-1 なので qty*sign = -qty
+          cell.stock -= qty;
         } else {
           cell.stock += qty * sign;
         }

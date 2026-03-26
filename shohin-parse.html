@@ -264,10 +264,22 @@ function parseItem(title) {
       if (key) { pm = [null, key]; break; }
     }
   }
+  // パターン名の表記ゆれ正規化マップ
+  const PATTERN_CANONICAL = {
+    'AllroadsD': 'Allroads D',
+    'FR:01S': 'FR01S',
+    '再生タイヤ': '更生タイヤ',
+    '更新タイヤ': '更生タイヤ',
+    'R221 II': 'R221II',
+    'Lu II': 'LuII',
+    'Lu　II': 'LuII',
+  };
   if (pm) {
     // 正規化: MAKER_MAPのキーで大文字小文字を揃える
     const matchedRaw = (pm[1] || '').trim();
-    const normalized = PATTERN_NAMES.find(p => p.toLowerCase() === matchedRaw.toLowerCase()) || matchedRaw;
+    let normalized = PATTERN_NAMES.find(p => p.toLowerCase() === matchedRaw.toLowerCase()) || matchedRaw;
+    // 表記ゆれ正規化
+    if (PATTERN_CANONICAL[normalized]) normalized = PATTERN_CANONICAL[normalized];
     pattern = normalized;
     if (!maker && MAKER_MAP[normalized]) maker = MAKER_MAP[normalized];
   }

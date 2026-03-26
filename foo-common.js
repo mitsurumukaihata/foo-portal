@@ -169,16 +169,36 @@ async function fooNotionCreate(dbId, props) {
  * @returns {Promise<object>} 更新されたページ
  * @throws {Error} HTTP エラー or Notion API エラー
  */
-async function fooNotionPatch(pageId, props) {
-  const r = await fetch(`${FOO_WORKER}/pages/${pageId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ properties: props }),
-  });
-  if (!r.ok) throw new Error(await r.text());
-  const data = await r.json();
-  if (data.object === 'error') throw new Error(data.message || JSON.stringify(data));
-  return data;
+async function fooNotionPatch(pageId, props, retries) {
+  retries = retries || 2;
+  for (let i = 0; i <= retries; i++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 25000);
+    try {
+      const r = await fetch(`${FOO_WORKER}/pages/${pageId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ properties: props }),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (r.status === 504 || r.status === 502 || r.status === 429) {
+        if (i < retries) { await new Promise(ok => setTimeout(ok, 1500 * (i + 1))); continue; }
+      }
+      if (!r.ok) throw new Error('error code: ' + r.status);
+      const data = await r.json();
+      if (data.object === 'error') throw new Error(data.message || JSON.stringify(data));
+      return data;
+    } catch (e) {
+      clearTimeout(timer);
+      if (e.name === 'AbortError') {
+        if (i < retries) { await new Promise(ok => setTimeout(ok, 1500 * (i + 1))); continue; }
+        throw new Error('タイムアウト: /pages/' + pageId);
+      }
+      if (i >= retries) throw e;
+      await new Promise(ok => setTimeout(ok, 1500 * (i + 1)));
+    }
+  }
 }
 
 /**

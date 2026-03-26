@@ -1183,17 +1183,22 @@ async function submitNyuko() {
     await notionCreate(db.id, props);
 
     // ② 発注管理表の更新（残数あり＋チェックあり → 数量を残数に更新して発注済のまま）
-    if(nokori > 0 && nokoriChk) {
-      await notionPatch(nyukoOrderId, {
-        '数量':       {number: nokori},
-        'ステータス': {select:{name:'発注済'}},
-      });
-    } else {
-      // 全数入庫 or 残数を残さない → 納入済に
-      await notionPatch(nyukoOrderId, {
-        'ステータス': {select:{name:'納入済'}},
-        '納品日':     {date:{start: now.toISOString().slice(0,10)}},
-      });
+    let orderUpdateOk = true;
+    try {
+      if(nokori > 0 && nokoriChk) {
+        await notionPatch(nyukoOrderId, {
+          '数量':       {number: nokori},
+          'ステータス': {select:{name:'発注済'}},
+        });
+      } else {
+        await notionPatch(nyukoOrderId, {
+          'ステータス': {select:{name:'納入済'}},
+          '納品日':     {date:{start: now.toISOString().slice(0,10)}},
+        });
+      }
+    } catch (orderErr) {
+      console.warn('発注管理更新エラー（リトライ済）:', orderErr);
+      orderUpdateOk = false;
     }
 
     // ②-b 入出庫DBの「発注中」レコードを削除（入庫数分）
@@ -1224,7 +1229,8 @@ async function submitNyuko() {
     const nokoriMsg = (nokori > 0 && nokoriChk)
       ? `（残り${nokori}本を発注リストに残しました）`
       : '';
-    showFeedback('success', `✓ 入庫登録しました（${size} ${nyukoQty}本 → ${warehouse}）${nokoriMsg}${stockCleanMsg}`);
+    const orderWarn = orderUpdateOk ? '' : '\n⚠️ 発注管理の更新に失敗（手動で確認してください）';
+    showFeedback('success', `✓ 入庫登録しました（${size} ${nyukoQty}本 → ${warehouse}）${nokoriMsg}${stockCleanMsg}${orderWarn}`);
     loadOrders().then(() => renderPending());
 
   } catch(e) {

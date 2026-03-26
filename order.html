@@ -380,6 +380,10 @@ body{
   display:block;background:rgba(239,68,68,.1);
   border:1px solid rgba(239,68,68,.3);color:var(--red);
 }
+.feedback.info{
+  display:block;background:rgba(59,130,246,.1);
+  border:1px solid rgba(59,130,246,.3);color:#3b82f6;
+}
 
 /* ── 詳細モーダル ── */
 #detail-modal{
@@ -1147,19 +1151,24 @@ async function submitNyuko() {
   const btn         = document.getElementById('nyuko-submit-btn');
   const dbKey       = window._nyukoDbKey;
   const ordQty      = window._nyukoOrdQty || nyukoQty;
-  const nokori      = ordQty - nyukoQty;  // 残り本数
+  const nokori      = ordQty - nyukoQty;
+  // モーダルを閉じても使えるようローカルに退避
+  const _orderId    = nyukoOrderId;
+  const _orderData  = nyukoOrderData;
+  const _nyukoQty   = nyukoQty;
 
   if(!warehouse){ errEl.textContent='倉庫を選択してください'; errEl.style.display='block'; return; }
   if(!dbKey)    { errEl.textContent='入庫先カテゴリを判定できませんでした。パターン・サイズを確認してください'; errEl.style.display='block'; return; }
-  errEl.style.display = 'none';
-  btn.disabled = true;
-  btn.textContent = '登録中...';
+
+  // バリデーション通過 → モーダルを即閉じてバックグラウンド処理
+  document.getElementById('nyuko-modal').style.display = 'none';
+  showFeedback('info', '⏳ 入庫処理中…（このまま他の操作ができます）');
 
   try {
     const db       = DB_MAP[dbKey];
-    const size     = propStr(nyukoOrderData,'タイヤサイズ');
-    const sizeCode = propStr(nyukoOrderData,'サイズコード') || size;
-    const pattern  = propStr(nyukoOrderData,'パターン') || '';
+    const size     = propStr(_orderData,'タイヤサイズ');
+    const sizeCode = propStr(_orderData,'サイズコード') || size;
+    const pattern  = propStr(_orderData,'パターン') || '';
     const now      = new Date();
     const creator  = (loginUser || '').replace(/ /g,'　');
 
@@ -1169,7 +1178,7 @@ async function submitNyuko() {
     const props  = {
       'タイトル':   {title:[{text:{content: title}}]},
       '区分':       {select:{name:'入庫'}},
-      '数量':       {number: nyukoQty},
+      '数量':       {number: _nyukoQty},
     };
     props[wField] = {select:{name: warehouse}};
     if(creator)   props['作成者']      = {select:{name: creator}};
@@ -1182,16 +1191,16 @@ async function submitNyuko() {
     }
     await notionCreate(db.id, props);
 
-    // ② 発注管理表の更新（残数あり＋チェックあり → 数量を残数に更新して発注済のまま）
+    // ② 発注管理表の更新
     let orderUpdateOk = true;
     try {
       if(nokori > 0 && nokoriChk) {
-        await notionPatch(nyukoOrderId, {
+        await notionPatch(_orderId, {
           '数量':       {number: nokori},
           'ステータス': {select:{name:'発注済'}},
         });
       } else {
-        await notionPatch(nyukoOrderId, {
+        await notionPatch(_orderId, {
           'ステータス': {select:{name:'納入済'}},
           '納品日':     {date:{start: now.toISOString().slice(0,10)}},
         });
@@ -1201,7 +1210,7 @@ async function submitNyuko() {
       orderUpdateOk = false;
     }
 
-    // ②-b 入出庫DBの「発注中」レコードを削除（入庫数分）
+    // ②-b 入出庫DBの「発注中」レコード処理
     let stockCleanMsg = '';
     try {
       const isPartial = nokori > 0 && nokoriChk;
@@ -1209,7 +1218,7 @@ async function submitNyuko() {
         size:      sizeCode || size,
         pattern:   pattern,
         warehouse: warehouse,
-        qty:       isPartial ? nyukoQty : undefined,
+        qty:       isPartial ? _nyukoQty : undefined,
         remainQty: isPartial ? nokori : undefined,
       });
       if (delResult.deleted > 0) {
@@ -1224,20 +1233,16 @@ async function submitNyuko() {
       console.warn('発注中レコード削除エラー:', stockErr);
     }
 
-    // ③ 完了
-    document.getElementById('nyuko-modal').style.display = 'none';
+    // ③ 完了通知
     const nokoriMsg = (nokori > 0 && nokoriChk)
       ? `（残り${nokori}本を発注リストに残しました）`
       : '';
     const orderWarn = orderUpdateOk ? '' : '\n⚠️ 発注管理の更新に失敗（手動で確認してください）';
-    showFeedback('success', `✓ 入庫登録しました（${size} ${nyukoQty}本 → ${warehouse}）${nokoriMsg}${stockCleanMsg}${orderWarn}`);
+    showFeedback('success', `✓ 入庫登録しました（${size} ${_nyukoQty}本 → ${warehouse}）${nokoriMsg}${stockCleanMsg}${orderWarn}`);
     loadOrders().then(() => renderPending());
 
   } catch(e) {
-    errEl.textContent = '登録に失敗しました：' + e.message;
-    errEl.style.display = 'block';
-    btn.disabled = false;
-    btn.textContent = '📦 入庫を登録する';
+    showFeedback('error', '入庫登録に失敗しました：' + e.message);
   }
 }
 

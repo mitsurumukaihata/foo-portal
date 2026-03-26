@@ -972,11 +972,17 @@ function renderStockCatSelect(size, matching) {
   const el = document.getElementById('stock-content');
   el.innerHTML = `<div class="content"><div class="screen-label">在庫確認</div><div class="screen-title">カテゴリーを選択</div><div class="screen-sub">${size}</div><div class="cat-select-grid">${matching.map(([k, db]) => `<div class="cat-sel-btn" onclick="loadStockData('${size}','${k}')"><span class="csb-icon">${db.icon}</span><div class="csb-name">${db.name}</div><div class="csb-sub">${db.sub}</div></div>`).join('')}</div><div style="padding:0 20px;"><button class="btn-secondary" onclick="renderStockHome()">← 戻る</button></div></div>`;
 }
-// ── 繰越日を取得（DBから区分="繰越"の最新レコードを探す）──
-async function getKurikoshiDate(dbId) {
+// ── 繰越日を取得（該当サイズの繰越レコードから取得）──
+async function getKurikoshiDate(dbId, sizeFilter) {
   try {
+    const filter = sizeFilter
+      ? { and: [
+          { property: '区分', select: { equals: '繰越' } },
+          { property: 'サイズコード', select: { equals: sizeFilter } }
+        ]}
+      : { property: '区分', select: { equals: '繰越' } };
     const res = await notionAPI('POST', `/databases/${dbId}/query`, {
-      filter: { property: '区分', select: { equals: '繰越' } },
+      filter,
       sorts: [{ timestamp: 'created_time', direction: 'ascending' }],
       page_size: 1
     });
@@ -989,7 +995,7 @@ async function loadStockData(size, catKey) {
   el.innerHTML = `<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">在庫データを取得中…</div></div>`;
   const db = DB_MAP[catKey];
   try {
-    const kurikoshiDate = await getKurikoshiDate(db.id);
+    const kurikoshiDate = await getKurikoshiDate(db.id, size);
     const records = await fetchAllRecords(db.id, size, kurikoshiDate);
     renderStockResult(size, catKey, records);
   }

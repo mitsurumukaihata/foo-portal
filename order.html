@@ -1937,56 +1937,56 @@ function renderPendingGrouped(pending) {
   // パターン色（メーカー色をベースに少し薄く）
   const patColors = {TOYO:'#c05800',BRIDGESTONE:'#1d4ed8',DUNLOP:'#6d28d9',MICHELIN:'#047857'};
 
-  // メーカー→倉庫→パターン→アイテムのツリー構築
+  // 倉庫→メーカー→パターン→アイテムのツリー構築
   const tree = {};
   pending.forEach(o => {
     const maker = propStr(o,'タイヤメーカー') || propStr(o,'仕入先') || 'その他';
     const wh    = propStr(o,'納入予定場所') || '未定';
     const pat   = propStr(o,'パターン') || '—';
-    if (!tree[maker]) tree[maker] = {};
-    if (!tree[maker][wh]) tree[maker][wh] = {};
-    if (!tree[maker][wh][pat]) tree[maker][wh][pat] = [];
-    tree[maker][wh][pat].push(o);
+    if (!tree[wh]) tree[wh] = {};
+    if (!tree[wh][maker]) tree[wh][maker] = {};
+    if (!tree[wh][maker][pat]) tree[wh][maker][pat] = [];
+    tree[wh][maker][pat].push(o);
   });
 
-  // メーカーソート
-  const makers = Object.keys(tree).sort((a,b) => {
-    const ai = makerOrder.indexOf(a), bi = makerOrder.indexOf(b);
+  // 倉庫ソート
+  const whKeys = Object.keys(tree).sort((a,b) => {
+    const ai = whOrder.indexOf(a), bi = whOrder.indexOf(b);
     return (ai===-1?99:ai) - (bi===-1?99:bi);
   });
 
   const totalQty = pending.reduce((s,o) => s + (Number(propStr(o,'数量'))||0), 0);
   let html = `<div class="sec-label">未入荷（${pending.length}件 / ${totalQty}本）</div>`;
 
-  makers.forEach(maker => {
-    const whTree = tree[maker];
-    const makerItems = Object.values(whTree).flatMap(wh => Object.values(wh).flat());
-    const makerQty = makerItems.reduce((s,o) => s + (Number(propStr(o,'数量'))||0), 0);
-    const mColor = makerColors[maker] || 'var(--muted)';
+  whKeys.forEach(wh => {
+    const makerTree = tree[wh];
+    const whItems = Object.values(makerTree).flatMap(m => Object.values(m).flat());
+    const whQty = whItems.reduce((s,o) => s + (Number(propStr(o,'数量'))||0), 0);
+    const wColor = whColors[wh] || 'var(--muted)';
 
     html += `<div class="maker-group">
       <div class="maker-header">
-        <span class="maker-label" style="color:${mColor};">${maker}</span>
-        <span class="maker-count">${makerItems.length}件 ${makerQty}本</span>
-        <div class="maker-line" style="background:${mColor};opacity:0.3;"></div>
+        <span class="maker-label" style="color:${wColor};">📍 ${wh}</span>
+        <span class="maker-count">${whItems.length}件 ${whQty}本</span>
+        <div class="maker-line" style="background:${wColor};opacity:0.3;"></div>
       </div>`;
 
-    // 倉庫ソート
-    const whKeys = Object.keys(whTree).sort((a,b) => {
-      const ai = whOrder.indexOf(a), bi = whOrder.indexOf(b);
+    // メーカーソート
+    const makers = Object.keys(makerTree).sort((a,b) => {
+      const ai = makerOrder.indexOf(a), bi = makerOrder.indexOf(b);
       return (ai===-1?99:ai) - (bi===-1?99:bi);
     });
 
-    whKeys.forEach(wh => {
-      const patTree = whTree[wh];
-      const whItems = Object.values(patTree).flat();
-      const whQty = whItems.reduce((s,o) => s + (Number(propStr(o,'数量'))||0), 0);
-      const wColor = whColors[wh] || 'var(--muted)';
+    makers.forEach(maker => {
+      const patTree = makerTree[maker];
+      const makerItems = Object.values(patTree).flat();
+      const makerQty = makerItems.reduce((s,o) => s + (Number(propStr(o,'数量'))||0), 0);
+      const mColor = makerColors[maker] || 'var(--muted)';
 
       html += `<div class="wh-group">
         <div class="wh-header">
-          <span class="wh-label" style="color:${wColor};">📍 ${wh}</span>
-          <span class="wh-count">${whItems.length}件 ${whQty}本</span>
+          <span class="wh-label" style="color:${mColor};">${maker}</span>
+          <span class="wh-count">${makerItems.length}件 ${makerQty}本</span>
         </div>`;
 
       // パターンをアルファベット順にソート
@@ -2226,8 +2226,9 @@ function reRenderPending() {
   try {
     const honMachi = orders.filter(o => {
       const s = propStr(o,'ステータス');
+      const kari = o.properties['仮伝票']?.checkbox || false;
       const hon = o.properties['本伝票']?.checkbox || false;
-      return s === '納入済' && !hon;
+      return s === '納入済' && kari && !hon;
     });
     let honBtn = document.getElementById('hon-machi-btn');
     if (honMachi.length > 0) {
@@ -2895,8 +2896,9 @@ function hideFeedback() {
 function openHonMachiModal() {
   const honMachi = orders.filter(o => {
     const s = propStr(o,'ステータス');
+    const kari = o.properties['仮伝票']?.checkbox || false;
     const hon = o.properties['本伝票']?.checkbox || false;
-    return s === '納入済' && !hon;
+    return s === '納入済' && kari && !hon;
   });
   let overlay = document.getElementById('hon-machi-overlay');
   if (!overlay) {

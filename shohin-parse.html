@@ -99,8 +99,13 @@ const MAKER_MAP = {
   'GIZ':'TOYO','GARITGIZ':'TOYO','DRB':'TOYO','TEO+':'TOYO','ML':'TOYO',
   'MPZ':'TOYO','mpZ':'TOYO','R1R':'TOYO','Gsi-5':'TOYO','３PLUS':'TOYO','3PLUS':'TOYO',
   'M917':'TOYO','M810':'TOYO','M638':'TOYO','T1R':'TOYO','M666':'TOYO','M166':'TOYO',
+  'LuⅡ':'TOYO','LuII':'TOYO','Lu2':'TOYO','M139':'TOYO','C1SA':'TOYO','M628':'TOYO',
+  'SU':'TOYO','M149':'TOYO',
   '更生タイヤ':'更生','更新タイヤ':'更生','再生タイヤ':'更生',
   'M748':'BRIDGESTONE','R221Ⅱ':'BRIDGESTONE','R221II':'BRIDGESTONE','R02':'BRIDGESTONE',
+  'W900':'BRIDGESTONE',
+  'SP068':'DUNLOP',
+  'Allroads D':'PIRELLI','TR01':'PIRELLI','R02PFD':'PIRELLI',
 };
 
 // ─── メーカー推定（半角カナ対応） ───
@@ -109,6 +114,7 @@ const MAKER_HINT = {
   'ﾌﾞﾘﾁﾞｽﾄﾝ':'BRIDGESTONE','ブリヂストン':'BRIDGESTONE','BRIDGESTONE':'BRIDGESTONE','BS':'BRIDGESTONE',
   'ﾀﾞﾝﾛｯﾌﾟ':'DUNLOP','ダンロップ':'DUNLOP','DUNLOP':'DUNLOP','DL':'DUNLOP',
   'ﾐｼｭﾗﾝ':'MICHELIN','ミシュラン':'MICHELIN','MICHELIN':'MICHELIN',
+  'ﾋﾟﾚﾘ':'PIRELLI','ピレリ':'PIRELLI','PIRELLI':'PIRELLI',
 };
 
 // ─── サイズ正規表現 ───
@@ -240,7 +246,15 @@ function parseItem(title) {
   tNorm = tNorm.replace(/３/g, '3').replace(/＋/g, '+').replace(/Ⅱ/g, 'II');
 
   let pm = t.match(PATTERN_RX) || t.match(PATTERN_RX2) || tNorm.match(PATTERN_RX) || tNorm.match(PATTERN_RX2);
-  // フォールバック: スペース区切りの各トークンをMAKER_MAPで直接照合
+  // フォールバック1: スペース含みパターン（"Allroads D"等）を文字列含有でチェック
+  if (!pm) {
+    for (const pn of PATTERN_NAMES) {
+      if (pn.includes(' ') && (t.includes(pn) || tNorm.includes(pn) || t.toLowerCase().includes(pn.toLowerCase()))) {
+        pm = [null, pn]; break;
+      }
+    }
+  }
+  // フォールバック2: スペース区切りの各トークンをMAKER_MAPで直接照合
   if (!pm) {
     const tokens = tNorm.split(/[\s　]+/);
     for (const tok of tokens) {

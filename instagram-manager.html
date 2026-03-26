@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>インスタ投稿管理 | f.o.o</title>
+<title>EC/マーケ管理 | f.o.o</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
 
@@ -170,7 +170,7 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 <div class="header">
   <div class="header-top">
     <a href="https://mitsurumukaihata.github.io/foo-portal/" class="back-btn">&larr; ポータル</a>
-    <div class="header-title">📸 インスタ投稿管理</div>
+    <div class="header-title">📊 EC/マーケ管理</div>
   </div>
 </div>
 
@@ -205,10 +205,8 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
       <div class="form-group">
         <label class="form-label">カテゴリ</label>
         <select class="form-select" id="f-category">
-          <option value="新商品">🆕 新商品</option>
-          <option value="セール">🏷️ セール</option>
-          <option value="イベント">🎉 イベント</option>
-          <option value="日常">📷 日常</option>
+          <option value="インスタ">📸 インスタ</option>
+          <option value="オークション">🏷️ オークション</option>
           <option value="その他">📌 その他</option>
         </select>
       </div>
@@ -260,7 +258,7 @@ const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
 const DB_ID = '374425dd246a4ced981e68794e614de1';
 
 const STEPS = ['企画','撮影','編集','校正','投稿','完了'];
-const CATEGORY_EMOJI = { '新商品':'🆕', 'セール':'🏷️', 'イベント':'🎉', '日常':'📷', 'その他':'📌' };
+const CATEGORY_EMOJI = { 'インスタ':'📸', 'オークション':'🏷️', 'その他':'📌' };
 const PRIORITY_ORDER = { '高':0, '中':1, '低':2 };
 
 let allPosts = [];

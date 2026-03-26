@@ -771,6 +771,22 @@ body{
         </label>
       </div>
 
+      <!-- 仮伝票 / 本伝票 チェック -->
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <label style="flex:1;display:flex;align-items:center;gap:8px;cursor:pointer;
+          background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.3);border-radius:10px;padding:10px 12px;">
+          <input type="checkbox" id="nyuko-kari-chk" checked
+            style="width:18px;height:18px;accent-color:#3b82f6;flex-shrink:0;">
+          <span style="font-size:13px;font-weight:600;color:#3b82f6;">仮伝票</span>
+        </label>
+        <label style="flex:1;display:flex;align-items:center;gap:8px;cursor:pointer;
+          background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:10px;padding:10px 12px;">
+          <input type="checkbox" id="nyuko-hon-chk"
+            style="width:18px;height:18px;accent-color:#22c55e;flex-shrink:0;">
+          <span style="font-size:13px;font-weight:600;color:#22c55e;">本伝票</span>
+        </label>
+      </div>
+
       <!-- メモ -->
       <div class="field" style="margin-bottom:16px;">
         <div class="field-label">メモ（任意）</div>
@@ -1147,6 +1163,8 @@ async function submitNyuko() {
   const warehouse   = document.getElementById('nyuko-warehouse').value;
   const memo        = document.getElementById('nyuko-memo').value.trim();
   const nokoriChk   = document.getElementById('nyuko-nokori-chk')?.checked || false;
+  const kariChk     = document.getElementById('nyuko-kari-chk')?.checked || false;
+  const honChk      = document.getElementById('nyuko-hon-chk')?.checked || false;
   const errEl       = document.getElementById('nyuko-error');
   const btn         = document.getElementById('nyuko-submit-btn');
   const dbKey       = window._nyukoDbKey;
@@ -1191,16 +1209,22 @@ async function submitNyuko() {
     }
     await notionCreate(db.id, props);
 
-    // ② 発注管理表の更新
+    // ② 発注管理表の更新（伝票チェック含む）
     let orderUpdateOk = true;
     try {
+      const slipProps = {
+        '仮伝票': { checkbox: kariChk },
+        '本伝票': { checkbox: honChk },
+      };
       if(nokori > 0 && nokoriChk) {
         await notionPatch(_orderId, {
+          ...slipProps,
           '数量':       {number: nokori},
           'ステータス': {select:{name:'発注済'}},
         });
       } else {
         await notionPatch(_orderId, {
+          ...slipProps,
           'ステータス': {select:{name:'納入済'}},
           '納品日':     {date:{start: now.toISOString().slice(0,10)}},
         });
@@ -2197,6 +2221,30 @@ function clearPendingSearch() {
 function reRenderPending() {
   const el = document.getElementById('pending-container');
   if (!orders || !orders.length) return;
+
+  // ── 本伝待ちボタン ──
+  try {
+    const honMachi = orders.filter(o => {
+      const s = propStr(o,'ステータス');
+      const hon = o.properties['本伝票']?.checkbox || false;
+      return s === '納入済' && !hon;
+    });
+    let honBtn = document.getElementById('hon-machi-btn');
+    if (honMachi.length > 0) {
+      if (!honBtn) {
+        honBtn = document.createElement('button');
+        honBtn.id = 'hon-machi-btn';
+        honBtn.style.cssText = 'width:100%;padding:12px;margin-bottom:12px;border-radius:10px;border:1.5px solid rgba(59,130,246,.4);background:rgba(59,130,246,.08);color:#3b82f6;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;';
+        honBtn.onclick = openHonMachiModal;
+        el.parentNode.insertBefore(honBtn, el);
+      }
+      honBtn.textContent = `📄 本伝待ち（${honMachi.length}件）`;
+      honBtn.style.display = 'block';
+    } else if (honBtn) {
+      honBtn.style.display = 'none';
+    }
+  } catch(e) { console.warn('本伝待ちボタンエラー:', e); }
+
   try {
     let pending = orders.filter(o => {
       const s = propStr(o,'ステータス');
@@ -2841,6 +2889,92 @@ function showFeedback(type, msg) {
 function hideFeedback() {
   const el = document.getElementById('form-feedback');
   el.className = 'feedback';
+}
+
+// ─── 本伝待ちモーダル ─────────────────────────────────────────────────────────
+function openHonMachiModal() {
+  const honMachi = orders.filter(o => {
+    const s = propStr(o,'ステータス');
+    const hon = o.properties['本伝票']?.checkbox || false;
+    return s === '納入済' && !hon;
+  });
+  let overlay = document.getElementById('hon-machi-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'hon-machi-overlay';
+    overlay.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;align-items:flex-end;justify-content:center;';
+    overlay.onclick = function(e) { if (e.target === overlay) closeHonMachiModal(); };
+    overlay.innerHTML = `<div style="background:var(--s1);border-radius:20px 20px 0 0;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;padding:20px 16px 32px;">
+      <div style="width:40px;height:4px;background:var(--border2,#555);border-radius:2px;margin:0 auto 16px;"></div>
+      <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px;">📄 本伝待ちリスト</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:16px;">本伝票が届いたらチェックを入れてください（在庫には影響しません）</div>
+      <div id="hon-machi-list"></div>
+    </div>`;
+    document.body.appendChild(overlay);
+  }
+  const listEl = document.getElementById('hon-machi-list');
+  if (!honMachi.length) {
+    listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);">本伝待ちはありません</div>';
+  } else {
+    listEl.innerHTML = honMachi.map(o => {
+      const title = propStr(o,'タイヤサイズ') || '—';
+      const pattern = propStr(o,'パターン') || '';
+      const supplier = propStr(o,'仕入先') || '';
+      const qty = o.properties['数量']?.number || '';
+      const delivDate = o.properties['納品日']?.date?.start || '';
+      const kari = o.properties['仮伝票']?.checkbox ? '✅仮伝' : '';
+      return `<div id="hon-row-${o.id}" style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:600;color:var(--text);">${pattern} ${title}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${supplier} ${qty ? qty+'本' : ''} ${delivDate ? '納品:'+delivDate : ''} ${kari}</div>
+        </div>
+        <button onclick="completeHonDen('${o.id}')" style="flex-shrink:0;padding:8px 16px;border-radius:8px;border:none;background:#22c55e;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">
+          本伝 ✓
+        </button>
+      </div>`;
+    }).join('');
+  }
+  overlay.style.display = 'flex';
+}
+
+function closeHonMachiModal() {
+  const overlay = document.getElementById('hon-machi-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+async function completeHonDen(pageId) {
+  const row = document.getElementById('hon-row-' + pageId);
+  if (row) {
+    row.style.opacity = '0.4';
+    row.querySelector('button').textContent = '処理中...';
+    row.querySelector('button').disabled = true;
+  }
+  try {
+    // ★ 在庫には一切触れない。発注管理の本伝票チェックのみ更新
+    await notionPatch(pageId, { '本伝票': { checkbox: true } });
+    if (row) row.remove();
+    // ボタンのカウント更新
+    const remaining = document.querySelectorAll('[id^="hon-row-"]').length;
+    const btn = document.getElementById('hon-machi-btn');
+    if (remaining === 0) {
+      if (btn) btn.style.display = 'none';
+      closeHonMachiModal();
+      showFeedback('success', '✓ 全ての本伝票を処理しました');
+    } else {
+      if (btn) btn.textContent = `📄 本伝待ち（${remaining}件）`;
+      showFeedback('success', '✓ 本伝票を完了にしました');
+    }
+    // orders配列も更新
+    const ord = orders.find(o => o.id === pageId);
+    if (ord) ord.properties['本伝票'] = { checkbox: true, type: 'checkbox' };
+  } catch(e) {
+    if (row) {
+      row.style.opacity = '1';
+      row.querySelector('button').textContent = '本伝 ✓';
+      row.querySelector('button').disabled = false;
+    }
+    showFeedback('error', '本伝票の更新に失敗しました: ' + e.message);
+  }
 }
 
 // ─── 初期ロード ───────────────────────────────────────────────────────────────

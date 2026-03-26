@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>インスタ投稿管理 | f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #18181f; --s1: #1e1e26; --s2: #26262e; --s3: #30303a;
+  --border: rgba(255,255,255,.08); --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --green: #22c55e; --red: #ef4444; --blue: #3b82f6;
+  --purple: #a855f7; --yellow: #eab308; --pink: #ec4899;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #fdf6ee; --s1: #fff8f0; --s2: #f0e8d8; --s3: #e8dcc8;
+    --border: rgba(0,0,0,.08); --text: #1a1208; --muted: #a08060;
+    --accent: #e07000; --green: #1a9e4a; --red: #dc2626; --blue: #2563eb;
+    --purple: #a855f7; --yellow: #eab308; --pink: #ec4899;
+  }
+}
+[data-theme="dark"] {
+  --bg: #18181f; --s1: #1e1e26; --s2: #26262e; --s3: #30303a;
+  --border: rgba(255,255,255,.08); --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --green: #22c55e; --red: #ef4444; --blue: #3b82f6;
+  --purple: #a855f7; --yellow: #eab308; --pink: #ec4899;
+}
+[data-theme="light"] {
+  --bg: #fdf6ee; --s1: #fff8f0; --s2: #f0e8d8; --s3: #e8dcc8;
+  --border: rgba(0,0,0,.08); --text: #1a1208; --muted: #a08060;
+  --accent: #e07000; --green: #1a9e4a; --red: #dc2626; --blue: #2563eb;
+  --purple: #a855f7; --yellow: #eab308; --pink: #ec4899;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; max-width:480px; margin:0 auto; padding-bottom:32px; }
+
+/* ── Header ── */
+.header { background:var(--s1); border-bottom:1px solid var(--border); padding:14px 20px; position:sticky; top:0; z-index:100; }
+.header-top { display:flex; align-items:center; justify-content:space-between; }
+.back-btn { color:var(--accent); font-size:13px; font-weight:700; text-decoration:none; display:flex; align-items:center; gap:2px; }
+.back-btn:active { opacity:0.7; }
+.header-title { font-size:17px; font-weight:900; letter-spacing:-0.02em; }
+
+/* ── Tabs ── */
+.nav { display:flex; background:var(--s1); border-bottom:1px solid var(--border); position:sticky; top:55px; z-index:99; }
+.nav-btn { flex:1; padding:11px 6px 9px; background:transparent; border:none; border-bottom:2.5px solid transparent; color:var(--muted); font-size:13px; font-weight:600; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; text-align:center; }
+.nav-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+.nav-btn:active { opacity:0.7; }
+.nav-badge { display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 5px; background:var(--s3); border-radius:9px; font-size:10px; font-weight:700; margin-left:4px; color:var(--muted); }
+.nav-btn.active .nav-badge { background:rgba(240,165,0,0.2); color:var(--accent); }
+
+/* ── Content Area ── */
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+.card-list { padding:12px 12px 20px; }
+
+/* ── Loading / Empty ── */
+.loading { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 20px; gap:12px; }
+.spinner { width:28px; height:28px; border:3px solid var(--s3); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-text { font-size:12px; color:var(--muted); }
+.empty-state { text-align:center; padding:60px 20px; }
+.empty-icon { font-size:40px; margin-bottom:12px; }
+.empty-text { font-size:13px; color:var(--muted); line-height:1.6; }
+
+/* ── Post Card ── */
+.post-card { background:var(--s2); border:1.5px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:10px; transition:all 0.2s; }
+.post-card:active { transform:scale(0.985); }
+.post-header { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:10px; }
+.post-title-row { flex:1; min-width:0; }
+.post-title { font-size:14px; font-weight:700; line-height:1.4; display:flex; align-items:center; gap:6px; }
+.post-title .emoji { flex:none; }
+.post-title .text { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.post-meta { display:flex; align-items:center; gap:6px; margin-top:5px; flex-wrap:wrap; }
+.meta-tag { padding:2px 8px; border-radius:20px; font-size:10px; font-weight:600; }
+.tag-assignee { background:var(--s3); color:var(--muted); }
+.tag-date { background:var(--s3); color:var(--muted); font-family:'DM Mono',monospace; font-size:10px; }
+.tag-priority-high { background:rgba(239,68,68,0.12); color:var(--red); }
+.tag-priority-mid { background:rgba(240,165,0,0.12); color:var(--accent); }
+.tag-priority-low { background:rgba(34,197,94,0.1); color:var(--green); }
+.tag-category { background:rgba(59,130,246,0.08); color:var(--blue); }
+
+/* ── Progress ── */
+.progress-row { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.progress-bar-bg { flex:1; height:4px; background:var(--s3); border-radius:2px; overflow:hidden; }
+.progress-bar-fill { height:100%; border-radius:2px; transition:width 0.3s ease; background:var(--accent); }
+.progress-label { font-size:10px; font-weight:700; color:var(--muted); font-family:'DM Mono',monospace; flex:none; }
+
+/* ── Step Buttons ── */
+.steps-row { display:flex; gap:4px; }
+.step-btn { flex:1; padding:7px 2px; border-radius:8px; border:1.5px solid var(--border); background:var(--s3); color:var(--muted); font-size:9px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; text-align:center; transition:all 0.15s; line-height:1.3; display:flex; flex-direction:column; align-items:center; gap:2px; }
+.step-btn:active { transform:scale(0.93); }
+.step-btn .step-icon { font-size:11px; }
+.step-btn.completed { border-color:var(--green); background:rgba(34,197,94,0.12); color:var(--green); }
+.step-btn.current { border-color:var(--accent); background:rgba(240,165,0,0.1); color:var(--accent); }
+.step-btn[data-step="企画"].current { border-color:var(--blue); background:rgba(59,130,246,0.1); color:var(--blue); }
+.step-btn[data-step="撮影"].current { border-color:var(--purple); background:rgba(168,85,247,0.1); color:var(--purple); }
+.step-btn[data-step="編集"].current { border-color:var(--yellow); background:rgba(234,179,8,0.12); color:var(--yellow); }
+.step-btn[data-step="校正"].current { border-color:var(--accent); background:rgba(240,165,0,0.1); color:var(--accent); }
+.step-btn[data-step="投稿"].current { border-color:var(--pink); background:rgba(236,72,153,0.1); color:var(--pink); }
+.step-btn[data-step="完了"].current { border-color:var(--green); background:rgba(34,197,94,0.12); color:var(--green); }
+
+/* ── Expanded area ── */
+.post-expand { max-height:0; overflow:hidden; transition:max-height 0.3s ease; }
+.post-card.expanded .post-expand { max-height:300px; }
+.expand-inner { padding-top:12px; margin-top:12px; border-top:1px solid var(--border); }
+.memo-label { font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px; }
+.memo-text { font-size:12px; color:var(--text); line-height:1.6; opacity:0.8; white-space:pre-wrap; word-break:break-word; }
+.memo-empty { font-size:11px; color:var(--muted); font-style:italic; }
+.card-actions { display:flex; gap:8px; margin-top:12px; }
+.btn-delete { flex:1; padding:8px; border-radius:8px; border:1.5px solid rgba(239,68,68,0.3); background:rgba(239,68,68,0.08); color:var(--red); font-size:11px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; }
+.btn-delete:active { transform:scale(0.95); opacity:0.7; }
+
+/* ── Expand toggle ── */
+.expand-toggle { width:100%; padding:4px 0 0; border:none; background:transparent; color:var(--muted); font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; transition:all 0.15s; margin-top:8px; font-family:'Noto Sans JP',sans-serif; }
+.expand-toggle:active { opacity:0.6; }
+.post-card.expanded .expand-toggle .arrow { transform:rotate(180deg); }
+.arrow { transition:transform 0.2s; display:inline-block; }
+
+/* ── New Post Form ── */
+.form-wrap { padding:16px 16px 40px; }
+.form-group { margin-bottom:16px; }
+.form-label { display:block; font-size:11px; font-weight:700; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.08em; }
+.form-label .required { color:var(--red); margin-left:2px; }
+.form-input, .form-select, .form-textarea {
+  width:100%; padding:12px 14px; background:var(--s2); border:1.5px solid var(--border);
+  border-radius:10px; color:var(--text); font-size:14px; font-family:'Noto Sans JP',sans-serif;
+  outline:none; transition:border-color 0.15s;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color:var(--accent); }
+.form-input::placeholder, .form-textarea::placeholder { color:var(--muted); }
+.form-select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2368687a' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; padding-right:36px; }
+.form-select option { background:var(--s2); color:var(--text); }
+.form-textarea { min-height:80px; resize:vertical; line-height:1.6; }
+.form-submit { width:100%; padding:14px; background:var(--accent); border:none; border-radius:10px; color:#fff; font-size:15px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; }
+.form-submit:active { transform:scale(0.97); opacity:0.85; }
+.form-submit:disabled { opacity:0.5; cursor:not-allowed; }
+
+/* ── Toast ── */
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px); background:var(--s1); border:1.5px solid var(--border); border-radius:10px; padding:10px 20px; font-size:12px; font-weight:600; color:var(--text); z-index:1000; transition:transform 0.3s ease; white-space:nowrap; box-shadow:0 4px 20px rgba(0,0,0,0.3); display:flex; align-items:center; gap:8px; }
+.toast.show { transform:translateX(-50%) translateY(0); }
+.toast.success { border-color:rgba(34,197,94,0.4); }
+.toast.error { border-color:rgba(239,68,68,0.4); }
+
+/* ── Confirm Dialog ── */
+.overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; align-items:center; justify-content:center; padding:20px; }
+.overlay.show { display:flex; }
+.dialog { background:var(--s1); border:1.5px solid var(--border); border-radius:14px; padding:24px; max-width:320px; width:100%; }
+.dialog-title { font-size:15px; font-weight:900; margin-bottom:8px; }
+.dialog-text { font-size:12px; color:var(--muted); line-height:1.6; margin-bottom:20px; }
+.dialog-actions { display:flex; gap:8px; }
+.dialog-btn { flex:1; padding:10px; border-radius:10px; font-size:13px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; border:none; }
+.dialog-btn:active { transform:scale(0.95); }
+.dialog-btn.cancel { background:var(--s3); color:var(--text); }
+.dialog-btn.danger { background:var(--red); color:#fff; }
+
+/* ── Animations ── */
+@keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+.post-card { animation:fadeIn 0.25s ease; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <a href="https://mitsurumukaihata.github.io/foo-portal/" class="back-btn">&larr; ポータル</a>
+    <div class="header-title">📸 インスタ投稿管理</div>
+  </div>
+</div>
+
+<div class="nav">
+  <button class="nav-btn active" data-tab="active" onclick="switchTab('active')">進行中<span class="nav-badge" id="badge-active">0</span></button>
+  <button class="nav-btn" data-tab="done" onclick="switchTab('done')">完了<span class="nav-badge" id="badge-done">0</span></button>
+  <button class="nav-btn" data-tab="new" onclick="switchTab('new')">＋新規</button>
+</div>
+
+<!-- Active posts -->
+<div class="tab-content active" id="tab-active">
+  <div id="active-loading" class="loading"><div class="spinner"></div><div class="loading-text">読み込み中...</div></div>
+  <div id="active-empty" class="empty-state" style="display:none"><div class="empty-icon">🎉</div><div class="empty-text">進行中の投稿はありません<br>新規タブから作成しましょう</div></div>
+  <div class="card-list" id="active-list"></div>
+</div>
+
+<!-- Completed posts -->
+<div class="tab-content" id="tab-done">
+  <div id="done-loading" class="loading"><div class="spinner"></div><div class="loading-text">読み込み中...</div></div>
+  <div id="done-empty" class="empty-state" style="display:none"><div class="empty-icon">📭</div><div class="empty-text">完了した投稿はまだありません</div></div>
+  <div class="card-list" id="done-list"></div>
+</div>
+
+<!-- New post form -->
+<div class="tab-content" id="tab-new">
+  <div class="form-wrap">
+    <form id="new-form" onsubmit="return handleSubmit(event)">
+      <div class="form-group">
+        <label class="form-label">タイトル<span class="required">*</span></label>
+        <input class="form-input" type="text" id="f-title" placeholder="投稿のタイトル" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">カテゴリ</label>
+        <select class="form-select" id="f-category">
+          <option value="新商品">🆕 新商品</option>
+          <option value="セール">🏷️ セール</option>
+          <option value="イベント">🎉 イベント</option>
+          <option value="日常">📷 日常</option>
+          <option value="その他">📌 その他</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">投稿予定日</label>
+        <input class="form-input" type="date" id="f-date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">優先度</label>
+        <select class="form-select" id="f-priority">
+          <option value="高">高</option>
+          <option value="中" selected>中</option>
+          <option value="低">低</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">メモ</label>
+        <textarea class="form-textarea" id="f-memo" placeholder="投稿に関するメモ..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">担当者</label>
+        <select class="form-select" id="f-assignee">
+          <option value="藤井">藤井</option>
+        </select>
+      </div>
+      <button type="submit" class="form-submit" id="submit-btn">投稿を作成</button>
+    </form>
+  </div>
+</div>
+
+<!-- Confirm dialog -->
+<div class="overlay" id="confirm-overlay">
+  <div class="dialog">
+    <div class="dialog-title" id="dialog-title">確認</div>
+    <div class="dialog-text" id="dialog-text">この投稿を削除しますか？</div>
+    <div class="dialog-actions">
+      <button class="dialog-btn cancel" onclick="closeDialog()">キャンセル</button>
+      <button class="dialog-btn danger" id="dialog-confirm">削除</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Config ──
+const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
+const DB_ID = '374425dd246a4ced981e68794e614de1';
+
+const STEPS = ['企画','撮影','編集','校正','投稿','完了'];
+const CATEGORY_EMOJI = { '新商品':'🆕', 'セール':'🏷️', 'イベント':'🎉', '日常':'📷', 'その他':'📌' };
+const PRIORITY_ORDER = { '高':0, '中':1, '低':2 };
+
+let allPosts = [];
+let expandedCards = new Set();
+
+// ── API ──
+async function notionAPI(path, method, body) {
+  if (path.startsWith('/v1/')) path = path.slice(3);
+  if (!path.startsWith('/')) path = '/' + path;
+  const opts = { method: method || 'GET', headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(WORKER + path, opts);
+  if (!r.ok) throw new Error('error code: ' + r.status);
+  const data = await r.json();
+  if (data.object === 'error') throw new Error(data.message);
+  return data;
+}
+
+// ── Data fetch ──
+async function fetchPosts() {
+  const body = {
+    filter: { property: 'ステータス', select: { is_not_empty: true } },
+    sorts: [{ property: '投稿予定日', direction: 'ascending' }],
+    page_size: 100
+  };
+  try {
+    const res = await notionAPI('/databases/' + DB_ID + '/query', 'POST', body);
+    allPosts = (res.results || []).map(parsePost);
+  } catch (e) {
+    // Also try without filter (get all)
+    try {
+      const res = await notionAPI('/databases/' + DB_ID + '/query', 'POST', { page_size: 100 });
+      allPosts = (res.results || []).map(parsePost);
+    } catch (e2) {
+      showToast('データ取得エラー: ' + e2.message, 'error');
+      allPosts = [];
+    }
+  }
+  renderAll();
+}
+
+function parsePost(page) {
+  const p = page.properties || {};
+  const title = extractTitle(p['タイトル']);
+  const status = extractSelect(p['ステータス']);
+  const assignee = extractSelect(p['担当者']);
+  const date = extractDate(p['投稿予定日']);
+  const category = extractSelect(p['カテゴリ']);
+  const memo = extractRichText(p['メモ']);
+  const priority = extractSelect(p['優先度']);
+  return { id: page.id, title, status, assignee, date, category, memo, priority, lastEdited: page.last_edited_time };
+}
+
+function extractTitle(prop) {
+  if (!prop || !prop.title) return '';
+  return prop.title.map(t => t.plain_text || '').join('');
+}
+function extractSelect(prop) {
+  if (!prop || !prop.select) return '';
+  return prop.select.name || '';
+}
+function extractDate(prop) {
+  if (!prop || !prop.date || !prop.date.start) return '';
+  return prop.date.start;
+}
+function extractRichText(prop) {
+  if (!prop || !prop.rich_text) return '';
+  return prop.rich_text.map(t => t.plain_text || '').join('');
+}
+
+// ── Helpers ──
+function getStepIndex(status) {
+  const idx = STEPS.indexOf(status);
+  return idx >= 0 ? idx : 0;
+}
+
+function getCompletedSteps(status) {
+  const idx = getStepIndex(status);
+  if (status === '完了') return STEPS.length;
+  return idx;
+}
+
+function isCompleted(post) {
+  return post.status === '完了';
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return (d.getMonth()+1) + '/' + d.getDate();
+}
+
+function isOverdue(dateStr) {
+  if (!dateStr) return false;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(dateStr); d.setHours(0,0,0,0);
+  return d < today;
+}
+
+// ── Render ──
+function renderAll() {
+  const active = allPosts.filter(p => !isCompleted(p));
+  const done = allPosts.filter(p => isCompleted(p));
+
+  // Sort active: due date asc (null last), then priority
+  active.sort((a, b) => {
+    // Priority first
+    const pa = PRIORITY_ORDER[a.priority] ?? 1;
+    const pb = PRIORITY_ORDER[b.priority] ?? 1;
+    if (pa !== pb) return pa - pb;
+    // Then date
+    if (a.date && b.date) return a.date.localeCompare(b.date);
+    if (a.date) return -1;
+    if (b.date) return 1;
+    return 0;
+  });
+
+  // Sort done: newest first by lastEdited
+  done.sort((a, b) => (b.lastEdited || '').localeCompare(a.lastEdited || ''));
+
+  document.getElementById('badge-active').textContent = active.length;
+  document.getElementById('badge-done').textContent = done.length;
+
+  renderList('active', active);
+  renderList('done', done);
+}
+
+function renderList(type, posts) {
+  const listEl = document.getElementById(type + '-list');
+  const loadingEl = document.getElementById(type + '-loading');
+  const emptyEl = document.getElementById(type + '-empty');
+
+  loadingEl.style.display = 'none';
+
+  if (posts.length === 0) {
+    emptyEl.style.display = 'block';
+    listEl.innerHTML = '';
+    return;
+  }
+
+  emptyEl.style.display = 'none';
+  listEl.innerHTML = posts.map(p => renderCard(p)).join('');
+}
+
+function renderCard(post) {
+  const emoji = CATEGORY_EMOJI[post.category] || '📌';
+  const stepIdx = getStepIndex(post.status);
+  const completed = getCompletedSteps(post.status);
+  const total = STEPS.length;
+  const pct = Math.round((completed / total) * 100);
+  const expanded = expandedCards.has(post.id);
+  const overdue = !isCompleted(post) && isOverdue(post.date);
+
+  let priorityClass = 'tag-priority-mid';
+  let priorityLabel = '中';
+  if (post.priority === '高') { priorityClass = 'tag-priority-high'; priorityLabel = '高'; }
+  else if (post.priority === '低') { priorityClass = 'tag-priority-low'; priorityLabel = '低'; }
+
+  const stepsHtml = STEPS.map((step, i) => {
+    let cls = 'step-btn';
+    let icon = '';
+    if (isCompleted(post) || i < stepIdx) {
+      cls += ' completed';
+      icon = '✓';
+    } else if (i === stepIdx && !isCompleted(post)) {
+      cls += ' current';
+      icon = '●';
+    }
+    return `<button class="${cls}" data-step="${step}" onclick="handleStep('${post.id}','${step}',event)">`
+      + `<span class="step-icon">${icon}</span>${step}</button>`;
+  }).join('');
+
+  const dateDisplay = post.date ? formatDate(post.date) : '未定';
+  const dateStyle = overdue ? 'color:var(--red)' : '';
+
+  return `<div class="post-card${expanded ? ' expanded' : ''}" id="card-${post.id}">
+    <div class="post-header">
+      <div class="post-title-row">
+        <div class="post-title"><span class="emoji">${emoji}</span><span class="text">${escHtml(post.title || '無題')}</span></div>
+        <div class="post-meta">
+          <span class="meta-tag tag-assignee">${escHtml(post.assignee || '未設定')}</span>
+          <span class="meta-tag tag-date" style="${dateStyle}">📅 ${dateDisplay}</span>
+          <span class="meta-tag ${priorityClass}">${priorityLabel}</span>
+          ${post.category ? `<span class="meta-tag tag-category">${escHtml(post.category)}</span>` : ''}
+        </div>
+      </div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+      <span class="progress-label">${completed}/${total}</span>
+    </div>
+    <div class="steps-row">${stepsHtml}</div>
+    <div class="post-expand">
+      <div class="expand-inner">
+        <div class="memo-label">メモ</div>
+        ${post.memo ? `<div class="memo-text">${escHtml(post.memo)}</div>` : `<div class="memo-empty">メモなし</div>`}
+        <div class="card-actions">
+          <button class="btn-delete" onclick="confirmDelete('${post.id}','${escAttr(post.title)}')">🗑 削除</button>
+        </div>
+      </div>
+    </div>
+    <button class="expand-toggle" onclick="toggleExpand('${post.id}')">
+      <span class="arrow">▼</span> ${expanded ? '閉じる' : '詳細'}
+    </button>
+  </div>`;
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(str) {
+  return String(str).replace(/'/g,"\\'").replace(/"/g,'\\"');
+}
+
+// ── Tab switching ──
+function switchTab(tab) {
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  document.querySelectorAll('.tab-content').forEach(el => {
+    el.classList.toggle('active', el.id === 'tab-' + tab);
+  });
+}
+
+// ── Expand/collapse ──
+function toggleExpand(id) {
+  if (expandedCards.has(id)) {
+    expandedCards.delete(id);
+  } else {
+    expandedCards.add(id);
+  }
+  const card = document.getElementById('card-' + id);
+  if (card) {
+    card.classList.toggle('expanded', expandedCards.has(id));
+    const toggleBtn = card.querySelector('.expand-toggle');
+    if (toggleBtn) {
+      toggleBtn.innerHTML = `<span class="arrow">▼</span> ${expandedCards.has(id) ? '閉じる' : '詳細'}`;
+    }
+  }
+}
+
+// ── Step click ──
+async function handleStep(postId, step, event) {
+  event.stopPropagation();
+  const post = allPosts.find(p => p.id === postId);
+  if (!post) return;
+
+  const oldStatus = post.status;
+  post.status = step;
+  renderAll();
+
+  try {
+    await notionAPI('/pages/' + postId, 'PATCH', {
+      properties: {
+        'ステータス': { select: { name: step } }
+      }
+    });
+    showToast('✓ ' + step + ' に更新', 'success');
+  } catch (e) {
+    post.status = oldStatus;
+    renderAll();
+    showToast('更新エラー: ' + e.message, 'error');
+  }
+}
+
+// ── Create post ──
+async function handleSubmit(event) {
+  event.preventDefault();
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = '作成中...';
+
+  const title = document.getElementById('f-title').value.trim();
+  const category = document.getElementById('f-category').value;
+  const date = document.getElementById('f-date').value;
+  const priority = document.getElementById('f-priority').value;
+  const memo = document.getElementById('f-memo').value.trim();
+  const assignee = document.getElementById('f-assignee').value;
+
+  if (!title) {
+    showToast('タイトルを入力してください', 'error');
+    btn.disabled = false;
+    btn.textContent = '投稿を作成';
+    return;
+  }
+
+  const properties = {
+    'タイトル': { title: [{ text: { content: title } }] },
+    'ステータス': { select: { name: '企画' } },
+    'カテゴリ': { select: { name: category } },
+    '優先度': { select: { name: priority } },
+    '担当者': { select: { name: assignee } }
+  };
+  if (date) {
+    properties['投稿予定日'] = { date: { start: date } };
+  }
+  if (memo) {
+    properties['メモ'] = { rich_text: [{ text: { content: memo } }] };
+  }
+
+  try {
+    await notionAPI('/pages', 'POST', { parent: { database_id: DB_ID }, properties });
+    showToast('✓ 投稿を作成しました', 'success');
+    document.getElementById('new-form').reset();
+    document.getElementById('f-priority').value = '中';
+    document.getElementById('f-assignee').value = '藤井';
+    switchTab('active');
+    await fetchPosts();
+  } catch (e) {
+    showToast('作成エラー: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '投稿を作成';
+  }
+}
+
+// ── Delete ──
+let deleteTargetId = null;
+
+function confirmDelete(id, title) {
+  deleteTargetId = id;
+  document.getElementById('dialog-title').textContent = '削除確認';
+  document.getElementById('dialog-text').textContent = '「' + title + '」を削除しますか？この操作は取り消せません。';
+  document.getElementById('confirm-overlay').classList.add('show');
+}
+
+function closeDialog() {
+  document.getElementById('confirm-overlay').classList.remove('show');
+  deleteTargetId = null;
+}
+
+document.getElementById('dialog-confirm').addEventListener('click', async () => {
+  if (!deleteTargetId) return;
+  const id = deleteTargetId;
+  closeDialog();
+
+  try {
+    await notionAPI('/pages/' + id, 'PATCH', { archived: true });
+    allPosts = allPosts.filter(p => p.id !== id);
+    expandedCards.delete(id);
+    renderAll();
+    showToast('✓ 削除しました', 'success');
+  } catch (e) {
+    showToast('削除エラー: ' + e.message, 'error');
+  }
+});
+
+// ── Toast ──
+let toastTimer = null;
+function showToast(msg, type) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.className = 'toast ' + (type || '');
+  clearTimeout(toastTimer);
+  requestAnimationFrame(() => {
+    toast.classList.add('show');
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+  });
+}
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', () => {
+  fetchPosts();
+});
+</script>
+</body>
+</html>

@@ -103,9 +103,11 @@ const MAKER_MAP = {
   'SU':'TOYO','M149':'TOYO',
   '更生タイヤ':'更生','更新タイヤ':'更生','再生タイヤ':'更生',
   'M748':'BRIDGESTONE','R221Ⅱ':'BRIDGESTONE','R221II':'BRIDGESTONE','R02':'BRIDGESTONE',
-  'W900':'BRIDGESTONE',
-  'SP068':'DUNLOP',
+  'W900':'BRIDGESTONE','K370Z':'BRIDGESTONE',
+  'SP068':'DUNLOP','SP011':'DUNLOP',
   'Allroads D':'PIRELLI','TR01':'PIRELLI','R02PFD':'PIRELLI',
+  'FR01S':'PIRELLI','FR01':'PIRELLI','FR:01S':'PIRELLI','ADR26':'PIRELLI',
+  'M923':'TOYO','M620':'TOYO','M133':'TOYO',
 };
 
 // ─── メーカー推定（半角カナ対応） ───
@@ -353,7 +355,11 @@ async function fetchAll() {
   }
 
   // メーカー・パターン未設定を上に表示
+  // ソート: メーカーorパターン片方だけ未設定→上、両方あり→中、サイズだけ→下
   parsed.sort((a, b) => {
+    const aSizeOnly = !a.maker && !a.pattern && a.size;
+    const bSizeOnly = !b.maker && !b.pattern && b.size;
+    if (aSizeOnly !== bSizeOnly) return aSizeOnly ? 1 : -1;
     const aMissing = (!a.maker ? 2 : 0) + (!a.pattern ? 1 : 0);
     const bMissing = (!b.maker ? 2 : 0) + (!b.pattern ? 1 : 0);
     return bMissing - aMissing;
@@ -386,10 +392,11 @@ function showPreview() {
   let html = '<table><thead><tr><th>#</th><th>元の商品名</th><th>メーカー</th><th>パターン名</th><th>サイズコード</th></tr></thead><tbody>';
   parsed.forEach((item, i) => {
     const mc = item.maker ? `maker-${item.maker === 'その他' ? 'other' : item.maker}` : 'maker-other';
-    const missing = !item.maker || !item.pattern;
+    const sizeOnly = !item.maker && !item.pattern && item.size;
+    const missing = !sizeOnly && (!item.maker || !item.pattern);
     const rowStyle = missing ? ' style="background:rgba(239,68,68,.12)"' : '';
-    const makerCell = item.maker ? `<td class="${mc}">${item.maker}</td>` : `<td style="color:#ef4444;font-weight:700">⚠️ 未設定</td>`;
-    const patternCell = item.pattern ? `<td>${esc(item.pattern)}</td>` : `<td style="color:#ef4444;font-weight:700">⚠️ 未設定</td>`;
+    const makerCell = item.maker ? `<td class="${mc}">${item.maker}</td>` : (sizeOnly ? `<td style="color:var(--muted)">―</td>` : `<td style="color:#ef4444;font-weight:700">⚠️ 未設定</td>`);
+    const patternCell = item.pattern ? `<td>${esc(item.pattern)}</td>` : (sizeOnly ? `<td style="color:var(--muted)">―</td>` : `<td style="color:#ef4444;font-weight:700">⚠️ 未設定</td>`);
     html += `<tr${rowStyle}><td>${i+1}</td><td>${esc(item.title)}</td>${makerCell}${patternCell}<td>${esc(item.size || '―')}</td></tr>`;
   });
   html += '</tbody></table>';

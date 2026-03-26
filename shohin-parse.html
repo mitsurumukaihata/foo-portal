@@ -98,7 +98,8 @@ const MAKER_MAP = {
   'C1S':'TOYO','G5':'TOYO','TX':'TOYO','SPORT':'TOYO','CF2':'TOYO',
   'GIZ':'TOYO','GARITGIZ':'TOYO','DRB':'TOYO','TEO+':'TOYO','ML':'TOYO',
   'MPZ':'TOYO','mpZ':'TOYO','R1R':'TOYO','Gsi-5':'TOYO','３PLUS':'TOYO','3PLUS':'TOYO',
-  'M917':'TOYO','M810':'TOYO','M638':'TOYO',
+  'M917':'TOYO','M810':'TOYO','M638':'TOYO','T1R':'TOYO','M666':'TOYO','M166':'TOYO',
+  '更生タイヤ':'更生','更新タイヤ':'更生','再生タイヤ':'更生',
   'M748':'BRIDGESTONE','R221Ⅱ':'BRIDGESTONE','R221II':'BRIDGESTONE','R02':'BRIDGESTONE',
 };
 
@@ -126,6 +127,9 @@ const PATTERN_RX_STR = PATTERN_NAMES.map(p => p.replace(/[.*+?^${}()|[\]\\\/]/g,
 const PATTERN_RX = new RegExp('(?:^|[\\s　])(' + PATTERN_RX_STR + ')(?=[\\s　]|$)', 'i');
 // 全角数字→半角変換後にもマッチするようフォールバック
 const PATTERN_RX2 = new RegExp('(?:^|[\\s　])(' + PATTERN_RX_STR + ')(?=[\\s　]|$|\\d)', 'i');
+
+// ─── 商品コードスキップ ───
+const SKIP_CODES = ['66'];
 
 // ─── 非タイヤ判定 ───
 const SKIP_KEYWORDS = [
@@ -268,9 +272,10 @@ function parseItem(title) {
     if (size) return { type: 'parsed', maker: maker || null, pattern: null, size };
   }
 
-  // 「更新タイヤ」「更生タイヤ」「再生タイヤ」の場合
-  if (!pattern && /更新|更生|再生/.test(t)) {
-    if (size) return { type: 'parsed', maker: maker || null, pattern: null, size };
+  // 「更新タイヤ」「更生タイヤ」「再生タイヤ」の場合 → パターン名として設定
+  if (!pattern && /更新タイヤ|更生タイヤ|再生タイヤ|更新|更生|再生/.test(t)) {
+    pattern = '更生タイヤ';
+    if (size) return { type: 'parsed', maker: maker || null, pattern, size };
   }
 
   // サイズだけの商品名（パターンなし）→タイヤとして扱う
@@ -314,6 +319,14 @@ async function fetchAll() {
 
   for (const p of allPages) {
     const title = (p.properties['商品名']?.title || []).map(t => t.plain_text).join('');
+    const code = (p.properties['商品コード']?.rich_text || []).map(t => t.plain_text).join('').trim();
+
+    // 商品コードスキップ
+    if (SKIP_CODES.includes(code)) {
+      skipped.push({ page: p, title, reason: 'コード' + code + 'スキップ' });
+      continue;
+    }
+
     const result = parseItem(title);
 
     if (result.type === 'parsed') {
@@ -324,6 +337,13 @@ async function fetchAll() {
       skipped.push({ page: p, title, reason: result.reason });
     }
   }
+
+  // メーカー・パターン未設定を上に表示
+  parsed.sort((a, b) => {
+    const aMissing = (!a.maker ? 2 : 0) + (!a.pattern ? 1 : 0);
+    const bMissing = (!b.maker ? 2 : 0) + (!b.pattern ? 1 : 0);
+    return bMissing - aMissing;
+  });
 
   log(`パース完了:`, 'log-ok');
   log(`  ✅ パース成功: ${parsed.length}件`, 'log-ok');
@@ -352,7 +372,11 @@ function showPreview() {
   let html = '<table><thead><tr><th>#</th><th>元の商品名</th><th>メーカー</th><th>パターン名</th><th>サイズコード</th></tr></thead><tbody>';
   parsed.forEach((item, i) => {
     const mc = item.maker ? `maker-${item.maker === 'その他' ? 'other' : item.maker}` : 'maker-other';
-    html += `<tr><td>${i+1}</td><td>${esc(item.title)}</td><td class="${mc}">${item.maker || '―'}</td><td>${esc(item.pattern || '―')}</td><td>${esc(item.size || '―')}</td></tr>`;
+    const missing = !item.maker || !item.pattern;
+    const rowStyle = missing ? ' style="background:rgba(239,68,68,.12)"' : '';
+    const makerCell = item.maker ? `<td class="${mc}">${item.maker}</td>` : `<td style="color:#ef4444;font-weight:700">⚠️ 未設定</td>`;
+    const patternCell = item.pattern ? `<td>${esc(item.pattern)}</td>` : `<td style="color:#ef4444;font-weight:700">⚠️ 未設定</td>`;
+    html += `<tr${rowStyle}><td>${i+1}</td><td>${esc(item.title)}</td>${makerCell}${patternCell}<td>${esc(item.size || '―')}</td></tr>`;
   });
   html += '</tbody></table>';
   document.getElementById('tblParsed').innerHTML = html;

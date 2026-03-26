@@ -113,8 +113,10 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 .memo-label { font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px; }
 .memo-text { font-size:12px; color:var(--text); line-height:1.6; opacity:0.8; white-space:pre-wrap; word-break:break-word; }
 .memo-empty { font-size:11px; color:var(--muted); font-style:italic; }
-.card-actions { display:flex; gap:8px; margin-top:12px; }
-.btn-delete { flex:1; padding:8px; border-radius:4px; border:1px solid rgba(239,68,68,0.3); background:rgba(239,68,68,0.06); color:var(--red); font-size:10px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; letter-spacing:0.04em; text-transform:uppercase; }
+.card-actions { display:flex; justify-content:space-between; align-items:center; margin-top:12px; }
+.btn-close-detail { padding:8px 16px; border-radius:8px; border:1px solid var(--border2); background:var(--s2); color:var(--muted); font-size:12px; font-weight:600; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; }
+.btn-close-detail:active { transform:scale(0.95); opacity:0.7; }
+.btn-delete { padding:8px 16px; border-radius:8px; border:1px solid rgba(239,68,68,0.3); background:rgba(239,68,68,0.06); color:var(--red); font-size:12px; font-weight:600; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; }
 .btn-delete:active { transform:scale(0.95); opacity:0.7; }
 
 /* ── Expand toggle ── */
@@ -225,12 +227,6 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
       <div class="form-group">
         <label class="form-label">メモ</label>
         <textarea class="form-textarea" id="f-memo" placeholder="投稿に関するメモ..."></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">担当者</label>
-        <select class="form-select" id="f-assignee">
-          <option value="藤井">藤井</option>
-        </select>
       </div>
       <button type="submit" class="form-submit" id="submit-btn">投稿を作成</button>
     </form>
@@ -403,6 +399,16 @@ function renderList(type, posts) {
   listEl.innerHTML = posts.map(p => renderCard(p)).join('');
 }
 
+// ログインユーザー判定（削除権限）
+function getLoginUser() {
+  try {
+    const raw = localStorage.getItem('foo_portal_session');
+    if (raw) { const s = JSON.parse(raw); if (s.name && new Date(s.expires) > new Date()) return s.name; }
+  } catch(e) {}
+  return '';
+}
+const canDelete = getLoginUser() === '藤井 真理亜';
+
 function renderCard(post) {
   const emoji = CATEGORY_EMOJI[post.category] || '📌';
   const stepIdx = getStepIndex(post.status);
@@ -439,7 +445,6 @@ function renderCard(post) {
       <div class="post-title-row">
         <div class="post-title"><span class="emoji">${emoji}</span><span class="text">${escHtml(post.title || '無題')}</span></div>
         <div class="post-meta">
-          <span class="meta-tag tag-assignee">${escHtml(post.assignee || '未設定')}</span>
           <span class="meta-tag tag-date" style="${dateStyle}">📅 ${dateDisplay}</span>
           <span class="meta-tag ${priorityClass}">${priorityLabel}</span>
           ${post.category ? `<span class="meta-tag tag-category">${escHtml(post.category)}</span>` : ''}
@@ -456,7 +461,8 @@ function renderCard(post) {
         <div class="memo-label">メモ</div>
         ${post.memo ? `<div class="memo-text">${escHtml(post.memo)}</div>` : `<div class="memo-empty">メモなし</div>`}
         <div class="card-actions">
-          <button class="btn-delete" onclick="confirmDelete('${post.id}','${escAttr(post.title)}')">🗑 削除</button>
+          <button class="btn-close-detail" onclick="toggleExpand('${post.id}')">▲ 閉じる</button>
+          ${canDelete ? `<button class="btn-delete" onclick="confirmDelete('${post.id}','${escAttr(post.title)}')">🗑 削除</button>` : ''}
         </div>
       </div>
     </div>
@@ -536,7 +542,6 @@ async function handleSubmit(event) {
   const date = document.getElementById('f-date').value;
   const priority = document.getElementById('f-priority').value;
   const memo = document.getElementById('f-memo').value.trim();
-  const assignee = document.getElementById('f-assignee').value;
 
   if (!title) {
     showToast('タイトルを入力してください', 'error');
@@ -550,7 +555,6 @@ async function handleSubmit(event) {
     'ステータス': { select: { name: '企画' } },
     'カテゴリ': { select: { name: category } },
     '優先度': { select: { name: priority } },
-    '担当者': { select: { name: assignee } }
   };
   if (date) {
     properties['投稿予定日'] = { date: { start: date } };
@@ -564,7 +568,6 @@ async function handleSubmit(event) {
     showToast('✓ 投稿を作成しました', 'success');
     document.getElementById('new-form').reset();
     document.getElementById('f-priority').value = '中';
-    document.getElementById('f-assignee').value = '藤井';
     switchTab('active');
     await fetchPosts();
   } catch (e) {

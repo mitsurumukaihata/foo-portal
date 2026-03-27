@@ -1487,6 +1487,8 @@ const APP_DEFS = [
   // 管理系（管理者のみ表示）
   { key: '🔄 DB繰越管理',         id: 'kurikoshi', label: 'DB繰越管理',       sub: '在庫DB繰越 · データ最適化',  section: '管理',   url: 'https://mitsurumukaihata.github.io/foo-portal/db-renewal.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>` },
+  { key: '🚗 車両マスタ',          id: 'vehicle', label: '車両マスタ',         sub: '車番 · 顧客 · タイヤ情報',   section: '管理',   coming: true,
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2"/><circle cx="6.5" cy="16.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg>` },
   // 📦 発注データ取込 → 自動発注で在庫DB連携するようになったため廃止（2026-03-23）
   // 給与明細は特殊（別途処理）
   { key: '💴 給与明細',          id: 'payslip', label: '給与明細',           sub: '自分の明細を確認',          section: '給与',         action: 'openPayslip()',

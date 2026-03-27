@@ -417,37 +417,48 @@ async function fooDeleteStockOrders(params) {
       const res = await fooNotionQuery(dbInfo.stockId, { filter, page_size: 100 });
       const pages = (res.results || []).filter(p => !p.archived);
 
+      // dryRun: 件数だけ返す（整合性チェック用）
+      if (params.dryRun) {
+        deleted += pages.length;
+        continue;
+      }
+
       if (params.qty && params.remainQty) {
         // ★ 部分入庫: レコードを削除せず、数量を残数に更新する
         for (const page of pages) {
-          try {
-            const pageQty = page.properties['数量']?.number || 0;
-            if (pageQty > params.qty) {
-              // 数量を残数に更新
-              await fooNotionRequest('PATCH', '/pages/' + page.id, {
-                properties: {
-                  '数量': { number: params.remainQty },
-                  'タイトル': { title: [{ text: { content: `${params.size} ${params.pattern} 発注中${wh ? ' ' + wh : ''}`.trim() } }] },
-                }
-              });
-              deleted++; // updated count
-            } else {
-              // レコードの数量が入庫数以下なら全削除
-              await fooNotionRequest('PATCH', '/pages/' + page.id, { archived: true });
+          for (let retry = 0; retry < 2; retry++) {
+            try {
+              const pageQty = page.properties['数量']?.number || 0;
+              if (pageQty > params.qty) {
+                await fooNotionRequest('PATCH', '/pages/' + page.id, {
+                  properties: {
+                    '数量': { number: params.remainQty },
+                    'タイトル': { title: [{ text: { content: `${params.size} ${params.pattern} 発注中${wh ? ' ' + wh : ''}`.trim() } }] },
+                  }
+                });
+              } else {
+                await fooNotionRequest('PATCH', '/pages/' + page.id, { archived: true });
+              }
               deleted++;
+              break;
+            } catch (e) {
+              if (retry === 0) { await new Promise(ok => setTimeout(ok, 1500)); continue; }
+              errors.push('更新失敗(' + page.id.slice(0,8) + '): ' + e.message);
             }
-          } catch (e) {
-            errors.push('更新失敗(' + page.id + '): ' + e.message);
           }
         }
       } else {
-        // 全数入庫: 全件アーカイブ（従来通り）
+        // 全数入庫: 全件アーカイブ（リトライ付き）
         for (const page of pages) {
-          try {
-            await fooNotionRequest('PATCH', '/pages/' + page.id, { archived: true });
-            deleted++;
-          } catch (e) {
-            errors.push('アーカイブ失敗(' + page.id + '): ' + e.message);
+          for (let retry = 0; retry < 2; retry++) {
+            try {
+              await fooNotionRequest('PATCH', '/pages/' + page.id, { archived: true });
+              deleted++;
+              break;
+            } catch (e) {
+              if (retry === 0) { await new Promise(ok => setTimeout(ok, 1500)); continue; }
+              errors.push('削除失敗(' + page.id.slice(0,8) + '): ' + e.message);
+            }
           }
         }
       }

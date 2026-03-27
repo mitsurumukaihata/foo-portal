@@ -1234,27 +1234,53 @@ async function submitNyuko() {
       orderUpdateOk = false;
     }
 
-    // ②-b 入出庫DBの「発注中」レコード処理
+    // ②-b 入出庫DBの「発注中」レコード処理（リトライ付き）
     let stockCleanMsg = '';
-    try {
-      const isPartial = nokori > 0 && nokoriChk;
-      const delResult = await fooDeleteStockOrders({
-        size:      sizeCode || size,
-        pattern:   pattern,
-        warehouse: warehouse,
-        qty:       isPartial ? _nyukoQty : undefined,
-        remainQty: isPartial ? nokori : undefined,
-      });
-      if (delResult.deleted > 0) {
-        stockCleanMsg = isPartial
-          ? `\n発注中を残数${nokori}本に更新`
-          : `\n発注中${delResult.deleted}件を削除`;
+    let stockCleanOk = false;
+    const isPartial = nokori > 0 && nokoriChk;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const delResult = await fooDeleteStockOrders({
+          size:      sizeCode || size,
+          pattern:   pattern,
+          warehouse: warehouse,
+          qty:       isPartial ? _nyukoQty : undefined,
+          remainQty: isPartial ? nokori : undefined,
+        });
+        if (delResult.errors.length > 0) {
+          stockCleanMsg = '\n⚠️ ' + delResult.errors.join(', ');
+          if (attempt < 2) { await new Promise(ok => setTimeout(ok, 2000)); continue; }
+        } else {
+          stockCleanOk = true;
+          if (delResult.deleted > 0) {
+            stockCleanMsg = isPartial
+              ? `\n発注中を残数${nokori}本に更新`
+              : `\n発注中${delResult.deleted}件を削除`;
+          }
+          break;
+        }
+      } catch (stockErr) {
+        console.warn('発注中レコード処理エラー (試行' + (attempt+1) + '):', stockErr);
+        if (attempt < 2) { await new Promise(ok => setTimeout(ok, 2000)); continue; }
+        stockCleanMsg = '\n❌ 発注中レコードの処理に失敗しました。手動で確認してください。';
       }
-      if (delResult.errors.length > 0) {
-        stockCleanMsg += '\n⚠️ ' + delResult.errors.join(', ');
-      }
-    } catch (stockErr) {
-      console.warn('発注中レコード削除エラー:', stockErr);
+    }
+
+    // ②-c 整合性チェック（発注中が残っていないか確認）
+    if (stockCleanOk && !isPartial) {
+      try {
+        const verifyResult = await fooDeleteStockOrders({
+          size: sizeCode || size, pattern: pattern, warehouse: warehouse,
+          dryRun: true,
+        });
+        if (verifyResult.deleted > 0) {
+          // まだ発注中が残っている → 再削除
+          await fooDeleteStockOrders({
+            size: sizeCode || size, pattern: pattern, warehouse: warehouse,
+          });
+          stockCleanMsg += '\n🔄 残存の発注中を追加削除しました';
+        }
+      } catch(e) { console.warn('整合性チェックエラー:', e); }
     }
 
     // ③ 完了通知
@@ -1262,7 +1288,9 @@ async function submitNyuko() {
       ? `（残り${nokori}本を発注リストに残しました）`
       : '';
     const orderWarn = orderUpdateOk ? '' : '\n⚠️ 発注管理の更新に失敗（手動で確認してください）';
-    showFeedback('success', `✓ 入庫登録しました（${size} ${_nyukoQty}本 → ${warehouse}）${nokoriMsg}${stockCleanMsg}${orderWarn}`);
+    const stockWarn = stockCleanOk ? '' : (!stockCleanMsg.includes('❌') ? '' : '');
+    showFeedback(stockCleanOk && orderUpdateOk ? 'success' : 'error',
+      `${stockCleanOk && orderUpdateOk ? '✓' : '⚠️'} 入庫登録しました（${size} ${_nyukoQty}本 → ${warehouse}）${nokoriMsg}${stockCleanMsg}${orderWarn}`);
     loadOrders().then(() => renderPending());
 
   } catch(e) {

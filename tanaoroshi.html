@@ -489,7 +489,10 @@ function generatePDF() {
       '</div>';
   });
 
-  // 印刷用HTMLを生成
+  // 印刷用HTMLを生成（閉じタグはエスケープして親ページのパーサーに影響させない）
+  var _cs = '<' + '/style>';
+  var _cb = '<' + '/body>';
+  var _ch = '<' + '/html>';
   const printHtml = '<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">' +
     '<title>棚卸表 ' + dateStr + '</title>' +
     '<style>' +
@@ -532,13 +535,13 @@ function generatePDF() {
     '  .print-bar button:active { transform: scale(0.97); }' +
     '  .print-bar span { font-size: 12px; }' +
     '}' +
-    '</style></head><body>' +
+    _cs + '</head><body>' +
     '<div class="print-bar no-print">' +
       '<button onclick="window.print()">印刷 / PDF保存</button>' +
       '<span>印刷ダイアログで「PDFとして保存」を選択してください</span>' +
     '</div>' +
     pagesHtml +
-    '</body></html>';
+    _cb + _ch;
 
   // 印刷ウィンドウ表示後にリストにないタイヤ欄の行数を動的生成
   function fillExtraRows(doc) {

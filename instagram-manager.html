@@ -45,7 +45,8 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 .header-top { display:flex; align-items:center; justify-content:space-between; }
 .back-btn { color:var(--muted); font-size:12px; font-weight:600; text-decoration:none; display:flex; align-items:center; gap:2px; letter-spacing:0.02em; }
 .back-btn:active { opacity:0.7; }
-.header-title { font-size:16px; font-weight:900; letter-spacing:0.04em; text-transform:uppercase; }
+.header-title { font-size:15px; font-weight:700; color:var(--text); }
+.header-title span { color:var(--accent); }
 
 /* ── Tabs ── */
 .nav { display:flex; background:var(--s1); border-bottom:1px solid var(--border); position:sticky; top:53px; z-index:99; }
@@ -172,7 +173,7 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 <div class="header">
   <div class="header-top">
     <a href="https://mitsurumukaihata.github.io/foo-portal/" class="back-btn">&larr; ポータル</a>
-    <div class="header-title">📊 EC/マーケ管理</div>
+    <div class="header-title">EC/<span>マーケ管理</span></div>
   </div>
 </div>
 

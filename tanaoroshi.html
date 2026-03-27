@@ -467,12 +467,31 @@ function generatePDF() {
       blocksHtml += catHtml;
     });
 
+    // リストにないタイヤ記入欄（3行固定・ページ増加を避けるコンパクト設計）
+    var extraRows = '';
+    for (var ei = 0; ei < 3; ei++) {
+      extraRows += '<tr class="size-row"><td class="col-size" style="border-bottom:0.5px solid #bbb;"></td>' +
+        '<td class="col-num" style="border-bottom:0.5px solid #bbb;"></td>' +
+        '<td class="col-num" style="border-bottom:0.5px solid #bbb;"></td>' +
+        '<td class="col-num" style="border-bottom:0.5px solid #bbb;"></td>' +
+        '<td class="col-actual" style="border-bottom:0.5px solid #bbb;"></td></tr>';
+    }
+    var extraBlock = '<div class="cat-block" style="break-inside:avoid;">' +
+      '<div class="cat-header" style="font-size:10px;">✏️ リストにないタイヤ</div>' +
+      '<table><thead><tr>' +
+        '<th class="col-size">商品名（サイズ・パターン）</th>' +
+        '<th class="col-num">数量</th>' +
+        '<th class="col-num">準備</th>' +
+        '<th class="col-num">計</th>' +
+        '<th class="col-actual">実数</th>' +
+      '</tr></thead><tbody>' + extraRows + '</tbody></table></div>';
+
     pagesHtml += '<div class="page' + (whIdx > 0 ? ' page-break' : '') + '">' +
       '<div class="page-header">' +
         '<h1>棚卸表 — ' + wh + '</h1>' +
         '<div class="page-date">' + dateStr + '　合計: ' + (pageTotal + pageTotalJunbi) + '本 (実在庫' + pageTotal + ' + 準備' + pageTotalJunbi + ')</div>' +
       '</div>' +
-      '<div class="columns">' + blocksHtml + '</div>' +
+      '<div class="columns">' + blocksHtml + extraBlock + '</div>' +
       '</div>';
   });
 

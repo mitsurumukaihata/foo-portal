@@ -538,28 +538,28 @@ function generatePDF() {
       '<span>印刷ダイアログで「PDFとして保存」を選択してください</span>' +
     '</div>' +
     pagesHtml +
-    '<script>' +
-    'window.onload=function(){' +
-    '  document.querySelectorAll(".page").forEach(function(page){' +
-    '    var body=page.querySelector(".extra-body");' +
-    '    if(!body)return;' +
-    '    var cols=page.querySelector(".columns");' +
-    '    var hdr=page.querySelector(".page-header");' +
-    '    var ea=page.querySelector(".extra-area");' +
-    '    var ehdr=ea.querySelector(".extra-header");' +
-    '    var eth=ea.querySelector("thead");' +
-    '    var usedH=(hdr?hdr.offsetHeight:0)+(cols?cols.offsetHeight:0)+(ehdr?ehdr.offsetHeight:0)+(eth?eth.offsetHeight:0)+80;' +
-    '    var pageH=page.offsetHeight||900;' +
-    '    var avail=pageH-usedH;' +
-    '    var rowH=20;' +
-    '    var rows=Math.max(2,Math.floor(avail/rowH));' +
-    '    var h="";' +
-    '    for(var i=0;i<rows;i++)h+="<tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>";' +
-    '    body.innerHTML=h;' +
-    '  });' +
-    '};' +
-    '</script>' +
     '</body></html>';
+
+  // 印刷ウィンドウ表示後にリストにないタイヤ欄の行数を動的生成
+  function fillExtraRows(doc) {
+    doc.querySelectorAll('.page').forEach(function(page) {
+      var body = page.querySelector('.extra-body');
+      if (!body) return;
+      var cols = page.querySelector('.columns');
+      var hdr = page.querySelector('.page-header');
+      var ea = page.querySelector('.extra-area');
+      var ehdr = ea ? ea.querySelector('.extra-header') : null;
+      var eth = ea ? ea.querySelector('thead') : null;
+      var usedH = (hdr ? hdr.offsetHeight : 0) + (cols ? cols.offsetHeight : 0) + (ehdr ? ehdr.offsetHeight : 0) + (eth ? eth.offsetHeight : 0) + 80;
+      var pageH = page.offsetHeight || 900;
+      var avail = pageH - usedH;
+      var rowH = 20;
+      var rows = Math.max(2, Math.floor(avail / rowH));
+      var h = '';
+      for (var i = 0; i < rows; i++) h += '<tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
+      body.innerHTML = h;
+    });
+  }
 
   // 新しいウィンドウで開く
   const w = window.open('', '_blank');
@@ -569,6 +569,8 @@ function generatePDF() {
   }
   w.document.write(printHtml);
   w.document.close();
+  // DOM描画後にリストにないタイヤ欄の行数を動的生成
+  w.onload = function() { fillExtraRows(w.document); };
 }
 
 // ════════ EVENT LISTENERS ════════

@@ -1056,10 +1056,12 @@ function renderStockResult(size, catKey, records) {
   var stock = result.stock; var prepStock = result.prepStock; var orderStock = result.orderStock;
   var MAKER_ORDER = ['TOYO','BRIDGESTONE','DUNLOP','MICHELIN','PIRELLI'];
   var sortedPatterns = db.patterns.slice().sort(function(a, b) {
+    var sA = WAREHOUSES.reduce(function(s,w){ return s+(stock[a]?.[w]||0); },0) + (prepStock[a]||0) + (orderStock[a]||0);
+    var sB = WAREHOUSES.reduce(function(s,w){ return s+(stock[b]?.[w]||0); },0) + (prepStock[b]||0) + (orderStock[b]||0);
+    var hasA = sA > 0 ? 1 : 0, hasB = sB > 0 ? 1 : 0;
+    if (hasA !== hasB) return hasB - hasA;
     var oA = MAKER_ORDER.indexOf(getMaker(a)), oB = MAKER_ORDER.indexOf(getMaker(b));
-    if (oA !== oB) return oA - oB;
-    var sA = WAREHOUSES.reduce(function(s,w){ return s+(stock[a]?.[w]||0); },0);
-    var sB = WAREHOUSES.reduce(function(s,w){ return s+(stock[b]?.[w]||0); },0);
+    if (oA !== oB) return (oA===-1?99:oA) - (oB===-1?99:oB);
     return sB - sA;
   });
   var html = '<div class="content">';

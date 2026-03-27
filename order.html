@@ -2774,6 +2774,8 @@ async function submitOrder() {
 
   if(!supplier)         { showFeedback('error','仕入先を選択してください'); return; }
   if(!selSize)          { showFeedback('error','タイヤサイズを選択してください'); return; }
+  if(!pattern)          { showFeedback('error','パターンを選択してください'); return; }
+  if(!location)         { showFeedback('error','納入予定場所を選択してください'); return; }
   if(selDBs.size === 0) { showFeedback('error','連携するDBを1つ以上選択してください'); return; }
   if(!duedate && !noukiKakunin) { showFeedback('error','納期予定日を入力するか「納期確認」にチェックしてください'); return; }
 

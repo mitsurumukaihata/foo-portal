@@ -1307,6 +1307,7 @@ async function submitNyuko() {
 const MAKER_LABEL = {
   'TOYO': 'トーヨータイヤジャパン広島営業所',
   'BRIDGESTONE': 'ブリヂストンタイヤソリューションジャパン広島西',
+  'DUNLOP': 'ﾀﾞﾝﾛｯﾌﾟﾀｲﾔ中国(株)広島支店/広島営業所',
 };
 
 function onPdfMakerChange() {
@@ -1319,9 +1320,7 @@ function onPdfMakerChange() {
   const targets = orders.filter(o => {
     const s = propStr(o,'ステータス');
     const sup = propStr(o,'仕入先');
-    const makerMatch = maker === 'TOYO'
-      ? (sup === 'TOYO')
-      : (sup === 'BRIDGESTONE');
+    const makerMatch = sup === maker;
     return makerMatch && (s === '新規発注' || s === '発注済');
   });
 
@@ -1377,7 +1376,7 @@ async function openGmailDraft() {
   const targets = orders.filter(o => {
     const s   = propStr(o,'ステータス');
     const sup = propStr(o,'仕入先');
-    const match = maker === 'TOYO' ? sup === 'TOYO' : sup === 'BRIDGESTONE';
+    const match = sup === maker;
     return match && (s === '新規発注' || s === '発注済');
   });
   if(!targets.length) { alert('対象データがありません'); return; }
@@ -1661,7 +1660,7 @@ async function downloadOrderPdf() {
     const targets = orders.filter(o => {
       const s   = propStr(o,'ステータス');
       const sup = propStr(o,'仕入先');
-      const match = maker === 'TOYO' ? sup === 'TOYO' : sup === 'BRIDGESTONE';
+      const match = sup === maker;
       return match && (s === '新規発注' || s === '発注済');
     });
     if(!targets.length) { alert('対象データがありません'); return; }
@@ -1790,7 +1789,7 @@ async function markOrdersAsSent(maker) {
     const targets = orders.filter(o => {
       const s   = propStr(o,'ステータス');
       const sup = propStr(o,'仕入先');
-      const match = maker === 'TOYO' ? sup === 'TOYO' : sup === 'BRIDGESTONE';
+      const match = sup === maker;
       return match && s === '新規発注';
     });
     if(!targets.length) return;

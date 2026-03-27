@@ -120,6 +120,7 @@ select.fi:focus{border-color:var(--amber);}
 .b-posted{background:var(--blue-bg);color:var(--blue);}
 .b-shipping{background:var(--orange-bg);color:var(--amber);}
 .b-shipped{background:var(--green-bg);color:var(--green);}
+.b-received{background:rgba(139,92,246,.12);color:#8b5cf6;}
 .b-nego{background:var(--red-bg);color:var(--red);}
 
 .btn-sm{padding:3px 8px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid;background:transparent;white-space:nowrap;}
@@ -612,6 +613,7 @@ select.sep-input { appearance: none; -webkit-appearance: none;
         <div class="st-opt" onclick="selectStatus(this)">発送準備中</div>
         <div class="st-opt" onclick="selectStatus(this)">交渉中</div>
         <div class="st-opt" onclick="selectStatus(this)">発送済</div>
+        <div class="st-opt" onclick="selectStatus(this)">受取連絡</div>
       </div>
       <div class="modal-actions">
         <button class="btn-cancel" onclick="closeModal('modal-change')">キャンセル</button>
@@ -970,6 +972,7 @@ function statusBadge(s) {
     '掲載中':    'b-posted',
     '発送準備中': 'b-shipping',
     '発送済':    'b-shipped',
+    '受取連絡':  'b-received',
     '交渉中':    'b-nego',
   };
   return `<span class="badge ${map[s] || 'b-unposted'}">${s}</span>`;
@@ -1211,7 +1214,7 @@ function openDetail(id) {
 }
 
 function statusBadgeClass(s) {
-  const map = { '未掲載': 'b-unposted', '掲載中': 'b-posted', '発送準備中': 'b-shipping', '発送済': 'b-shipped', '交渉中': 'b-nego' };
+  const map = { '未掲載': 'b-unposted', '掲載中': 'b-posted', '発送準備中': 'b-shipping', '発送済': 'b-shipped', '受取連絡': 'b-received', '交渉中': 'b-nego' };
   return 'badge ' + (map[s] || 'b-unposted');
 }
 

@@ -1,0 +1,1932 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>SNS用素材アップロード | f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --blue: #3b82f6;
+  --yellow: #f59e0b; --red: #ef4444; --purple: #a855f7;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+    --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208; --muted: #a08060;
+    --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --blue: #2563eb;
+    --yellow: #d97706; --red: #dc2626; --purple: #9333ea;
+  }
+}
+[data-theme="dark"] {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --blue: #3b82f6;
+  --yellow: #f59e0b; --red: #ef4444; --purple: #a855f7;
+}
+[data-theme="light"] {
+  --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+  --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208; --muted: #a08060;
+  --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --blue: #2563eb;
+  --yellow: #d97706; --red: #dc2626; --purple: #9333ea;
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', sans-serif; min-height: 100vh; max-width: 480px; margin: 0 auto; }
+
+/* ── ヘッダー ── */
+.app-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px 8px; }
+.portal-link { display:flex; align-items:center; gap:4px; color:var(--muted); font-size:12px; text-decoration:none; }
+.portal-link svg { width:16px; height:16px; }
+.portal-link:active { opacity:0.6; }
+.app-title { font-size:20px; font-weight:900; letter-spacing:-0.03em; padding:0 20px 4px; }
+.app-title span { color:var(--accent); }
+.app-subtitle { font-size:11px; color:var(--muted); padding:0 20px 12px; }
+
+.header-controls { display:flex; align-items:center; gap:8px; }
+.theme-toggle { background:var(--s2); border:1px solid var(--border); border-radius:8px; width:36px; height:36px; color:var(--text); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.theme-toggle:active { background:var(--s3); }
+
+/* ── ナビ ── */
+.nav { display:flex; gap:2px; padding:0 20px 12px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.nav::-webkit-scrollbar { display:none; }
+.nav-btn { flex-shrink:0; background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:9px 14px; font-size:12px; font-weight:600; color:var(--muted); cursor:pointer; font-family:'Noto Sans JP',sans-serif; transition:all 0.15s; white-space:nowrap; position:relative; }
+.nav-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+/* ── ページ ── */
+.page { display:none; padding:0 20px 120px; }
+.page.show { display:block; }
+
+/* ── フォーム ── */
+.form-group { margin-bottom:14px; }
+.form-label { font-size:11px; color:var(--muted); font-weight:600; margin-bottom:5px; display:block; }
+.form-input { width:100%; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:12px 14px; font-size:14px; color:var(--text); outline:none; font-family:inherit; }
+.form-input:focus { border-color:var(--accent); }
+.form-input[type="date"] { font-family:inherit; }
+.form-select { width:100%; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:12px 14px; font-size:14px; color:var(--text); outline:none; font-family:inherit; appearance:none; }
+.form-select:focus { border-color:var(--accent); }
+.form-textarea { width:100%; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:12px 14px; font-size:14px; color:var(--text); outline:none; font-family:inherit; resize:vertical; min-height:80px; }
+.form-textarea:focus { border-color:var(--accent); }
+
+/* ── ファイル選択 ── */
+#file-input { display:none; }
+.file-select-label { display:block; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:12px 14px; font-size:14px; color:var(--text); text-align:center; cursor:pointer; font-weight:600; transition:all 0.15s; }
+.file-select-label:active { background:var(--s3); border-color:var(--accent); }
+.file-preview { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+.file-preview-item { width:70px; height:70px; background:var(--s2); border:1px solid var(--border); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:28px; position:relative; overflow:hidden; }
+.file-preview-item img, .file-preview-item video { width:100%; height:100%; object-fit:cover; }
+.file-preview-video-icon { position:absolute; font-size:20px; background:rgba(0,0,0,0.6); border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:#fff; }
+.file-preview-remove { position:absolute; top:-4px; right:-4px; width:20px; height:20px; background:var(--red); color:#fff; border:2px solid var(--bg); border-radius:50%; font-size:11px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:5; line-height:1; padding:0; }
+.file-preview-remove:active { opacity:0.7; }
+.file-preview-more { font-size:14px; font-weight:600; color:var(--muted); padding:8px; }
+
+/* ── メンバーチェック ── */
+.member-checks { display:flex; gap:8px; flex-wrap:wrap; }
+.member-check { display:flex; align-items:center; gap:6px; background:var(--s2); border:1.5px solid var(--border); border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; transition:all 0.15s; }
+.member-check input { display:none; }
+.member-check:has(input:checked) { background:var(--accent); border-color:var(--accent); color:#fff; }
+.member-check span { user-select:none; }
+
+/* ── 選択チップ ── */
+.select-chips { display:flex; gap:6px; }
+.select-chip { flex:1; text-align:center; background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:10px 6px; font-size:13px; cursor:pointer; transition:all 0.15s; white-space:nowrap; }
+.select-chip.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+/* ── プログレスバー ── */
+.progress-bar { width:100%; height:6px; background:var(--s2); border-radius:3px; overflow:hidden; margin-top:8px; display:none; }
+.progress-fill { height:100%; background:var(--accent); border-radius:3px; transition:width 0.3s; width:0%; }
+.progress-status { font-size:11px; color:var(--muted); margin-top:4px; text-align:center; display:none; }
+.progress-detail { font-size:10px; color:var(--muted); margin-top:2px; text-align:center; }
+
+/* ── ダウンロード進捗オーバーレイ ── */
+.dl-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:250; align-items:center; justify-content:center; }
+.dl-overlay.show { display:flex; }
+.dl-modal { background:var(--bg); border:1px solid var(--border); border-radius:16px; padding:28px 24px; text-align:center; max-width:300px; width:85%; }
+.dl-filename { font-size:12px; color:var(--muted); margin-bottom:12px; word-break:break-all; }
+.dl-bar { width:100%; height:8px; background:var(--s2); border-radius:4px; overflow:hidden; margin-bottom:8px; }
+.dl-bar-fill { height:100%; background:var(--accent); border-radius:4px; transition:width 0.2s; width:0%; }
+.dl-pct { font-size:22px; font-weight:700; color:var(--text); margin-bottom:4px; }
+.dl-info { font-size:11px; color:var(--muted); }
+
+/* ── ボタン ── */
+.form-btn { width:100%; background:var(--accent); border:none; border-radius:10px; padding:14px; color:#fff; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:8px; transition:all 0.15s; }
+.form-btn:disabled { opacity:0.4; cursor:default; }
+.form-btn:active:not(:disabled) { opacity:0.9; }
+
+/* ── フィルターチップ ── */
+.filter-chips { display:flex; gap:6px; margin-bottom:8px; }
+.chip { flex:1; text-align:center; background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:9px 6px; font-size:11px; font-weight:600; color:var(--muted); cursor:pointer; transition:all 0.15s; }
+.chip.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+/* ── カード ── */
+.card { background:var(--s2); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:10px; cursor:pointer; transition:all 0.15s; }
+.card:active { background:var(--s3); }
+.card-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; }
+.card-title { font-size:13px; font-weight:700; color:var(--text); }
+.card-subtitle { font-size:11px; color:var(--muted); }
+.card-meta { font-size:11px; color:var(--muted); margin-bottom:6px; }
+.card-info { font-size:12px; color:var(--text); margin-bottom:4px; }
+.card-tags { display:flex; flex-wrap:wrap; gap:4px 6px; margin-bottom:8px; }
+.tag { display:inline-block; padding:3px 8px; border-radius:6px; font-size:10px; font-weight:600; }
+.tag-work { background:rgba(59,130,246,0.15); color:var(--blue); }
+.tag-weather { background:rgba(245,158,11,0.15); color:var(--yellow); }
+.tag-status { background:rgba(168,85,247,0.15); color:var(--purple); }
+.tag-count { background:rgba(34,197,94,0.15); color:var(--green); }
+.tag-error { background:rgba(239,68,68,0.15); color:var(--red); }
+.tag-members { background:rgba(168,85,247,0.12); color:var(--purple); }
+.resume-banner { display:flex; gap:10px; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); border-radius:10px; padding:12px 14px; margin-bottom:14px; }
+.resume-banner-icon { font-size:20px; flex-shrink:0; }
+.resume-banner-body { flex:1; min-width:0; }
+.resume-banner-title { font-size:13px; font-weight:700; color:var(--yellow); }
+.resume-banner-detail { font-size:11px; color:var(--muted); margin-top:2px; }
+.resume-banner-actions { display:flex; gap:8px; margin-top:8px; }
+.resume-btn { border:none; border-radius:8px; padding:8px 16px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+.resume-btn-go { background:var(--accent); color:#fff; }
+.resume-btn-go:active { opacity:0.7; }
+.resume-btn-cancel { background:var(--s3); color:var(--muted); border:1px solid var(--border); }
+.resume-btn-cancel:active { opacity:0.7; }
+.resume-notice { background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.3); border-radius:10px; padding:12px 14px; margin-bottom:14px; }
+.resume-notice-title { font-size:13px; font-weight:700; color:var(--blue); }
+.resume-notice-files { font-size:12px; color:var(--text); margin-top:4px; word-break:break-all; }
+.error-banner { background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:10px; padding:12px 14px; margin-bottom:12px; }
+.error-banner-title { font-size:12px; font-weight:700; color:var(--red); margin-bottom:4px; }
+.error-banner-item { font-size:11px; color:var(--text); padding:4px 0; border-bottom:1px solid rgba(239,68,68,0.1); }
+.error-banner-item:last-child { border-bottom:none; }
+
+/* ── 投稿ログ ── */
+.log-month { font-size:13px; font-weight:700; color:var(--accent); padding:12px 0 6px; }
+.log-item { display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--border); }
+.log-avatar { width:36px; height:36px; border-radius:50%; background:var(--s3); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:var(--accent); flex-shrink:0; }
+.log-body { flex:1; min-width:0; }
+.log-name { font-size:13px; font-weight:700; color:var(--text); }
+.log-detail { font-size:12px; color:var(--muted); margin-top:2px; line-height:1.6; }
+.log-detail strong { color:var(--text); font-weight:600; }
+.log-time { font-size:10px; color:var(--muted); margin-top:3px; }
+.log-stats { display:flex; gap:16px; margin-top:16px; padding:14px; background:var(--s2); border:1px solid var(--border); border-radius:12px; }
+.log-stat { flex:1; text-align:center; }
+.log-stat-num { font-size:22px; font-weight:900; color:var(--accent); }
+.log-stat-label { font-size:10px; color:var(--muted); margin-top:2px; }
+
+/* ── 撮影ガイド ── */
+.guide-section { margin-bottom:20px; }
+.guide-section-icon { font-size:28px; margin-bottom:4px; }
+.guide-section-title { font-size:15px; font-weight:700; color:var(--text); margin-bottom:10px; }
+.guide-card { background:var(--s2); border:1px solid var(--border); border-radius:12px; padding:14px; }
+.guide-card-ng { border-color:rgba(239,68,68,0.3); background:rgba(239,68,68,0.05); }
+.guide-item { padding:10px 0; border-bottom:1px solid var(--border); }
+.guide-item:last-child { border-bottom:none; }
+.guide-item-label { font-size:11px; font-weight:700; color:var(--accent); margin-bottom:4px; }
+.guide-item-value { font-size:13px; color:var(--text); line-height:1.8; }
+.guide-ng-badge { display:inline-block; background:var(--red); color:#fff; font-size:10px; font-weight:700; padding:2px 8px; border-radius:4px; margin-bottom:4px; }
+
+/* ── 詳細パネル ── */
+.detail-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:90; }
+.detail-overlay.show { display:block; }
+.detail-sheet { display:none; position:fixed; bottom:0; left:0; right:0; background:var(--bg); border-radius:20px 20px 0 0; width:100%; max-width:480px; max-height:85vh; overflow-y:auto; padding:24px 20px 32px; z-index:95; animation:slideUp 0.3s ease-out; }
+.detail-sheet.show { display:block; }
+@keyframes slideUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
+.detail-close-btn { position:absolute; top:12px; right:12px; background:var(--s2); border:1px solid var(--border); border-radius:8px; width:32px; height:32px; color:var(--text); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.detail-close-btn:active { background:var(--s3); }
+.detail-title { font-size:18px; font-weight:700; margin-bottom:16px; padding-right:40px; }
+.detail-section { margin-bottom:16px; }
+.detail-section-title { font-size:11px; color:var(--muted); font-weight:600; margin-bottom:6px; }
+.detail-section-content { font-size:13px; color:var(--text); line-height:1.8; word-break:break-word; }
+.detail-buttons { display:flex; flex-direction:column; gap:6px; margin-top:16px; }
+.detail-btn { width:100%; padding:12px; border:1.5px solid var(--border); background:var(--s2); color:var(--text); border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.15s; text-align:center; text-decoration:none; display:block; }
+.detail-btn:active { background:var(--s3); }
+.detail-btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+/* ── ローディング ── */
+.loading { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; }
+.loading::before { content:''; display:block; width:28px; height:28px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; margin:0 auto 12px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── 空状態 ── */
+.empty-state { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; line-height:1.8; }
+
+/* ── トースト ── */
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:12px 16px; font-size:12px; color:var(--text); z-index:200; max-width:90%; word-break:break-word; animation:slideUpToast 0.3s ease-out; display:none; }
+@keyframes slideUpToast { from { transform:translateX(-50%) translateY(100%); } to { transform:translateX(-50%) translateY(0); } }
+.toast.error { background:rgba(239,68,68,0.15); border-color:var(--red); color:var(--red); }
+.toast.success { background:rgba(34,197,94,0.15); border-color:var(--green); color:var(--green); }
+
+/* ── 完了モーダル ── */
+.done-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:300; align-items:center; justify-content:center; }
+.done-overlay.show { display:flex; }
+.done-modal { background:var(--bg); border:1px solid var(--border); border-radius:20px; padding:36px 28px 28px; text-align:center; max-width:320px; width:90%; animation:popIn 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+@keyframes popIn { from { transform:scale(0.7); opacity:0; } to { transform:scale(1); opacity:1; } }
+.done-icon { font-size:56px; margin-bottom:12px; }
+.done-message { font-size:15px; font-weight:700; color:var(--text); line-height:1.7; margin-bottom:20px; }
+.done-btn { width:100%; padding:12px; background:var(--accent); color:#fff; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
+.done-btn:active { opacity:0.8; }
+
+/* ── ファイルリスト（詳細パネル内） ── */
+.file-list { display:flex; flex-direction:column; gap:6px; }
+.file-item { display:flex; align-items:center; justify-content:space-between; background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
+.file-item-name { font-size:12px; color:var(--text); word-break:break-all; flex:1; margin-right:8px; }
+.file-item-size { font-size:10px; color:var(--muted); white-space:nowrap; margin-right:8px; }
+.file-dl-btn { background:var(--accent); color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap; }
+.file-dl-btn:active { opacity:0.8; }
+.file-dl-btn:disabled { opacity:0.4; cursor:default; }
+.file-dl-btn.done { background:var(--green); }
+.file-dl-btn.done:disabled { opacity:1; }
+
+/* ── 認可エラー ── */
+.auth-error { display:none; text-align:center; padding:60px 20px; }
+.auth-error.show { display:block; }
+.auth-error-title { font-size:18px; font-weight:700; margin-bottom:8px; }
+.auth-error-msg { font-size:13px; color:var(--muted); line-height:1.8; }
+
+/* ── セットアップ通知 ── */
+.setup-notice { text-align:center; padding:40px 20px; }
+.setup-notice-icon { font-size:48px; margin-bottom:12px; }
+.setup-notice-title { font-size:16px; font-weight:700; margin-bottom:8px; }
+.setup-notice-msg { font-size:13px; color:var(--muted); line-height:1.8; }
+</style>
+</head>
+<body>
+
+<!-- ── 認可エラー ── -->
+<div class="auth-error" id="auth-error">
+  <div class="auth-error-title">アクセス権限がありません</div>
+  <div class="auth-error-msg">SNS用素材アップロードへのアクセス権限がないか、セッションが期限切れです。<br><br><a href="https://mitsurumukaihata.github.io/foo-portal/" style="color:var(--accent);text-decoration:none;">ポータルに戻る</a></div>
+</div>
+
+<!-- ── メインアプリ ── -->
+<div id="app" style="display:none;">
+
+<!-- ── ヘッダー ── -->
+<div class="app-header">
+  <a href="https://mitsurumukaihata.github.io/foo-portal/" class="portal-link" id="portal-back-link" onclick="return confirmLeave()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    ポータル
+  </a>
+  <div class="header-controls">
+    <button class="theme-toggle" id="theme-toggle">🌙</button>
+  </div>
+</div>
+<div class="app-title">SNS用素材<span>アップロード</span></div>
+<div class="app-subtitle">撮影素材の共有 · Google Drive連携</div>
+
+<!-- ── ナビ ── -->
+<div class="nav">
+  <button class="nav-btn active" data-tab="upload">アップロード</button>
+  <button class="nav-btn" data-tab="list">素材一覧</button>
+  <button class="nav-btn" data-tab="log">みんなの投稿</button>
+  <button class="nav-btn" data-tab="guide">撮影ガイド</button>
+</div>
+
+<!-- ── ページ: アップロード ── -->
+<div class="page show" id="page-upload">
+  <div id="setup-notice-upload" style="display:none;">
+    <div class="setup-notice">
+      <div class="setup-notice-icon">⚙️</div>
+      <div class="setup-notice-title">Google Drive連携の設定が必要です</div>
+      <div class="setup-notice-msg">Google Apps Scriptのデプロイが完了していません。<br>管理者にお問い合わせください。</div>
+    </div>
+  </div>
+
+  <form id="upload-form" style="display:none;">
+    <!-- ファイル選択 -->
+    <div class="form-group">
+      <label class="form-label">ファイル選択（写真・動画）</label>
+      <input type="file" id="file-input" multiple accept="image/*,video/*">
+      <label for="file-input" class="file-select-label" id="file-select-btn">
+        <span id="file-count">ファイルを選択</span>
+      </label>
+      <div class="file-preview" id="file-preview"></div>
+    </div>
+
+    <!-- 作業日 -->
+    <div class="form-group">
+      <label class="form-label">作業日</label>
+      <input type="date" id="work-date" class="form-input">
+    </div>
+
+    <!-- 作業場所 -->
+    <div class="form-group">
+      <label class="form-label">作業場所</label>
+      <input type="text" id="work-place" class="form-input" placeholder="広島市南区○○町">
+    </div>
+
+    <!-- 作業内容 -->
+    <div class="form-group">
+      <label class="form-label">作業内容</label>
+      <select id="work-type" class="form-select">
+        <option value="">選択してください</option>
+        <option value="タイヤ交換">タイヤ交換</option>
+        <option value="出張作業">出張作業</option>
+        <option value="倉庫作業">倉庫作業</option>
+        <option value="配達">配達</option>
+        <option value="その他">その他</option>
+      </select>
+    </div>
+
+    <!-- 参加メンバー -->
+    <div class="form-group">
+      <label class="form-label">参加メンバー（この作業に参加した人）</label>
+      <div class="member-checks" id="member-checks">
+        <label class="member-check"><input type="checkbox" value="向畑" checked><span>向畑</span></label>
+        <label class="member-check"><input type="checkbox" value="矢島"><span>矢島</span></label>
+        <label class="member-check"><input type="checkbox" value="藤井"><span>藤井</span></label>
+      </div>
+    </div>
+
+    <!-- 特記事項 -->
+    <div class="form-group">
+      <label class="form-label">特記事項</label>
+      <textarea id="notes" class="form-textarea" placeholder="いつもと違う作業があれば"></textarea>
+    </div>
+
+    <!-- 天気 -->
+    <div class="form-group">
+      <label class="form-label">天気</label>
+      <div class="select-chips" id="weather-chips">
+        <button type="button" class="select-chip" data-weather="晴☀️">晴☀️</button>
+        <button type="button" class="select-chip" data-weather="曇☁️">曇☁️</button>
+        <button type="button" class="select-chip" data-weather="雨🌧️">雨🌧️</button>
+      </div>
+    </div>
+
+    <!-- おすすめ度 -->
+    <div class="form-group">
+      <label class="form-label">おすすめ度</label>
+      <div class="select-chips" id="rating-chips">
+        <button type="button" class="select-chip" data-rating="★">★</button>
+        <button type="button" class="select-chip" data-rating="★★">★★</button>
+        <button type="button" class="select-chip" data-rating="★★★">★★★</button>
+      </div>
+    </div>
+
+    <!-- ひとことコメント -->
+    <div class="form-group">
+      <label class="form-label">ひとことコメント</label>
+      <input type="text" id="comment" class="form-input" placeholder="この素材のポイント">
+    </div>
+
+    <!-- アップロードボタン -->
+    <button type="submit" class="form-btn" id="submit-btn">アップロード</button>
+    <div class="progress-bar" id="progress-bar">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+    <div class="progress-status" id="progress-status"></div>
+    <div class="progress-detail" id="progress-detail"></div>
+  </form>
+</div>
+
+<!-- ── ページ: 素材一覧 ── -->
+<div class="page" id="page-list">
+  <div class="filter-chips" id="list-filters">
+    <button class="chip active" data-filter="all">全て</button>
+    <button class="chip" data-filter="unused">未使用</button>
+    <button class="chip" data-filter="used">使用済み</button>
+  </div>
+  <div id="list-content"></div>
+</div>
+
+<!-- ── ページ: みんなの投稿 ── -->
+<div class="page" id="page-log">
+  <div id="log-content"></div>
+</div>
+
+<!-- ── ページ: 撮影ガイド ── -->
+<div class="page" id="page-guide">
+
+  <div class="guide-section">
+    <div class="guide-section-icon">📱</div>
+    <div class="guide-section-title">iPhone設定ガイド</div>
+    <div class="guide-card">
+      <div class="guide-item">
+        <div class="guide-item-label">ビデオ撮影設定</div>
+        <div class="guide-item-value">設定 → カメラ → ビデオ撮影 →<br><strong>1080p HD / 30 fps</strong> に変更</div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-item-label">なぜ30fps？</div>
+        <div class="guide-item-value">60fps → 30fpsでファイルサイズが約半分に。<br>SNS投稿には30fpsで十分です。</div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-item-label">ファイルサイズの目安</div>
+        <div class="guide-item-value">
+          写真：1枚 2〜5MB（自動圧縮されます）<br>
+          動画30秒：約15〜25MB<br>
+          動画1分：約30〜50MB<br>
+          動画2分：約60〜100MB<br>
+          <strong>※ 1ファイル100MBまで対応</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="guide-section">
+    <div class="guide-section-icon">📸</div>
+    <div class="guide-section-title">撮影のコツ</div>
+    <div class="guide-card">
+      <div class="guide-item">
+        <div class="guide-item-label">向き</div>
+        <div class="guide-item-value"><strong>縦向きで撮影</strong>してください。<br>Instagram Reels・TikTok・ストーリーズに最適です。</div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-item-label">ビフォーアフター</div>
+        <div class="guide-item-value">交換前 → 交換後の比較写真は<strong>必ず撮って</strong>ください。<br>同じ角度・位置から撮ると効果的です。</div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-item-label">手元アップ＋全体</div>
+        <div class="guide-item-value">作業の<strong>手元アップ</strong>と<strong>全体の引きの画</strong>、<br>両方あるとSNS投稿の幅が広がります。</div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-item-label">明るさ・背景</div>
+        <div class="guide-item-value">
+          ・逆光を避けて撮影する<br>
+          ・背景が散らかっていないか確認<br>
+          ・暗い場所ではフラッシュよりライトで照らす
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="guide-section">
+    <div class="guide-section-icon">💡</div>
+    <div class="guide-section-title">アップロードの注意点</div>
+    <div class="guide-card">
+      <div class="guide-item">
+        <div class="guide-item-label">途中で戻っても大丈夫</div>
+        <div class="guide-item-value">大きいファイルのアップロード中にページを離れても、<strong>途中から再開</strong>できます。<br>次にこのページを開くと「再開しますか？」と聞かれるので、同じファイルを選び直してください。</div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-item-label">電波が悪い場所では</div>
+        <div class="guide-item-value">アップロードはWi-Fi環境がおすすめです。<br>モバイル回線でも動きますが、大きい動画は時間がかかります。</div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-item-label">1ファイル100MBまで</div>
+        <div class="guide-item-value">100MBを超えるファイルは選択できません。<br>動画が大きすぎる場合はiPhoneの設定で<strong>30fps</strong>にしてください。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="guide-section">
+    <div class="guide-section-icon">🚫</div>
+    <div class="guide-section-title">NGパターン（これは撮らない！）</div>
+    <div class="guide-card guide-card-ng">
+      <div class="guide-item">
+        <div class="guide-ng-badge">NG</div>
+        <div class="guide-item-value"><strong>ナンバープレート</strong>が読める写真・動画<br>→ 写り込んだら角度を変えるか隠してください</div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-ng-badge">NG</div>
+        <div class="guide-item-value"><strong>お客様の顔</strong>がはっきりわかるもの<br>→ 手元や車両だけを撮影してください</div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-ng-badge">NG</div>
+        <div class="guide-item-value"><strong>個人情報</strong>が映り込んでいるもの<br>→ 伝票・書類・電話番号・住所などが見えないように注意</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</div><!-- #app -->
+
+<!-- ── 詳細パネル ── -->
+<div class="detail-overlay" id="detail-overlay" onclick="closeDetail()"></div>
+<div class="detail-sheet" id="detail-sheet">
+  <button class="detail-close-btn" onclick="closeDetail()">✕</button>
+  <div id="detail-content"></div>
+</div>
+
+<!-- ── ダウンロード進捗 ── -->
+<div class="dl-overlay" id="dl-overlay">
+  <div class="dl-modal">
+    <div class="dl-filename" id="dl-filename"></div>
+    <div class="dl-pct" id="dl-pct">0%</div>
+    <div class="dl-bar"><div class="dl-bar-fill" id="dl-bar-fill"></div></div>
+    <div class="dl-info" id="dl-info">準備中...</div>
+  </div>
+</div>
+
+<!-- ── 完了モーダル ── -->
+<div class="done-overlay" id="done-overlay" onclick="closeDoneModal()">
+  <div class="done-modal" onclick="event.stopPropagation()">
+    <div class="done-icon">🎉</div>
+    <div class="done-message" id="done-message">お疲れさまでした！</div>
+    <button class="done-btn" onclick="closeDoneModal()">OK</button>
+  </div>
+</div>
+
+<!-- ── トースト ── -->
+<div id="toast"></div>
+
+<script>
+(function(){
+  const t = localStorage.getItem('foo_portal_theme') || 'auto';
+  if (t !== 'auto') document.documentElement.setAttribute('data-theme', t);
+})();
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 設定
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const PROXY = 'https://notion-proxy.33322666666mm.workers.dev';
+const DB = {
+  material: '32ba695f8e888156ae77edaca8d4c6b5',
+  comments: '581fd7b0209e4944b0763f126751471f'
+};
+
+// ★ Google Apps Script のデプロイURL をここに貼り付け ★
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxjPCYkdIg4Nay3mXLJAo8PEBf0VQwGr0KC1kJUUyr1j1jf4_NlzLEGhExGv1xFGS7X/exec';
+
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+const CHUNK_SIZE = 1.5 * 1024 * 1024;    // 1.5MB per chunk
+const IMAGE_MAX_PX = 1600;
+const IMAGE_QUALITY = 0.75;
+
+// （MAX_FILE_SIZEは上で定義済み）
+
+let currentTab = 'upload';
+let currentFilter = 'all';
+let currentUserName = '';
+let selectedFiles = [];
+let selectedWeather = null;
+let selectedRating = null;
+let _submitting = false;
+let _resumeState = null; // レジューム用の状態
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// アクセスチェック
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function checkAccess() {
+  try {
+    const raw = localStorage.getItem('foo_portal_session');
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (new Date(data.expires) < new Date()) return false;
+    if (data.apps && data.apps.sns_upload === true) {
+      currentUserName = data.name || '';
+      return true;
+    }
+    return false;
+  } catch(e) { return false; }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Notion API
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function notionAPI(method, path, body) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const res = await fetch(PROXY + path, {
+      method, headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined, signal: ctrl.signal
+    });
+    clearTimeout(timer);
+    const data = await res.json();
+    if (data.object === 'error') throw new Error(data.message);
+    return data;
+  } catch(e) {
+    clearTimeout(timer);
+    if (e.name === 'AbortError') throw new Error('タイムアウト');
+    throw new Error('通信エラー: ' + e.message);
+  }
+}
+
+async function queryAll(dbId, body) {
+  let all = [], cursor = null;
+  while (true) {
+    const b = { ...body, page_size: 100 };
+    if (cursor) b.start_cursor = cursor;
+    const res = await notionAPI('POST', `/databases/${dbId}/query`, b);
+    all = all.concat(res.results || []);
+    if (!res.has_more) break;
+    cursor = res.next_cursor;
+  }
+  return all;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Google Apps Script 通信
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function gasRequest(data, retries = 2) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 120000);
+      const res = await fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(data),
+        redirect: 'follow',
+        signal: ctrl.signal
+      });
+      clearTimeout(timer);
+      const text = await res.text();
+      let result;
+      try { result = JSON.parse(text); } catch(e) {
+        if (attempt < retries) continue;
+        throw new Error('サーバーの応答を処理できませんでした');
+      }
+      if (result.error) throw new Error(result.error);
+      return result;
+    } catch(e) {
+      if (e.name === 'AbortError' || (e.message && e.message.includes('Load'))) {
+        if (attempt < retries) continue;
+      }
+      throw e;
+    }
+  }
+}
+
+// ファイルをbase64に変換
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      // data:image/jpeg;base64,XXXX → XXXX 部分だけ取り出す
+      const base64 = reader.result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// 画像圧縮
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) { resolve(file); return; }
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let w = img.width, h = img.height;
+      if (file.size < 500 * 1024 && w <= IMAGE_MAX_PX && h <= IMAGE_MAX_PX) { resolve(file); return; }
+      if (w > IMAGE_MAX_PX || h > IMAGE_MAX_PX) {
+        const ratio = Math.min(IMAGE_MAX_PX / w, IMAGE_MAX_PX / h);
+        w = Math.round(w * ratio); h = Math.round(h * ratio);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob((blob) => {
+        if (!blob) { resolve(file); return; }
+        const compressed = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
+        resolve(compressed);
+      }, 'image/jpeg', IMAGE_QUALITY);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
+// ArrayBuffer変換
+function fileToArrayBuffer(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+function generateUploadId() {
+  return 'up_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+}
+
+// 大きいファイルのチャンク式アップロード（レジューム対応版は下のuploadLargeFileResumableを使用）
+
+// Google Drive にアップロード（レジューム対応）
+async function uploadToGoogleDrive(files, folderName) {
+  // 合計サイズ計算 + タイマー開始
+  _uploadTotalBytes = files.reduce((sum, f) => sum + f.size, 0);
+  _uploadSentBytes = 0;
+  _uploadStartTime = Date.now();
+
+  // レジューム状態があるか確認
+  const resume = _resumeState;
+  let folderId;
+  let startFileIndex = 0;
+  let resumeChunkStart = 0;
+
+  if (resume && resume.folderId) {
+    // レジューム: 既存フォルダを使用
+    folderId = resume.folderId;
+    const doneBefore = resume.completedFileIndexes || [];
+    startFileIndex = doneBefore.length;
+    resumeChunkStart = resume.currentChunkDone || 0;
+    updateProgressStatus(`レジューム: ${startFileIndex}ファイル完了済み、続きから再開...`);
+
+    // 完了済みファイルの分だけ送信済みバイトを進める
+    let alreadySent = 0;
+    for (let i = 0; i < startFileIndex && i < files.length; i++) {
+      alreadySent += files[i].size;
+    }
+    _uploadSentBytes = alreadySent;
+  } else {
+    // 通常: フォルダ新規作成
+    updateProgressStatus('フォルダ作成中...');
+    const createRes = await gasRequest({ action: 'createFolder', folderName: folderName });
+    folderId = createRes.folderId;
+  }
+
+  // レジューム状態をlocalStorageに保存
+  const filesMeta = files.map(f => ({ name: f.name, size: f.size }));
+  saveResumeState({
+    folderId,
+    folderName,
+    files: filesMeta,
+    completedFileIndexes: resume ? (resume.completedFileIndexes || []) : [],
+    currentFileIndex: startFileIndex,
+    currentUploadId: resume ? resume.currentUploadId : null,
+    currentChunkDone: resumeChunkStart,
+    startedAt: resume ? resume.startedAt : Date.now()
+  });
+
+  // 2. ファイルを1つずつアップロード（画像は圧縮、大きいファイルはチャンク式）
+  let sentSoFar = _uploadSentBytes;
+  for (let i = startFileIndex; i < files.length; i++) {
+    let file = files[i];
+    const origSize = file.size;
+    updateProgressStatus(`処理中... (${i + 1}/${files.length})`);
+
+    // 画像は圧縮
+    file = await compressImage(file);
+
+    // 圧縮後のサイズで合計を再計算
+    if (file.size !== origSize) {
+      _uploadTotalBytes = _uploadTotalBytes - origSize + file.size;
+    }
+
+    // このファイルのチャンクレジューム開始位置
+    const chunkStart = (i === startFileIndex && resumeChunkStart > 0) ? resumeChunkStart : 0;
+
+    if (file.size > 50 * 1024 * 1024) {
+      // 50MB以上はチャンク式（レジューム対応）
+      await uploadLargeFileResumable(folderId, file, i, files.length, sentSoFar, chunkStart);
+    } else {
+      // 50MB以下は一括送信（動画含む）
+      updateProgressStatus(`アップロード中... (${i + 1}/${files.length})`);
+      updateProgressDetail(sentSoFar);
+      const base64 = await fileToBase64(file);
+      await gasRequest({
+        action: 'upload',
+        folderId: folderId,
+        fileName: file.name,
+        mimeType: file.type,
+        base64: base64
+      }, 3);
+
+      // ファイル完了 → レジューム状態更新
+      const currentState = loadResumeState();
+      if (currentState) {
+        const done = currentState.completedFileIndexes || [];
+        if (!done.includes(i)) done.push(i);
+        saveResumeState({ ...currentState, completedFileIndexes: done, currentFileIndex: i + 1 });
+      }
+    }
+    sentSoFar += file.size;
+    updateProgressDetail(sentSoFar);
+  }
+
+  // 3. 完了 → レジューム状態をクリア
+  updateProgressStatus('完了処理中...');
+  updateProgressDetail(_uploadTotalBytes);
+  await gasRequest({ action: 'finish', folderId: folderId });
+  clearResumeState();
+  _resumeState = null;
+  return folderId;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ユーティリティ
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function escapeHtml(text) {
+  if (!text) return '';
+  return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function getPropValue(page, prop) {
+  const p = page.properties[prop];
+  if (!p) return null;
+  switch(p.type) {
+    case 'title': return p.title.map(t => t.plain_text).join('');
+    case 'rich_text': return p.rich_text.map(t => t.plain_text).join('');
+    case 'select': return p.select?.name || null;
+    case 'multi_select': return p.multi_select?.map(s => s.name) || [];
+    case 'date': return p.date?.start || null;
+    case 'checkbox': return p.checkbox;
+    case 'number': return p.number;
+    case 'status': return p.status?.name || null;
+    case 'url': return p.url || null;
+    default: return null;
+  }
+}
+
+function showToast(msg, type = 'default', duration = 3000) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast ' + type;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', duration);
+}
+
+// アップロードエラー記録（セッション内保持）
+var _uploadErrors = [];
+function addUploadError(info) {
+  _uploadErrors.push(info);
+  // ローカルストレージは使わない（セッション内のみ）
+}
+function getUploadErrors() {
+  return _uploadErrors;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// アップロード レジューム機能
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const RESUME_KEY = 'foo_upload_resume';
+
+function saveResumeState(state) {
+  try { localStorage.setItem(RESUME_KEY, JSON.stringify(state)); } catch(e) {}
+}
+function loadResumeState() {
+  try {
+    const raw = localStorage.getItem(RESUME_KEY);
+    if (!raw) return null;
+    const state = JSON.parse(raw);
+    // 24時間以上前のものは破棄
+    if (Date.now() - state.startedAt > 24 * 60 * 60 * 1000) {
+      clearResumeState();
+      return null;
+    }
+    return state;
+  } catch(e) { return null; }
+}
+function clearResumeState() {
+  try { localStorage.removeItem(RESUME_KEY); } catch(e) {}
+}
+
+// レジューム用: ファイル名・サイズで同じファイルか判定
+function matchFileToResume(file, savedFile) {
+  return file.name === savedFile.name && file.size === savedFile.size;
+}
+
+// レジュームバナー表示
+function showResumeBanner(state) {
+  const existing = document.getElementById('resume-banner');
+  if (existing) existing.remove();
+
+  const elapsed = Math.round((Date.now() - state.startedAt) / 60000);
+  const completedFiles = state.completedFileIndexes ? state.completedFileIndexes.length : 0;
+  const totalFiles = state.files.length;
+  const banner = document.createElement('div');
+  banner.id = 'resume-banner';
+  banner.className = 'resume-banner';
+  banner.innerHTML = `
+    <div class="resume-banner-icon">⚠️</div>
+    <div class="resume-banner-body">
+      <div class="resume-banner-title">中断されたアップロードがあります</div>
+      <div class="resume-banner-detail">
+        ${escapeHtml(state.folderName)} — ${completedFiles}/${totalFiles}ファイル完了（${elapsed}分前）
+      </div>
+      <div class="resume-banner-actions">
+        <button class="resume-btn resume-btn-go" onclick="startResume()">再開する</button>
+        <button class="resume-btn resume-btn-cancel" onclick="cancelResume()">破棄する</button>
+      </div>
+    </div>
+  `;
+
+  const form = document.getElementById('upload-form');
+  form.parentNode.insertBefore(banner, form);
+}
+
+function hideResumeBanner() {
+  const el = document.getElementById('resume-banner');
+  if (el) el.remove();
+}
+
+// 再開ボタン押下 → ファイル再選択を促す
+function startResume() {
+  const state = loadResumeState();
+  if (!state) { showToast('レジューム情報が見つかりません', 'error'); return; }
+  _resumeState = state;
+
+  // 残りファイル名を表示して再選択を促す
+  const remaining = state.files.filter((f, i) => !(state.completedFileIndexes || []).includes(i));
+  const names = remaining.map(f => f.name).join('、');
+
+  hideResumeBanner();
+
+  const notice = document.createElement('div');
+  notice.id = 'resume-notice';
+  notice.className = 'resume-notice';
+  notice.innerHTML = `
+    <div class="resume-notice-title">以下のファイルを再選択してください</div>
+    <div class="resume-notice-files">${escapeHtml(names)}</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px;">ファイルを選び直してからアップロードボタンを押してください。<br>同じファイルが見つかれば、送信済みチャンクはスキップされます。</div>
+    <button class="resume-btn resume-btn-cancel" style="margin-top:8px;" onclick="cancelResume()">やっぱりやめる</button>
+  `;
+  const form = document.getElementById('upload-form');
+  form.parentNode.insertBefore(notice, form);
+}
+
+function cancelResume() {
+  clearResumeState();
+  _resumeState = null;
+  hideResumeBanner();
+  const notice = document.getElementById('resume-notice');
+  if (notice) notice.remove();
+  showToast('中断されたアップロードを破棄しました', 'default');
+}
+
+// レジューム対応版の大きいファイルアップロード
+async function uploadLargeFileResumable(folderId, file, fileIndex, totalFiles, baseSent, resumeChunkStart) {
+  const buffer = await fileToArrayBuffer(file);
+  const totalChunks = Math.ceil(buffer.byteLength / CHUNK_SIZE);
+  // レジュームの場合は同じuploadIdを使う
+  const uploadId = (_resumeState && _resumeState.currentUploadId) ? _resumeState.currentUploadId : generateUploadId();
+
+  const startChunk = resumeChunkStart || 0;
+
+  // 送信済みチャンク分の進捗を反映
+  if (startChunk > 0) {
+    const alreadySent = Math.min(startChunk * CHUNK_SIZE, buffer.byteLength);
+    updateProgressDetail(baseSent + alreadySent);
+  }
+
+  for (let c = startChunk; c < totalChunks; c++) {
+    updateProgressStatus(`アップロード中... (${fileIndex + 1}/${totalFiles})`);
+    const chunkEnd = Math.min((c + 1) * CHUNK_SIZE, buffer.byteLength);
+    updateProgressDetail(baseSent + chunkEnd);
+    const chunk = buffer.slice(c * CHUNK_SIZE, chunkEnd);
+    const base64 = arrayBufferToBase64(chunk);
+    await gasRequest({ action: 'uploadChunk', folderId, uploadId, index: c, base64 });
+
+    // チャンク完了ごとにレジューム状態を保存
+    saveResumeState({
+      ...(_resumeState || loadResumeState() || {}),
+      folderId,
+      currentFileIndex: fileIndex,
+      currentUploadId: uploadId,
+      currentChunkDone: c + 1,
+      currentTotalChunks: totalChunks
+    });
+  }
+  updateProgressStatus('ファイル結合中...');
+  await gasRequest({ action: 'assembleFile', folderId, uploadId, totalChunks, fileName: file.name, mimeType: file.type }, 1);
+
+  // ファイル完了 → レジューム状態更新
+  const currentState = loadResumeState();
+  if (currentState) {
+    const done = currentState.completedFileIndexes || [];
+    if (!done.includes(fileIndex)) done.push(fileIndex);
+    saveResumeState({ ...currentState, completedFileIndexes: done, currentUploadId: null, currentChunkDone: 0 });
+  }
+}
+
+function toggleTheme() {
+  const cur = localStorage.getItem('foo_portal_theme') || 'auto';
+  const next = cur === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('foo_portal_theme', next);
+  document.documentElement.setAttribute('data-theme', next);
+  updateThemeButton();
+}
+
+function updateThemeButton() {
+  const t = document.documentElement.getAttribute('data-theme') || 'auto';
+  document.getElementById('theme-toggle').textContent = t === 'light' ? '☀️' : '🌙';
+}
+
+var _uploadStartTime = 0;
+var _uploadTotalBytes = 0;
+var _uploadSentBytes = 0;
+
+function updateProgress(current, total) {
+  const pct = Math.round((current / total) * 100);
+  document.getElementById('progress-fill').style.width = pct + '%';
+}
+
+function updateProgressPct(pct) {
+  document.getElementById('progress-fill').style.width = Math.min(pct, 100) + '%';
+}
+
+function updateProgressStatus(msg) {
+  const el = document.getElementById('progress-status');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function updateProgressDetail(sentBytes) {
+  _uploadSentBytes = sentBytes;
+  const el = document.getElementById('progress-detail');
+  const elapsed = (Date.now() - _uploadStartTime) / 1000;
+  const sentMB = (sentBytes / (1024 * 1024)).toFixed(1);
+  const totalMB = (_uploadTotalBytes / (1024 * 1024)).toFixed(1);
+  const pct = _uploadTotalBytes > 0 ? Math.round((sentBytes / _uploadTotalBytes) * 100) : 0;
+
+  let timeStr = '';
+  if (elapsed > 3 && sentBytes > 0) {
+    const speed = sentBytes / elapsed;
+    const remaining = (_uploadTotalBytes - sentBytes) / speed;
+    if (remaining < 60) {
+      timeStr = ` · 残り約${Math.ceil(remaining)}秒`;
+    } else {
+      timeStr = ` · 残り約${Math.ceil(remaining / 60)}分`;
+    }
+  }
+
+  el.textContent = `${sentMB} / ${totalMB} MB (${pct}%)${timeStr}`;
+  el.style.display = 'block';
+  updateProgressPct(pct);
+}
+
+function formatDateTime(isoStr) {
+  const d = new Date(isoStr);
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${m}/${day} ${h}:${min}`;
+}
+
+function getTodayDateString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ファイル選択
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+document.getElementById('file-input').addEventListener('change', (e) => {
+  selectedFiles = Array.from(e.target.files);
+
+  // サイズチェック
+  const oversized = selectedFiles.filter(f => f.size > MAX_FILE_SIZE);
+  if (oversized.length > 0) {
+    showToast(`100MB以上のファイルは送れません（${oversized.length}件）`, 'error');
+    selectedFiles = selectedFiles.filter(f => f.size <= MAX_FILE_SIZE);
+  }
+
+  updateFilePreview();
+  updateFileCount();
+});
+
+function updateFilePreview() {
+  const container = document.getElementById('file-preview');
+  container.innerHTML = '';
+
+  const maxShow = 4;
+  selectedFiles.slice(0, maxShow).forEach((file, idx) => {
+    const item = document.createElement('div');
+    item.className = 'file-preview-item';
+
+    // ×ボタン
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'file-preview-remove';
+    removeBtn.textContent = '✕';
+    removeBtn.onclick = (e) => {
+      e.stopPropagation();
+      removeFile(idx);
+    };
+    item.appendChild(removeBtn);
+
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        item.appendChild(img);
+      };
+      reader.readAsDataURL(file);
+    } else if (file.type.startsWith('video/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const video = document.createElement('video');
+        video.src = e.target.result;
+        item.appendChild(video);
+        const icon = document.createElement('div');
+        icon.className = 'file-preview-video-icon';
+        icon.textContent = '▶';
+        item.appendChild(icon);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    container.appendChild(item);
+  });
+
+  if (selectedFiles.length > maxShow) {
+    const more = document.createElement('div');
+    more.className = 'file-preview-more';
+    more.textContent = '+' + (selectedFiles.length - maxShow);
+    container.appendChild(more);
+  }
+}
+
+function removeFile(index) {
+  selectedFiles.splice(index, 1);
+  updateFilePreview();
+  updateFileCount();
+}
+
+function resetForm() {
+  document.getElementById('upload-form').reset();
+  document.getElementById('file-input').value = '';
+  selectedFiles = [];
+  selectedWeather = null;
+  selectedRating = null;
+  updateFilePreview();
+  updateFileCount();
+  document.querySelectorAll('.select-chip').forEach(btn => btn.classList.remove('active'));
+  document.getElementById('progress-bar').style.display = 'none';
+  document.getElementById('progress-fill').style.width = '0%';
+  document.getElementById('progress-status').style.display = 'none';
+  document.getElementById('progress-detail').textContent = '';
+  document.getElementById('progress-detail').style.display = 'none';
+  document.getElementById('submit-btn').disabled = false;
+  document.getElementById('work-date').value = getTodayDateString();
+  document.getElementById('work-place').value = '';
+  document.getElementById('notes').value = '';
+  document.getElementById('comment').value = '';
+  // 参加メンバーのチェックをリセット（投稿者のみチェック）
+  document.querySelectorAll('#member-checks input').forEach(cb => {
+    cb.checked = (cb.value === currentUserName);
+  });
+}
+
+function updateFileCount() {
+  const btn = document.getElementById('file-select-btn');
+  const count = selectedFiles.length;
+  btn.innerHTML = count > 0
+    ? `<span>ファイル選択済み <strong>${count}</strong></span>`
+    : '<span>ファイルを選択</span>';
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 天気 / おすすめ度
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+document.getElementById('weather-chips').addEventListener('click', (e) => {
+  if (e.target.classList.contains('select-chip')) {
+    e.preventDefault();
+    document.querySelectorAll('#weather-chips .select-chip').forEach(btn => btn.classList.remove('active'));
+    e.target.classList.add('active');
+    selectedWeather = e.target.dataset.weather;
+  }
+});
+
+document.getElementById('rating-chips').addEventListener('click', (e) => {
+  if (e.target.classList.contains('select-chip')) {
+    e.preventDefault();
+    document.querySelectorAll('#rating-chips .select-chip').forEach(btn => btn.classList.remove('active'));
+    e.target.classList.add('active');
+    selectedRating = e.target.dataset.rating;
+  }
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// アップロード中の離脱防止
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function confirmLeave() {
+  if (_submitting) {
+    return confirm('アップロード中です。ページを離れるとアップロードが中断されます。本当に戻りますか？');
+  }
+  return true;
+}
+window.addEventListener('beforeunload', (e) => {
+  if (_submitting) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// フォーム送信
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+document.getElementById('upload-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  if (_submitting) return;
+  _submitting = true;
+
+  try {
+    if (selectedFiles.length === 0) {
+      showToast('ファイルを選択してください', 'error');
+      _submitting = false;
+      return;
+    }
+
+    const workDate = document.getElementById('work-date').value;
+    const workPlace = document.getElementById('work-place').value;
+    const workType = document.getElementById('work-type').value;
+    const notes = document.getElementById('notes').value;
+    const comment = document.getElementById('comment').value;
+
+    if (!workDate) {
+      showToast('作業日を選択してください', 'error');
+      _submitting = false;
+      return;
+    }
+
+    if (!workType) {
+      showToast('作業内容を選択してください', 'error');
+      _submitting = false;
+      return;
+    }
+
+    // プログレスバー表示
+    document.getElementById('progress-bar').style.display = 'block';
+    document.getElementById('submit-btn').disabled = true;
+
+    const folderName = (_resumeState && _resumeState.folderName) ? _resumeState.folderName : `${workDate}_${currentUserName}`;
+
+    // Google Drive にアップロード
+    let folderId;
+    try {
+      folderId = await uploadToGoogleDrive(selectedFiles, folderName);
+    } catch(driveErr) {
+      document.getElementById('progress-bar').style.display = 'none';
+      document.getElementById('progress-status').style.display = 'none';
+      document.getElementById('submit-btn').disabled = false;
+      showToast('Driveアップロード失敗: ' + driveErr.message, 'error');
+      _submitting = false;
+      return;
+    }
+
+    // Notion に保存
+    updateProgressStatus('Notionに保存中...');
+    const notionBody = {
+      properties: {
+        '素材名': { title: [{ text: { content: folderName } }] },
+        '投稿者': { select: { name: currentUserName } },
+        '作業日': { date: { start: workDate } },
+        '作業場所': { rich_text: [{ text: { content: workPlace } }] },
+        '作業内容': { select: { name: workType } },
+        '特記事項': { rich_text: [{ text: { content: notes } }] },
+        '天気': selectedWeather ? { select: { name: selectedWeather } } : undefined,
+        'おすすめ度': selectedRating ? { select: { name: selectedRating } } : undefined,
+        'ひとことコメント': { rich_text: [{ text: { content: comment } }] },
+        'フォルダID': { rich_text: [{ text: { content: folderId } }] },
+        'ファイル数': { number: selectedFiles.length },
+        '参加メンバー': { multi_select: Array.from(document.querySelectorAll('#member-checks input:checked')).map(cb => ({ name: cb.value })) }
+      }
+    };
+
+    Object.keys(notionBody.properties).forEach(key => {
+      if (notionBody.properties[key] === undefined) delete notionBody.properties[key];
+    });
+
+    try {
+      await notionAPI('POST', '/pages', {
+        parent: { database_id: DB.material },
+        properties: notionBody.properties
+      });
+    } catch(notionErr) {
+      // Drive成功 → Notion失敗：エラーだが画像は保存済み
+      document.getElementById('progress-bar').style.display = 'none';
+      document.getElementById('progress-status').style.display = 'none';
+      document.getElementById('submit-btn').disabled = false;
+      showToast('画像は保存済みですが、Notion登録に失敗しました。素材一覧に反映されません。', 'error', 6000);
+      // ローカルにエラー記録を保持
+      addUploadError({ folderName, folderId, fileCount: selectedFiles.length, error: notionErr.message, time: new Date().toISOString() });
+      _submitting = false;
+      return;
+    }
+
+    // レジューム状態クリア & UI
+    hideResumeBanner();
+    const resumeNotice = document.getElementById('resume-notice');
+    if (resumeNotice) resumeNotice.remove();
+    _resumeState = null;
+
+    // フォームを完全リセット（新しいシートに）
+    resetForm();
+
+    // 完了コメントをNotionから取得して表示
+    showDoneModal();
+  } catch(err) {
+    document.getElementById('progress-bar').style.display = 'none';
+    document.getElementById('progress-status').style.display = 'none';
+    document.getElementById('submit-btn').disabled = false;
+    showToast('エラー: ' + err.message, 'error');
+  } finally {
+    _submitting = false;
+  }
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ナビゲーション
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (_submitting) {
+      showToast('アップロード中はタブを切り替えできません', 'error');
+      return;
+    }
+    const tab = btn.dataset.tab;
+    switchTab(tab);
+  });
+});
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelector(`.nav-btn[data-tab="${tab}"]`).classList.add('active');
+
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('show'));
+  document.getElementById(`page-${tab}`).classList.add('show');
+
+  if (tab === 'list') {
+    loadMaterialList();
+  } else if (tab === 'log') {
+    loadActivityLog();
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 素材一覧
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+document.querySelectorAll('#list-filters .chip').forEach(btn => {
+  btn.addEventListener('click', () => {
+    currentFilter = btn.dataset.filter;
+    document.querySelectorAll('#list-filters .chip').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadMaterialList();
+  });
+});
+
+async function loadMaterialList() {
+  const container = document.getElementById('list-content');
+  container.innerHTML = '<div class="loading"></div>';
+
+  try {
+    const filter = {};
+    if (currentFilter === 'used') {
+      filter.filter = { property: 'ステータス', status: { equals: '使用済み' } };
+    } else if (currentFilter === 'unused') {
+      filter.filter = { property: 'ステータス', status: { equals: '未使用' } };
+    }
+    filter.sorts = [{ property: '作業日', direction: 'descending' }];
+
+    const materials = await queryAll(DB.material, filter);
+
+    if (materials.length === 0) {
+      container.innerHTML = '<div class="empty-state">素材がありません</div>';
+      return;
+    }
+
+    let html = '';
+
+    // アップロードエラーがあれば警告表示
+    const errors = getUploadErrors();
+    if (errors.length > 0) {
+      html += '<div class="error-banner"><div class="error-banner-title">Notion未登録のアップロード</div>';
+      errors.forEach(err => {
+        html += `<div class="error-banner-item">${escapeHtml(err.folderName)} (${err.fileCount}ファイル) — ${escapeHtml(err.error)}</div>`;
+      });
+      html += '</div>';
+    }
+
+    materials.forEach(mat => {
+      const name = getPropValue(mat, '素材名');
+      const author = getPropValue(mat, '投稿者');
+      const date = getPropValue(mat, '作業日');
+      const type = getPropValue(mat, '作業内容');
+      const weather = getPropValue(mat, '天気');
+      const rating = getPropValue(mat, 'おすすめ度');
+      const comment = getPropValue(mat, 'ひとことコメント');
+      const status = getPropValue(mat, 'ステータス');
+      const fileCount = getPropValue(mat, 'ファイル数');
+      const createdAt = mat.created_time ? formatDateTime(mat.created_time) : '';
+
+      const starCount = rating ? rating.length : 0;
+      const ratingDisplay = starCount > 0 ? '★'.repeat(starCount) : '';
+
+      html += `<div class="card" onclick="showMaterialDetail('${mat.id}')">
+        <div class="card-header">
+          <div>
+            <div class="card-title">${escapeHtml(name)}</div>
+            <div class="card-subtitle">${escapeHtml(author)}</div>
+          </div>
+        </div>
+        <div class="card-meta">${date || '日付未設定'}${createdAt ? ` · 登録 ${createdAt}` : ''}</div>
+        <div class="card-tags">
+          ${type ? `<span class="tag tag-work">${escapeHtml(type)}</span>` : ''}
+          ${weather ? `<span class="tag tag-weather">${escapeHtml(weather)}</span>` : ''}
+          ${fileCount ? `<span class="tag tag-count">${fileCount}ファイル</span>` : ''}
+        </div>
+        ${ratingDisplay ? `<div class="card-info">おすすめ度: ${ratingDisplay}</div>` : ''}
+        ${comment ? `<div class="card-info">${escapeHtml(comment)}</div>` : ''}
+        ${status === '使用済み' ? `<div style="margin-top:8px;"><span class="tag tag-status">使用済み</span></div>` : ''}
+      </div>`;
+    });
+
+    container.innerHTML = html;
+  } catch(err) {
+    container.innerHTML = `<div class="empty-state">読み込みエラー: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 詳細パネル
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// みんなの投稿ログ
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function loadActivityLog() {
+  const container = document.getElementById('log-content');
+  container.innerHTML = '<div class="loading"></div>';
+
+  try {
+    const materials = await queryAll(DB.material, {
+      sorts: [{ timestamp: 'created_time', direction: 'descending' }]
+    });
+
+    if (materials.length === 0) {
+      container.innerHTML = '<div class="empty-state">まだ投稿がありません</div>';
+      return;
+    }
+
+    // 集計
+    const stats = {};
+    let totalFiles = 0;
+    materials.forEach(mat => {
+      const author = getPropValue(mat, '投稿者') || '不明';
+      if (!stats[author]) stats[author] = { count: 0, files: 0 };
+      stats[author].count++;
+      const fc = getPropValue(mat, 'ファイル数') || 0;
+      stats[author].files += fc;
+      totalFiles += fc;
+    });
+
+    // 集計サマリー
+    let html = '<div class="log-stats">';
+    html += `<div class="log-stat"><div class="log-stat-num">${materials.length}</div><div class="log-stat-label">投稿数</div></div>`;
+    html += `<div class="log-stat"><div class="log-stat-num">${totalFiles}</div><div class="log-stat-label">ファイル数</div></div>`;
+    html += `<div class="log-stat"><div class="log-stat-num">${Object.keys(stats).length}</div><div class="log-stat-label">投稿者数</div></div>`;
+    html += '</div>';
+
+    // 月別グループ化
+    let currentMonth = '';
+    materials.forEach(mat => {
+      const author = getPropValue(mat, '投稿者') || '不明';
+      const workType = getPropValue(mat, '作業内容');
+      const place = getPropValue(mat, '作業場所');
+      const fileCount = getPropValue(mat, 'ファイル数') || 0;
+      const comment = getPropValue(mat, 'ひとことコメント');
+      const rating = getPropValue(mat, 'おすすめ度');
+      const members = getPropValue(mat, '参加メンバー') || [];
+      const createdTime = mat.created_time;
+      const date = getPropValue(mat, '作業日');
+
+      // 月見出し
+      if (createdTime) {
+        const d = new Date(createdTime);
+        const monthKey = `${d.getFullYear()}年${d.getMonth() + 1}月`;
+        if (monthKey !== currentMonth) {
+          currentMonth = monthKey;
+          html += `<div class="log-month">${monthKey}</div>`;
+        }
+      }
+
+      // アバターの頭文字
+      const initial = author.charAt(0);
+
+      // 詳細テキスト
+      let detail = '';
+      if (workType) detail += `<strong>${escapeHtml(workType)}</strong>`;
+      if (place) detail += (detail ? ' · ' : '') + escapeHtml(place);
+      if (fileCount) detail += (detail ? ' · ' : '') + `${fileCount}ファイル`;
+      if (comment) detail += `<br>${escapeHtml(comment)}`;
+      if (rating) detail += ` ${rating}`;
+      if (members.length > 0) detail += `<br><span class="tag tag-members">${members.map(m => escapeHtml(m)).join(' ')}</span>`;
+
+      const timeStr = createdTime ? formatDateTime(createdTime) : (date || '');
+
+      html += `<div class="log-item">
+        <div class="log-avatar">${escapeHtml(initial)}</div>
+        <div class="log-body">
+          <div class="log-name">${escapeHtml(author)}</div>
+          <div class="log-detail">${detail}</div>
+          <div class="log-time">${timeStr}</div>
+        </div>
+      </div>`;
+    });
+
+    container.innerHTML = html;
+  } catch(err) {
+    container.innerHTML = `<div class="empty-state">読み込みエラー: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 詳細パネル
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function showMaterialDetail(pageId) {
+  try {
+    const res = await notionAPI('POST', `/databases/${DB.material}/query`, {
+      filter: { property: '素材名', title: { is_not_empty: true } },
+      page_size: 100
+    });
+    const page = res.results.find(r => r.id === pageId);
+    if (!page) throw new Error('素材が見つかりません');
+
+    const name = getPropValue(page, '素材名');
+    const author = getPropValue(page, '投稿者');
+    const date = getPropValue(page, '作業日');
+    const place = getPropValue(page, '作業場所');
+    const type = getPropValue(page, '作業内容');
+    const weather = getPropValue(page, '天気');
+    const rating = getPropValue(page, 'おすすめ度');
+    const comment = getPropValue(page, 'ひとことコメント');
+    const notes = getPropValue(page, '特記事項');
+    const folderId = getPropValue(page, 'フォルダID');
+    const status = getPropValue(page, 'ステータス');
+    const fileCount = getPropValue(page, 'ファイル数');
+    const members = getPropValue(page, '参加メンバー') || [];
+
+    const starCount = rating ? rating.length : 0;
+    const ratingDisplay = starCount > 0 ? '★'.repeat(starCount) : '';
+
+    let html = `<div class="detail-title">${escapeHtml(name)}</div>`;
+
+    html += `<div class="detail-section">
+      <div class="detail-section-title">投稿者</div>
+      <div class="detail-section-content">${escapeHtml(author)}</div>
+    </div>`;
+
+    if (date) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">作業日</div>
+        <div class="detail-section-content">${escapeHtml(date)}</div>
+      </div>`;
+    }
+
+    if (place) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">作業場所</div>
+        <div class="detail-section-content">${escapeHtml(place)}</div>
+      </div>`;
+    }
+
+    if (type) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">作業内容</div>
+        <div class="detail-section-content">${escapeHtml(type)}</div>
+      </div>`;
+    }
+
+    if (weather) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">天気</div>
+        <div class="detail-section-content">${escapeHtml(weather)}</div>
+      </div>`;
+    }
+
+    if (ratingDisplay) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">おすすめ度</div>
+        <div class="detail-section-content">${ratingDisplay}</div>
+      </div>`;
+    }
+
+    if (comment) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">ひとことコメント</div>
+        <div class="detail-section-content">${escapeHtml(comment)}</div>
+      </div>`;
+    }
+
+    if (notes) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">特記事項</div>
+        <div class="detail-section-content">${escapeHtml(notes)}</div>
+      </div>`;
+    }
+
+    if (fileCount) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">ファイル数</div>
+        <div class="detail-section-content">${fileCount}ファイル</div>
+      </div>`;
+    }
+
+    if (members.length > 0) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">参加メンバー</div>
+        <div class="detail-section-content">${members.map(m => `<span class="tag tag-members" style="margin-right:4px;">${escapeHtml(m)}</span>`).join('')}</div>
+      </div>`;
+    }
+
+    // ファイル一覧エリア
+    if (folderId) {
+      html += `<div class="detail-section">
+        <div class="detail-section-title">ファイル一覧</div>
+        <div id="detail-file-list" class="file-list"><div class="loading"></div></div>
+        <button class="detail-btn primary" id="bulk-save-btn" style="margin-top:10px;display:none;" onclick="bulkSaveToPhotos()">まとめて写真アプリに保存</button>
+      </div>`;
+    }
+
+    html += `<div class="detail-buttons">
+      ${status !== '使用済み' ? `<button class="detail-btn" onclick="markAsUsed('${pageId}')">使用済みにする</button>` : ''}
+    </div>`;
+
+    document.getElementById('detail-content').innerHTML = html;
+    document.getElementById('detail-overlay').classList.add('show');
+    document.getElementById('detail-sheet').classList.add('show');
+
+    // ファイル一覧を非同期で読み込み
+    if (folderId) loadFileList(folderId);
+  } catch(err) {
+    showToast('詳細取得エラー: ' + err.message, 'error');
+  }
+}
+
+// GAS経由でファイル一覧を取得
+var _currentFileList = [];
+async function loadFileList(folderId) {
+  _currentFileList = [];
+  const container = document.getElementById('detail-file-list');
+  if (!container) return;
+  try {
+    const res = await gasRequest({ action: 'listFiles', folderId }, 1);
+    if (!res.files || res.files.length === 0) {
+      container.innerHTML = '<div style="font-size:12px;color:var(--muted);">ファイルなし</div>';
+      return;
+    }
+    _currentFileList = res.files;
+    let html = '';
+    res.files.forEach((f, idx) => {
+      const sizeStr = f.size < 1024 * 1024
+        ? Math.round(f.size / 1024) + 'KB'
+        : (f.size / (1024 * 1024)).toFixed(1) + 'MB';
+      html += `<div class="file-item">
+        <div class="file-item-name">${escapeHtml(f.name)}</div>
+        <div class="file-item-size">${sizeStr}</div>
+        <button class="file-dl-btn" id="dl-btn-${idx}" onclick="downloadFile('${f.id}', '${escapeHtml(f.name).replace(/'/g, "\\'")}', ${f.size}, ${idx})">DL</button>
+      </div>`;
+    });
+    container.innerHTML = html;
+
+    // 2件以上あればまとめて保存ボタン表示
+    const bulkBtn = document.getElementById('bulk-save-btn');
+    if (bulkBtn && res.files.length >= 2) {
+      bulkBtn.style.display = 'block';
+    }
+  } catch(err) {
+    container.innerHTML = `<div style="font-size:12px;color:var(--red);">読み込みエラー: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+// ダウンロード進捗UI
+function showDlProgress(fileName) {
+  document.getElementById('dl-filename').textContent = fileName;
+  document.getElementById('dl-pct').textContent = '0%';
+  document.getElementById('dl-bar-fill').style.width = '0%';
+  document.getElementById('dl-info').textContent = 'ダウンロード準備中...';
+  document.getElementById('dl-overlay').classList.add('show');
+}
+function updateDlProgress(pct, info) {
+  document.getElementById('dl-pct').textContent = pct + '%';
+  document.getElementById('dl-bar-fill').style.width = pct + '%';
+  if (info) document.getElementById('dl-info').textContent = info;
+}
+function hideDlProgress() {
+  document.getElementById('dl-overlay').classList.remove('show');
+}
+
+// base64をBlobに変換するヘルパー
+function base64ToBlob(base64, mimeType) {
+  const byteChars = atob(base64);
+  const byteArr = new Uint8Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+  return new Blob([byteArr], { type: mimeType || 'application/octet-stream' });
+}
+
+// GASからファイルのbase64を取得
+async function fetchFileBase64(fileId, fileSize, onProgress) {
+  if (fileSize < 4 * 1024 * 1024) {
+    if (onProgress) onProgress(30, 'ダウンロード中...');
+    const res = await gasRequest({ action: 'downloadFile', fileId }, 1);
+    if (onProgress) onProgress(90, '変換中...');
+    return { base64: res.base64, mimeType: res.mimeType, fileName: res.fileName };
+  } else {
+    const dlStart = Date.now();
+    const firstRes = await gasRequest({ action: 'downloadChunk', fileId, chunkIndex: 0 }, 1);
+    let chunks = [firstRes.base64];
+    const total = firstRes.totalChunks;
+    if (onProgress) onProgress(Math.round(100 / total), `1/${total} チャンク`);
+    for (let i = 1; i < total; i++) {
+      const chunkRes = await gasRequest({ action: 'downloadChunk', fileId, chunkIndex: i }, 1);
+      chunks.push(chunkRes.base64);
+      const pct = Math.round(((i + 1) / total) * 90);
+      const elapsed = (Date.now() - dlStart) / 1000;
+      const remaining = elapsed / (i + 1) * (total - i - 1);
+      const remStr = remaining < 60 ? `残り約${Math.ceil(remaining)}秒` : `残り約${Math.ceil(remaining / 60)}分`;
+      if (onProgress) onProgress(pct, `${i + 1}/${total} チャンク · ${remStr}`);
+    }
+    return { base64: chunks.join(''), mimeType: null, fileName: null };
+  }
+}
+
+// GAS経由でファイルをダウンロード（Driveは非公開のまま）
+async function downloadFile(fileId, fileName, fileSize, btnIdx) {
+  const btn = typeof btnIdx === 'number' ? document.getElementById('dl-btn-' + btnIdx) : event.target;
+  btn.disabled = true;
+  btn.textContent = '...';
+  showDlProgress(fileName);
+  try {
+    const result = await fetchFileBase64(fileId, fileSize, updateDlProgress);
+    const mimeType = result.mimeType || guessMimeType(fileName);
+    const blob = base64ToBlob(result.base64, mimeType);
+
+    // iPhoneならShare APIで写真アプリに保存可能
+    const file = new File([blob], fileName, { type: mimeType });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      updateDlProgress(95, '保存画面を開いています...');
+      try {
+        await navigator.share({ files: [file] });
+      } catch(shareErr) {
+        // ユーザーがキャンセルした場合 → 通常ダウンロードにフォールバック
+        if (shareErr.name !== 'AbortError') {
+          triggerBrowserDownload(blob, fileName);
+        }
+      }
+    } else {
+      triggerBrowserDownload(blob, fileName);
+    }
+
+    updateDlProgress(100, '完了！');
+    setTimeout(hideDlProgress, 600);
+
+    // ボタンを「完了」に変更
+    btn.textContent = '完了';
+    btn.className = 'file-dl-btn done';
+    btn.disabled = true;
+  } catch(err) {
+    hideDlProgress();
+    btn.textContent = 'DL';
+    btn.disabled = false;
+    showToast('ダウンロードエラー: ' + err.message, 'error');
+  }
+}
+
+function triggerBrowserDownload(blob, fileName) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fileName;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+function guessMimeType(name) {
+  const ext = name.split('.').pop().toLowerCase();
+  const map = { jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png', gif:'image/gif', webp:'image/webp', heic:'image/heic', mp4:'video/mp4', mov:'video/quicktime', avi:'video/x-msvideo' };
+  return map[ext] || 'application/octet-stream';
+}
+
+// まとめて写真アプリに保存
+async function bulkSaveToPhotos() {
+  const btn = document.getElementById('bulk-save-btn');
+  if (!_currentFileList || _currentFileList.length === 0) return;
+  btn.disabled = true;
+  btn.textContent = 'ダウンロード中...';
+  showDlProgress('まとめてダウンロード');
+
+  try {
+    const files = [];
+    for (let i = 0; i < _currentFileList.length; i++) {
+      const f = _currentFileList[i];
+      updateDlProgress(
+        Math.round(((i) / _currentFileList.length) * 80),
+        `${i + 1}/${_currentFileList.length} ファイル取得中...`
+      );
+      const result = await fetchFileBase64(f.id, f.size, null);
+      const mimeType = result.mimeType || guessMimeType(f.name);
+      const blob = base64ToBlob(result.base64, mimeType);
+      files.push(new File([blob], f.name, { type: mimeType }));
+
+      // 個別DLボタンも完了にする
+      const dlBtn = document.getElementById('dl-btn-' + i);
+      if (dlBtn) { dlBtn.textContent = '完了'; dlBtn.className = 'file-dl-btn done'; dlBtn.disabled = true; }
+    }
+
+    updateDlProgress(90, '保存画面を開いています...');
+
+    // Web Share APIで写真アプリに保存
+    if (navigator.canShare && navigator.canShare({ files })) {
+      try {
+        await navigator.share({ files });
+      } catch(shareErr) {
+        if (shareErr.name !== 'AbortError') {
+          // フォールバック: 個別ダウンロード
+          files.forEach(f => triggerBrowserDownload(f, f.name));
+        }
+      }
+    } else {
+      // Share API非対応 → 個別ダウンロード
+      files.forEach(f => triggerBrowserDownload(f, f.name));
+    }
+
+    updateDlProgress(100, '完了！');
+    setTimeout(hideDlProgress, 600);
+    btn.textContent = '保存完了';
+    btn.className = 'detail-btn primary done';
+    btn.style.background = 'var(--green)';
+  } catch(err) {
+    hideDlProgress();
+    btn.disabled = false;
+    btn.textContent = 'まとめて写真アプリに保存';
+    showToast('一括ダウンロードエラー: ' + err.message, 'error');
+  }
+}
+
+function closeDetail() {
+  document.getElementById('detail-overlay').classList.remove('show');
+  document.getElementById('detail-sheet').classList.remove('show');
+  document.getElementById('detail-content').innerHTML = '';
+}
+
+async function markAsUsed(pageId) {
+  try {
+    await notionAPI('PATCH', `/pages/${pageId}`, {
+      properties: {
+        'ステータス': { status: { name: '使用済み' } }
+      }
+    });
+    closeDetail();
+    loadMaterialList();
+    showToast('使用済みにしました', 'success');
+  } catch(err) {
+    showToast('更新エラー: ' + err.message, 'error');
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 完了モーダル
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function showDoneModal() {
+  let message = 'お疲れさまでした！';
+  try {
+    const res = await notionAPI('POST', `/databases/${DB.comments}/query`, {
+      filter: { property: '有効', checkbox: { equals: true } },
+      page_size: 100
+    });
+    const comments = (res.results || []).map(r => getPropValue(r, 'コメント')).filter(Boolean);
+    if (comments.length > 0) {
+      message = comments[Math.floor(Math.random() * comments.length)];
+    }
+  } catch(e) { /* フォールバック */ }
+  document.getElementById('done-message').textContent = message;
+  document.getElementById('done-overlay').classList.add('show');
+}
+
+function closeDoneModal() {
+  document.getElementById('done-overlay').classList.remove('show');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 初期化
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function init() {
+  if (!checkAccess()) {
+    document.getElementById('auth-error').classList.add('show');
+    return;
+  }
+
+  const isGasReady = GAS_URL !== 'YOUR_GAS_URL_HERE';
+
+  if (!isGasReady) {
+    document.getElementById('setup-notice-upload').style.display = 'block';
+    document.getElementById('upload-form').style.display = 'none';
+  } else {
+    document.getElementById('setup-notice-upload').style.display = 'none';
+    document.getElementById('upload-form').style.display = 'block';
+    document.getElementById('work-date').value = getTodayDateString();
+  }
+
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+  updateThemeButton();
+
+  // レジューム: 未完了のアップロードがあるか確認
+  const resumeCheck = loadResumeState();
+  if (resumeCheck && resumeCheck.folderId) {
+    showResumeBanner(resumeCheck);
+  }
+}
+
+init();
+</script>
+</body>
+</html>

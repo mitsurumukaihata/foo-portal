@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>サブスク管理 | f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --red: #ef4444;
+  --blue: #3b82f6; --purple: #a855f7; --yellow: #eab308;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+    --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208; --muted: #a08060;
+    --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --red: #dc2626;
+    --blue: #2563eb; --purple: #9333ea; --yellow: #d97706;
+  }
+}
+[data-theme="dark"] {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --red: #ef4444;
+  --blue: #3b82f6; --purple: #a855f7; --yellow: #eab308;
+}
+[data-theme="light"] {
+  --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+  --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208; --muted: #a08060;
+  --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --red: #dc2626;
+  --blue: #2563eb; --purple: #9333ea; --yellow: #d97706;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; max-width:480px; margin:0 auto; overflow-x:hidden; }
+
+/* ── Header ── */
+.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 0; position:sticky; top:0; z-index:100; }
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+.back-btn { display:flex; align-items:center; gap:4px; color:var(--accent); font-size:13px; font-weight:700; text-decoration:none; padding:4px 0; }
+.back-btn:active { opacity:0.6; }
+.header-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.header-title { font-size:17px; font-weight:900; letter-spacing:-0.02em; }
+.header-title span { color:var(--accent); }
+
+/* ── Tabs ── */
+.nav { display:flex; background:var(--s1); border-bottom:0.5px solid var(--border); }
+.nav-btn { flex:1; padding:10px 6px 8px; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--muted); font-size:12px; font-weight:500; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; text-align:center; }
+.nav-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+.nav-badge { display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 4px; background:var(--s3); border-radius:8px; font-size:10px; font-weight:700; margin-left:3px; color:var(--muted); }
+.nav-btn.active .nav-badge { background:rgba(240,165,0,0.2); color:var(--accent); }
+
+/* ── Pages ── */
+.page { display:none; padding:0 0 100px; }
+.page.show { display:block; }
+
+/* ── Summary Cards ── */
+.summary-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; padding:14px 16px 6px; }
+.summary-card { background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:10px 12px; }
+.summary-card .label { font-size:9px; color:var(--muted); margin-bottom:4px; font-weight:600; }
+.summary-card .value { font-family:'DM Mono',monospace; font-size:14px; font-weight:700; }
+.summary-card .value.accent { color:var(--accent); }
+
+/* ── Filter Chips ── */
+.filter-row { display:flex; gap:6px; padding:10px 16px; overflow-x:auto; scrollbar-width:none; }
+.filter-row::-webkit-scrollbar { display:none; }
+.filter-chip { flex:none; padding:5px 12px; background:var(--s2); border:1.5px solid var(--border); border-radius:20px; font-size:11px; color:var(--muted); cursor:pointer; font-family:'Noto Sans JP',sans-serif; transition:all 0.15s; }
+.filter-chip:active { transform:scale(0.97); }
+.filter-chip.active { background:rgba(240,165,0,0.1); border-color:var(--accent); color:var(--accent); }
+
+/* ── Subscription Cards ── */
+.sub-list { padding:6px 12px; }
+.sub-card { background:var(--s2); border:1.5px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:8px; cursor:pointer; transition:all 0.2s; }
+.sub-card:active { transform:scale(0.98); border-color:rgba(240,165,0,0.3); }
+.sub-top { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:6px; }
+.sub-name { font-size:13px; font-weight:700; line-height:1.4; flex:1; display:flex; align-items:center; gap:6px; }
+.sub-name .emoji { font-size:15px; }
+.sub-status { flex:none; padding:2px 8px; border-radius:20px; font-size:10px; font-weight:700; white-space:nowrap; }
+.status-active { background:rgba(34,197,94,0.15); color:var(--green); }
+.status-paused { background:rgba(234,179,8,0.15); color:var(--yellow); }
+.status-cancelled { background:var(--s3); color:var(--muted); }
+.status-renewing { background:rgba(59,130,246,0.15); color:var(--blue); }
+.status-considering { background:rgba(168,85,247,0.15); color:var(--purple); }
+.sub-info { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.sub-cost { font-family:'DM Mono',monospace; font-size:16px; font-weight:700; color:var(--accent); }
+.sub-cost small { font-size:10px; color:var(--muted); font-weight:500; font-family:'Noto Sans JP',sans-serif; }
+.sub-meta { display:flex; gap:5px; flex-wrap:wrap; }
+.sub-tag { padding:2px 7px; border-radius:20px; font-size:9px; font-weight:600; background:var(--s3); color:var(--muted); }
+
+/* ── Expanded Details ── */
+.sub-details { display:none; margin-top:12px; padding-top:12px; border-top:0.5px solid var(--border); }
+.sub-card.expanded .sub-details { display:block; }
+.detail-row { display:flex; justify-content:space-between; align-items:center; padding:5px 0; font-size:12px; }
+.detail-label { color:var(--muted); font-size:11px; }
+.detail-value { font-weight:600; font-size:12px; }
+.detail-value.mono { font-family:'DM Mono',monospace; }
+.detail-actions { display:flex; gap:8px; margin-top:14px; }
+.btn-edit { flex:1; padding:10px; border-radius:10px; background:var(--accent); border:none; color:#fff; font-size:13px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:opacity 0.15s; }
+.btn-edit:active { opacity:0.8; }
+.btn-archive { flex:1; padding:10px; border-radius:10px; background:var(--s3); border:1px solid var(--border); color:var(--muted); font-size:13px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:opacity 0.15s; }
+.btn-archive:active { opacity:0.8; }
+
+/* ── Category Tab ── */
+.cat-section { padding:0 16px; margin-bottom:16px; }
+.cat-header { display:flex; align-items:center; justify-content:space-between; padding:14px 0 8px; }
+.cat-title { font-size:14px; font-weight:900; display:flex; align-items:center; gap:6px; }
+.cat-total { font-family:'DM Mono',monospace; font-size:13px; font-weight:700; color:var(--accent); }
+.cat-bar { height:6px; background:var(--s3); border-radius:3px; overflow:hidden; margin-bottom:10px; }
+.cat-bar-fill { height:100%; border-radius:3px; background:var(--accent); transition:width 0.5s ease; }
+.cat-item { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:var(--s2); border:1px solid var(--border); border-radius:10px; margin-bottom:6px; }
+.cat-item-name { font-size:12px; font-weight:600; }
+.cat-item-cost { font-family:'DM Mono',monospace; font-size:12px; font-weight:600; color:var(--muted); }
+
+/* ── Form ── */
+.form-page { padding:14px 16px 100px; }
+.form-group { margin-bottom:14px; }
+.form-label { font-size:11px; color:var(--muted); font-weight:600; margin-bottom:5px; display:block; }
+.form-label .req { color:var(--red); margin-left:2px; }
+.form-input { width:100%; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:12px 14px; font-size:14px; color:var(--text); outline:none; font-family:'Noto Sans JP',sans-serif; transition:border-color 0.15s; -webkit-appearance:none; appearance:none; }
+.form-input:focus { border-color:var(--accent); }
+.form-input::placeholder { color:var(--muted); opacity:0.6; }
+select.form-input { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2368687a' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; padding-right:32px; }
+textarea.form-input { min-height:80px; resize:vertical; line-height:1.6; }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.btn-submit { width:100%; padding:14px; border-radius:12px; background:var(--accent); border:none; color:#fff; font-size:15px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; margin-top:8px; }
+.btn-submit:active { opacity:0.8; transform:scale(0.98); }
+.btn-submit:disabled { opacity:0.4; cursor:default; transform:none; }
+
+/* ── Bottom Sheet Modal ── */
+.overlay { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.5); backdrop-filter:blur(4px); opacity:0; pointer-events:none; transition:opacity 0.25s; }
+.overlay.open { opacity:1; pointer-events:all; }
+.panel { position:fixed; bottom:0; left:50%; z-index:201; transform:translateX(-50%) translateY(100%); width:100%; max-width:480px; max-height:88dvh; overflow-y:auto; background:var(--s1); border-radius:16px 16px 0 0; border-top:0.5px solid var(--border); padding:16px 20px 32px; transition:transform 0.3s cubic-bezier(0.32,0.72,0,1); }
+.panel.open { transform:translateX(-50%) translateY(0); }
+.panel-handle { width:36px; height:4px; background:var(--s3); border-radius:2px; margin:0 auto 16px; }
+.panel-title { font-size:16px; font-weight:900; margin-bottom:18px; letter-spacing:-0.02em; }
+
+/* ── Toast ── */
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px); max-width:400px; width:calc(100% - 40px); background:var(--s1); border:1px solid var(--border2); border-radius:12px; padding:14px 18px; font-size:13px; font-weight:600; z-index:300; transition:transform 0.3s cubic-bezier(0.32,0.72,0,1); display:flex; align-items:center; gap:8px; box-shadow:0 8px 32px rgba(0,0,0,0.3); }
+.toast.show { transform:translateX(-50%) translateY(0); }
+.toast.success { border-color:rgba(34,197,94,0.3); }
+.toast.error { border-color:rgba(239,68,68,0.3); }
+
+/* ── Loading ── */
+.loading { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 20px; }
+.spinner { width:28px; height:28px; border:3px solid var(--s3); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-text { font-size:12px; color:var(--muted); margin-top:12px; }
+
+/* ── Empty ── */
+.empty { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; }
+.empty-icon { font-size:32px; margin-bottom:8px; }
+
+/* ── Scroll ── */
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--s3); border-radius:2px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-top">
+    <a href="https://mitsurumukaihata.github.io/foo-portal/" class="back-btn">← ポータル</a>
+  </div>
+  <div class="header-row">
+    <div class="header-title">💳 サブスク<span>管理</span></div>
+  </div>
+  <div class="nav">
+    <button class="nav-btn active" onclick="switchTab('list')">一覧 <span class="nav-badge" id="badge-count">0</span></button>
+    <button class="nav-btn" onclick="switchTab('category')">カテゴリ</button>
+    <button class="nav-btn" onclick="switchTab('add')">＋新規</button>
+  </div>
+</div>
+
+<!-- List Tab -->
+<div class="page show" id="page-list">
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="label">月額合計</div>
+      <div class="value accent" id="sum-monthly">--</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">年間合計</div>
+      <div class="value" id="sum-annual">--</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">利用中</div>
+      <div class="value" id="sum-active">--</div>
+    </div>
+  </div>
+
+  <div class="filter-row">
+    <button class="filter-chip active" data-filter="すべて">すべて</button>
+    <button class="filter-chip" data-filter="利用中">利用中</button>
+    <button class="filter-chip" data-filter="一時停止">一時停止</button>
+    <button class="filter-chip" data-filter="解約済み">解約済み</button>
+    <button class="filter-chip" data-filter="更新予定">更新予定</button>
+    <button class="filter-chip" data-filter="検討中">検討中</button>
+  </div>
+
+  <div id="sub-list-area" class="sub-list">
+    <div class="loading" id="list-loading"><div class="spinner"></div><div class="loading-text">読み込み中...</div></div>
+  </div>
+</div>
+
+<!-- Category Tab -->
+<div class="page" id="page-category">
+  <div id="cat-area" style="padding-top:14px;">
+    <div class="loading"><div class="spinner"></div><div class="loading-text">読み込み中...</div></div>
+  </div>
+</div>
+
+<!-- Add Tab -->
+<div class="page" id="page-add">
+  <div class="form-page">
+    <div class="form-group">
+      <label class="form-label">サービス名<span class="req">*</span></label>
+      <input type="text" class="form-input" id="f-name" placeholder="例: ChatGPT Plus">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">カテゴリ</label>
+        <select class="form-input" id="f-category">
+          <option value="">選択</option>
+          <option value="車両">🚗 車両</option>
+          <option value="事務所">🏢 事務所</option>
+          <option value="福利厚生">💊 福利厚生</option>
+          <option value="通信">📡 通信</option>
+          <option value="AI">🤖 AI</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">状態</label>
+        <select class="form-input" id="f-status">
+          <option value="利用中">利用中</option>
+          <option value="一時停止">一時停止</option>
+          <option value="更新予定">更新予定</option>
+          <option value="検討中">検討中</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">支払サイクル</label>
+      <select class="form-input" id="f-cycle" onchange="toggleCostFields()">
+        <option value="月々">月々</option>
+        <option value="年払い">年払い</option>
+        <option value="払い込み">払い込み</option>
+      </select>
+    </div>
+    <div class="form-row" id="cost-fields">
+      <div class="form-group" id="fg-monthly">
+        <label class="form-label">月額料金 (円)</label>
+        <input type="number" class="form-input" id="f-monthly" placeholder="0" inputmode="numeric">
+      </div>
+      <div class="form-group" id="fg-annual" style="display:none;">
+        <label class="form-label">年払い (円)</label>
+        <input type="number" class="form-input" id="f-annual" placeholder="0" inputmode="numeric">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">支払方法</label>
+      <select class="form-input" id="f-payment">
+        <option value="">選択</option>
+        <option value="セゾンプラチナ">セゾンプラチナ</option>
+        <option value="クレジットカード">クレジットカード</option>
+        <option value="請求書">請求書</option>
+        <option value="Apple Pay">Apple Pay</option>
+        <option value="Google Pay">Google Pay</option>
+        <option value="PayPal">PayPal</option>
+        <option value="Amazon Pay">Amazon Pay</option>
+        <option value="現金">現金</option>
+        <option value="プリペイドカード">プリペイドカード</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">契約開始</label>
+        <input type="date" class="form-input" id="f-start">
+      </div>
+      <div class="form-group">
+        <label class="form-label">更新日</label>
+        <input type="date" class="form-input" id="f-renewal">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">契約更新</label>
+        <select class="form-input" id="f-contract-renewal">
+          <option value="">選択</option>
+          <option value="都度">都度</option>
+          <option value="更新あり">更新あり</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">請求日</label>
+        <input type="text" class="form-input" id="f-billing-day" placeholder="例: 毎月15日">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">備考</label>
+      <textarea class="form-input" id="f-notes" placeholder="メモ"></textarea>
+    </div>
+    <button class="btn-submit" id="btn-create" onclick="createSubscription()">サブスクを追加</button>
+  </div>
+</div>
+
+<!-- Edit Bottom Sheet -->
+<div class="overlay" id="edit-overlay" onclick="closeEditPanel()"></div>
+<div class="panel" id="edit-panel">
+  <div class="panel-handle"></div>
+  <div class="panel-title">サブスクを編集</div>
+  <div id="edit-form-body"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
+const DB_ID = '201a695f8e888015ac11df28ff913c0b';
+
+let allSubs = [];
+let currentFilter = 'すべて';
+let expandedId = null;
+
+// ── Notion API ──
+async function notionAPI(path, method, body) {
+  if (path.startsWith('/v1/')) path = path.slice(3);
+  if (!path.startsWith('/')) path = '/' + path;
+  const opts = { method: method || 'GET', headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(WORKER + path, opts);
+  if (!r.ok) throw new Error('error code: ' + r.status);
+  const data = await r.json();
+  if (data.object === 'error') throw new Error(data.message);
+  return data;
+}
+
+// ── Helpers ──
+const CAT_EMOJI = { '車両':'🚗', '事務所':'🏢', '福利厚生':'💊', '通信':'📡', 'AI':'🤖' };
+const STATUS_CLASS = { '利用中':'status-active', '一時停止':'status-paused', '解約済み':'status-cancelled', '更新予定':'status-renewing', '検討中':'status-considering' };
+const STATUS_ORDER = { '利用中':0, '更新予定':1, '検討中':2, '一時停止':3, '解約済み':4 };
+
+function yen(n) {
+  if (!n && n !== 0) return '--';
+  return '¥' + Math.round(n).toLocaleString('ja-JP');
+}
+
+function fmtDate(d) {
+  if (!d) return '--';
+  const dt = new Date(d);
+  return `${dt.getFullYear()}/${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}`;
+}
+
+function prop(page, name) {
+  const p = page.properties[name];
+  if (!p) return null;
+  switch (p.type) {
+    case 'title': return p.title?.map(t => t.plain_text).join('') || '';
+    case 'select': return p.select?.name || '';
+    case 'number': return p.number;
+    case 'date': return p.date?.start || '';
+    case 'rich_text': return p.rich_text?.map(t => t.plain_text).join('') || '';
+    case 'formula':
+      if (p.formula?.type === 'number') return p.formula.number;
+      return p.formula?.string || '';
+    default: return null;
+  }
+}
+
+function getMonthlyCost(sub) {
+  const cycle = sub.cycle;
+  if (cycle === '年払い' && sub.annual) return sub.annual / 12;
+  return sub.monthly || 0;
+}
+
+function getAnnualCost(sub) {
+  const cycle = sub.cycle;
+  if (cycle === '年払い' && sub.annual) return sub.annual;
+  if (sub.monthly) return sub.monthly * 12;
+  return 0;
+}
+
+function parseSub(page) {
+  return {
+    id: page.id,
+    name: prop(page, 'サービス名'),
+    category: prop(page, 'カテゴリ'),
+    status: prop(page, '状態'),
+    monthly: prop(page, '月額料金'),
+    annual: prop(page, '年払い'),
+    annualTotal: prop(page, '年間支払額'),
+    cycle: prop(page, '支払サイクル'),
+    payment: prop(page, '支払方法'),
+    start: prop(page, '契約開始'),
+    renewal: prop(page, '更新日'),
+    contractRenewal: prop(page, '契約更新'),
+    billingDay: prop(page, '請求日（毎月）'),
+    notes: prop(page, '備考'),
+  };
+}
+
+// ── Fetch Data ──
+async function loadSubscriptions() {
+  try {
+    let results = [];
+    let hasMore = true;
+    let startCursor = undefined;
+    while (hasMore) {
+      const body = { page_size: 100 };
+      if (startCursor) body.start_cursor = startCursor;
+      const data = await notionAPI(`/databases/${DB_ID}/query`, 'POST', body);
+      results = results.concat(data.results || []);
+      hasMore = data.has_more;
+      startCursor = data.next_cursor;
+    }
+    allSubs = results.map(parseSub);
+    allSubs.sort((a, b) => {
+      const sa = STATUS_ORDER[a.status] ?? 99;
+      const sb = STATUS_ORDER[b.status] ?? 99;
+      if (sa !== sb) return sa - sb;
+      return getMonthlyCost(b) - getMonthlyCost(a);
+    });
+    renderAll();
+  } catch (e) {
+    console.error(e);
+    document.getElementById('list-loading').innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>データの取得に失敗しました<br><small style="color:var(--muted)">' + e.message + '</small></div>';
+  }
+}
+
+// ── Render ──
+function renderAll() {
+  renderSummary();
+  renderList();
+  renderCategories();
+}
+
+function renderSummary() {
+  const active = allSubs.filter(s => s.status === '利用中' || s.status === '更新予定');
+  const totalMonthly = active.reduce((sum, s) => sum + getMonthlyCost(s), 0);
+  const totalAnnual = active.reduce((sum, s) => sum + getAnnualCost(s), 0);
+  document.getElementById('sum-monthly').textContent = yen(totalMonthly);
+  document.getElementById('sum-annual').textContent = yen(totalAnnual);
+  document.getElementById('sum-active').textContent = active.length + '件';
+  document.getElementById('badge-count').textContent = allSubs.length;
+}
+
+function renderList() {
+  const area = document.getElementById('sub-list-area');
+  const filtered = currentFilter === 'すべて' ? allSubs : allSubs.filter(s => s.status === currentFilter);
+
+  if (filtered.length === 0) {
+    area.innerHTML = '<div class="empty"><div class="empty-icon">📋</div>サブスクリプションがありません</div>';
+    return;
+  }
+
+  area.innerHTML = filtered.map(s => {
+    const emoji = CAT_EMOJI[s.category] || '📦';
+    const statusCls = STATUS_CLASS[s.status] || 'status-active';
+    const monthlyCost = getMonthlyCost(s);
+    const isExpanded = expandedId === s.id;
+    return `
+      <div class="sub-card ${isExpanded ? 'expanded' : ''}" onclick="toggleCard('${s.id}')">
+        <div class="sub-top">
+          <div class="sub-name"><span class="emoji">${emoji}</span>${esc(s.name)}</div>
+          <span class="sub-status ${statusCls}">${esc(s.status || '不明')}</span>
+        </div>
+        <div class="sub-info">
+          <div class="sub-cost">${yen(monthlyCost)}<small>/月</small></div>
+          <div class="sub-meta">
+            ${s.payment ? `<span class="sub-tag">${esc(s.payment)}</span>` : ''}
+            ${s.cycle ? `<span class="sub-tag">${esc(s.cycle)}</span>` : ''}
+          </div>
+        </div>
+        <div class="sub-details">
+          <div class="detail-row"><span class="detail-label">カテゴリ</span><span class="detail-value">${emoji} ${esc(s.category || '--')}</span></div>
+          <div class="detail-row"><span class="detail-label">月額料金</span><span class="detail-value mono">${s.monthly != null ? yen(s.monthly) : '--'}</span></div>
+          <div class="detail-row"><span class="detail-label">年払い</span><span class="detail-value mono">${s.annual != null ? yen(s.annual) : '--'}</span></div>
+          <div class="detail-row"><span class="detail-label">年間支払額</span><span class="detail-value mono">${s.annualTotal != null ? yen(s.annualTotal) : yen(getAnnualCost(s))}</span></div>
+          <div class="detail-row"><span class="detail-label">支払方法</span><span class="detail-value">${esc(s.payment || '--')}</span></div>
+          <div class="detail-row"><span class="detail-label">支払サイクル</span><span class="detail-value">${esc(s.cycle || '--')}</span></div>
+          <div class="detail-row"><span class="detail-label">契約開始</span><span class="detail-value mono">${fmtDate(s.start)}</span></div>
+          <div class="detail-row"><span class="detail-label">更新日</span><span class="detail-value mono">${fmtDate(s.renewal)}</span></div>
+          <div class="detail-row"><span class="detail-label">契約更新</span><span class="detail-value">${esc(s.contractRenewal || '--')}</span></div>
+          <div class="detail-row"><span class="detail-label">請求日</span><span class="detail-value">${esc(s.billingDay || '--')}</span></div>
+          ${s.notes ? `<div class="detail-row"><span class="detail-label">備考</span><span class="detail-value" style="max-width:200px;text-align:right">${esc(s.notes)}</span></div>` : ''}
+          <div class="detail-actions">
+            <button class="btn-edit" onclick="event.stopPropagation();openEdit('${s.id}')">編集</button>
+            <button class="btn-archive" onclick="event.stopPropagation();archiveSub('${s.id}')">解約済みに</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderCategories() {
+  const active = allSubs.filter(s => s.status === '利用中' || s.status === '更新予定');
+  const groups = {};
+  active.forEach(s => {
+    const cat = s.category || 'その他';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(s);
+  });
+
+  const totalMonthly = active.reduce((sum, s) => sum + getMonthlyCost(s), 0);
+  const area = document.getElementById('cat-area');
+
+  if (Object.keys(groups).length === 0) {
+    area.innerHTML = '<div class="empty"><div class="empty-icon">📂</div>カテゴリデータがありません</div>';
+    return;
+  }
+
+  const cats = Object.entries(groups).sort((a, b) => {
+    const ta = a[1].reduce((s, x) => s + getMonthlyCost(x), 0);
+    const tb = b[1].reduce((s, x) => s + getMonthlyCost(x), 0);
+    return tb - ta;
+  });
+
+  area.innerHTML = cats.map(([cat, items]) => {
+    const catTotal = items.reduce((sum, s) => sum + getMonthlyCost(s), 0);
+    const pct = totalMonthly > 0 ? (catTotal / totalMonthly * 100) : 0;
+    const emoji = CAT_EMOJI[cat] || '📦';
+    return `
+      <div class="cat-section">
+        <div class="cat-header">
+          <div class="cat-title">${emoji} ${esc(cat)}</div>
+          <div class="cat-total">${yen(catTotal)}<small style="color:var(--muted);font-family:'Noto Sans JP';font-size:10px">/月</small></div>
+        </div>
+        <div class="cat-bar"><div class="cat-bar-fill" style="width:${pct}%"></div></div>
+        ${items.map(s => `
+          <div class="cat-item">
+            <span class="cat-item-name">${esc(s.name)}</span>
+            <span class="cat-item-cost">${yen(getMonthlyCost(s))}/月</span>
+          </div>
+        `).join('')}
+      </div>`;
+  }).join('');
+}
+
+function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// ── Tab Switching ──
+function switchTab(tab) {
+  document.querySelectorAll('.nav-btn').forEach((b, i) => {
+    b.classList.toggle('active', ['list','category','add'][i] === tab);
+  });
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('show'));
+  document.getElementById('page-' + tab).classList.add('show');
+}
+
+// ── Filter ──
+document.querySelectorAll('.filter-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    currentFilter = chip.dataset.filter;
+    renderList();
+  });
+});
+
+// ── Card Toggle ──
+function toggleCard(id) {
+  expandedId = expandedId === id ? null : id;
+  renderList();
+}
+
+// ── Cost Fields Toggle ──
+function toggleCostFields() {
+  const cycle = document.getElementById('f-cycle').value;
+  document.getElementById('fg-monthly').style.display = cycle === '月々' ? '' : 'none';
+  document.getElementById('fg-annual').style.display = cycle === '年払い' ? '' : 'none';
+}
+
+// ── Create Subscription ──
+async function createSubscription() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { showToast('サービス名を入力してください', 'error'); return; }
+
+  const btn = document.getElementById('btn-create');
+  btn.disabled = true;
+  btn.textContent = '追加中...';
+
+  try {
+    const props = {
+      'サービス名': { title: [{ text: { content: name } }] },
+    };
+
+    const category = document.getElementById('f-category').value;
+    if (category) props['カテゴリ'] = { select: { name: category } };
+
+    const status = document.getElementById('f-status').value;
+    if (status) props['状態'] = { select: { name: status } };
+
+    const cycle = document.getElementById('f-cycle').value;
+    if (cycle) props['支払サイクル'] = { select: { name: cycle } };
+
+    const monthly = parseFloat(document.getElementById('f-monthly').value);
+    if (!isNaN(monthly) && monthly > 0) props['月額料金'] = { number: monthly };
+
+    const annual = parseFloat(document.getElementById('f-annual').value);
+    if (!isNaN(annual) && annual > 0) props['年払い'] = { number: annual };
+
+    const payment = document.getElementById('f-payment').value;
+    if (payment) props['支払方法'] = { select: { name: payment } };
+
+    const start = document.getElementById('f-start').value;
+    if (start) props['契約開始'] = { date: { start: start } };
+
+    const renewal = document.getElementById('f-renewal').value;
+    if (renewal) props['更新日'] = { date: { start: renewal } };
+
+    const contractRenewal = document.getElementById('f-contract-renewal').value;
+    if (contractRenewal) props['契約更新'] = { select: { name: contractRenewal } };
+
+    const billingDay = document.getElementById('f-billing-day').value.trim();
+    if (billingDay) props['請求日（毎月）'] = { rich_text: [{ text: { content: billingDay } }] };
+
+    const notes = document.getElementById('f-notes').value.trim();
+    if (notes) props['備考'] = { rich_text: [{ text: { content: notes } }] };
+
+    await notionAPI('/pages', 'POST', { parent: { database_id: DB_ID }, properties: props });
+
+    showToast('✅ サブスクを追加しました', 'success');
+    resetCreateForm();
+    switchTab('list');
+    loadSubscriptions();
+  } catch (e) {
+    showToast('❌ 追加に失敗: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'サブスクを追加';
+  }
+}
+
+function resetCreateForm() {
+  ['f-name','f-monthly','f-annual','f-billing-day','f-notes','f-start','f-renewal'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('f-category').value = '';
+  document.getElementById('f-status').value = '利用中';
+  document.getElementById('f-cycle').value = '月々';
+  document.getElementById('f-payment').value = '';
+  document.getElementById('f-contract-renewal').value = '';
+  toggleCostFields();
+}
+
+// ── Edit Panel ──
+function openEdit(id) {
+  const sub = allSubs.find(s => s.id === id);
+  if (!sub) return;
+
+  const body = document.getElementById('edit-form-body');
+  body.innerHTML = `
+    <div class="form-group">
+      <label class="form-label">サービス名<span class="req">*</span></label>
+      <input type="text" class="form-input" id="e-name" value="${esc(sub.name)}">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">カテゴリ</label>
+        <select class="form-input" id="e-category">
+          <option value="">選択</option>
+          <option value="車両" ${sub.category==='車両'?'selected':''}>🚗 車両</option>
+          <option value="事務所" ${sub.category==='事務所'?'selected':''}>🏢 事務所</option>
+          <option value="福利厚生" ${sub.category==='福利厚生'?'selected':''}>💊 福利厚生</option>
+          <option value="通信" ${sub.category==='通信'?'selected':''}>📡 通信</option>
+          <option value="AI" ${sub.category==='AI'?'selected':''}>🤖 AI</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">状態</label>
+        <select class="form-input" id="e-status">
+          <option value="利用中" ${sub.status==='利用中'?'selected':''}>利用中</option>
+          <option value="一時停止" ${sub.status==='一時停止'?'selected':''}>一時停止</option>
+          <option value="解約済み" ${sub.status==='解約済み'?'selected':''}>解約済み</option>
+          <option value="更新予定" ${sub.status==='更新予定'?'selected':''}>更新予定</option>
+          <option value="検討中" ${sub.status==='検討中'?'selected':''}>検討中</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">支払サイクル</label>
+      <select class="form-input" id="e-cycle" onchange="toggleEditCostFields()">
+        <option value="月々" ${sub.cycle==='月々'?'selected':''}>月々</option>
+        <option value="年払い" ${sub.cycle==='年払い'?'selected':''}>年払い</option>
+        <option value="払い込み" ${sub.cycle==='払い込み'?'selected':''}>払い込み</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group" id="efg-monthly" style="${sub.cycle==='年払い'?'display:none':''}">
+        <label class="form-label">月額料金 (円)</label>
+        <input type="number" class="form-input" id="e-monthly" value="${sub.monthly||''}" inputmode="numeric">
+      </div>
+      <div class="form-group" id="efg-annual" style="${sub.cycle!=='年払い'?'display:none':''}">
+        <label class="form-label">年払い (円)</label>
+        <input type="number" class="form-input" id="e-annual" value="${sub.annual||''}" inputmode="numeric">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">支払方法</label>
+      <select class="form-input" id="e-payment">
+        <option value="">選択</option>
+        ${['セゾンプラチナ','クレジットカード','請求書','Apple Pay','Google Pay','PayPal','Amazon Pay','現金','プリペイドカード'].map(o =>
+          `<option value="${o}" ${sub.payment===o?'selected':''}>${o}</option>`
+        ).join('')}
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">契約開始</label>
+        <input type="date" class="form-input" id="e-start" value="${sub.start||''}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">更新日</label>
+        <input type="date" class="form-input" id="e-renewal" value="${sub.renewal||''}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">契約更新</label>
+        <select class="form-input" id="e-contract-renewal">
+          <option value="">選択</option>
+          <option value="都度" ${sub.contractRenewal==='都度'?'selected':''}>都度</option>
+          <option value="更新あり" ${sub.contractRenewal==='更新あり'?'selected':''}>更新あり</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">請求日</label>
+        <input type="text" class="form-input" id="e-billing-day" value="${esc(sub.billingDay||'')}" placeholder="例: 毎月15日">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">備考</label>
+      <textarea class="form-input" id="e-notes">${esc(sub.notes||'')}</textarea>
+    </div>
+    <button class="btn-submit" id="btn-save" onclick="saveEdit('${sub.id}')">保存</button>
+  `;
+
+  document.getElementById('edit-overlay').classList.add('open');
+  document.getElementById('edit-panel').classList.add('open');
+}
+
+function toggleEditCostFields() {
+  const cycle = document.getElementById('e-cycle').value;
+  document.getElementById('efg-monthly').style.display = cycle === '月々' ? '' : 'none';
+  document.getElementById('efg-annual').style.display = cycle === '年払い' ? '' : 'none';
+}
+
+function closeEditPanel() {
+  document.getElementById('edit-overlay').classList.remove('open');
+  document.getElementById('edit-panel').classList.remove('open');
+}
+
+async function saveEdit(id) {
+  const name = document.getElementById('e-name').value.trim();
+  if (!name) { showToast('サービス名を入力してください', 'error'); return; }
+
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true;
+  btn.textContent = '保存中...';
+
+  try {
+    const props = {
+      'サービス名': { title: [{ text: { content: name } }] },
+    };
+
+    const category = document.getElementById('e-category').value;
+    props['カテゴリ'] = category ? { select: { name: category } } : { select: null };
+
+    const status = document.getElementById('e-status').value;
+    if (status) props['状態'] = { select: { name: status } };
+
+    const cycle = document.getElementById('e-cycle').value;
+    if (cycle) props['支払サイクル'] = { select: { name: cycle } };
+
+    const monthly = parseFloat(document.getElementById('e-monthly').value);
+    props['月額料金'] = { number: !isNaN(monthly) ? monthly : null };
+
+    const annual = parseFloat(document.getElementById('e-annual').value);
+    props['年払い'] = { number: !isNaN(annual) ? annual : null };
+
+    const payment = document.getElementById('e-payment').value;
+    props['支払方法'] = payment ? { select: { name: payment } } : { select: null };
+
+    const start = document.getElementById('e-start').value;
+    props['契約開始'] = start ? { date: { start: start } } : { date: null };
+
+    const renewal = document.getElementById('e-renewal').value;
+    props['更新日'] = renewal ? { date: { start: renewal } } : { date: null };
+
+    const contractRenewal = document.getElementById('e-contract-renewal').value;
+    props['契約更新'] = contractRenewal ? { select: { name: contractRenewal } } : { select: null };
+
+    const billingDay = document.getElementById('e-billing-day').value.trim();
+    props['請求日（毎月）'] = { rich_text: billingDay ? [{ text: { content: billingDay } }] : [] };
+
+    const notes = document.getElementById('e-notes').value.trim();
+    props['備考'] = { rich_text: notes ? [{ text: { content: notes } }] : [] };
+
+    await notionAPI(`/pages/${id}`, 'PATCH', { properties: props });
+
+    showToast('✅ 更新しました', 'success');
+    closeEditPanel();
+    expandedId = null;
+    loadSubscriptions();
+  } catch (e) {
+    showToast('❌ 更新に失敗: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '保存';
+  }
+}
+
+// ── Archive ──
+async function archiveSub(id) {
+  const sub = allSubs.find(s => s.id === id);
+  if (!sub) return;
+  if (sub.status === '解約済み') { showToast('既に解約済みです', 'error'); return; }
+
+  try {
+    await notionAPI(`/pages/${id}`, 'PATCH', {
+      properties: { '状態': { select: { name: '解約済み' } } }
+    });
+    showToast('✅ 解約済みに変更しました', 'success');
+    expandedId = null;
+    loadSubscriptions();
+  } catch (e) {
+    showToast('❌ 更新に失敗: ' + e.message, 'error');
+  }
+}
+
+// ── Toast ──
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + (type || '') + ' show';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── Init ──
+loadSubscriptions();
+</script>
+<script src="foo-mobile.js"></script>
+</body>
+</html>

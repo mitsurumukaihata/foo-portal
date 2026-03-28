@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>車両マスタ | f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg:#18181f;--s1:#101015;--s2:#1e1e26;--s3:#26262f;
+  --border:#2c2c38;--border2:#3c3c4a;--text:#f0f0f2;--muted:#68687a;
+  --accent:#f0a500;--accent2:#f5be40;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;
+  --yellow:#f59e0b;--purple:#a855f7;
+}
+@media(prefers-color-scheme:light){
+  :root:not([data-theme]){
+    --bg:#fdf6ee;--s1:#fff;--s2:#fdf0e4;--s3:#f5e6d4;
+    --border:#e8d8c4;--border2:#d8c4a8;--text:#1a1208;--muted:#a08060;
+    --accent:#e07000;--accent2:#c05800;--green:#1a9e4a;--red:#dc2626;--blue:#2563eb;
+    --yellow:#d97706;--purple:#9333ea;
+  }
+}
+[data-theme="dark"]{
+  --bg:#18181f;--s1:#101015;--s2:#1e1e26;--s3:#26262f;
+  --border:#2c2c38;--border2:#3c3c4a;--text:#f0f0f2;--muted:#68687a;
+  --accent:#f0a500;--accent2:#f5be40;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;
+  --yellow:#f59e0b;--purple:#a855f7;
+}
+[data-theme="light"]{
+  --bg:#fdf6ee;--s1:#fff;--s2:#fdf0e4;--s3:#f5e6d4;
+  --border:#e8d8c4;--border2:#d8c4a8;--text:#1a1208;--muted:#a08060;
+  --accent:#e07000;--accent2:#c05800;--green:#1a9e4a;--red:#dc2626;--blue:#2563eb;
+  --yellow:#d97706;--purple:#9333ea;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;min-height:100vh;min-height:100dvh;max-width:480px;margin:0 auto;overflow-x:hidden;display:flex;flex-direction:column;}
+
+/* ── Header ── */
+.header{background:var(--s1);border-bottom:0.5px solid var(--border);padding:14px 20px 12px;position:sticky;top:0;z-index:100;}
+.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;}
+.back-btn{color:var(--accent);text-decoration:none;font-size:13px;font-weight:700;display:flex;align-items:center;gap:2px;}
+.back-btn:active{opacity:.6;}
+.header-title{font-size:18px;font-weight:900;letter-spacing:-0.02em;}
+
+/* ── Nav Tabs ── */
+.nav{display:flex;background:var(--s1);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:90;}
+.nav-btn{flex:1;padding:12px 6px 10px;background:transparent;border:none;border-bottom:2.5px solid transparent;color:var(--muted);font-size:12px;font-weight:600;font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:all .15s;text-align:center;}
+.nav-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* ── Content ── */
+.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.tab-pane{display:none;padding:16px;padding-bottom:100px;animation:fadeUp .2s ease;}
+.tab-pane.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+/* ── Search Box ── */
+.search-box{background:var(--s2);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:10px;margin-bottom:14px;transition:border-color .15s;}
+.search-box:focus-within{border-color:var(--accent);}
+.search-box input{background:transparent;border:none;outline:none;color:var(--text);font-size:18px;font-family:'DM Mono',monospace;font-weight:500;flex:1;width:100%;}
+.search-box input::placeholder{color:var(--muted);font-size:14px;font-family:'Noto Sans JP',sans-serif;}
+.search-clear{background:var(--s3);border:none;border-radius:50%;width:24px;height:24px;color:var(--muted);font-size:13px;cursor:pointer;display:none;align-items:center;justify-content:center;flex-shrink:0;}
+.search-clear.show{display:flex;}
+
+/* ── Loading / Empty ── */
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;gap:12px;}
+.spinner{width:28px;height:28px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-text{font-size:12px;color:var(--muted);}
+.empty{text-align:center;padding:48px 20px;color:var(--muted);}
+.empty-icon{font-size:40px;margin-bottom:12px;}
+.empty-title{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.empty-sub{font-size:12px;color:var(--muted);line-height:1.6;}
+.empty-link{color:var(--accent);cursor:pointer;font-weight:700;text-decoration:underline;}
+
+/* ── Vehicle Card ── */
+.v-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden;transition:all .15s;cursor:pointer;}
+.v-card:active{transform:scale(.99);}
+.v-card-main{padding:14px 16px;}
+.v-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.v-plate{font-size:16px;font-weight:900;font-family:'DM Mono',monospace;letter-spacing:.02em;}
+.v-type-badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;background:rgba(240,165,0,.12);color:var(--accent);white-space:nowrap;}
+.v-customer{font-size:12px;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:4px;}
+.v-tires{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.v-tire-info{background:var(--s2);border-radius:8px;padding:8px 10px;}
+.v-tire-label{font-size:9px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px;font-weight:700;}
+.v-tire-size{font-size:12px;font-family:'DM Mono',monospace;font-weight:500;margin-bottom:1px;}
+.v-tire-pattern{font-size:11px;color:var(--accent);}
+.v-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;}
+.v-tag{font-size:10px;padding:2px 7px;border-radius:10px;white-space:nowrap;}
+.v-tag.cat{background:rgba(59,130,246,.12);color:var(--blue);border:1px solid rgba(59,130,246,.25);}
+.v-tag.stud{background:rgba(168,85,247,.12);color:var(--purple);border:1px solid rgba(168,85,247,.25);}
+.v-tag.count{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.25);}
+
+/* ── Card Expanded ── */
+.v-card-detail{display:none;border-top:1px solid var(--border);padding:14px 16px;background:var(--s2);}
+.v-card.expanded .v-card-detail{display:block;}
+.v-detail-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:.5px solid var(--border);font-size:12px;}
+.v-detail-row:last-child{border-bottom:none;}
+.v-detail-label{color:var(--muted);}
+.v-detail-val{font-weight:500;text-align:right;max-width:60%;}
+.v-edit-btn{width:100%;margin-top:12px;background:transparent;border:1.5px solid var(--accent);border-radius:10px;padding:10px;color:var(--accent);font-size:13px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:all .15s;}
+.v-edit-btn:active{background:rgba(240,165,0,.08);transform:scale(.98);}
+.v-delete-btn{width:100%;margin-top:6px;background:transparent;border:1px solid var(--red);border-radius:10px;padding:9px;color:var(--red);font-size:12px;font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:all .15s;}
+.v-delete-btn:active{opacity:.7;}
+
+/* ── List Tab ── */
+.filter-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:14px;padding-bottom:2px;}
+.filter-chips::-webkit-scrollbar{display:none;}
+.chip{flex-shrink:0;padding:6px 12px;border-radius:20px;border:1.5px solid var(--border2);background:var(--s2);color:var(--muted);font-size:11px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.chip.active{border-color:var(--accent);background:rgba(240,165,0,.12);color:var(--accent);}
+.list-summary{font-size:11px;color:var(--muted);margin-bottom:12px;padding:0 2px;}
+.group-header{font-size:13px;font-weight:900;color:var(--accent);padding:10px 4px 6px;border-bottom:2px solid var(--accent);margin-bottom:8px;margin-top:16px;display:flex;align-items:center;gap:6px;}
+.group-header:first-of-type{margin-top:0;}
+.group-count{font-size:11px;font-weight:500;color:var(--muted);}
+
+/* ── Register Form ── */
+.form-field{margin-bottom:14px;}
+.form-label{font-size:11px;color:var(--muted);margin-bottom:5px;font-weight:500;display:flex;align-items:center;gap:4px;}
+.form-label .req{color:var(--red);font-size:10px;}
+.form-input,.form-select,.form-textarea{width:100%;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:'Noto Sans JP',sans-serif;padding:12px 14px;outline:none;transition:border-color .15s;}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent);}
+.form-input::placeholder,.form-textarea::placeholder{color:var(--muted);font-size:13px;}
+.form-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2368687a' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
+.form-textarea{resize:vertical;min-height:70px;line-height:1.6;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.form-section{font-size:10px;letter-spacing:.08em;color:var(--muted);font-weight:700;text-transform:uppercase;margin:18px 0 10px;padding-bottom:4px;border-bottom:.5px solid var(--border);}
+.form-section:first-child{margin-top:0;}
+
+/* Customer Dropdown */
+.customer-wrap{position:relative;}
+.customer-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--s1);border:1.5px solid var(--border2);border-radius:10px;margin-top:4px;max-height:200px;overflow-y:auto;z-index:50;display:none;box-shadow:0 8px 24px rgba(0,0,0,.3);}
+.customer-dropdown.show{display:block;}
+.customer-option{padding:12px 14px;cursor:pointer;font-size:13px;font-weight:500;border-bottom:.5px solid var(--border);transition:background .1s;}
+.customer-option:last-child{border-bottom:none;}
+.customer-option:active,.customer-option:hover{background:var(--s2);}
+.customer-selected{display:flex;align-items:center;gap:8px;background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.25);border-radius:8px;padding:8px 12px;margin-top:6px;font-size:13px;font-weight:500;}
+.customer-selected .cs-remove{margin-left:auto;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;}
+
+.btn-submit{width:100%;background:var(--accent);border:none;border-radius:12px;padding:16px;color:#fff;font-size:15px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;margin-top:20px;transition:all .15s;}
+.btn-submit:disabled{opacity:.4;cursor:default;}
+.btn-submit:active:not(:disabled){transform:scale(.98);}
+
+/* ── Edit Bottom Sheet ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;opacity:0;transition:opacity .2s;}
+.overlay.show{display:block;opacity:1;}
+.bottom-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;max-height:90vh;background:var(--bg);border-radius:16px 16px 0 0;z-index:210;display:none;flex-direction:column;overflow:hidden;transition:transform .3s ease;}
+.bottom-sheet.show{display:flex;}
+.bs-handle{width:36px;height:4px;background:var(--border2);border-radius:4px;margin:10px auto 0;}
+.bs-header{padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:.5px solid var(--border);}
+.bs-title{font-size:15px;font-weight:900;}
+.bs-close{background:transparent;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1;}
+.bs-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 20px 40px;}
+.bs-save-btn{width:100%;background:var(--accent);border:none;border-radius:10px;padding:14px;color:#fff;font-size:14px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;margin-top:16px;transition:all .15s;}
+.bs-save-btn:disabled{opacity:.4;cursor:default;}
+
+/* ── Toast ── */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-100px);max-width:420px;width:calc(100% - 32px);padding:14px 18px;border-radius:12px;font-size:13px;font-weight:700;z-index:500;transition:transform .3s ease;text-align:center;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.success{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:var(--green);}
+.toast.error{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:var(--red);}
+</style>
+<script>
+(function(){
+  const t = localStorage.getItem('foo_portal_theme') || 'auto';
+  if (t !== 'auto') document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-top">
+    <a href="https://mitsurumukaihata.github.io/foo-portal/" class="back-btn">&larr; ポータル</a>
+  </div>
+  <div class="header-title">&#x1F69B; 車両マスタ</div>
+</div>
+
+<!-- Nav -->
+<div class="nav">
+  <button class="nav-btn active" data-tab="search">&#x1F50D; 検索</button>
+  <button class="nav-btn" data-tab="list">&#x1F4CB; 一覧</button>
+  <button class="nav-btn" data-tab="register">&#xFF0B; 登録</button>
+</div>
+
+<!-- Content -->
+<div class="content">
+
+  <!-- Search Tab -->
+  <div class="tab-pane active" id="tab-search">
+    <div class="search-box">
+      <input type="text" id="search-input" placeholder="車番を入力..." autocomplete="off">
+      <button class="search-clear" id="search-clear">&times;</button>
+    </div>
+    <div id="search-results"></div>
+  </div>
+
+  <!-- List Tab -->
+  <div class="tab-pane" id="tab-list">
+    <div class="filter-chips" id="filter-chips"></div>
+    <div class="list-summary" id="list-summary"></div>
+    <div id="list-results"></div>
+  </div>
+
+  <!-- Register Tab -->
+  <div class="tab-pane" id="tab-register">
+    <div class="form-section">基本情報</div>
+
+    <div class="form-field">
+      <div class="form-label">車番 <span class="req">*必須</span></div>
+      <input type="text" class="form-input" id="reg-plate" placeholder="例: 広島100あ1234">
+    </div>
+
+    <div class="form-field customer-wrap">
+      <div class="form-label">顧客</div>
+      <input type="text" class="form-input" id="reg-customer-search" placeholder="顧客名を入力して検索..." autocomplete="off">
+      <div class="customer-dropdown" id="customer-dropdown"></div>
+      <div class="customer-selected" id="customer-selected" style="display:none;">
+        <span id="customer-selected-name"></span>
+        <span class="cs-remove" id="customer-remove">&times;</span>
+      </div>
+    </div>
+
+    <div class="form-field">
+      <div class="form-label">車種</div>
+      <select class="form-select" id="reg-type">
+        <option value="">選択してください</option>
+        <option value="大型">&#x1F69B; 大型</option>
+        <option value="中型">&#x1F69A; 中型</option>
+        <option value="小型">&#x1F697; 小型</option>
+        <option value="バン">&#x1F690; バン</option>
+        <option value="リフト">&#x1F3D7;&#xFE0F; リフト</option>
+        <option value="トレーラー">&#x1F69C; トレーラー</option>
+        <option value="その他">&#x1F527; その他</option>
+      </select>
+    </div>
+
+    <div class="form-section">タイヤ情報</div>
+
+    <div class="form-row">
+      <div class="form-field">
+        <div class="form-label">前輪サイズ</div>
+        <input type="text" class="form-input" id="reg-front-size" placeholder="225/80R17.5">
+      </div>
+      <div class="form-field">
+        <div class="form-label">後輪サイズ</div>
+        <input type="text" class="form-input" id="reg-rear-size" placeholder="前輪と同じなら空欄">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-field">
+        <div class="form-label">前輪パターン</div>
+        <input type="text" class="form-input" id="reg-front-pattern" placeholder="例: M646">
+      </div>
+      <div class="form-field">
+        <div class="form-label">後輪パターン</div>
+        <input type="text" class="form-input" id="reg-rear-pattern" placeholder="">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-field">
+        <div class="form-label">タイヤカテゴリ</div>
+        <select class="form-select" id="reg-category">
+          <option value="">選択</option>
+          <option value="LTL TB ノーマル">LTL TB ノーマル</option>
+          <option value="LTL TB スタッドレス">LTL TB スタッドレス</option>
+          <option value="LTS">LTS</option>
+          <option value="バン">バン</option>
+          <option value="リフト">リフト</option>
+          <option value="T-T">T-T</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <div class="form-label">スタッドレス</div>
+        <select class="form-select" id="reg-studless">
+          <option value="">選択</option>
+          <option value="なし">なし</option>
+          <option value="全輪">全輪</option>
+          <option value="駆動輪のみ">駆動輪のみ</option>
+          <option value="前輪のみ">前輪のみ</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-field">
+        <div class="form-label">本数</div>
+        <input type="number" class="form-input" id="reg-count" placeholder="例: 6" inputmode="numeric">
+      </div>
+      <div class="form-field">
+        <div class="form-label">空気圧</div>
+        <input type="text" class="form-input" id="reg-pressure" placeholder="F:850 R:750">
+      </div>
+    </div>
+
+    <div class="form-field">
+      <div class="form-label">メモ</div>
+      <textarea class="form-textarea" id="reg-memo" placeholder="備考など"></textarea>
+    </div>
+
+    <button class="btn-submit" id="btn-register">車両を登録</button>
+  </div>
+</div>
+
+<!-- Edit Bottom Sheet -->
+<div class="overlay" id="edit-overlay"></div>
+<div class="bottom-sheet" id="edit-sheet">
+  <div class="bs-handle"></div>
+  <div class="bs-header">
+    <div class="bs-title">車両情報を編集</div>
+    <button class="bs-close" id="edit-close">&times;</button>
+  </div>
+  <div class="bs-body" id="edit-body"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
+const VEHICLE_DB = '16f9f0df45e942069e032715fb2d37b2';
+const CUSTOMER_DB = '1ca8d122be214e3892879932147143c9';
+
+const TYPE_EMOJI = {'大型':'🚛','中型':'🚚','小型':'🚗','バン':'🚐','リフト':'🏗️','トレーラー':'🚜','その他':'🔧'};
+
+let allVehicles = [];
+let customerCache = {};
+let selectedCustomerId = null;
+let selectedCustomerName = '';
+let editingPageId = null;
+let editSelectedCustomerId = null;
+let editSelectedCustomerName = '';
+let searchTimer = null;
+let customerSearchTimer = null;
+let currentFilter = '';
+
+// ── API ──
+async function notionAPI(path, method, body) {
+  if (path.startsWith('/v1/')) path = path.slice(3);
+  if (!path.startsWith('/')) path = '/' + path;
+  const opts = { method: method || 'GET', headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(WORKER + path, opts);
+  if (!r.ok) throw new Error('error code: ' + r.status);
+  const data = await r.json();
+  if (data.object === 'error') throw new Error(data.message);
+  return data;
+}
+
+// ── Toast ──
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type;
+  requestAnimationFrame(() => t.classList.add('show'));
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── Parse Vehicle ──
+function parseVehicle(page) {
+  const p = page.properties;
+  const getText = (prop) => {
+    if (!prop) return '';
+    if (prop.type === 'title') return (prop.title || []).map(t => t.plain_text).join('');
+    if (prop.type === 'rich_text') return (prop.rich_text || []).map(t => t.plain_text).join('');
+    if (prop.type === 'select') return prop.select ? prop.select.name : '';
+    if (prop.type === 'number') return prop.number != null ? prop.number : '';
+    if (prop.type === 'relation') return prop.relation || [];
+    return '';
+  };
+  return {
+    id: page.id,
+    plate: getText(p['車番']),
+    customerRel: getText(p['顧客']),
+    customerName: '',
+    type: getText(p['車種']),
+    frontSize: getText(p['前輪サイズ']),
+    rearSize: getText(p['後輪サイズ']),
+    frontPattern: getText(p['前輪パターン']),
+    rearPattern: getText(p['後輪パターン']),
+    category: getText(p['タイヤカテゴリ']),
+    studless: getText(p['スタッドレス']),
+    count: getText(p['本数']),
+    pressure: getText(p['空気圧']),
+    memo: getText(p['メモ']),
+    createdTime: page.created_time
+  };
+}
+
+// ── Fetch Customer Names ──
+async function resolveCustomerNames(vehicles) {
+  const ids = new Set();
+  vehicles.forEach(v => {
+    if (Array.isArray(v.customerRel)) {
+      v.customerRel.forEach(r => { if (r.id && !customerCache[r.id]) ids.add(r.id); });
+    }
+  });
+  const promises = [...ids].map(async id => {
+    try {
+      const page = await notionAPI('/pages/' + id, 'GET');
+      const titleProp = Object.values(page.properties).find(p => p.type === 'title');
+      const name = titleProp ? (titleProp.title || []).map(t => t.plain_text).join('') : '';
+      customerCache[id] = name;
+    } catch(e) { customerCache[id] = '(不明)'; }
+  });
+  await Promise.all(promises);
+  vehicles.forEach(v => {
+    if (Array.isArray(v.customerRel) && v.customerRel.length > 0) {
+      v.customerName = customerCache[v.customerRel[0].id] || '';
+    }
+  });
+}
+
+// ── Fetch Vehicles ──
+async function fetchVehicles(filterTitle) {
+  const body = {
+    filter: filterTitle ? {
+      property: '車番',
+      title: { contains: filterTitle }
+    } : undefined,
+    sorts: [{ timestamp: 'created_time', direction: 'descending' }],
+    page_size: 100
+  };
+  const data = await notionAPI('/databases/' + VEHICLE_DB + '/query', 'POST', body);
+  return data.results.map(parseVehicle);
+}
+
+// ── Render Vehicle Card ──
+function renderCard(v, container) {
+  const emoji = TYPE_EMOJI[v.type] || '';
+  const rearSizeDisplay = v.rearSize || v.frontSize;
+  const card = document.createElement('div');
+  card.className = 'v-card';
+  card.innerHTML = `
+    <div class="v-card-main">
+      <div class="v-card-top">
+        <div class="v-plate">${v.plate}</div>
+        ${v.type ? `<div class="v-type-badge">${emoji} ${v.type}</div>` : ''}
+      </div>
+      ${v.customerName ? `<div class="v-customer">👤 ${v.customerName}</div>` : ''}
+      <div class="v-tires">
+        <div class="v-tire-info">
+          <div class="v-tire-label">前輪</div>
+          <div class="v-tire-size">${v.frontSize || '-'}</div>
+          <div class="v-tire-pattern">${v.frontPattern || '-'}</div>
+        </div>
+        <div class="v-tire-info">
+          <div class="v-tire-label">後輪</div>
+          <div class="v-tire-size">${rearSizeDisplay || '-'}</div>
+          <div class="v-tire-pattern">${v.rearPattern || '-'}</div>
+        </div>
+      </div>
+      <div class="v-tags">
+        ${v.category ? `<span class="v-tag cat">${v.category}</span>` : ''}
+        ${v.studless && v.studless !== 'なし' ? `<span class="v-tag stud">❄ ${v.studless}</span>` : ''}
+        ${v.count ? `<span class="v-tag count">${v.count}本</span>` : ''}
+      </div>
+    </div>
+    <div class="v-card-detail">
+      <div class="v-detail-row"><span class="v-detail-label">車番</span><span class="v-detail-val">${v.plate}</span></div>
+      <div class="v-detail-row"><span class="v-detail-label">顧客</span><span class="v-detail-val">${v.customerName || '-'}</span></div>
+      <div class="v-detail-row"><span class="v-detail-label">車種</span><span class="v-detail-val">${emoji} ${v.type || '-'}</span></div>
+      <div class="v-detail-row"><span class="v-detail-label">前輪サイズ</span><span class="v-detail-val">${v.frontSize || '-'}</span></div>
+      <div class="v-detail-row"><span class="v-detail-label">前輪パターン</span><span class="v-detail-val">${v.frontPattern || '-'}</span></div>
+      <div class="v-detail-row"><span class="v-detail-label">後輪サイズ</span><span class="v-detail-val">${v.rearSize || '-'}</span></div>
+      <div class="v-detail-row"><span class="v-detail-label">後輪パターン</span><span class="v-detail-val">${v.rearPattern || '-'}</span></div>
+      <div class="v-detail-row"><span class="v-detail-label">カテゴリ</span><span class="v-detail-val">${v.category || '-'}</span></div>
+      <div class="v-detail-row"><span class="v-detail-label">スタッドレス</span><span class="v-detail-val">${v.studless || '-'}</span></div>
+      <div class="v-detail-row"><span class="v-detail-label">本数</span><span class="v-detail-val">${v.count || '-'}</span></div>
+      <div class="v-detail-row"><span class="v-detail-label">空気圧</span><span class="v-detail-val">${v.pressure || '-'}</span></div>
+      <div class="v-detail-row"><span class="v-detail-label">メモ</span><span class="v-detail-val">${v.memo || '-'}</span></div>
+      <button class="v-edit-btn" data-id="${v.id}">✏️ 編集</button>
+      <button class="v-delete-btn" data-id="${v.id}" data-plate="${v.plate}">🗑 削除</button>
+    </div>
+  `;
+  card.querySelector('.v-card-main').addEventListener('click', () => {
+    card.classList.toggle('expanded');
+  });
+  card.querySelector('.v-edit-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    openEditSheet(v);
+  });
+  card.querySelector('.v-delete-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    deleteVehicle(v.id, v.plate);
+  });
+  container.appendChild(card);
+}
+
+// ── Tab Switching ──
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'list') loadList();
+  });
+});
+
+function switchToTab(name) {
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === name);
+  });
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ── Search Tab ──
+const searchInput = document.getElementById('search-input');
+const searchClear = document.getElementById('search-clear');
+const searchResults = document.getElementById('search-results');
+
+searchInput.addEventListener('input', () => {
+  const val = searchInput.value.trim();
+  searchClear.classList.toggle('show', val.length > 0);
+  clearTimeout(searchTimer);
+  if (!val) {
+    loadRecentVehicles();
+    return;
+  }
+  searchTimer = setTimeout(() => doSearch(val), 300);
+});
+searchClear.addEventListener('click', () => {
+  searchInput.value = '';
+  searchClear.classList.remove('show');
+  loadRecentVehicles();
+  searchInput.focus();
+});
+
+async function doSearch(query) {
+  searchResults.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">検索中...</div></div>';
+  try {
+    const vehicles = await fetchVehicles(query);
+    await resolveCustomerNames(vehicles);
+    searchResults.innerHTML = '';
+    if (vehicles.length === 0) {
+      searchResults.innerHTML = `
+        <div class="empty">
+          <div class="empty-icon">🔍</div>
+          <div class="empty-title">車両が見つかりません</div>
+          <div class="empty-sub">「${query}」に一致する車両はありません。<br><span class="empty-link" onclick="switchToTab('register')">新規登録しますか？</span></div>
+        </div>`;
+      return;
+    }
+    vehicles.forEach(v => renderCard(v, searchResults));
+  } catch(e) {
+    searchResults.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-title">エラー</div><div class="empty-sub">${e.message}</div></div>`;
+  }
+}
+
+async function loadRecentVehicles() {
+  searchResults.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">読み込み中...</div></div>';
+  try {
+    const vehicles = await fetchVehicles();
+    allVehicles = vehicles;
+    await resolveCustomerNames(vehicles);
+    searchResults.innerHTML = '';
+    if (vehicles.length === 0) {
+      searchResults.innerHTML = '<div class="empty"><div class="empty-icon">🚛</div><div class="empty-title">車両データなし</div><div class="empty-sub">車両を登録してください</div></div>';
+      return;
+    }
+    const recent = vehicles.slice(0, 50);
+    recent.forEach(v => renderCard(v, searchResults));
+  } catch(e) {
+    searchResults.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-title">読み込みエラー</div><div class="empty-sub">${e.message}</div></div>`;
+  }
+}
+
+// ── List Tab ──
+function loadList() {
+  const chipContainer = document.getElementById('filter-chips');
+  const listResults = document.getElementById('list-results');
+  const listSummary = document.getElementById('list-summary');
+
+  const types = ['すべて','大型','中型','小型','バン','リフト','トレーラー','その他'];
+  chipContainer.innerHTML = '';
+  types.forEach(t => {
+    const chip = document.createElement('button');
+    chip.className = 'chip' + ((!currentFilter && t === 'すべて') || currentFilter === t ? ' active' : '');
+    chip.textContent = t === 'すべて' ? t : (TYPE_EMOJI[t] || '') + ' ' + t;
+    chip.addEventListener('click', () => {
+      currentFilter = t === 'すべて' ? '' : t;
+      loadList();
+    });
+    chipContainer.appendChild(chip);
+  });
+
+  let filtered = allVehicles;
+  if (currentFilter) filtered = allVehicles.filter(v => v.type === currentFilter);
+
+  listSummary.textContent = `全 ${filtered.length} 台`;
+
+  // Group by customer
+  const groups = {};
+  filtered.forEach(v => {
+    const key = v.customerName || '顧客未設定';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(v);
+  });
+
+  listResults.innerHTML = '';
+  const sortedKeys = Object.keys(groups).sort((a, b) => {
+    if (a === '顧客未設定') return 1;
+    if (b === '顧客未設定') return -1;
+    return a.localeCompare(b, 'ja');
+  });
+
+  sortedKeys.forEach(key => {
+    const header = document.createElement('div');
+    header.className = 'group-header';
+    header.innerHTML = `👤 ${key} <span class="group-count">${groups[key].length}台</span>`;
+    listResults.appendChild(header);
+    groups[key].forEach(v => renderCard(v, listResults));
+  });
+
+  if (filtered.length === 0) {
+    listResults.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">該当なし</div></div>';
+  }
+}
+
+// ── Register Tab ──
+// Customer search
+const custInput = document.getElementById('reg-customer-search');
+const custDropdown = document.getElementById('customer-dropdown');
+const custSelected = document.getElementById('customer-selected');
+const custSelectedName = document.getElementById('customer-selected-name');
+const custRemove = document.getElementById('customer-remove');
+
+custInput.addEventListener('input', () => {
+  clearTimeout(customerSearchTimer);
+  const val = custInput.value.trim();
+  if (!val) { custDropdown.classList.remove('show'); return; }
+  customerSearchTimer = setTimeout(() => searchCustomers(val, custDropdown, (id, name) => {
+    selectedCustomerId = id;
+    selectedCustomerName = name;
+    custInput.style.display = 'none';
+    custSelected.style.display = 'flex';
+    custSelectedName.textContent = '👤 ' + name;
+    custDropdown.classList.remove('show');
+  }), 300);
+});
+custInput.addEventListener('focus', () => {
+  if (custInput.value.trim()) custDropdown.classList.add('show');
+});
+custRemove.addEventListener('click', () => {
+  selectedCustomerId = null;
+  selectedCustomerName = '';
+  custInput.value = '';
+  custInput.style.display = '';
+  custSelected.style.display = 'none';
+  custInput.focus();
+});
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.customer-wrap')) custDropdown.classList.remove('show');
+});
+
+async function searchCustomers(query, dropdown, onSelect) {
+  try {
+    const data = await notionAPI('/databases/' + CUSTOMER_DB + '/query', 'POST', {
+      filter: { property: '会社名', title: { contains: query } },
+      page_size: 10
+    });
+    dropdown.innerHTML = '';
+    if (data.results.length === 0) {
+      dropdown.innerHTML = '<div style="padding:12px 14px;font-size:12px;color:var(--muted);">該当なし</div>';
+      dropdown.classList.add('show');
+      return;
+    }
+    data.results.forEach(page => {
+      const titleProp = Object.values(page.properties).find(p => p.type === 'title');
+      const name = titleProp ? (titleProp.title || []).map(t => t.plain_text).join('') : '';
+      customerCache[page.id] = name;
+      const opt = document.createElement('div');
+      opt.className = 'customer-option';
+      opt.textContent = name;
+      opt.addEventListener('click', () => onSelect(page.id, name));
+      dropdown.appendChild(opt);
+    });
+    dropdown.classList.add('show');
+  } catch(e) {
+    dropdown.innerHTML = '<div style="padding:12px 14px;font-size:12px;color:var(--red);">検索エラー</div>';
+    dropdown.classList.add('show');
+  }
+}
+
+// Submit
+document.getElementById('btn-register').addEventListener('click', registerVehicle);
+
+async function registerVehicle() {
+  const plate = document.getElementById('reg-plate').value.trim();
+  if (!plate) { showToast('車番を入力してください', 'error'); return; }
+
+  const btn = document.getElementById('btn-register');
+  btn.disabled = true;
+  btn.textContent = '登録中...';
+
+  try {
+    // Duplicate check
+    const dup = await notionAPI('/databases/' + VEHICLE_DB + '/query', 'POST', {
+      filter: { property: '車番', title: { equals: plate } },
+      page_size: 1
+    });
+    if (dup.results.length > 0) {
+      showToast('この車番は既に登録されています', 'error');
+      btn.disabled = false;
+      btn.textContent = '車両を登録';
+      return;
+    }
+
+    const props = {
+      '車番': { title: [{ text: { content: plate } }] }
+    };
+    if (selectedCustomerId) {
+      props['顧客'] = { relation: [{ id: selectedCustomerId }] };
+    }
+    const type = document.getElementById('reg-type').value;
+    if (type) props['車種'] = { select: { name: type } };
+
+    const frontSize = document.getElementById('reg-front-size').value.trim();
+    if (frontSize) props['前輪サイズ'] = { rich_text: [{ text: { content: frontSize } }] };
+
+    const rearSize = document.getElementById('reg-rear-size').value.trim();
+    if (rearSize) props['後輪サイズ'] = { rich_text: [{ text: { content: rearSize } }] };
+
+    const frontPattern = document.getElementById('reg-front-pattern').value.trim();
+    if (frontPattern) props['前輪パターン'] = { rich_text: [{ text: { content: frontPattern } }] };
+
+    const rearPattern = document.getElementById('reg-rear-pattern').value.trim();
+    if (rearPattern) props['後輪パターン'] = { rich_text: [{ text: { content: rearPattern } }] };
+
+    const category = document.getElementById('reg-category').value;
+    if (category) props['タイヤカテゴリ'] = { select: { name: category } };
+
+    const studless = document.getElementById('reg-studless').value;
+    if (studless) props['スタッドレス'] = { select: { name: studless } };
+
+    const count = document.getElementById('reg-count').value;
+    if (count) props['本数'] = { number: parseInt(count) };
+
+    const pressure = document.getElementById('reg-pressure').value.trim();
+    if (pressure) props['空気圧'] = { rich_text: [{ text: { content: pressure } }] };
+
+    const memo = document.getElementById('reg-memo').value.trim();
+    if (memo) props['メモ'] = { rich_text: [{ text: { content: memo } }] };
+
+    await notionAPI('/pages', 'POST', {
+      parent: { database_id: VEHICLE_DB },
+      properties: props
+    });
+
+    showToast('車両を登録しました', 'success');
+    clearRegisterForm();
+    switchToTab('search');
+    searchInput.value = plate;
+    searchClear.classList.add('show');
+    doSearch(plate);
+
+  } catch(e) {
+    showToast('登録エラー: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '車両を登録';
+  }
+}
+
+function clearRegisterForm() {
+  document.getElementById('reg-plate').value = '';
+  document.getElementById('reg-type').value = '';
+  document.getElementById('reg-front-size').value = '';
+  document.getElementById('reg-rear-size').value = '';
+  document.getElementById('reg-front-pattern').value = '';
+  document.getElementById('reg-rear-pattern').value = '';
+  document.getElementById('reg-category').value = '';
+  document.getElementById('reg-studless').value = '';
+  document.getElementById('reg-count').value = '';
+  document.getElementById('reg-pressure').value = '';
+  document.getElementById('reg-memo').value = '';
+  selectedCustomerId = null;
+  selectedCustomerName = '';
+  custInput.value = '';
+  custInput.style.display = '';
+  custSelected.style.display = 'none';
+}
+
+// ── Edit Sheet ──
+function openEditSheet(v) {
+  editingPageId = v.id;
+  editSelectedCustomerId = Array.isArray(v.customerRel) && v.customerRel.length > 0 ? v.customerRel[0].id : null;
+  editSelectedCustomerName = v.customerName || '';
+
+  const body = document.getElementById('edit-body');
+  body.innerHTML = `
+    <div class="form-field">
+      <div class="form-label">車番</div>
+      <input type="text" class="form-input" id="edit-plate" value="${v.plate}">
+    </div>
+    <div class="form-field customer-wrap">
+      <div class="form-label">顧客</div>
+      <input type="text" class="form-input" id="edit-customer-search" placeholder="顧客名を入力して検索..." autocomplete="off" style="${editSelectedCustomerId ? 'display:none' : ''}">
+      <div class="customer-dropdown" id="edit-customer-dropdown"></div>
+      <div class="customer-selected" id="edit-customer-selected" style="${editSelectedCustomerId ? 'display:flex' : 'display:none'}">
+        <span id="edit-customer-selected-name">👤 ${editSelectedCustomerName}</span>
+        <span class="cs-remove" id="edit-customer-remove">&times;</span>
+      </div>
+    </div>
+    <div class="form-field">
+      <div class="form-label">車種</div>
+      <select class="form-select" id="edit-type">
+        <option value="">選択</option>
+        <option value="大型" ${v.type==='大型'?'selected':''}>🚛 大型</option>
+        <option value="中型" ${v.type==='中型'?'selected':''}>🚚 中型</option>
+        <option value="小型" ${v.type==='小型'?'selected':''}>🚗 小型</option>
+        <option value="バン" ${v.type==='バン'?'selected':''}>🚐 バン</option>
+        <option value="リフト" ${v.type==='リフト'?'selected':''}>🏗️ リフト</option>
+        <option value="トレーラー" ${v.type==='トレーラー'?'selected':''}>🚜 トレーラー</option>
+        <option value="その他" ${v.type==='その他'?'selected':''}>🔧 その他</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-field"><div class="form-label">前輪サイズ</div><input type="text" class="form-input" id="edit-front-size" value="${v.frontSize}"></div>
+      <div class="form-field"><div class="form-label">後輪サイズ</div><input type="text" class="form-input" id="edit-rear-size" value="${v.rearSize}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-field"><div class="form-label">前輪パターン</div><input type="text" class="form-input" id="edit-front-pattern" value="${v.frontPattern}"></div>
+      <div class="form-field"><div class="form-label">後輪パターン</div><input type="text" class="form-input" id="edit-rear-pattern" value="${v.rearPattern}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <div class="form-label">カテゴリ</div>
+        <select class="form-select" id="edit-category">
+          <option value="">選択</option>
+          <option value="LTL TB ノーマル" ${v.category==='LTL TB ノーマル'?'selected':''}>LTL TB ノーマル</option>
+          <option value="LTL TB スタッドレス" ${v.category==='LTL TB スタッドレス'?'selected':''}>LTL TB スタッドレス</option>
+          <option value="LTS" ${v.category==='LTS'?'selected':''}>LTS</option>
+          <option value="バン" ${v.category==='バン'?'selected':''}>バン</option>
+          <option value="リフト" ${v.category==='リフト'?'selected':''}>リフト</option>
+          <option value="T-T" ${v.category==='T-T'?'selected':''}>T-T</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <div class="form-label">スタッドレス</div>
+        <select class="form-select" id="edit-studless">
+          <option value="">選択</option>
+          <option value="なし" ${v.studless==='なし'?'selected':''}>なし</option>
+          <option value="全輪" ${v.studless==='全輪'?'selected':''}>全輪</option>
+          <option value="駆動輪のみ" ${v.studless==='駆動輪のみ'?'selected':''}>駆動輪のみ</option>
+          <option value="前輪のみ" ${v.studless==='前輪のみ'?'selected':''}>前輪のみ</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field"><div class="form-label">本数</div><input type="number" class="form-input" id="edit-count" value="${v.count}" inputmode="numeric"></div>
+      <div class="form-field"><div class="form-label">空気圧</div><input type="text" class="form-input" id="edit-pressure" value="${v.pressure}"></div>
+    </div>
+    <div class="form-field"><div class="form-label">メモ</div><textarea class="form-textarea" id="edit-memo">${v.memo}</textarea></div>
+    <button class="bs-save-btn" id="edit-save">保存</button>
+  `;
+
+  // Edit customer search
+  const editCustInput = document.getElementById('edit-customer-search');
+  const editCustDropdown = document.getElementById('edit-customer-dropdown');
+  const editCustSelected = document.getElementById('edit-customer-selected');
+  const editCustSelectedName = document.getElementById('edit-customer-selected-name');
+  const editCustRemove = document.getElementById('edit-customer-remove');
+  let editCustTimer = null;
+
+  editCustInput.addEventListener('input', () => {
+    clearTimeout(editCustTimer);
+    const val = editCustInput.value.trim();
+    if (!val) { editCustDropdown.classList.remove('show'); return; }
+    editCustTimer = setTimeout(() => searchCustomers(val, editCustDropdown, (id, name) => {
+      editSelectedCustomerId = id;
+      editSelectedCustomerName = name;
+      editCustInput.style.display = 'none';
+      editCustSelected.style.display = 'flex';
+      editCustSelectedName.textContent = '👤 ' + name;
+      editCustDropdown.classList.remove('show');
+    }), 300);
+  });
+  editCustRemove.addEventListener('click', () => {
+    editSelectedCustomerId = null;
+    editSelectedCustomerName = '';
+    editCustInput.value = '';
+    editCustInput.style.display = '';
+    editCustSelected.style.display = 'none';
+    editCustInput.focus();
+  });
+
+  document.getElementById('edit-save').addEventListener('click', saveEdit);
+
+  document.getElementById('edit-overlay').classList.add('show');
+  document.getElementById('edit-sheet').classList.add('show');
+}
+
+function closeEditSheet() {
+  document.getElementById('edit-overlay').classList.remove('show');
+  document.getElementById('edit-sheet').classList.remove('show');
+  editingPageId = null;
+}
+
+document.getElementById('edit-close').addEventListener('click', closeEditSheet);
+document.getElementById('edit-overlay').addEventListener('click', closeEditSheet);
+
+async function saveEdit() {
+  const btn = document.getElementById('edit-save');
+  btn.disabled = true;
+  btn.textContent = '保存中...';
+
+  try {
+    const props = {
+      '車番': { title: [{ text: { content: document.getElementById('edit-plate').value.trim() } }] }
+    };
+    if (editSelectedCustomerId) {
+      props['顧客'] = { relation: [{ id: editSelectedCustomerId }] };
+    } else {
+      props['顧客'] = { relation: [] };
+    }
+    const type = document.getElementById('edit-type').value;
+    props['車種'] = type ? { select: { name: type } } : { select: null };
+
+    const setRichText = (key, id) => {
+      const val = document.getElementById(id).value.trim();
+      props[key] = { rich_text: val ? [{ text: { content: val } }] : [] };
+    };
+    setRichText('前輪サイズ', 'edit-front-size');
+    setRichText('後輪サイズ', 'edit-rear-size');
+    setRichText('前輪パターン', 'edit-front-pattern');
+    setRichText('後輪パターン', 'edit-rear-pattern');
+    setRichText('空気圧', 'edit-pressure');
+    setRichText('メモ', 'edit-memo');
+
+    const category = document.getElementById('edit-category').value;
+    props['タイヤカテゴリ'] = category ? { select: { name: category } } : { select: null };
+
+    const studless = document.getElementById('edit-studless').value;
+    props['スタッドレス'] = studless ? { select: { name: studless } } : { select: null };
+
+    const count = document.getElementById('edit-count').value;
+    props['本数'] = { number: count ? parseInt(count) : null };
+
+    await notionAPI('/pages/' + editingPageId, 'PATCH', { properties: props });
+    showToast('更新しました', 'success');
+    closeEditSheet();
+    // Refresh
+    if (searchInput.value.trim()) {
+      doSearch(searchInput.value.trim());
+    } else {
+      loadRecentVehicles();
+    }
+  } catch(e) {
+    showToast('更新エラー: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '保存';
+  }
+}
+
+// ── Delete ──
+async function deleteVehicle(pageId, plate) {
+  if (!confirm('「' + plate + '」を削除しますか？')) return;
+  try {
+    await notionAPI('/pages/' + pageId, 'PATCH', { archived: true });
+    showToast('削除しました', 'success');
+    if (searchInput.value.trim()) {
+      doSearch(searchInput.value.trim());
+    } else {
+      loadRecentVehicles();
+    }
+  } catch(e) {
+    showToast('削除エラー: ' + e.message, 'error');
+  }
+}
+
+// ── Init ──
+loadRecentVehicles();
+</script>
+<script src="foo-mobile.js"></script>
+</body>
+</html>

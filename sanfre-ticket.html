@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>サンフレチケット | f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #18181f; --s1: #1e1e26; --s2: #26262e; --s3: #30303a;
+  --border: rgba(255,255,255,.08); --text: #f0f0f2; --muted: #68687a;
+  --accent: #6B2D8B; --accent2: #8B45AB; --accent-light: rgba(107,45,139,.15);
+  --green: #22c55e; --red: #ef4444;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #fdf6ee; --s1: #fff8f0; --s2: #f0e8d8; --s3: #e8dcc8;
+    --border: rgba(0,0,0,.08); --text: #1a1208; --muted: #a08060;
+    --accent: #5B1D7B; --accent2: #7B35A0; --accent-light: rgba(91,29,123,.12);
+    --green: #1a9e4a; --red: #dc2626;
+  }
+}
+[data-theme="dark"] {
+  --bg: #18181f; --s1: #1e1e26; --s2: #26262e; --s3: #30303a;
+  --border: rgba(255,255,255,.08); --text: #f0f0f2; --muted: #68687a;
+  --accent: #6B2D8B; --accent2: #8B45AB; --accent-light: rgba(107,45,139,.15);
+  --green: #22c55e; --red: #ef4444;
+}
+[data-theme="light"] {
+  --bg: #fdf6ee; --s1: #fff8f0; --s2: #f0e8d8; --s3: #e8dcc8;
+  --border: rgba(0,0,0,.08); --text: #1a1208; --muted: #a08060;
+  --accent: #5B1D7B; --accent2: #7B35A0; --accent-light: rgba(91,29,123,.12);
+  --green: #1a9e4a; --red: #dc2626;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; min-height:100dvh; max-width:480px; margin:0 auto; overflow-x:hidden; }
+
+/* ── Header ── */
+.header {
+  background: linear-gradient(135deg, #6B2D8B 0%, #8B45AB 50%, #A55DBB 100%);
+  padding: 14px 20px 0;
+  position: sticky; top: 0; z-index: 100;
+  color: #fff;
+}
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+.header-brand { font-size:10px; color:rgba(255,255,255,.6); letter-spacing:0.12em; text-transform:uppercase; }
+.header-back { display:flex; align-items:center; gap:4px; color:#fff; font-size:13px; font-weight:700; text-decoration:none; padding:4px 0; opacity:.85; }
+.header-back:active { opacity:.6; }
+.header-back svg { width:14px; height:14px; }
+.header-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.header-title { font-size:18px; font-weight:900; letter-spacing:-0.02em; }
+.header-sub { font-size:11px; color:rgba(255,255,255,.65); margin-top:1px; }
+.header-actions { display:flex; gap:8px; align-items:center; }
+.btn-theme { width:32px; height:32px; border-radius:8px; background:rgba(255,255,255,.15); border:none; color:#fff; font-size:15px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.btn-theme:active { background:rgba(255,255,255,.25); }
+
+/* ── Tabs ── */
+.nav { display:flex; background:var(--s1); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:90; }
+.nav-btn { flex:1; padding:12px 6px 10px; background:transparent; border:none; border-bottom:2.5px solid transparent; color:var(--muted); font-size:12px; font-weight:600; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all .15s; text-align:center; }
+.nav-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+.nav-badge { display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 5px; background:var(--s3); border-radius:9px; font-size:10px; font-weight:700; margin-left:4px; color:var(--muted); }
+.nav-btn.active .nav-badge { background:var(--accent-light); color:var(--accent); }
+
+/* ── Content ── */
+.content { padding:16px 16px 100px; }
+.tab-pane { display:none; animation: fadeUp .25s ease; }
+.tab-pane.active { display:block; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+/* ── Loading ── */
+.loading { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 20px; gap:12px; }
+.spinner { width:28px; height:28px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-text { font-size:12px; color:var(--muted); }
+
+/* ── Empty state ── */
+.empty { text-align:center; padding:60px 20px; }
+.empty-icon { font-size:40px; margin-bottom:12px; }
+.empty-title { font-size:14px; font-weight:700; margin-bottom:6px; }
+.empty-sub { font-size:12px; color:var(--muted); }
+
+/* ── Match Card ── */
+.match-card {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  transition: transform .1s;
+  border-left: 3px solid var(--accent);
+}
+.match-card:active { transform:scale(.99); }
+.match-card.past { opacity:.7; border-left-color:var(--muted); }
+.match-card.today { border-left-color:var(--red); box-shadow:0 0 0 1px rgba(239,68,68,.2); }
+
+.card-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 14px 8px;
+}
+.card-opponent { font-size:15px; font-weight:900; display:flex; align-items:center; gap:6px; }
+.card-date { font-size:12px; color:var(--muted); font-family:'DM Mono',monospace; font-weight:500; }
+.card-time { padding:0 14px 10px; font-size:12px; color:var(--muted); display:flex; align-items:center; gap:4px; }
+
+.badge-today {
+  display:inline-flex; align-items:center; gap:3px;
+  background:rgba(239,68,68,.15); color:var(--red);
+  font-size:10px; font-weight:900; padding:2px 7px; border-radius:6px;
+  letter-spacing:.02em;
+}
+.badge-seats {
+  display:inline-flex; align-items:center; gap:3px;
+  background:var(--accent-light); color:var(--accent);
+  font-size:10px; font-weight:700; padding:2px 7px; border-radius:6px;
+  margin-left:6px;
+}
+
+/* ── Seat Section ── */
+.seat-section {
+  border-top:1px solid var(--border);
+  padding:10px 14px 12px;
+}
+.seat-section-title {
+  font-size:11px; font-weight:700; color:var(--muted); margin-bottom:8px;
+  display:flex; align-items:center; gap:5px;
+}
+.seat-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.seat-cell {
+  background:var(--s2);
+  border:1px dashed var(--border);
+  border-radius:8px;
+  padding:8px 10px;
+  cursor:pointer;
+  transition:all .15s;
+  min-height:52px;
+  display:flex; flex-direction:column; justify-content:center;
+}
+.seat-cell:active { transform:scale(.97); }
+.seat-cell.filled {
+  background:var(--accent-light);
+  border:1px solid rgba(107,45,139,.3);
+  border-left:3px solid var(--accent);
+}
+.seat-num {
+  font-size:10px; font-family:'DM Mono',monospace; font-weight:500;
+  color:var(--muted); margin-bottom:2px;
+}
+.seat-cell.filled .seat-num { color:var(--accent2); }
+.seat-name { font-size:13px; font-weight:700; }
+.seat-cell.filled .seat-name { color:var(--text); }
+.seat-empty { font-size:12px; color:var(--muted); }
+
+/* ── Memo ── */
+.card-memo {
+  border-top:1px solid var(--border);
+  padding:8px 14px 10px;
+  font-size:11px; color:var(--muted);
+  display:flex; align-items:flex-start; gap:5px;
+}
+.card-memo-text { line-height:1.5; }
+
+/* ── Delete button ── */
+.card-actions {
+  border-top:1px solid var(--border);
+  padding:6px 14px 8px;
+  display:flex; justify-content:flex-end; gap:8px;
+}
+.btn-card-action {
+  background:transparent; border:none; color:var(--muted); font-size:11px;
+  font-family:'Noto Sans JP',sans-serif; cursor:pointer; padding:4px 8px;
+  border-radius:6px; transition:all .15s;
+}
+.btn-card-action:hover { background:var(--s3); }
+.btn-card-action.danger:hover { color:var(--red); }
+
+/* ── Form ── */
+.form-section { padding:4px 0; }
+.form-group { margin-bottom:16px; }
+.form-label { font-size:12px; font-weight:700; color:var(--muted); margin-bottom:6px; display:block; }
+.form-input {
+  width:100%; padding:12px 14px; background:var(--s2); border:1px solid var(--border);
+  border-radius:10px; color:var(--text); font-size:14px; font-family:'Noto Sans JP',sans-serif;
+  outline:none; transition:border-color .15s;
+}
+.form-input:focus { border-color:var(--accent); }
+.form-input::placeholder { color:var(--muted); }
+.btn-submit {
+  width:100%; padding:14px; background:linear-gradient(135deg,#6B2D8B,#8B45AB);
+  border:none; border-radius:10px; color:#fff; font-size:15px; font-weight:700;
+  font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:opacity .15s;
+  margin-top:8px;
+}
+.btn-submit:active { opacity:.85; }
+.btn-submit:disabled { opacity:.5; cursor:not-allowed; }
+
+/* ── Modal ── */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:200;
+  display:flex; align-items:flex-end; justify-content:center;
+  animation:fadeIn .15s ease;
+  padding:0 0 env(safe-area-inset-bottom);
+}
+@keyframes fadeIn { from { opacity:0; } }
+.modal {
+  background:var(--s1); border-radius:16px 16px 0 0; width:100%; max-width:480px;
+  padding:20px 20px 28px; animation:slideUp .2s ease;
+}
+@keyframes slideUp { from { transform:translateY(100%); } }
+.modal-handle { width:36px; height:4px; background:var(--s3); border-radius:2px; margin:0 auto 16px; }
+.modal-title { font-size:15px; font-weight:900; margin-bottom:4px; }
+.modal-sub { font-size:12px; color:var(--muted); margin-bottom:16px; }
+.modal-input {
+  width:100%; padding:14px; background:var(--s2); border:1px solid var(--border);
+  border-radius:10px; color:var(--text); font-size:15px; font-family:'Noto Sans JP',sans-serif;
+  outline:none; margin-bottom:12px;
+}
+.modal-input:focus { border-color:var(--accent); }
+.modal-btns { display:flex; gap:8px; }
+.modal-btn {
+  flex:1; padding:12px; border:none; border-radius:10px; font-size:14px;
+  font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:opacity .15s;
+}
+.modal-btn:active { opacity:.8; }
+.modal-btn.primary { background:linear-gradient(135deg,#6B2D8B,#8B45AB); color:#fff; }
+.modal-btn.secondary { background:var(--s3); color:var(--text); }
+.modal-btn.danger { background:rgba(239,68,68,.15); color:var(--red); }
+
+/* ── Toast ── */
+.toast-container { position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:300; width:90%; max-width:400px; pointer-events:none; }
+.toast {
+  background:var(--s1); border:1px solid var(--border); border-radius:10px;
+  padding:12px 16px; margin-bottom:8px; font-size:13px; font-weight:600;
+  display:flex; align-items:center; gap:8px; box-shadow:0 8px 24px rgba(0,0,0,.3);
+  animation:toastIn .3s ease;
+  pointer-events:auto;
+}
+@keyframes toastIn { from { opacity:0; transform:translateY(-12px); } }
+.toast.success { border-left:3px solid var(--green); }
+.toast.error { border-left:3px solid var(--red); }
+
+/* ── Utilities ── */
+.hidden { display:none !important; }
+</style>
+</head>
+<body>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toasts"></div>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-top">
+    <a class="header-back" href="index.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      戻る
+    </a>
+    <div class="header-actions">
+      <button class="btn-theme" onclick="toggleTheme()" title="テーマ切替">🌓</button>
+    </div>
+  </div>
+  <div class="header-row">
+    <div>
+      <div class="header-title">⚽ サンフレチケット</div>
+      <div class="header-sub">観戦者名簿 2026</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="nav">
+  <button class="nav-btn active" data-tab="upcoming" onclick="switchTab('upcoming')">
+    今後の試合<span class="nav-badge" id="badge-upcoming">-</span>
+  </button>
+  <button class="nav-btn" data-tab="past" onclick="switchTab('past')">
+    終了<span class="nav-badge" id="badge-past">-</span>
+  </button>
+  <button class="nav-btn" data-tab="create" onclick="switchTab('create')">
+    ＋登録
+  </button>
+</div>
+
+<!-- Content -->
+<div class="content">
+  <!-- Upcoming -->
+  <div class="tab-pane active" id="pane-upcoming">
+    <div class="loading" id="loading-upcoming">
+      <div class="spinner"></div>
+      <div class="loading-text">試合データを読み込み中...</div>
+    </div>
+    <div id="list-upcoming"></div>
+  </div>
+
+  <!-- Past -->
+  <div class="tab-pane" id="pane-past">
+    <div class="loading" id="loading-past">
+      <div class="spinner"></div>
+      <div class="loading-text">過去の試合を読み込み中...</div>
+    </div>
+    <div id="list-past"></div>
+  </div>
+
+  <!-- Create -->
+  <div class="tab-pane" id="pane-create">
+    <div class="form-section">
+      <div class="form-group">
+        <label class="form-label">対戦相手 *</label>
+        <input class="form-input" id="inp-opponent" type="text" placeholder="例: 福岡、横浜FM">
+      </div>
+      <div class="form-group">
+        <label class="form-label">試合日 *</label>
+        <input class="form-input" id="inp-date" type="date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">開始時間</label>
+        <input class="form-input" id="inp-time" type="text" placeholder="例: 14:00">
+      </div>
+      <div class="form-group">
+        <label class="form-label">メモ</label>
+        <input class="form-input" id="inp-memo" type="text" placeholder="例: チケット手配済み">
+      </div>
+      <button class="btn-submit" id="btn-create" onclick="createMatch()">⚽ 試合を登録する</button>
+    </div>
+  </div>
+</div>
+
+<!-- Seat Edit Modal -->
+<div class="modal-overlay hidden" id="modal-seat" onclick="closeSeatModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-seat-title">座席 0203</div>
+    <div class="modal-sub" id="modal-seat-sub">観戦者名を入力してください</div>
+    <input class="modal-input" id="modal-seat-input" type="text" placeholder="例: 山田太郎">
+    <div class="modal-btns" id="modal-btns-empty">
+      <button class="modal-btn secondary" onclick="closeSeatModalForce()">キャンセル</button>
+      <button class="modal-btn primary" onclick="saveSeat()">登録</button>
+    </div>
+    <div class="modal-btns hidden" id="modal-btns-filled">
+      <button class="modal-btn danger" onclick="clearSeat()">空席にする</button>
+      <button class="modal-btn secondary" onclick="closeSeatModalForce()">キャンセル</button>
+      <button class="modal-btn primary" onclick="saveSeat()">変更</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Config ──
+const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
+const DB_ID  = '58a3e396a35e4f8bad70643009ad6af7';
+
+const SEAT_MAP = [
+  { number: '0203', prop: '西507ブロック', label: '西507' },
+  { number: '0204', prop: ' ２',          label: '西507' },
+  { number: '0205', prop: '３',           label: '西507' },
+  { number: '0206', prop: ' ４',          label: '西507' },
+];
+
+const DAY_NAMES = ['日','月','火','水','木','金','土'];
+
+// ── State ──
+let allMatches = [];
+let currentModal = null; // { matchId, seatIndex }
+
+// ── API ──
+async function notionAPI(path, method, body) {
+  if (path.startsWith('/v1/')) path = path.slice(3);
+  if (!path.startsWith('/')) path = '/' + path;
+  const opts = { method: method || 'GET', headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(WORKER + path, opts);
+  if (!r.ok) throw new Error('error code: ' + r.status);
+  const data = await r.json();
+  if (data.object === 'error') throw new Error(data.message);
+  return data;
+}
+
+// ── Helpers ──
+function getText(page, prop) {
+  const p = page.properties[prop];
+  if (!p) return '';
+  if (p.type === 'title') return (p.title || []).map(t => t.plain_text).join('');
+  if (p.type === 'rich_text') return (p.rich_text || []).map(t => t.plain_text).join('');
+  return '';
+}
+
+function getDate(page, prop) {
+  const p = page.properties[prop];
+  if (!p || !p.date) return null;
+  return p.date.start || null;
+}
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+
+function isToday(dateStr) {
+  return dateStr === todayStr();
+}
+
+function toast(msg, type) {
+  const c = document.getElementById('toasts');
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type || 'success');
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(() => { el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(() => el.remove(), 300); }, 2500);
+}
+
+// ── Theme ──
+function toggleTheme() {
+  const root = document.documentElement;
+  const cur = root.getAttribute('data-theme');
+  if (cur === 'dark') { root.setAttribute('data-theme','light'); localStorage.setItem('theme','light'); }
+  else if (cur === 'light') { root.removeAttribute('data-theme'); localStorage.removeItem('theme'); }
+  else { root.setAttribute('data-theme','dark'); localStorage.setItem('theme','dark'); }
+}
+(function initTheme() {
+  const saved = localStorage.getItem('theme');
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+})();
+
+// ── Tabs ──
+function switchTab(tab) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + tab));
+}
+
+// ── Fetch Matches ──
+async function loadMatches() {
+  try {
+    const data = await notionAPI(`/databases/${DB_ID}/query`, 'POST', {
+      sorts: [{ property: '試合日 ', direction: 'ascending' }]
+    });
+    allMatches = (data.results || []).map(page => {
+      const dateVal = getDate(page, '試合日 ');
+      const seats = SEAT_MAP.map(s => ({ ...s, guest: getText(page, s.prop) }));
+      return {
+        id: page.id,
+        opponent: getText(page, '対戦相手'),
+        date: dateVal,
+        time: getText(page, ' 開始時間'),
+        day: getText(page, '曜日D'),
+        memo: getText(page, 'MEMO'),
+        seats,
+      };
+    });
+    renderMatches();
+  } catch (e) {
+    console.error('Load error:', e);
+    document.getElementById('loading-upcoming').innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-title">読み込みエラー</div><div class="empty-sub">' + e.message + '</div></div>';
+    document.getElementById('loading-past').innerHTML = '';
+  }
+}
+
+function renderMatches() {
+  const today = todayStr();
+  const upcoming = allMatches.filter(m => m.date && m.date >= today).sort((a,b) => a.date.localeCompare(b.date));
+  const past = allMatches.filter(m => !m.date || m.date < today).sort((a,b) => (b.date||'').localeCompare(a.date||''));
+
+  document.getElementById('badge-upcoming').textContent = upcoming.length;
+  document.getElementById('badge-past').textContent = past.length;
+
+  const upEl = document.getElementById('list-upcoming');
+  const pastEl = document.getElementById('list-past');
+
+  document.getElementById('loading-upcoming').classList.add('hidden');
+  document.getElementById('loading-past').classList.add('hidden');
+
+  if (upcoming.length === 0) {
+    upEl.innerHTML = '<div class="empty"><div class="empty-icon">🏟️</div><div class="empty-title">今後の試合はありません</div><div class="empty-sub">「＋登録」タブから新しい試合を追加</div></div>';
+  } else {
+    upEl.innerHTML = upcoming.map(m => renderCard(m, false)).join('');
+  }
+
+  if (past.length === 0) {
+    pastEl.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">過去の試合はありません</div></div>';
+  } else {
+    pastEl.innerHTML = past.map(m => renderCard(m, true)).join('');
+  }
+}
+
+function renderCard(match, isPast) {
+  const filledCount = match.seats.filter(s => s.guest.trim()).length;
+  const totalSeats = match.seats.length;
+  const isTodayMatch = isToday(match.date);
+  const dayLabel = match.day ? `(${match.day})` : '';
+
+  let cls = 'match-card';
+  if (isPast) cls += ' past';
+  if (isTodayMatch) cls += ' today';
+
+  let html = `<div class="${cls}" data-id="${match.id}">`;
+  // Header
+  html += `<div class="card-header">`;
+  html += `<div class="card-opponent">⚽ vs ${escHtml(match.opponent)}`;
+  if (isTodayMatch) html += ` <span class="badge-today">🔴 TODAY</span>`;
+  html += `<span class="badge-seats">${filledCount}/${totalSeats}席</span>`;
+  html += `</div>`;
+  html += `<div class="card-date">${formatDate(match.date)}${dayLabel}</div>`;
+  html += `</div>`;
+
+  // Time
+  if (match.time) {
+    html += `<div class="card-time">🕐 ${escHtml(match.time)} キックオフ</div>`;
+  }
+
+  // Seats
+  html += `<div class="seat-section">`;
+  html += `<div class="seat-section-title">📍 西507ブロック</div>`;
+  html += `<div class="seat-grid">`;
+  match.seats.forEach((seat, idx) => {
+    const filled = seat.guest.trim() !== '';
+    html += `<div class="seat-cell ${filled ? 'filled' : ''}" onclick="openSeatModal('${match.id}',${idx})">`;
+    html += `<div class="seat-num">${seat.number}</div>`;
+    if (filled) {
+      html += `<div class="seat-name">${escHtml(seat.guest)}</div>`;
+    } else {
+      html += `<div class="seat-empty">(空席)</div>`;
+    }
+    html += `</div>`;
+  });
+  html += `</div></div>`;
+
+  // Memo
+  if (match.memo) {
+    html += `<div class="card-memo">📝 <span class="card-memo-text">${escHtml(match.memo)}</span></div>`;
+  }
+
+  // Actions
+  html += `<div class="card-actions">`;
+  html += `<button class="btn-card-action" onclick="editMemo('${match.id}')">📝 メモ編集</button>`;
+  html += `</div>`;
+
+  html += `</div>`;
+  return html;
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Seat Modal ──
+function openSeatModal(matchId, seatIdx) {
+  const match = allMatches.find(m => m.id === matchId);
+  if (!match) return;
+  const seat = match.seats[seatIdx];
+  if (!seat) return;
+
+  currentModal = { matchId, seatIndex: seatIdx };
+  const filled = seat.guest.trim() !== '';
+
+  document.getElementById('modal-seat-title').textContent = `座席 ${seat.number}`;
+  const inp = document.getElementById('modal-seat-input');
+
+  if (filled) {
+    document.getElementById('modal-seat-sub').textContent = `現在: ${seat.guest}`;
+    inp.value = seat.guest;
+    document.getElementById('modal-btns-empty').classList.add('hidden');
+    document.getElementById('modal-btns-filled').classList.remove('hidden');
+  } else {
+    document.getElementById('modal-seat-sub').textContent = '観戦者名を入力してください';
+    inp.value = '';
+    document.getElementById('modal-btns-empty').classList.remove('hidden');
+    document.getElementById('modal-btns-filled').classList.add('hidden');
+  }
+
+  document.getElementById('modal-seat').classList.remove('hidden');
+  setTimeout(() => inp.focus(), 200);
+}
+
+function closeSeatModal(e) {
+  if (e && e.target !== e.currentTarget) return;
+  closeSeatModalForce();
+}
+
+function closeSeatModalForce() {
+  document.getElementById('modal-seat').classList.add('hidden');
+  currentModal = null;
+}
+
+async function saveSeat() {
+  if (!currentModal) return;
+  const { matchId, seatIndex } = currentModal;
+  const name = document.getElementById('modal-seat-input').value.trim();
+  if (!name) { toast('名前を入力してください', 'error'); return; }
+
+  const match = allMatches.find(m => m.id === matchId);
+  if (!match) return;
+  const seat = match.seats[seatIndex];
+
+  // Optimistic update
+  seat.guest = name;
+  renderMatches();
+  closeSeatModalForce();
+  toast('✓ 座席を更新しました');
+
+  // API call
+  try {
+    const prop = {};
+    prop[seat.prop] = { rich_text: [{ text: { content: name } }] };
+    await notionAPI(`/pages/${matchId}`, 'PATCH', { properties: prop });
+  } catch (e) {
+    console.error('Seat update error:', e);
+    toast('座席の更新に失敗しました: ' + e.message, 'error');
+    loadMatches(); // reload to revert
+  }
+}
+
+async function clearSeat() {
+  if (!currentModal) return;
+  const { matchId, seatIndex } = currentModal;
+  const match = allMatches.find(m => m.id === matchId);
+  if (!match) return;
+  const seat = match.seats[seatIndex];
+
+  // Optimistic update
+  seat.guest = '';
+  renderMatches();
+  closeSeatModalForce();
+  toast('✓ 空席にしました');
+
+  try {
+    const prop = {};
+    prop[seat.prop] = { rich_text: [] };
+    await notionAPI(`/pages/${matchId}`, 'PATCH', { properties: prop });
+  } catch (e) {
+    console.error('Clear seat error:', e);
+    toast('座席の更新に失敗しました: ' + e.message, 'error');
+    loadMatches();
+  }
+}
+
+// ── Memo Edit ──
+async function editMemo(matchId) {
+  const match = allMatches.find(m => m.id === matchId);
+  if (!match) return;
+  const newMemo = prompt('メモを入力', match.memo || '');
+  if (newMemo === null) return;
+
+  match.memo = newMemo;
+  renderMatches();
+  toast('✓ メモを更新しました');
+
+  try {
+    await notionAPI(`/pages/${matchId}`, 'PATCH', {
+      properties: { 'MEMO': { rich_text: newMemo ? [{ text: { content: newMemo } }] : [] } }
+    });
+  } catch (e) {
+    console.error('Memo update error:', e);
+    toast('メモの更新に失敗しました: ' + e.message, 'error');
+    loadMatches();
+  }
+}
+
+// ── Create Match ──
+async function createMatch() {
+  const opponent = document.getElementById('inp-opponent').value.trim();
+  const dateStr = document.getElementById('inp-date').value;
+  const time = document.getElementById('inp-time').value.trim();
+  const memo = document.getElementById('inp-memo').value.trim();
+
+  if (!opponent) { toast('対戦相手を入力してください', 'error'); return; }
+  if (!dateStr) { toast('試合日を選択してください', 'error'); return; }
+
+  const d = new Date(dateStr + 'T00:00:00');
+  const dayOfWeek = DAY_NAMES[d.getDay()];
+
+  const btn = document.getElementById('btn-create');
+  btn.disabled = true;
+  btn.textContent = '登録中...';
+
+  try {
+    const props = {
+      '対戦相手': { title: [{ text: { content: opponent } }] },
+      '試合日 ':  { date: { start: dateStr } },
+      ' 開始時間': { rich_text: time ? [{ text: { content: time } }] : [] },
+      '曜日D':    { rich_text: [{ text: { content: dayOfWeek } }] },
+    };
+    if (memo) {
+      props['MEMO'] = { rich_text: [{ text: { content: memo } }] };
+    }
+
+    await notionAPI('/pages', 'POST', {
+      parent: { database_id: DB_ID },
+      properties: props,
+    });
+
+    toast('✓ 試合を登録しました');
+    document.getElementById('inp-opponent').value = '';
+    document.getElementById('inp-date').value = '';
+    document.getElementById('inp-time').value = '';
+    document.getElementById('inp-memo').value = '';
+
+    switchTab('upcoming');
+    await loadMatches();
+  } catch (e) {
+    console.error('Create error:', e);
+    toast('登録に失敗しました: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⚽ 試合を登録する';
+  }
+}
+
+// ── Enter key in modal ──
+document.getElementById('modal-seat-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); saveSeat(); }
+});
+
+// ── Init ──
+loadMatches();
+</script>
+<script src="foo-mobile.js"></script>
+</body>
+</html>

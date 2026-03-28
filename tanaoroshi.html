@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>棚卸管理 | f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
+
+:root {
+  --bg: #0a0a0a; --s1: #111; --s2: #1a1a1a;
+  --text: #e8e8e8; --muted: #888; --accent: #f0a500;
+  --border: #2a2a2a; --red: #c0392b; --green: #27ae60;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4;
+    --text: #1a1208; --muted: #a08060; --accent: #e07000;
+    --border: #e8d8c4; --red: #dc2626; --green: #1a9e4a;
+  }
+}
+[data-theme="dark"] {
+  --bg: #0a0a0a; --s1: #111; --s2: #1a1a1a;
+  --text: #e8e8e8; --muted: #888; --accent: #f0a500;
+  --border: #2a2a2a; --red: #c0392b; --green: #27ae60;
+}
+[data-theme="light"] {
+  --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4;
+  --text: #1a1208; --muted: #a08060; --accent: #e07000;
+  --border: #e8d8c4; --red: #dc2626; --green: #1a9e4a;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', sans-serif; }
+body { min-height: 100vh; display: flex; flex-direction: column; padding-bottom: 100px; }
+
+#app { display: none; flex-direction: column; padding: 16px; flex: 1; }
+.app-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+.back-btn { background: var(--s2); border: 1.5px solid var(--border); border-radius: 6px; padding: 8px 12px; cursor: pointer; color: var(--text); font-size: 12px; font-family: 'Noto Sans JP', sans-serif; }
+.back-btn:active { transform: scale(0.95); }
+.app-title { font-size: 20px; font-weight: 700; }
+.app-date { font-size: 12px; color: var(--muted); text-align: right; }
+
+.status-section { text-align: center; padding: 20px; background: var(--s2); border: 1.5px solid var(--border); border-radius: 8px; }
+.status-label { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.status-text { font-size: 18px; font-weight: 700; color: var(--accent); }
+
+.summary-cards { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.summary-card { background: var(--s2); border: 1.5px solid var(--border); border-radius: 8px; padding: 16px; cursor: pointer; transition: all 0.15s; }
+.summary-card:active { transform: scale(0.98); }
+.summary-card:hover { border-color: var(--accent); background: var(--s1); }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.card-warehouse { font-size: 14px; font-weight: 700; }
+.card-total { font-size: 14px; font-weight: 700; color: var(--accent); }
+.card-details { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); line-height: 1.6; }
+.card-details.expanded { display: block; }
+.detail-row { display: flex; justify-content: space-between; padding: 4px 0; }
+.detail-cat { font-weight: 700; color: var(--text); }
+
+.button-area { position: fixed; bottom: 0; left: 0; right: 0; padding: 12px 16px; background: var(--bg); border-top: 1.5px solid var(--border); display: flex; gap: 12px; }
+.btn { flex: 1; padding: 14px; border-radius: 8px; border: none; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'Noto Sans JP', sans-serif; }
+.btn-primary { background: var(--accent); color: #000; }
+.btn-primary:active { transform: scale(0.97); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.progress-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; }
+.progress-overlay.visible { display: flex; }
+.progress-box { background: var(--s1); border: 1.5px solid var(--border); border-radius: 12px; padding: 24px; max-width: 300px; text-align: center; }
+.progress-label { font-size: 14px; margin-bottom: 12px; color: var(--text); }
+.progress-bar { width: 100%; height: 6px; background: var(--s2); border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
+.progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s ease; }
+.progress-detail { font-size: 11px; color: var(--muted); margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="app-header">
+    <button class="back-btn" onclick="location.href='https://mitsurumukaihata.github.io/foo-portal/'">← ポータルへ戻る</button>
+    <div class="app-title">棚卸集計</div>
+    <div class="app-date" id="app-date"></div>
+  </div>
+  <div style="flex:1; display:flex; flex-direction:column; gap:16px;">
+    <div class="status-section">
+      <div class="status-label">集計状態</div>
+      <div class="status-text" id="status-text">クリックして集計開始</div>
+    </div>
+    <div id="summary-container" style="display:none; flex:1; overflow-y:auto;">
+      <div class="summary-cards" id="summary-cards"></div>
+    </div>
+  </div>
+</div>
+
+<div class="progress-overlay" id="progress-overlay">
+  <div class="progress-box">
+    <div class="progress-label" id="progress-label">準備中...</div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="progress-detail" id="progress-detail"></div>
+  </div>
+</div>
+
+<div class="button-area">
+  <button class="btn btn-primary" id="collect-btn">集計する</button>
+  <button class="btn btn-primary" id="pdf-btn" style="display:none;">PDF発行</button>
+</div>
+
+<script src="foo-common.js"></script>
+<script>
+const PROXY = 'https://notion-proxy.33322666666mm.workers.dev';
+
+// ════════ MANUFACTURER MAPPING ════════
+const MAKER_MAP = {
+  'M646':'TOYO','M676':'TOYO','M125':'TOYO','M317':'TOYO','M323':'TOYO','M319':'TOYO',
+  'M320':'TOYO','M619':'TOYO','M626':'TOYO','M801':'TOYO',
+  'M746':'TOYO','M634':'TOYO','M135':'TOYO','M134e':'TOYO','M131':'TOYO','M614':'TOYO',
+  'M804':'TOYO','M929':'TOYO','M919':'TOYO','M966':'TOYO','M920':'TOYO','M939':'TOYO',
+  'M935':'TOYO','M937':'TOYO','M934':'TOYO','M501':'TOYO','M504':'TOYO','M519':'TOYO',
+  'M890':'TOYO','W910':'TOYO','W900S':'TOYO','W911':'TOYO','W970':'TOYO','W989':'TOYO',
+  'V03e':'TOYO','V02e':'TOYO',
+  'R225':'BS','R241':'BS','R207':'BS','R710':'BS','K370':'BS',
+  'M888':'BS','M899':'BS','W999':'BS',
+  'V600':'BS','W300':'BS','G-8':'BS','G-8P':'BS','G-15':'BS',
+  'SP680':'DL','SP122':'DL','SP001':'DL','SP081':'DL','SP088':'DL',
+  'SPLT50':'DL','SPLT21':'DL','SPLT22':'DL','SP185':'DL','LV01':'DL','LT01':'DL',
+  'G539':'DL','VL10A':'DL','VAN01':'DL','SV01':'DL',
+  'XJE4':'MC','XDW':'MC',
+  'RTM919':'RT','RTM810':'RT','RTM804':'RT','RTM807':'RT','RTM81C-170':'RT',
+  'RTM890':'RT','RTW910':'RT','RTW911':'RT','RTW970':'RT','RTG610':'RT',
+};
+const MAKER_LABEL = { 'TOYO':'TOYO','BS':'BRIDGESTONE','DL':'DUNLOP','MC':'MICHELIN','RT':'再生' };
+const MAKER_ORDER = ['TOYO','BS','DL','MC','RT','その他'];
+
+const DB_CATEGORIES = [
+  { key:'ltl_normal',   name:'LTL TB ノーマル',    wField:'倉庫' },
+  { key:'ltl_studless', name:'LTL TB スタッドレス', wField:'倉庫' },
+  { key:'lts_normal',   name:'LTS ノーマル',       wField:'倉庫' },
+  { key:'lts_studless', name:'LTS スタッドレス',    wField:'倉庫' },
+  { key:'rt',           name:'RT 再生',            wField:'倉庫' },
+  { key:'tt',           name:'T/T チューブタイプ',  wField:'倉庫' },
+  { key:'van',          name:'バン',               wField:'出庫倉庫' },
+];
+
+// stockData[warehouse][catName][pattern][size] = { stock: N, junbi: N }
+// stock = 準備を引いた在庫（実在庫）
+// junbi = 準備数
+// 合計在庫 = stock + junbi
+let stockData = {};
+
+// ════════ SESSION & THEME ════════
+function loadSession() {
+  try { return JSON.parse(localStorage.getItem('foo_user')); } catch(e) { return null; }
+}
+function applyTheme() {
+  const theme = localStorage.getItem('foo_theme');
+  if (theme) document.documentElement.setAttribute('data-theme', theme);
+}
+
+// ════════ INIT ════════
+function init() {
+  applyTheme();
+  document.getElementById('app').style.display = 'flex';
+  const today = new Date();
+  document.getElementById('app-date').textContent =
+    today.getFullYear() + '年' + (today.getMonth()+1) + '月' + today.getDate() + '日';
+}
+
+// ════════ QUERY ALL RECORDS ════════
+async function queryAllRecords(dbId) {
+  let all = [], cursor = undefined;
+  do {
+    const body = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    const res = await fetch(PROXY + '/databases/' + dbId + '/query', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    all = all.concat(data.results || []);
+    cursor = data.has_more ? data.next_cursor : null;
+  } while (cursor);
+  return all;
+}
+
+// ════════ COLLECT DATA ════════
+async function collectData() {
+  document.getElementById('collect-btn').disabled = true;
+  showProgress(true);
+  stockData = {};
+  const total = DB_CATEGORIES.length;
+
+  try {
+    for (let i = 0; i < total; i++) {
+      const cat = DB_CATEGORIES[i];
+      const dbInfo = FOO_DB_BY_KEY[cat.key];
+      if (!dbInfo) { console.warn('DB not found:', cat.key); continue; }
+
+      updateProgress(i / total, cat.name + ' を読み込み中...');
+      const records = await queryAllRecords(dbInfo.stockId);
+
+      // ── レコードの作成日時を取得するヘルパー ──
+      // r.created_time（Notion API標準）→ プロパティ内のcreated_time → last_edited_time の順で探す
+      function getCreatedTime(r) {
+        // 1) ページレベルの created_time
+        if (r.created_time) return r.created_time;
+        // 2) properties から created_time 型を探す（日付プロパティなど）
+        if (r.properties) {
+          for (const p of Object.values(r.properties)) {
+            if (p && p.type === 'created_time' && p.created_time) return p.created_time;
+          }
+        }
+        // 3) last_edited_time フォールバック
+        if (r.last_edited_time) return r.last_edited_time;
+        if (r.properties) {
+          for (const p of Object.values(r.properties)) {
+            if (p && p.type === 'last_edited_time' && p.last_edited_time) return p.last_edited_time;
+          }
+        }
+        return '';
+      }
+
+      // ── STEP 1: 繰越の最新日時を探す ──
+      // 繰越レコードがある場合、それ以前の入出庫は繰越に含まれているので無視する
+      let kurikoshiDate = null;
+      records.forEach(r => {
+        if (r.archived) return;
+        const kubun = fooPropStr(r, '区分');
+        if (kubun === '繰越') {
+          const created = getCreatedTime(r);
+          if (created && (!kurikoshiDate || created > kurikoshiDate)) {
+            kurikoshiDate = created;
+          }
+        }
+      });
+      console.log(cat.name, '繰越基準日:', kurikoshiDate);
+
+      // ── STEP 2: レコードを集計 ──
+      let skipCount = 0, useCount = 0;
+      records.forEach(r => {
+        if (r.archived) return;
+        const kubun = fooPropStr(r, '区分');
+        const qty = parseInt(fooPropStr(r, '数量')) || 0;
+        const size = fooPropStr(r, 'サイズコード');
+        const pattern = fooPropStr(r, 'パターン名');
+        const warehouse = fooPropStr(r, cat.wField);
+
+        if (!kubun || !size || !pattern || !warehouse || warehouse === '未定') return;
+
+        const sign = FOO_KUBUN_SIGN[kubun];
+        if (sign === undefined || sign === 0) return; // 発注中(0)は除外
+
+        // 繰越がある場合: 繰越レコードはOK、それ以前の入出庫は無視
+        if (kurikoshiDate && kubun !== '繰越') {
+          const created = getCreatedTime(r);
+          if (!created || created < kurikoshiDate) {
+            skipCount++;
+            return; // 繰越より前 or 日時不明 → スキップ
+          }
+        }
+        useCount++;
+
+        // データ構造を初期化
+        if (!stockData[warehouse]) stockData[warehouse] = {};
+        if (!stockData[warehouse][cat.name]) stockData[warehouse][cat.name] = {};
+        if (!stockData[warehouse][cat.name][pattern]) stockData[warehouse][cat.name][pattern] = {};
+        if (!stockData[warehouse][cat.name][pattern][size]) stockData[warehouse][cat.name][pattern][size] = { stock: 0, junbi: 0 };
+
+        const cell = stockData[warehouse][cat.name][pattern][size];
+
+        if (kubun === '準備') {
+          // 準備は別トラック: junbiに加算、stockからは引く
+          cell.junbi += qty;
+          cell.stock -= qty;
+        } else {
+          cell.stock += qty * sign;
+        }
+      });
+      console.log(cat.name, '使用:', useCount, 'スキップ:', skipCount);
+    }
+
+    updateProgress(1, '集計完了');
+    showSummary();
+
+  } catch (e) {
+    alert('エラー: ' + e.message);
+    console.error(e);
+  } finally {
+    showProgress(false);
+    document.getElementById('collect-btn').disabled = false;
+  }
+}
+
+function updateProgress(ratio, label) {
+  document.getElementById('progress-fill').style.width = Math.round(ratio * 100) + '%';
+  document.getElementById('progress-label').textContent = label;
+}
+function showProgress(show) {
+  document.getElementById('progress-overlay').classList.toggle('visible', show);
+}
+
+// ════════ SHOW SUMMARY ════════
+function showSummary() {
+  const container = document.getElementById('summary-container');
+  const cards = document.getElementById('summary-cards');
+  cards.innerHTML = '';
+
+  Object.keys(stockData).sort().forEach(wh => {
+    const card = document.createElement('div');
+    card.className = 'summary-card';
+
+    let totalStock = 0, totalJunbi = 0;
+    const details = [];
+
+    Object.entries(stockData[wh]).forEach(([catName, patterns]) => {
+      let catStock = 0, catJunbi = 0;
+      Object.values(patterns).forEach(sizes => {
+        Object.values(sizes).forEach(v => {
+          catStock += Math.max(0, v.stock);
+          catJunbi += v.junbi;
+        });
+      });
+      if (catStock + catJunbi > 0) {
+        details.push({ cat: catName, stock: catStock, junbi: catJunbi });
+        totalStock += catStock;
+        totalJunbi += catJunbi;
+      }
+    });
+
+    card.innerHTML =
+      '<div class="card-header">' +
+        '<span class="card-warehouse">' + wh + '</span>' +
+        '<span class="card-total">' + (totalStock + totalJunbi) + '本 (準備' + totalJunbi + ')</span>' +
+      '</div>' +
+      '<div style="color:var(--muted);font-size:11px;">クリックで詳細表示</div>' +
+      '<div class="card-details">' +
+        details.map(d =>
+          '<div class="detail-row"><span class="detail-cat">' + d.cat + '</span>' +
+          '<span>' + (d.stock + d.junbi) + '本 (準備' + d.junbi + ')</span></div>'
+        ).join('') +
+      '</div>';
+
+    card.addEventListener('click', () => {
+      card.querySelector('.card-details').classList.toggle('expanded');
+    });
+    cards.appendChild(card);
+  });
+
+  container.style.display = 'block';
+  document.getElementById('status-text').textContent = '集計完了 ✓';
+  document.getElementById('pdf-btn').style.display = 'block';
+}
+
+// ════════ SIZE SORTING ════════
+function sortSizes(sizes) {
+  return sizes.slice().sort((a, b) => {
+    const na = parseFloat(a) || 0, nb = parseFloat(b) || 0;
+    if (na !== nb) return na - nb;
+    return a.localeCompare(b);
+  });
+}
+
+// ════════ GENERATE PDF (新しいウィンドウで印刷) ════════
+function generatePDF() {
+  const today = new Date();
+  const dateStr = today.getFullYear() + '年' + (today.getMonth()+1) + '月' + today.getDate() + '日';
+  const warehouses = Object.keys(stockData).sort();
+
+  // 倉庫ごとのHTMLを組み立て
+  let pagesHtml = '';
+
+  warehouses.forEach((wh, whIdx) => {
+    let pageTotal = 0, pageTotalJunbi = 0;
+    Object.values(stockData[wh]).forEach(patterns => {
+      Object.values(patterns).forEach(sizes => {
+        Object.values(sizes).forEach(v => {
+          pageTotal += Math.max(0, v.stock);
+          pageTotalJunbi += v.junbi;
+        });
+      });
+    });
+
+    let blocksHtml = '';
+
+    DB_CATEGORIES.forEach(cat => {
+      const patterns = stockData[wh][cat.name];
+      if (!patterns) return;
+
+      // カテゴリ内の合計チェック
+      let catTotal = 0;
+      Object.values(patterns).forEach(sizes => {
+        Object.values(sizes).forEach(v => {
+          catTotal += Math.max(0, v.stock) + v.junbi;
+        });
+      });
+      if (catTotal === 0) return;
+
+      // メーカー別にグループ化
+      const makers = {};
+      Object.entries(patterns).forEach(([pat, sizes]) => {
+        const maker = MAKER_MAP[pat] || 'その他';
+        if (!makers[maker]) makers[maker] = {};
+        makers[maker][pat] = sizes;
+      });
+
+      let catHtml = '<div class="cat-block">';
+      catHtml += '<div class="cat-header">' + cat.name + '</div>';
+
+      // テーブルヘッダ
+      catHtml += '<table><thead><tr>' +
+        '<th class="col-size">サイズ</th>' +
+        '<th class="col-num">実在庫</th>' +
+        '<th class="col-num">準備</th>' +
+        '<th class="col-num">合計</th>' +
+        '<th class="col-actual">実数</th>' +
+        '</tr></thead><tbody>';
+
+      // メーカー順にソート
+      MAKER_ORDER.forEach(mk => {
+        if (!makers[mk]) return;
+        const makerPatterns = makers[mk];
+
+        // メーカー行
+        if (Object.keys(makers).length > 1) {
+          catHtml += '<tr class="maker-row"><td colspan="5">' + (MAKER_LABEL[mk] || mk) + '</td></tr>';
+        }
+
+        // パターン別
+        Object.entries(makerPatterns).forEach(([pat, sizes]) => {
+          let patStock = 0, patJunbi = 0;
+          Object.values(sizes).forEach(v => {
+            patStock += Math.max(0, v.stock);
+            patJunbi += v.junbi;
+          });
+          if (patStock + patJunbi === 0) return;
+
+          // パターンヘッダ行
+          catHtml += '<tr class="pattern-row">' +
+            '<td class="col-size">' + pat + '</td>' +
+            '<td class="col-num">' + patStock + '</td>' +
+            '<td class="col-num">' + patJunbi + '</td>' +
+            '<td class="col-num">' + (patStock + patJunbi) + '</td>' +
+            '<td class="col-actual"></td>' +
+            '</tr>';
+
+          // サイズ行
+          sortSizes(Object.keys(sizes)).forEach(size => {
+            const v = sizes[size];
+            const st = Math.max(0, v.stock);
+            const jb = v.junbi;
+            if (st + jb === 0) return;
+
+            catHtml += '<tr class="size-row">' +
+              '<td class="col-size">' + size + '</td>' +
+              '<td class="col-num">' + st + '</td>' +
+              '<td class="col-num">' + (jb > 0 ? jb : '') + '</td>' +
+              '<td class="col-num">' + (st + jb) + '</td>' +
+              '<td class="col-actual"></td>' +
+              '</tr>';
+          });
+        });
+      });
+
+      catHtml += '</tbody></table></div>';
+      blocksHtml += catHtml;
+    });
+
+    pagesHtml += '<div class="page' + (whIdx > 0 ? ' page-break' : '') + '">' +
+      '<div class="page-header">' +
+        '<h1>棚卸表 — ' + wh + '</h1>' +
+        '<div class="page-date">' + dateStr + '　合計: ' + (pageTotal + pageTotalJunbi) + '本 (実在庫' + pageTotal + ' + 準備' + pageTotalJunbi + ')</div>' +
+      '</div>' +
+      '<div class="columns">' + blocksHtml + '</div>' +
+      '</div>';
+  });
+
+  // 印刷用HTMLを生成
+  const printHtml = '<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">' +
+    '<title>棚卸表 ' + dateStr + '</title>' +
+    '<style>' +
+    '@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap");' +
+    '*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }' +
+    'body { font-family: "Noto Sans JP", sans-serif; color: #000; background: #fff; font-size: 9px; }' +
+    '.page { padding: 12mm 10mm; }' +
+    '.page-break { page-break-before: always; }' +
+    '.page-header { text-align: center; margin-bottom: 8mm; border-bottom: 2px solid #000; padding-bottom: 4mm; }' +
+    '.page-header h1 { font-size: 16px; font-weight: 700; margin-bottom: 2px; }' +
+    '.page-date { font-size: 10px; color: #555; }' +
+    '.columns { column-count: 2; column-gap: 8mm; }' +
+    '.cat-block { break-inside: avoid; margin-bottom: 5mm; border: 1px solid #ccc; padding: 3mm; background: #fafafa; }' +
+    '.cat-header { font-size: 11px; font-weight: 700; padding-bottom: 2mm; border-bottom: 1.5px solid #333; margin-bottom: 2mm; }' +
+    'table { width: 100%; border-collapse: collapse; }' +
+    'thead th { font-size: 8px; font-weight: 700; color: #555; border-bottom: 1px solid #999; padding: 1mm 0; text-align: center; }' +
+    'th.col-size, td.col-size { text-align: left; width: 45%; }' +
+    'th.col-num, td.col-num { text-align: center; width: 10%; }' +
+    'th.col-actual, td.col-actual { text-align: center; width: 15%; }' +
+    '.maker-row td { font-size: 9px; font-weight: 700; color: #333; padding: 2mm 0 1mm 0; border-bottom: 0.5px solid #ccc; }' +
+    '.pattern-row td { font-size: 9px; font-weight: 700; background: #eee; padding: 1mm 2mm; border-bottom: 0.5px solid #bbb; }' +
+    '.size-row td { font-size: 8px; padding: 0.8mm 2mm; border-bottom: 0.5px dotted #ddd; }' +
+    '.size-row td.col-size { padding-left: 5mm; }' +
+    'td.col-actual { border: 1px solid #aaa; min-height: 5mm; background: #fff; }' +
+    '.size-row td.col-actual { height: 5mm; }' +
+    '@media print {' +
+    '  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }' +
+    '  .no-print { display: none !important; }' +
+    '  .page { padding: 10mm 8mm; }' +
+    '}' +
+    '@media screen {' +
+    '  .print-bar { position: sticky; top: 0; z-index: 100; background: #333; color: #fff; padding: 10px 16px; display: flex; gap: 12px; align-items: center; }' +
+    '  .print-bar button { background: #f0a500; color: #000; border: none; padding: 8px 20px; border-radius: 6px; font-weight: 700; font-size: 14px; cursor: pointer; font-family: "Noto Sans JP", sans-serif; }' +
+    '  .print-bar button:active { transform: scale(0.97); }' +
+    '  .print-bar span { font-size: 12px; }' +
+    '}' +
+    '</style></head><body>' +
+    '<div class="print-bar no-print">' +
+      '<button onclick="window.print()">印刷 / PDF保存</button>' +
+      '<span>印刷ダイアログで「PDFとして保存」を選択してください</span>' +
+    '</div>' +
+    pagesHtml +
+    '</body></html>';
+
+  // 新しいウィンドウで開く
+  const w = window.open('', '_blank');
+  if (!w) {
+    alert('ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。');
+    return;
+  }
+  w.document.write(printHtml);
+  w.document.close();
+}
+
+// ════════ EVENT LISTENERS ════════
+document.getElementById('collect-btn').addEventListener('click', collectData);
+document.getElementById('pdf-btn').addEventListener('click', generatePDF);
+
+// ════════ INIT ════════
+window.addEventListener('load', init);
+</script>
+</body>
+</html>

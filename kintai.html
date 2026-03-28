@@ -32,16 +32,6 @@
     --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --red: #dc2626; --blue: #2563eb;
   }
 }
-[data-theme="dark"] {
-  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
-  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
-  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --red: #ef4444; --blue: #3b82f6;
-}
-[data-theme="light"] {
-  --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
-  --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208; --muted: #a08060;
-  --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --red: #dc2626; --blue: #2563eb;
-}
 
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; max-width:480px; margin:0 auto; }
@@ -151,22 +141,7 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 .shiteikyu-name { font-size:14px; font-weight:700; color:var(--text); }
 .shiteikyu-sub { font-size:11px; color:var(--muted); margin-top:2px; }
 
-/* ── 統合打刻画面（A案） ── */
-.a-time-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:6px; }
-.a-time-box { background:var(--s2); border:1.5px solid var(--border); border-radius:12px; padding:14px 10px; text-align:center; cursor:pointer; transition:all 0.15s; }
-.a-time-box:active { transform:scale(0.98); }
-.a-time-box.focus { border-color:var(--accent); background:rgba(240,165,0,0.06); }
-.a-time-box.done { border-color:var(--green); background:rgba(34,197,94,0.06); }
-.a-time-box .a-label { font-size:10px; color:var(--muted); margin-bottom:4px; letter-spacing:0.08em; }
-.a-time-box.focus .a-label { color:var(--accent); }
-.a-time-box.done .a-label { color:var(--green); }
-.a-time-box .a-value { font-family:'DM Mono',monospace; font-size:28px; font-weight:700; }
-.a-time-box .a-value.empty { color:var(--muted); font-size:13px; font-weight:400; }
-.a-time-box .a-value.filled { color:var(--accent); }
-.a-time-box.done .a-value { color:var(--green); }
-.a-indicator { font-size:10px; text-align:center; color:var(--accent); margin-bottom:6px; font-weight:700; }
-
-/* ── 打刻画面（修正用） ── */
+/* ── 打刻画面 ── */
 .time-disp { background:var(--s2); border:1.5px solid var(--border); border-radius:12px; padding:20px; text-align:center; margin-bottom:12px; transition:border-color 0.15s; }
 .time-disp.focus { border-color:var(--accent); }
 .time-disp.error { border-color:var(--red); }
@@ -293,12 +268,6 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 </div>
 
 <script>
-// ── テーマ同期（ポータルと連動）──
-(function(){
-  const t = localStorage.getItem('foo_portal_theme') || 'auto';
-  if (t !== 'auto') document.documentElement.setAttribute('data-theme', t);
-})();
-
 // ─── 設定 ──────────────────────────────────────────────────────────────────
 const WORKER_URL   = 'https://notion-proxy.33322666666mm.workers.dev';
 const KINTAI_DB    = '200a695f8e8880b181d8c77b7dde51b5';
@@ -476,11 +445,6 @@ async function renderHome() {
     </div>`;
   }).join('');
 
-  // A案: 横並び統合テンキー（1画面完結）
-  // 既存データがあればセット
-  const sDig = syukkinDisp ? syukkinDisp.replace(':','').split('') : [];
-  const tDig = taikinDisp  ? taikinDisp.replace(':','').split('')  : [];
-
   el.innerHTML = `
     <div class="content">
       <div class="user-row">
@@ -494,10 +458,27 @@ async function renderHome() {
       <div class="screen-label">日付を選択（過去5日まで入力可）</div>
       <div class="date-selector">${dateChips}</div>
 
+      <div class="today-card">
+        <div class="today-row">
+          <div class="today-item">
+            <div class="today-label">出勤</div>
+            <div class="today-time ${syukkinDisp?'done':'empty'}">${syukkinDisp||'未打刻'}</div>
+            <div class="today-status ${syukkinDisp?'status-done':'status-empty'}">${syukkinDisp?'記録済み':'—'}</div>
+          </div>
+          <div class="today-div"></div>
+          <div class="today-item">
+            <div class="today-label">退勤</div>
+            <div class="today-time ${taikinDisp?'done':'empty'}">${taikinDisp||'未打刻'}</div>
+            <div class="today-status ${taikinDisp?'status-done':'status-empty'}">${taikinDisp?'記録済み':'—'}</div>
+          </div>
+        </div>
+      </div>
+
       ${isOld ? `
       <div class="request-old">
         <strong>⛔ 6日以上前の打刻は直接入力できません</strong><br>
-        修正が必要な場合は社長（向畑）に修正依頼を送ってください。
+        修正が必要な場合は社長（向畑）に修正依頼を送ってください。<br>
+        過去の打刻を管理するのは労基法上も大切なことです。
       </div>
       <div class="shiteikyu-btn" onclick="goRequest('${selectedDate}','${syukkinDisp||''}','${taikinDisp||''}')">
         <div class="shiteikyu-icon">
@@ -512,51 +493,40 @@ async function renderHome() {
         </div>
         <div style="color:var(--muted);font-size:18px;">›</div>
       </div>` : `
-      <div class="a-indicator" id="home-indicator">▼ ${!syukkinDisp ? '出勤' : '退勤'}を入力中</div>
-      <div class="a-time-row">
-        <div class="a-time-box ${!syukkinDisp?'focus':'done'}" id="home-box-s" onclick="homeFocus('s')">
-          <div class="a-label">出勤</div>
-          <div class="a-value ${syukkinDisp?'':'empty'}" id="home-val-s">${syukkinDisp||'タップして入力'}</div>
+      <div class="screen-label">打刻</div>
+      <div class="action-grid">
+        <div class="action-card ${!syukkinDisp?'available':'recorded'}"
+          data-type="syukkin" data-time="${syukkinDisp||''}"
+          onclick="${syukkinDisp?'goModify(this)':'goSyukkin()'}">
+          <div class="action-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="${!syukkinDisp?'var(--accent)':'var(--green)'}" stroke-width="1.6" stroke-linecap="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <div class="action-name ${!syukkinDisp?'accent':''}" style="${syukkinDisp?'color:var(--green)':''}">${syukkinDisp?'出勤済み':'出勤打刻'}</div>
+          <div class="action-sub">${syukkinDisp?syukkinDisp+' ✎ タップで修正':'タップして入力'}</div>
         </div>
-        <div class="a-time-box ${!syukkinDisp?'':'focus'}" id="home-box-t" onclick="homeFocus('t')">
-          <div class="a-label">退勤</div>
-          <div class="a-value ${taikinDisp?'':'empty'}" id="home-val-t">${taikinDisp||'タップして入力'}</div>
+        <div class="action-card ${!taikinDisp?'available':'recorded'}"
+          data-type="taikin" data-time="${taikinDisp||''}"
+          onclick="${taikinDisp?'goModify(this)':'goTaikin()'}">
+          <div class="action-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="${!taikinDisp?'var(--accent)':'var(--green)'}" stroke-width="1.6" stroke-linecap="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 8 14"/>
+            </svg>
+          </div>
+          <div class="action-name ${!taikinDisp?'accent':''}" style="${taikinDisp?'color:var(--green)':''}">${taikinDisp?'退勤済み':'退勤打刻'}</div>
+          <div class="action-sub">${taikinDisp?taikinDisp+' ✎ タップで修正':'タップして入力'}</div>
         </div>
       </div>
-
-      <div class="numpad" id="home-numpad">${buildNumpadHTML()}</div>
-
+      ${!syukkinDisp&&!taikinDisp&&isToday ? `
       <div class="kyukei-note">
-        <strong style="color:var(--accent2);">休憩1時間未満の場合</strong><br>
-        退勤時刻をずらして入力してください<br>
-        例）9:30〜15:00（休憩30分）→ <strong>打刻は15:30</strong>
-      </div>
+        <strong style="color:var(--accent2);">休憩時間について</strong><br>
+        休憩1時間未満の場合は退勤時刻をずらして入力してください<br>
+        例）実働9:30〜15:00（休憩30分）→ <strong>打刻は15:30</strong><br>
+        備考欄に実際の休憩時間を記入
+      </div>` : ''}`}
 
-      <div class="screen-label">チェック項目（該当するものにチェック）</div>
-      <div class="checks">
-        <div class="check-item" onclick="homeToggleCheck(this,'yukyu')" id="home-chk-yukyu">
-          <div class="check-box"><svg class="check-mark" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
-          <div class="check-label">有給使用</div>
-        </div>
-        <div class="check-item" onclick="homeToggleCheck(this,'kekkin')" id="home-chk-kekkin">
-          <div class="check-box"><svg class="check-mark" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
-          <div class="check-label">欠勤</div>
-        </div>
-        <div class="check-item" onclick="homeToggleCheck(this,'rousai')" id="home-chk-rousai">
-          <div class="check-box"><svg class="check-mark" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
-          <div class="check-label">労災扱い</div>
-        </div>
-      </div>
-      <div id="home-yukyu-wrap" style="display:none;">
-        <div class="screen-label">有給使用時間（時間単位）</div>
-        <input class="yukyu-inp" type="number" inputmode="decimal" placeholder="例：2" id="home-yukyu-inp">
-      </div>
-      <div class="screen-label">備考（任意）</div>
-      <textarea class="memo-input" id="home-memo" placeholder="例）休憩30分のため15:30打刻"></textarea>
-      <div id="home-error"></div>
-      <button class="btn-primary" id="home-submit" onclick="homeSubmit()">打刻を記録する</button>`}
-
-      <div class="screen-label" style="margin-top:14px;">その他</div>
+      <div class="screen-label" style="margin-top:8px;">その他</div>
       <div class="shiteikyu-btn" onclick="goShiteikyu()">
         <div class="shiteikyu-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -587,149 +557,12 @@ async function renderHome() {
         <div style="color:var(--muted);font-size:18px;">›</div>
       </div>
     </div>`;
-
-  // ── 統合テンキー初期化 ──
-  if (!isOld) {
-    window._homeDigits = { s: sDig.slice(), t: tDig.slice() };
-    window._homeFocus = !syukkinDisp ? 's' : 't';
-    window._homeChecks = { yukyu: false, kekkin: false, rousai: false, yukyuTime: '' };
-
-    document.getElementById('home-numpad')?.querySelectorAll('.np-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const v = btn.dataset.val;
-        const f = window._homeFocus;
-        const arr = window._homeDigits[f];
-        if (v === 'del') arr.pop();
-        else if (v && arr.length < 4) arr.push(v);
-        homeUpdateDisp(f);
-        // 出勤4桁入力完了 → 退勤に自動フォーカス
-        if (arr.length === 4 && f === 's' && window._homeDigits.t.length === 0) {
-          setTimeout(() => homeFocus('t'), 250);
-        }
-      });
-    });
-  }
 }
 
 function selectKintaiDate(iso) {
   selectedDate = iso;
   renderHome();
 }
-
-// ─── A案: 統合テンキー ヘルパー ────────────────────────────────────────────
-function homeFocus(type) {
-  window._homeFocus = type;
-  const bs = document.getElementById('home-box-s');
-  const bt = document.getElementById('home-box-t');
-  if (!bs || !bt) return;
-  // focusクラスの切替（doneクラスは記録済みデータの場合のみ）
-  bs.classList.toggle('focus', type === 's');
-  bt.classList.toggle('focus', type === 't');
-  // doneでないほうはfocusが外れたら通常状態に戻す
-  if (type === 't' && !bs.classList.contains('done')) bs.classList.remove('focus');
-  if (type === 's' && !bt.classList.contains('done')) bt.classList.remove('focus');
-  const ind = document.getElementById('home-indicator');
-  if (ind) ind.textContent = type === 's' ? '▼ 出勤を入力中' : '▼ 退勤を入力中';
-}
-
-function homeUpdateDisp(type) {
-  const arr = window._homeDigits[type];
-  const el = document.getElementById(type === 's' ? 'home-val-s' : 'home-val-t');
-  const box = document.getElementById(type === 's' ? 'home-box-s' : 'home-box-t');
-  if (!el) return;
-  if (arr.length === 0) {
-    el.className = 'a-value empty';
-    el.textContent = 'タップして入力';
-    box?.classList.remove('done');
-  } else {
-    const s = arr.join('').padEnd(4, '_');
-    el.className = arr.length === 4 ? 'a-value filled' : 'a-value';
-    el.textContent = `${s.slice(0,2)}:${s.slice(2,4)}`;
-    if (arr.length === 4) box?.classList.add('done');
-    else box?.classList.remove('done');
-  }
-}
-
-function homeToggleCheck(el, key) {
-  window._homeChecks[key] = !window._homeChecks[key];
-  el.classList.toggle('on', window._homeChecks[key]);
-  const wrap = document.getElementById('home-yukyu-wrap');
-  if (wrap) wrap.style.display = window._homeChecks.yukyu ? 'block' : 'none';
-}
-
-async function homeSubmit() {
-  const sArr = window._homeDigits.s;
-  const tArr = window._homeDigits.t;
-  const errEl = document.getElementById('home-error');
-  errEl.innerHTML = '';
-
-  // 少なくとも出勤か退勤のどちらかは入力必須
-  if (sArr.length < 4 && tArr.length < 4) {
-    errEl.innerHTML = '<div class="error-box">出勤または退勤の時刻を入力してください</div>';
-    return;
-  }
-
-  // 時刻バリデーション
-  if (sArr.length > 0 && sArr.length < 4) {
-    errEl.innerHTML = '<div class="error-box">出勤時刻を4桁で入力してください</div>';
-    return;
-  }
-  if (tArr.length > 0 && tArr.length < 4) {
-    errEl.innerHTML = '<div class="error-box">退勤時刻を4桁で入力してください</div>';
-    return;
-  }
-
-  let sNum = sArr.length === 4 ? parseInt(sArr.join('')) : null;
-  let tNum = tArr.length === 4 ? parseInt(tArr.join('')) : null;
-
-  if (sNum !== null) {
-    const h = Math.floor(sNum/100), m = sNum%100;
-    if (h > 23 || m > 59) { errEl.innerHTML = '<div class="error-box">出勤時刻が正しくありません</div>'; return; }
-  }
-  if (tNum !== null) {
-    const h = Math.floor(tNum/100), m = tNum%100;
-    if (h > 23 || m > 59) { errEl.innerHTML = '<div class="error-box">退勤時刻が正しくありません</div>'; return; }
-  }
-
-  const chk = window._homeChecks;
-  const memoVal = document.getElementById('home-memo')?.value || '';
-  const yukyuTime = document.getElementById('home-yukyu-inp')?.value || '';
-  const btn = document.getElementById('home-submit');
-  btn.disabled = true; btn.textContent = '送信中…';
-
-  try {
-    const props = {};
-    if (sNum !== null) props['出勤'] = { number: sNum };
-    if (tNum !== null) props['退勤'] = { number: tNum };
-    props['有給使用'] = { checkbox: chk.yukyu };
-    props['欠勤']     = { checkbox: chk.kekkin };
-    props['労災扱い'] = { checkbox: chk.rousai };
-    props['備考']     = { rich_text: memoVal ? [{ text: { content: memoVal } }] : [] };
-    if (chk.yukyu && yukyuTime) {
-      props['有給使用時間'] = { number: parseFloat(yukyuTime) || 0 };
-    }
-
-    if (selectedDateRecord) {
-      // 既存レコードを更新
-      await notionAPI('PATCH', `/pages/${selectedDateRecord.id}`, { properties: props });
-    } else {
-      // 新規作成
-      props['社員名'] = { select: { name: USER.name } };
-      props['日付']   = { date: { start: selectedDate } };
-      props['タイトル'] = { title: [{ text: { content: `${selectedDate} - ${USER.name}` } }] };
-      await notionAPI('POST', '/pages', { parent: { database_id: KINTAI_DB }, properties: props });
-    }
-
-    const parts = [];
-    if (sNum !== null) parts.push('出勤');
-    if (tNum !== null) parts.push('退勤');
-    showDone(`${parts.join('・')}を記録しました`, `${USER.name} · ${formatDate(selectedDate)}`);
-  } catch(e) {
-    errEl.innerHTML = `<div class="error-box">送信に失敗しました。<br><small>${e.message}</small></div>`;
-    btn.disabled = false; btn.textContent = '打刻を記録する';
-  }
-}
-
 // ─── 時刻修正画面 ─────────────────────────────────────────────────────────
 function goModify(el) {
   // data属性からtype・currentTimeを取得（テンプレートリテラル内のエスケープ問題を回避）
@@ -1788,6 +1621,5 @@ window.onload = () => {
   renderHome();
 };
 </script>
-<script src="foo-mobile.js"></script>
 </body>
 </html>

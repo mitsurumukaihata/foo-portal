@@ -230,7 +230,6 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .stock-count { text-align: center; flex: 1; min-width: 0; }
 .stock-count-num { font-size: 16px; font-weight: 700; font-family: 'DM Mono', monospace; }
 .stock-count-num.zero { color: var(--muted); }
-.stock-count-num.has-history { color: var(--text); }
 .stock-count-num.positive { color: var(--green); }
 .stock-count-label { font-size: 9px; color: var(--muted); margin-top: 1px; }
 .stock-empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; }
@@ -972,17 +971,11 @@ function renderStockCatSelect(size, matching) {
   const el = document.getElementById('stock-content');
   el.innerHTML = `<div class="content"><div class="screen-label">在庫確認</div><div class="screen-title">カテゴリーを選択</div><div class="screen-sub">${size}</div><div class="cat-select-grid">${matching.map(([k, db]) => `<div class="cat-sel-btn" onclick="loadStockData('${size}','${k}')"><span class="csb-icon">${db.icon}</span><div class="csb-name">${db.name}</div><div class="csb-sub">${db.sub}</div></div>`).join('')}</div><div style="padding:0 20px;"><button class="btn-secondary" onclick="renderStockHome()">← 戻る</button></div></div>`;
 }
-// ── 繰越日を取得（該当サイズの繰越レコードから取得）──
-async function getKurikoshiDate(dbId, sizeFilter) {
+// ── 繰越日を取得（DBから区分="繰越"の最新レコードを探す）──
+async function getKurikoshiDate(dbId) {
   try {
-    const filter = sizeFilter
-      ? { and: [
-          { property: '区分', select: { equals: '繰越' } },
-          { property: 'サイズコード', select: { equals: sizeFilter } }
-        ]}
-      : { property: '区分', select: { equals: '繰越' } };
     const res = await notionAPI('POST', `/databases/${dbId}/query`, {
-      filter,
+      filter: { property: '区分', select: { equals: '繰越' } },
       sorts: [{ timestamp: 'created_time', direction: 'ascending' }],
       page_size: 1
     });
@@ -995,7 +988,7 @@ async function loadStockData(size, catKey) {
   el.innerHTML = `<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">在庫データを取得中…</div></div>`;
   const db = DB_MAP[catKey];
   try {
-    const kurikoshiDate = await getKurikoshiDate(db.id, size);
+    const kurikoshiDate = await getKurikoshiDate(db.id);
     const records = await fetchAllRecords(db.id, size, kurikoshiDate);
     renderStockResult(size, catKey, records);
   }
@@ -1056,12 +1049,10 @@ function renderStockResult(size, catKey, records) {
   var stock = result.stock; var prepStock = result.prepStock; var orderStock = result.orderStock;
   var MAKER_ORDER = ['TOYO','BRIDGESTONE','DUNLOP','MICHELIN','PIRELLI'];
   var sortedPatterns = db.patterns.slice().sort(function(a, b) {
-    var sA = WAREHOUSES.reduce(function(s,w){ return s+(stock[a]?.[w]||0); },0) + (prepStock[a]||0) + (orderStock[a]||0);
-    var sB = WAREHOUSES.reduce(function(s,w){ return s+(stock[b]?.[w]||0); },0) + (prepStock[b]||0) + (orderStock[b]||0);
-    var hasA = sA > 0 ? 1 : 0, hasB = sB > 0 ? 1 : 0;
-    if (hasA !== hasB) return hasB - hasA;
     var oA = MAKER_ORDER.indexOf(getMaker(a)), oB = MAKER_ORDER.indexOf(getMaker(b));
-    if (oA !== oB) return (oA===-1?99:oA) - (oB===-1?99:oB);
+    if (oA !== oB) return oA - oB;
+    var sA = WAREHOUSES.reduce(function(s,w){ return s+(stock[a]?.[w]||0); },0);
+    var sB = WAREHOUSES.reduce(function(s,w){ return s+(stock[b]?.[w]||0); },0);
     return sB - sA;
   });
   var html = '<div class="content">';
@@ -1078,12 +1069,9 @@ function renderStockResult(size, catKey, records) {
     var prep = prepStock[p] || 0; var ord = orderStock[p] || 0;
     html += '<div class="stock-row"><div class="stock-pattern"><span style="font-weight:600;">' + p + '</span></div><div class="stock-counts">';
     WAREHOUSES.forEach(function(w) {
-      var n = stock[p]?.[w] || 0;
-      var hasHistory = records.some(function(r) { return r.properties['パターン名']?.select?.name === p && r.properties[db.warehouseField]?.select?.name === w; });
-      var clickable = n > 0 || hasHistory;
-      var cls = n > 0 ? 'positive' : (hasHistory ? 'has-history' : 'zero');
-      html += '<div class="stock-count" style="cursor:' + (clickable?'pointer':'default') + ';" ';
-      if (clickable) html += 'data-pattern="' + p.replace(/"/g,'&quot;') + '" data-mode="' + w + '" onclick="onStockTap(this)"';
+      var n = stock[p]?.[w] || 0; var cls = n > 0 ? 'positive' : 'zero';
+      html += '<div class="stock-count" style="cursor:' + (n>0?'pointer':'default') + ';" ';
+      if (n > 0) html += 'data-pattern="' + p.replace(/"/g,'&quot;') + '" data-mode="' + w + '" onclick="onStockTap(this)"';
       html += '><div class="stock-count-num ' + cls + '">' + n + '</div><div class="stock-count-label">本</div></div>';
     });
     html += '<div class="stock-count" style="cursor:' + (prep>0?'pointer':'default') + ';border-left:1px solid var(--border);" ';
@@ -1099,7 +1087,7 @@ function renderStockResult(size, catKey, records) {
   el.innerHTML = html;
 }
 function onStockTap(el) { _currentPattern = el.getAttribute('data-pattern'); stockHistory(el.getAttribute('data-mode')); }
-async function stockHistory(mode) {
+function stockHistory(mode) {
   var catKey = _stockCatKey, pattern = _currentPattern, size = _stockSize, records = _stockRecords;
   var el = document.getElementById('stock-content');
   var db = DB_MAP[catKey], wField = db.warehouseField;
@@ -1107,27 +1095,9 @@ async function stockHistory(mode) {
   if (mode === '準備') { filtered = records.filter(function(r) { return r.properties['区分']?.select?.name === '準備' && r.properties['パターン名']?.select?.name === pattern && r.properties['サイズコード']?.select?.name === size; }); }
   else if (mode === '発注中') { filtered = records.filter(function(r) { return r.properties['区分']?.select?.name === '発注中' && r.properties['パターン名']?.select?.name === pattern && r.properties['サイズコード']?.select?.name === size; }); }
   else {
-    // 繰越日フィルタに制限されないよう、Notion APIから直接最新15件を取得
-    try {
-      el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">履歴を取得中…</div></div>';
-      var filters = { and: [
-        { property: 'パターン名', select: { equals: pattern } },
-        { property: 'サイズコード', select: { equals: size } },
-        { property: wField, select: { equals: mode } },
-        { property: '区分', select: { does_not_equal: '発注中' } }
-      ]};
-      var res = await notionAPI('POST', '/databases/' + db.id + '/query', {
-        filter: filters,
-        sorts: [{ timestamp: 'created_time', direction: 'descending' }],
-        page_size: 15
-      });
-      filtered = res.results || [];
-    } catch(e) {
-      // API取得失敗時はローカルデータにフォールバック
-      filtered = records.filter(function(r) { return r.properties['パターン名']?.select?.name === pattern && r.properties['サイズコード']?.select?.name === size && r.properties[wField]?.select?.name === mode && r.properties['区分']?.select?.name !== '発注中'; });
-      filtered.sort(function(a,b){ return new Date(b.created_time)-new Date(a.created_time); });
-      filtered = filtered.slice(0,15);
-    }
+    filtered = records.filter(function(r) { return r.properties['パターン名']?.select?.name === pattern && r.properties['サイズコード']?.select?.name === size && r.properties[wField]?.select?.name === mode && r.properties['区分']?.select?.name !== '発注中'; });
+    filtered.sort(function(a,b){ return new Date(b.created_time)-new Date(a.created_time); });
+    filtered = filtered.slice(0,10);
   }
   var modeLabel = mode === '準備' ? '準備中' : mode === '発注中' ? '発注中' : mode;
   var modeColor = mode === '準備' ? 'var(--yellow)' : mode === '発注中' ? 'var(--purple)' : 'var(--accent)';
@@ -1143,7 +1113,7 @@ async function stockHistory(mode) {
     var cName = creator.split('\u3000')[0];
     return '<div style="border-bottom:1px solid var(--border);padding:10px 0;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><span style="font-size:11px;color:var(--muted);">' + date + '</span><span style="font-size:10px;color:' + kColor + ';border:1px solid ' + kColor + ';border-radius:4px;padding:1px 6px;">' + kubun + '</span></div><div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:13px;color:var(--text);flex:1;">' + dest + '</span><span style="font-size:16px;font-weight:700;color:var(--accent);font-family:\'DM Mono\',monospace;margin:0 12px;">' + qty + '本</span><span style="font-size:11px;color:var(--muted);">' + cName + '</span></div></div>';
   }).join('');
-  var limitNote = (mode !== '準備' && mode !== '発注中') ? '<div style="font-size:11px;color:var(--muted);margin-top:8px;">最新15件表示</div>' : '';
+  var limitNote = (mode !== '準備' && mode !== '発注中') ? '<div style="font-size:11px;color:var(--muted);margin-top:8px;">最新10件表示</div>' : '';
   var html = '<div class="content">';
   html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><button id="hist-back" style="background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:0;">&#8592;</button><div class="screen-label" style="margin:0;">履歴</div></div>';
   html += '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:2px;"><div style="font-size:22px;font-weight:900;color:var(--text);">' + pattern + '</div><div style="font-size:14px;font-weight:700;color:var(--accent);font-family:\'DM Mono\',monospace;">' + size + '</div></div>';
@@ -1774,6 +1744,5 @@ function applyHistoryFilter(query) {
   }
 }
 </script>
-<script src="foo-mobile.js"></script>
 </body>
 </html>

@@ -105,107 +105,27 @@ body{
 /* ── 発注カード ── */
 .order-card{
   background:var(--s2);border:0.5px solid var(--border);
-  border-radius:12px;padding:10px 12px;margin-bottom:6px;
+  border-radius:12px;padding:12px 14px;margin-bottom:8px;
   cursor:pointer;transition:border-color .15s;
-  display:flex;align-items:stretch;gap:10px;
 }
 .order-card:active{border-color:var(--accent);}
-.card-info{flex:1;min-width:0;}
-.card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;}
-.card-num{font-size:9px;color:var(--muted);font-family:'DM Mono',monospace;}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;}
+.card-num{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;}
 .badge{
-  font-size:9px;font-weight:700;padding:2px 7px;
-  border-radius:6px;white-space:nowrap;flex-shrink:0;
+  font-size:9px;font-weight:700;padding:3px 9px;
+  border-radius:8px;white-space:nowrap;flex-shrink:0;
 }
 .badge-new    {background:rgba(240,165,0,.15); color:var(--accent);}
 .badge-sent   {background:rgba(59,130,246,.15);color:var(--blue);}
 .badge-done   {background:rgba(34,197,94,.15); color:var(--green);}
-.badge-nopdf  {background:rgba(239,68,68,.15); color:#ef4444; font-size:9px; display:inline-flex; align-items:center; gap:2px;}
+.badge-nopdf  {background:rgba(239,68,68,.15); color:#ef4444; font-size:10px; display:inline-flex; align-items:center; gap:3px;}
 .badge-cancel{background:rgba(239,68,68,.1);  color:var(--red);}
-.card-main{display:flex;align-items:baseline;gap:8px;margin-bottom:3px;}
+.card-main{display:flex;align-items:baseline;gap:8px;margin-bottom:5px;}
 .card-maker{font-size:14px;font-weight:700;color:var(--text);}
 .card-size {font-size:11px;color:var(--muted);}
-.card-meta{display:flex;flex-wrap:wrap;gap:6px 10px;}
+.card-meta{display:flex;flex-wrap:wrap;gap:8px;}
 .meta-item{font-size:10px;color:var(--muted);}
 .meta-val{color:var(--text);font-weight:500;}
-.card-nyuko{
-  display:flex;align-items:center;flex-shrink:0;
-}
-.nyuko-btn{
-  background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.35);
-  border-radius:10px;padding:10px 14px;color:#22c55e;
-  font-size:12px;font-weight:700;cursor:pointer;
-  white-space:nowrap;transition:background .15s;
-  font-family:inherit;
-}
-.nyuko-btn:active{background:rgba(34,197,94,.22);}
-
-/* ── グループ化未入荷 ── */
-.maker-group{margin-bottom:14px;}
-.maker-header{
-  display:flex;align-items:center;gap:8px;
-  padding:6px 0 4px;margin-bottom:2px;
-}
-.maker-label{font-size:12px;font-weight:800;letter-spacing:0.04em;}
-.maker-count{font-size:10px;color:var(--muted);font-weight:500;}
-.maker-line{flex:1;height:1px;background:var(--border);}
-.wh-group{margin-bottom:8px;}
-.wh-header{
-  display:flex;align-items:center;gap:6px;
-  padding:4px 4px 2px;
-}
-.wh-label{font-size:11px;font-weight:700;letter-spacing:0.03em;}
-.wh-count{font-size:10px;color:var(--muted);font-weight:500;}
-.pat-group{margin-bottom:6px;}
-.pat-header{
-  font-size:11px;font-weight:700;
-  padding:3px 10px;background:var(--s2);border-radius:8px 8px 0 0;
-  border:0.5px solid var(--border);border-bottom:none;
-}
-.pat-row{
-  display:flex;align-items:center;gap:0;
-  padding:6px 10px;
-  background:var(--s2);border:0.5px solid var(--border);border-top:0.5px solid var(--border);
-  cursor:pointer;transition:background .1s;
-  font-size:12px;
-}
-.pat-row:last-child{border-radius:0 0 8px 8px;}
-.pat-group .pat-row:first-child{border-top:none;}
-.pat-row:active{background:rgba(240,165,0,.06);}
-.pr-size{flex:2.5;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.pr-qty{width:40px;text-align:center;font-weight:800;color:var(--accent);}
-.pr-loc{width:42px;text-align:center;font-size:10px;color:var(--muted);}
-.pr-date{width:50px;font-size:10px;color:var(--muted);text-align:center;}
-.pr-due{width:50px;font-size:10px;color:var(--muted);text-align:center;}
-.pr-memo{flex:1;font-size:10px;color:var(--muted);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
-.pr-btn{flex-shrink:0;margin-left:4px;}
-.pr-btn button{
-  background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.30);
-  border-radius:7px;padding:4px 10px;color:#22c55e;
-  font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;
-}
-.pr-btn button:active{background:rgba(34,197,94,.22);}
-.pr-badges{display:flex;gap:3px;margin-left:auto;flex-shrink:0;}
-.pr-cancel button{
-  background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);
-  border-radius:7px;padding:4px 8px;color:#ef4444;
-  font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;
-}
-.pr-cancel button:active{background:rgba(239,68,68,.18);}
-/* 取消確認オーバーレイ */
-.cancel-confirm{
-  position:fixed;top:0;left:0;right:0;bottom:0;
-  background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:1000;
-}
-.cancel-box{
-  background:var(--s1);border-radius:16px;padding:24px 20px;width:min(320px,90vw);text-align:center;
-}
-.cancel-box .cb-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;}
-.cancel-box .cb-desc{font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5;}
-.cancel-box .cb-btns{display:flex;gap:8px;}
-.cancel-box .cb-btns button{flex:1;padding:11px;border-radius:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
-.cancel-box .cb-no{background:var(--s2);color:var(--text);}
-.cancel-box .cb-yes{background:#ef4444;color:#fff;}
 
 /* ── 空表示 ── */
 .empty-state{
@@ -214,60 +134,6 @@ body{
 }
 .empty-icon{font-size:36px;margin-bottom:8px;}
 .loading-state{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
-
-/* ── 未入荷 検索窓 ── */
-.pending-search-wrap{
-  position:relative;margin-bottom:10px;
-}
-.pending-search{
-  width:100%;padding:10px 36px 10px 12px;
-  border:1px solid var(--border2);border-radius:10px;
-  background:var(--s2);color:var(--text);
-  font-size:13px;font-family:inherit;
-  outline:none;transition:border-color .15s;
-}
-.pending-search:focus{border-color:var(--accent);}
-.pending-search::placeholder{color:var(--muted);font-size:12px;}
-.pending-search-icon{
-  position:absolute;right:10px;top:50%;transform:translateY(-50%);
-  font-size:15px;color:var(--muted);pointer-events:none;
-}
-.pending-search-clear{
-  position:absolute;right:10px;top:50%;transform:translateY(-50%);
-  background:none;border:none;color:var(--muted);font-size:16px;
-  cursor:pointer;padding:2px 4px;display:none;font-family:inherit;
-}
-.pending-suggest{
-  position:absolute;top:100%;left:0;right:0;
-  background:var(--s1);border:1px solid var(--border2);
-  border-radius:0 0 10px 10px;max-height:220px;overflow-y:auto;
-  z-index:50;display:none;
-  box-shadow:0 8px 24px rgba(0,0,0,.25);
-}
-.pending-suggest-item{
-  padding:9px 12px;font-size:12px;cursor:pointer;
-  border-bottom:0.5px solid var(--border);color:var(--text);
-  display:flex;align-items:center;gap:8px;
-}
-.pending-suggest-item:last-child{border-bottom:none;}
-.pending-suggest-item:active{background:rgba(240,165,0,.08);}
-.pending-suggest-cat{
-  font-size:9px;font-weight:700;color:var(--muted);
-  background:var(--s3);padding:1px 6px;border-radius:4px;flex-shrink:0;
-}
-.pending-filter-chips{
-  display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;display:none;
-}
-.pending-filter-chip{
-  display:flex;align-items:center;gap:4px;
-  padding:4px 10px;border-radius:12px;
-  background:rgba(240,165,0,.12);border:1px solid rgba(240,165,0,.3);
-  color:var(--accent);font-size:11px;font-weight:600;
-}
-.pending-filter-chip button{
-  background:none;border:none;color:var(--accent);
-  font-size:13px;cursor:pointer;padding:0;margin-left:2px;font-family:inherit;
-}
 
 /* ── セクションラベル ── */
 .sec-label{
@@ -380,10 +246,6 @@ body{
   display:block;background:rgba(239,68,68,.1);
   border:1px solid rgba(239,68,68,.3);color:var(--red);
 }
-.feedback.info{
-  display:block;background:rgba(59,130,246,.1);
-  border:1px solid rgba(59,130,246,.3);color:#3b82f6;
-}
 
 /* ── 詳細モーダル ── */
 #detail-modal{
@@ -464,17 +326,6 @@ body{
 
 <!-- ══ 未入荷タブ ══ -->
 <div class="body" id="pane-pending">
-  <div class="pending-search-wrap">
-    <input type="text" class="pending-search" id="pending-search-input"
-           placeholder="パターン・サイズ・メーカーで検索..."
-           oninput="onPendingSearch(this.value)"
-           onkeydown="if(event.key==='Enter'){pendingSearchQuery=this.value.trim();document.getElementById('pending-suggest').style.display='none';reRenderPending();}"
-           autocomplete="off">
-    <span class="pending-search-icon" id="pending-search-icon">🔍</span>
-    <button class="pending-search-clear" id="pending-search-clear" onclick="clearPendingSearch()">✕</button>
-    <div class="pending-suggest" id="pending-suggest"></div>
-  </div>
-  <div class="pending-filter-chips" id="pending-filter-chips"></div>
   <div id="pending-container">
     <div class="loading-state">読み込み中...</div>
   </div>
@@ -506,10 +357,6 @@ body{
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;">
         <input type="radio" name="pdf-maker" value="BRIDGESTONE" onchange="onPdfMakerChange()" style="width:18px;height:18px;accent-color:var(--accent);flex-shrink:0;">
         <span style="font-size:14px;font-weight:700;">ブリヂストンタイヤソリューションジャパン広島西</span>
-      </label>
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;">
-        <input type="radio" name="pdf-maker" value="DUNLOP" onchange="onPdfMakerChange()" style="width:18px;height:18px;accent-color:var(--accent);flex-shrink:0;">
-        <span style="font-size:14px;font-weight:700;">ﾀﾞﾝﾛｯﾌﾟﾀｲﾔ中国(株)広島支店/広島営業所</span>
       </label>
     </div>
   </div>
@@ -555,7 +402,6 @@ body{
         <option value="">選択してください</option>
         <option>TOYO</option>
         <option>BRIDGESTONE</option>
-        <option>DUNLOP</option>
         <option>ネット購入</option>
       </select>
     </div>
@@ -636,7 +482,7 @@ body{
           <label style="display:inline-flex;align-items:center;gap:4px;margin-left:8px;font-weight:400;color:var(--muted);cursor:pointer;">
             <input type="checkbox" id="f-duedate-unknown" onchange="toggleDueDate(this)"
               style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer;">
-            <span style="font-size:10px;">納期確認</span>
+            <span style="font-size:10px;">未定</span>
           </label>
         </div>
         <input class="finput" id="f-duedate" type="date">
@@ -776,22 +622,6 @@ body{
         </label>
       </div>
 
-      <!-- 仮伝票 / 本伝票 チェック -->
-      <div style="display:flex;gap:8px;margin-bottom:12px;">
-        <label style="flex:1;display:flex;align-items:center;gap:8px;cursor:pointer;
-          background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.3);border-radius:10px;padding:10px 12px;">
-          <input type="checkbox" id="nyuko-kari-chk" checked
-            style="width:18px;height:18px;accent-color:#3b82f6;flex-shrink:0;">
-          <span style="font-size:13px;font-weight:600;color:#3b82f6;">仮伝票</span>
-        </label>
-        <label style="flex:1;display:flex;align-items:center;gap:8px;cursor:pointer;
-          background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:10px;padding:10px 12px;">
-          <input type="checkbox" id="nyuko-hon-chk"
-            style="width:18px;height:18px;accent-color:#22c55e;flex-shrink:0;">
-          <span style="font-size:13px;font-weight:600;color:#22c55e;">本伝票</span>
-        </label>
-      </div>
-
       <!-- メモ -->
       <div class="field" style="margin-bottom:16px;">
         <div class="field-label">メモ（任意）</div>
@@ -824,19 +654,39 @@ body{
   </div>
 </div>
 
-<script src="foo-common.js?v=20260324g"></script>
 <script>
-// ─── 定数（foo-common.js から共通定数を参照）──────────────────────────────────
-const WORKER  = FOO_WORKER;
-const ORDER_DB        = FOO_HACCHU_DB;
-const TANTOU_DB       = '1cea695f-8e88-8029-911d-f0eb63102669';  // 中間担当者DB
-const HACCHUSHEET_DB  = FOO_HACCHUSHEET_DB;
+// ─── 定数 ────────────────────────────────────────────────────────────────────
+const WORKER  = 'https://notion-proxy.33322666666mm.workers.dev';
+const ORDER_DB     = '202a695f-8e88-80aa-92f6-f38d9b47b537';
+const TANTOU_DB    = '1cea695f-8e88-8029-911d-f0eb63102669';  // 中間担当者DB
 
-// DB_MAP: foo-common.js の FOO_DB_BY_KEY から生成（互換レイヤー）
-const DB_MAP = {};
-for (const [key, info] of Object.entries(FOO_DB_BY_KEY)) {
-  DB_MAP[key] = { id: info.stockId, name: info.name, icon: info.icon, warehouseField: info.wField, sizes: info.sizes, patterns: info.patterns };
-}
+const DB_MAP = {
+  ltl_normal:   {id:'200a695f-8e88-8018-b5f5-eac83fdad412', name:'LTL TB ノーマル',   icon:'🚛', warehouseField:'倉庫',
+    sizes:['225/80R17.5','225/90R17.5','215/70R17.5 123/121','235/70R17.5','245/80R17.5','245/70R19.5','265/70R19.5','9R19.5','275/70R22.5','275/80R22.5','295/70R22.5','295/80R22.5','255/70R22.5','315/80R22.5','385/65R22.5','11R22.5','10R22.5'],
+    patterns:['M646','M676','M125','M317','M323','M319','M320','M619','M626','M888','M899','M801','M746','R225','R241','G539','SP680','SP122','XJE4']},
+  ltl_studless: {id:'201a695f-8e88-8171-abb8-e349ad4d055a', name:'LTL TB スタッドレス', icon:'❄️', warehouseField:'倉庫',
+    sizes:['225/80R17.5','225/90R17.5','215/70R17.5 123/121','235/70R17.5','245/80R17.5','245/70R19.5','265/70R19.5','9R19.5','275/70R22.5','275/80R22.5','295/70R22.5','295/80R22.5','255/70R22.5','315/80R22.5','385/65R22.5','11R22.5','10R22.5'],
+    patterns:['M929','M919','M966','M920','M939','W910','W900S','W911','W970','W999','SP001','SP081','SP088','XDW']},
+  lts_normal:   {id:'201a695f-8e88-81ad-b144-cd3a1639132d', name:'LTS ノーマル',       icon:'🚐', warehouseField:'倉庫',
+    sizes:['175/75R15','185/65R15','185/75R15','195/75R15','195/85R15','205/80R15','185/70R16','185/85R16','195/85R16','205/65R16','205/70R16','225/70R16','205/75R16','205/85R16','215/85R16','225/85R16','195/60R17.5','195/70R17.5','205/60R17.5','225/60R17.5','205/70R17.5','205/80R17.5','215/70R17.5 118/116'],
+    patterns:['M634','M135','M134e','M131','M319','M804','R207','SPLT50','SPLT21','SPLT22']},
+  lts_studless: {id:'201a695f-8e88-81a2-99e8-fb57bad707f6', name:'LTS スタッドレス',   icon:'🌨️', warehouseField:'倉庫',
+    sizes:['175/75R15','185/65R15','185/75R15','195/75R15','195/85R15','205/80R15','185/70R16','185/85R16','195/85R16','205/65R16','205/70R16','225/70R16','205/75R16','205/85R16','215/85R16','225/85R16','195/60R17.5','195/70R17.5','205/60R17.5','225/60R17.5','205/70R17.5','205/80R17.5','215/70R17.5 118/116'],
+    patterns:['M935','M937','M934','LV01','W989','LT01']},
+  rt:           {id:'201a695f-8e88-8104-bb47-c7103d5909dc', name:'RT 再生',             icon:'♻️', warehouseField:'倉庫',
+    sizes:['195/85R16','205/75R16','205/85R16','225/80R17.5','225/90R17.5','245/80R17.5','245/70R19.5','265/70R19.5','275/70R22.5','275/80R22.5','11R22.5 14P','11R22.5 16P'],
+    patterns:['RTM919','RTM810','RTM804','RTM807','RTM81C-170','RTM890','RTW910','RTW911','RTW970','RTG610']},
+  // PIRELLI: 発注ほぼなし・除外
+  tt:           {id:'201a695f-8e88-81a6-930f-cf2bd752e676', name:'T/T チューブタイプ', icon:'🔧', warehouseField:'倉庫',
+    sizes:['7.00R15　10P','7.00R15　12P','6.50R16　10P','6.50R16　12P','7.00R16　10P','7.00R16　12P','7.50R16　12P','7.50R16　14P','8.25R16　14P'],
+    patterns:['M614','M626','M125','M131','M134','M319','M501','M504','M519','M919','M935','M890','R225','SP185']},
+  van:          {id:'201a695f-8e88-81f3-a958-cead42156e07', name:'バン',                icon:'🚌', warehouseField:'出庫倉庫',
+    sizes:['145/80R12　86/84','145/80R12　80/78','145R12　6P','145R12　8P','155R12　8P','165/80R13　90/88','165/80R13　94/93','165R13　6P','165R13　8P','145R13　6P','145R13　8P','155R13　6P','155R13　8P','175R13　8P','155/80R14　88/86','165/80R14　91/90','165/80R14　97/95','165R14　6P','165R14　8P','175/80R14　99/98','175R14　6P','175R14　8P','185/80R14　97N','185/80R14　102/10','185R14　6P','185R14　8P','195R14　8P','195/80R15　103/101','185/75R15　106/104','195/70R15　106/104','215/70R15　107/105','185/80R15　103/101','195/80R15　107/105','205/80R15　109/107'],
+    patterns:['V03e','V02e','M935','K370','R710','V600','W300','W989','LV01','VL10A','VAN01','SV01']},
+  lift:         {id:'201a695f-8e88-81c5-b2c3-d9e9ce2ffd21', name:'リフト',              icon:'🏗️', warehouseField:'出庫倉庫',
+    sizes:['4.00-8　8P','5.00-8　8P','6.00-9　10P','6.50-10　10P','4.50-12　8P','7.00-12　12P','7.00-12　14P','5.50-15　8P','6.00-15　10P','7.00-15MS','7.00-15','8.25-15','7.50-16','17*8.00-8　4P','18*7-8　8P','21*8-9　14P','23*9-10　16P','27*8.50-15　4P','27*8.50-15　6P','28*8-15　12P','28*9-15','250-15','300-15'],
+    patterns:['G-8','G-8P','G-15']},
+};
 
 // ─── メーカー×パターン マスター ─────────────────────────────────────────────────
 // 仕入先を選んだとき、該当カテゴリ内のパターンをこのリストで絞り込む
@@ -905,9 +755,23 @@ const RECEIVER_DB = '752cb60a-d01c-43f5-b3d1-8b4978756c23';
 })();
 
 
-// ─── パターン+サイズからDB自動判定（foo-common.js の共通関数を使用）────────────
+// ─── パターン+サイズからDB自動判定 ────────────────────────────────────────────
 function detectDbKeys(sizeStr, patternStr) {
-  return fooDetectDbKeys(sizeStr, patternStr);
+  const matched = [];
+  for(const [key, db] of Object.entries(DB_MAP)) {
+    const sizeMatch    = db.sizes.some(s => s === sizeStr || sizeStr.includes(s) || s.includes(sizeStr));
+    const patternMatch = !patternStr || !db.patterns || db.patterns.includes(patternStr);
+    if(sizeMatch && patternMatch) matched.push(key);
+  }
+  // パターンでも絞れなかった場合はサイズのみで判定
+  if(!matched.length) {
+    for(const [key, db] of Object.entries(DB_MAP)) {
+      if(db.sizes.some(s => s === sizeStr || sizeStr.includes(s) || s.includes(sizeStr))) {
+        matched.push(key);
+      }
+    }
+  }
+  return matched;
 }
 
 // ─── テーマ（ポータルと共通キー foo_portal_theme）─────────────────────────────
@@ -943,27 +807,56 @@ function switchTab(tab) {
   if(tab === 'pending') renderPending();
   if(tab === 'history') renderHistory();
   if(tab === 'new') initForm();
-  if(tab === 'pdf') { loadOrders().then(() => { onPdfMakerChange(); }); }
+  if(tab === 'pdf') { loadOrders().then(() => onPdfMakerChange()); }
 }
 
 // ─── API ──────────────────────────────────────────────────────────────────────
-// notionQuery: foo-common.js の統一関数をラップ
 async function notionQuery(dbId, filter=null, sorts=null) {
-  const body = { page_size: 100 };
-  if (filter) body.filter = filter;
-  if (sorts)  body.sorts  = sorts;
-  return fooNotionQuery(dbId, body, 15000);
+  const body = {page_size:100};
+  if(filter) body.filter = filter;
+  if(sorts)  body.sorts  = sorts;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15000);
+  try {
+    const r = await fetch(`${WORKER}/databases/${dbId}/query`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Notion-Version':'2022-06-28'},
+      body: JSON.stringify(body),
+      signal: ctrl.signal
+    });
+    clearTimeout(timer);
+    if(!r.ok) throw new Error(await r.text());
+    return r.json();
+  } catch(e) {
+    clearTimeout(timer);
+    if(e.name === 'AbortError') throw new Error('タイムアウト（15秒）。通信環境を確認してください。');
+    throw e;
+  }
 }
 
-// notionCreate / notionPatch: foo-common.js の統一関数をラップ
 async function notionCreate(dbId, props) {
-  return fooNotionCreate(dbId, props);
-}
-async function notionPatch(pageId, props) {
-  return fooNotionPatch(pageId, props);
+  const r = await fetch(`${WORKER}/pages`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','Notion-Version':'2022-06-28'},
+    body: JSON.stringify({
+      parent:{database_id: dbId},
+      properties: props
+    })
+  });
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
 }
 
-// propStr: fooPropStr (foo-common.js) の拡張版（multi_select等の追加型対応）
+async function notionPatch(pageId, props) {
+  const r = await fetch(`${WORKER}/pages/${pageId}`, {
+    method:'PATCH',
+    headers:{'Content-Type':'application/json','Notion-Version':'2022-06-28'},
+    body: JSON.stringify({properties: props})
+  });
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
 function propStr(page, key) {
   try {
     const p = page.properties[key];
@@ -1168,31 +1061,25 @@ async function submitNyuko() {
   const warehouse   = document.getElementById('nyuko-warehouse').value;
   const memo        = document.getElementById('nyuko-memo').value.trim();
   const nokoriChk   = document.getElementById('nyuko-nokori-chk')?.checked || false;
-  const kariChk     = document.getElementById('nyuko-kari-chk')?.checked || false;
-  const honChk      = document.getElementById('nyuko-hon-chk')?.checked || false;
   const errEl       = document.getElementById('nyuko-error');
   const btn         = document.getElementById('nyuko-submit-btn');
   const dbKey       = window._nyukoDbKey;
   const ordQty      = window._nyukoOrdQty || nyukoQty;
-  const nokori      = ordQty - nyukoQty;
-  // モーダルを閉じても使えるようローカルに退避
-  const _orderId    = nyukoOrderId;
-  const _orderData  = nyukoOrderData;
-  const _nyukoQty   = nyukoQty;
+  const nokori      = ordQty - nyukoQty;  // 残り本数
 
   if(!warehouse){ errEl.textContent='倉庫を選択してください'; errEl.style.display='block'; return; }
   if(!dbKey)    { errEl.textContent='入庫先カテゴリを判定できませんでした。パターン・サイズを確認してください'; errEl.style.display='block'; return; }
-
-  // バリデーション通過 → モーダルを即閉じてバックグラウンド処理
-  document.getElementById('nyuko-modal').style.display = 'none';
-  showFeedback('info', '⏳ 入庫処理中…（このまま他の操作ができます）');
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = '登録中...';
 
   try {
     const db       = DB_MAP[dbKey];
-    const size     = propStr(_orderData,'タイヤサイズ');
-    const sizeCode = propStr(_orderData,'サイズコード') || size;
-    const pattern  = propStr(_orderData,'パターン') || '';
+    const size     = propStr(nyukoOrderData,'タイヤサイズ');
+    const sizeCode = propStr(nyukoOrderData,'サイズコード') || size;
+    const pattern  = propStr(nyukoOrderData,'パターン') || '';
     const now      = new Date();
+    const ym       = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}`;
     const creator  = (loginUser || '').replace(/ /g,'　');
 
     // ① 入出庫DBに「入庫」レコード作成
@@ -1201,7 +1088,9 @@ async function submitNyuko() {
     const props  = {
       'タイトル':   {title:[{text:{content: title}}]},
       '区分':       {select:{name:'入庫'}},
-      '数量':       {number: _nyukoQty},
+      '処理タイプ': {select:{name:'入庫'}},
+      '数量':       {number: nyukoQty},
+      '年月':       {rich_text:[{text:{content: ym}}]},
     };
     props[wField] = {select:{name: warehouse}};
     if(creator)   props['作成者']      = {select:{name: creator}};
@@ -1214,92 +1103,33 @@ async function submitNyuko() {
     }
     await notionCreate(db.id, props);
 
-    // ② 発注管理表の更新（伝票チェック含む）
-    let orderUpdateOk = true;
-    try {
-      const slipProps = {
-        '仮伝票': { checkbox: kariChk },
-        '本伝票': { checkbox: honChk },
-      };
-      if(nokori > 0 && nokoriChk) {
-        await notionPatch(_orderId, {
-          ...slipProps,
-          '数量':       {number: nokori},
-          'ステータス': {select:{name:'発注済'}},
-        });
-      } else {
-        await notionPatch(_orderId, {
-          ...slipProps,
-          'ステータス': {select:{name:'納入済'}},
-          '納品日':     {date:{start: now.toISOString().slice(0,10)}},
-        });
-      }
-    } catch (orderErr) {
-      console.warn('発注管理更新エラー（リトライ済）:', orderErr);
-      orderUpdateOk = false;
+    // ② 発注管理表の更新（残数あり＋チェックあり → 数量を残数に更新して発注済のまま）
+    if(nokori > 0 && nokoriChk) {
+      await notionPatch(nyukoOrderId, {
+        '数量':       {number: nokori},
+        'ステータス': {select:{name:'発注済'}},
+      });
+    } else {
+      // 全数入庫 or 残数を残さない → 納入済に
+      await notionPatch(nyukoOrderId, {
+        'ステータス': {select:{name:'納入済'}},
+        '納品日':     {date:{start: now.toISOString().slice(0,10)}},
+      });
     }
 
-    // ②-b 入出庫DBの「発注中」レコード処理（リトライ付き）
-    let stockCleanMsg = '';
-    let stockCleanOk = false;
-    const isPartial = nokori > 0 && nokoriChk;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const delResult = await fooDeleteStockOrders({
-          size:      sizeCode || size,
-          pattern:   pattern,
-          warehouse: warehouse,
-          qty:       isPartial ? _nyukoQty : undefined,
-          remainQty: isPartial ? nokori : undefined,
-        });
-        if (delResult.errors.length > 0) {
-          stockCleanMsg = '\n⚠️ ' + delResult.errors.join(', ');
-          if (attempt < 2) { await new Promise(ok => setTimeout(ok, 2000)); continue; }
-        } else {
-          stockCleanOk = true;
-          if (delResult.deleted > 0) {
-            stockCleanMsg = isPartial
-              ? `\n発注中を残数${nokori}本に更新`
-              : `\n発注中${delResult.deleted}件を削除`;
-          }
-          break;
-        }
-      } catch (stockErr) {
-        console.warn('発注中レコード処理エラー (試行' + (attempt+1) + '):', stockErr);
-        if (attempt < 2) { await new Promise(ok => setTimeout(ok, 2000)); continue; }
-        stockCleanMsg = '\n❌ 発注中レコードの処理に失敗しました。手動で確認してください。';
-      }
-    }
-
-    // ②-c 整合性チェック（発注中が残っていないか確認）
-    if (stockCleanOk && !isPartial) {
-      try {
-        const verifyResult = await fooDeleteStockOrders({
-          size: sizeCode || size, pattern: pattern, warehouse: warehouse,
-          dryRun: true,
-        });
-        if (verifyResult.deleted > 0) {
-          // まだ発注中が残っている → 再削除
-          await fooDeleteStockOrders({
-            size: sizeCode || size, pattern: pattern, warehouse: warehouse,
-          });
-          stockCleanMsg += '\n🔄 残存の発注中を追加削除しました';
-        }
-      } catch(e) { console.warn('整合性チェックエラー:', e); }
-    }
-
-    // ③ 完了通知
+    // ③ 完了
+    document.getElementById('nyuko-modal').style.display = 'none';
     const nokoriMsg = (nokori > 0 && nokoriChk)
       ? `（残り${nokori}本を発注リストに残しました）`
       : '';
-    const orderWarn = orderUpdateOk ? '' : '\n⚠️ 発注管理の更新に失敗（手動で確認してください）';
-    const stockWarn = stockCleanOk ? '' : (!stockCleanMsg.includes('❌') ? '' : '');
-    showFeedback(stockCleanOk && orderUpdateOk ? 'success' : 'error',
-      `${stockCleanOk && orderUpdateOk ? '✓' : '⚠️'} 入庫登録しました（${size} ${_nyukoQty}本 → ${warehouse}）${nokoriMsg}${stockCleanMsg}${orderWarn}`);
+    showFeedback('success', `✓ 入庫登録しました（${size} ${nyukoQty}本 → ${warehouse}）${nokoriMsg}`);
     loadOrders().then(() => renderPending());
 
   } catch(e) {
-    showFeedback('error', '入庫登録に失敗しました：' + e.message);
+    errEl.textContent = '登録に失敗しました：' + e.message;
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = '📦 入庫を登録する';
   }
 }
 
@@ -1307,7 +1137,6 @@ async function submitNyuko() {
 const MAKER_LABEL = {
   'TOYO': 'トーヨータイヤジャパン広島営業所',
   'BRIDGESTONE': 'ブリヂストンタイヤソリューションジャパン広島西',
-  'DUNLOP': 'ﾀﾞﾝﾛｯﾌﾟﾀｲﾔ中国(株)広島支店/広島営業所',
 };
 
 function onPdfMakerChange() {
@@ -1320,7 +1149,9 @@ function onPdfMakerChange() {
   const targets = orders.filter(o => {
     const s = propStr(o,'ステータス');
     const sup = propStr(o,'仕入先');
-    const makerMatch = sup === maker;
+    const makerMatch = maker === 'TOYO'
+      ? (sup === 'TOYO')
+      : (sup === 'BRIDGESTONE');
     return makerMatch && (s === '新規発注' || s === '発注済');
   });
 
@@ -1376,7 +1207,7 @@ async function openGmailDraft() {
   const targets = orders.filter(o => {
     const s   = propStr(o,'ステータス');
     const sup = propStr(o,'仕入先');
-    const match = sup === maker;
+    const match = maker === 'TOYO' ? sup === 'TOYO' : sup === 'BRIDGESTONE';
     return match && (s === '新規発注' || s === '発注済');
   });
   if(!targets.length) { alert('対象データがありません'); return; }
@@ -1488,8 +1319,6 @@ ${recvSan}
       alert('受注者マスターにメールアドレスが登録されていません。\nNotionの受注者マスターDBにメールアドレスを入力してください。');
     }
     window.open(gmailUrl, '_blank');
-    // Gmail送信後も発注済に更新
-    markOrdersAsSent(maker);
 
   } catch(e) {
     alert('エラーが発生しました: ' + e.message);
@@ -1521,61 +1350,53 @@ function buildPdfHtml(maker, targets) {
   const totalNew      = newOrders.reduce((s,o)=>s+(Number(propStr(o,'数量'))||0),0);
   const totalPending  = pendingOrders.reduce((s,o)=>s+(Number(propStr(o,'数量'))||0),0);
 
-  const TH = (w='') => `padding:3px 4px;font-size:7pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;white-space:nowrap;${w?'width:'+w+';':''}`;
-  const tdSF = (i,ex='') => `padding:3px 4px;font-size:7pt;text-align:center;border:0.3px solid #b8cfe8;${i%2===1?'background:#f0f5fc;':'background:#fff;'}white-space:nowrap;${ex}`;
+  const TH = (w='') => `padding:1px 2px;font-size:3.5pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;white-space:nowrap;${w?'width:'+w+';':''}`;
+  const tdSF = (i,ex='') => `padding:1px 2px;font-size:3.5pt;text-align:center;border:0.3px solid #b8cfe8;${i%2===1?'background:#f0f5fc;':'background:#fff;'}white-space:nowrap;${ex}`;
 
   const mkRow = (o, i, showOrderDate) => {
     const pat  = propStr(o,'パターン') || '—';
-    const size = propStr(o,'サイズコード') || propStr(o,'サイズ') || (propStr(o,'タイヤサイズ')||'').replace(/\s+\S+$/,'') || '—';
+    const size = propStr(o,'タイヤサイズ');
     const qty  = propStr(o,'数量');
-    const loc  = propStr(o,'納入予定場所') || '—';
     const os   = propStr(o,'注文担当') || '—';
     const rv   = (propStr(o,'受注者') || '—') + (propStr(o,'受注者') && !propStr(o,'受注者').endsWith('様') ? ' 様' : '');
-    const isPhone  = o.properties['電話注文済']?.checkbox === true;
-    const isVerbal = o.properties['口頭注文済']?.checkbox === true;
-    const meth = isPhone ? '電話' : isVerbal ? '口頭' : '—';
-    const od   = fmt(propStr(o,'発注日'));
+    const loc  = propStr(o,'納入予定場所') || '—';
     const due  = fmt(propStr(o,'納期予定日')) || '未定';
-    const memoRaw = propStr(o,'備考欄') || '';
-    const memo = /発注書なし/.test(memoRaw) ? '' : memoRaw;
+    const od   = fmt(propStr(o,'発注日'));
+    const memo = propStr(o,'備考欄') || '';
+    const dateTd = showOrderDate ? `<td style="${tdSF(i)}">${od}</td>` : '';
     return `<tr>
       <td style="${tdSF(i)}">${pat}</td>
       <td style="${tdSF(i)}">${size}</td>
-      <td style="${tdSF(i,'font-weight:bold;color:#1a1a18;')}">${qty}</td>
-      <td style="${tdSF(i)}">${loc}</td>
+      <td style="${tdSF(i,'font-weight:bold;color:#e07000;')}">${qty}本</td>
       <td style="${tdSF(i)}">${os}</td>
       <td style="${tdSF(i)}">${rv}</td>
-      <td style="${tdSF(i)}">${meth}</td>
-      <td style="${tdSF(i)}">${od}</td>
+      ${dateTd}
+      <td style="${tdSF(i)}">${loc}</td>
       <td style="${tdSF(i)}">${due}</td>
       <td style="${tdSF(i,'color:#888;white-space:normal;text-align:left;')}">${memo}</td>
     </tr>`;
   };
 
   const newTable = newOrders.length ? `
-    <div style="font-size:7pt;font-weight:bold;color:#2563a8;margin:4px 0 2px;">■ 今回発注分</div>
+    <div style="font-size:5pt;font-weight:bold;color:#2563a8;margin:4px 0 2px;">■ 今回発注分</div>
     <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
       <thead><tr>
-        <th style="${TH('10%')}">パターン</th><th style="${TH('13%')}">サイズ</th>
-        <th style="${TH('5%')}">本数</th><th style="${TH('7%')}">納入場所</th>
-        <th style="${TH('6%')}">発注者</th><th style="${TH('6%')}">受注者</th>
-        <th style="${TH('6%')}">注文方法</th>
-        <th style="${TH('10%')}">発注日</th><th style="${TH('10%')}">納期予定</th>
-        <th style="${TH('27%')}">備考</th>
+        <th style="${TH('10%')}">パターン</th><th style="${TH('14%')}">サイズ</th>
+        <th style="${TH('5%')}">本数</th><th style="${TH('7%')}">発注者</th>
+        <th style="${TH('7%')}">受注者</th><th style="${TH('8%')}">納入場所</th>
+        <th style="${TH('11%')}">納期予定</th><th style="${TH('27%')}">備考</th>
       </tr></thead>
       <tbody>${newOrders.map((o,i)=>mkRow(o,i,false)).join('')}</tbody>
     </table>` : '';
 
   const pendingTable = pendingOrders.length ? `
-    <div style="font-size:6pt;font-weight:bold;color:#2563a8;margin:6px 0 2px;">■ 未入荷（既発注分）</div>
+    <div style="font-size:4pt;font-weight:bold;color:#2563a8;margin:6px 0 2px;">■ 未入荷（既発注分）</div>
     <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
       <thead><tr>
-        <th style="${TH('10%')}">パターン</th><th style="${TH('13%')}">サイズ</th>
-        <th style="${TH('5%')}">本数</th><th style="${TH('7%')}">納入場所</th>
-        <th style="${TH('6%')}">発注者</th><th style="${TH('6%')}">受注者</th>
-        <th style="${TH('6%')}">注文方法</th>
-        <th style="${TH('10%')}">発注日</th><th style="${TH('10%')}">納期予定</th>
-        <th style="${TH('27%')}">備考</th>
+        <th style="${TH('10%')}">パターン</th><th style="${TH('14%')}">サイズ</th>
+        <th style="${TH('5%')}">本数</th><th style="${TH('7%')}">発注者</th>
+        <th style="${TH('7%')}">受注者</th><th style="${TH('11%')}">発注日</th>
+        <th style="${TH('8%')}">納入場所</th><th style="${TH('11%')}">納期予定</th><th style="${TH('27%')}">備考</th>
       </tr></thead>
       <tbody>${pendingOrders.map((o,i)=>mkRow(o,i,true)).join('')}</tbody>
     </table>` : '';
@@ -1591,7 +1412,7 @@ function buildPdfHtml(maker, targets) {
   <title>${pdfFilename}</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'Hiragino Kaku Gothic ProN','IPAGothic',sans-serif;padding:10mm 8mm;font-size:7pt;color:#1a1a18;}
+    body{font-family:'Hiragino Kaku Gothic ProN','IPAGothic',sans-serif;padding:8mm 6mm;font-size:5pt;color:#1a1a18;}
     table{width:100%;border-collapse:collapse;table-layout:fixed;}
     td,th{overflow:hidden;text-overflow:ellipsis;word-break:break-all;}
   </style></head><body>
@@ -1600,11 +1421,11 @@ function buildPdfHtml(maker, targets) {
     <tr>
       <td style="vertical-align:middle;">
         <div style="font-size:13pt;font-weight:bold;color:#2563a8;">発　注　書</div>
-        <div style="font-size:7pt;color:#666;margin-top:2px;">発行日：${issued}　発行者：${issuerShort}</div>
+        <div style="font-size:5pt;color:#666;margin-top:2px;">発行日：${issued}　発行者：${issuerShort}</div>
       </td>
       <td style="text-align:right;vertical-align:top;">
-        <div style="font-size:9pt;font-weight:bold;">(有)タイヤマネージャーフー</div>
-        <div style="font-size:6.5pt;color:#666;line-height:1.5;">〒731-5141 広島県広島市佐伯区千同３丁目３９４－１　TEL：082-942-3730</div>
+        <div style="font-size:7pt;font-weight:bold;">(有)タイヤマネージャーフー</div>
+        <div style="font-size:5pt;color:#666;line-height:1.5;">〒731-5141 広島県広島市佐伯区千同３丁目３９４－１　TEL：082-942-3730</div>
       </td>
     </tr>
   </table>
@@ -1613,13 +1434,13 @@ function buildPdfHtml(maker, targets) {
   <table style="width:100%;border-collapse:collapse;border:1.5px solid #2563a8;background:#e8f0fa;margin-bottom:8px;">
     <tr>
       <td style="padding:3px 7px;width:65%;border-right:0.5px solid #b8cfe8;">
-        <div style="font-size:6pt;color:#2563a8;font-weight:bold;margin-bottom:1px;">発注先</div>
+        <div style="font-size:4.5pt;color:#2563a8;font-weight:bold;margin-bottom:1px;">発注先</div>
         <div style="font-size:7pt;font-weight:bold;">${MAKER_LABEL[maker] || maker}　御中</div>
-        <div style="font-size:6pt;margin-top:1px;">受注担当：${recvSan}</div>
+        <div style="font-size:4.5pt;margin-top:1px;">受注担当：${recvSan}</div>
       </td>
       <td style="padding:3px 7px;">
-        <div style="font-size:6pt;color:#2563a8;font-weight:bold;margin-bottom:1px;">注文方法</div>
-        <div style="font-size:7pt;font-weight:bold;color:#084298;">${method}</div>
+        <div style="font-size:4.5pt;color:#2563a8;font-weight:bold;margin-bottom:1px;">注文方法</div>
+        <div style="font-size:5.5pt;font-weight:bold;color:#084298;">${method}</div>
       </td>
     </tr>
   </table>
@@ -1628,20 +1449,20 @@ function buildPdfHtml(maker, targets) {
   ${pendingTable}
 
   <!-- 合計 -->
-  <div style="text-align:right;margin-top:3px;padding-top:2px;border-top:0.5px solid #e0dcd6;font-size:6pt;color:#666;">
-    今回発注合計：<span style="font-size:8pt;font-weight:bold;color:#2563a8;">${totalNew}</span>
-    　　未入荷合計：<span style="font-size:7pt;font-weight:bold;color:#1a1a18;">${totalPending}</span>
+  <div style="text-align:right;margin-top:3px;padding-top:2px;border-top:0.5px solid #e0dcd6;font-size:4.5pt;color:#666;">
+    今回発注合計：<span style="font-size:7pt;font-weight:bold;color:#2563a8;">${totalNew}本</span>
+    　　未入荷合計：<span style="font-size:6pt;font-weight:bold;color:#1a1a18;">${totalPending}本</span>
   </div>
 
   <!-- 注意欄 -->
-  <div style="background:#e8f0fa;border:0.5px solid #b8cfe8;padding:3px 6px;margin-top:5px;font-size:6pt;color:#666;line-height:1.5;">
+  <div style="background:#e8f0fa;border:0.5px solid #b8cfe8;padding:3px 6px;margin-top:5px;font-size:4.5pt;color:#666;line-height:1.5;">
     <div>※ 未入荷分は引き続きよろしくお願いいたします。</div>
     <div>※ 納期等に変更がある場合はご連絡ください。</div>
     <div style="margin-top:2px;">※ 「未入荷（既発注分）」の一覧は、弊社の社内入庫処理が完了していないものを表示しております。実際にはすでに入荷・納品済みの場合でも、社内処理のタイミングにより未入荷として表示されることがございます。ご確認の際はあらかじめご了承ください。</div>
   </div>
 
   <!-- フッター -->
-  <div style="border-top:0.5px solid #e0dcd6;margin-top:4px;padding-top:2px;display:flex;justify-content:space-between;font-size:5.5pt;color:#aaa;">
+  <div style="border-top:0.5px solid #e0dcd6;margin-top:4px;padding-top:2px;display:flex;justify-content:space-between;font-size:4pt;color:#aaa;">
     <span>(有)タイヤマネージャーフー　広島市佐伯区千同３-３９４-１　TEL：082-942-3730</span>
     <span>自動生成　${issued}</span>
   </div>
@@ -1660,13 +1481,12 @@ async function downloadOrderPdf() {
     const targets = orders.filter(o => {
       const s   = propStr(o,'ステータス');
       const sup = propStr(o,'仕入先');
-      const match = sup === maker;
+      const match = maker === 'TOYO' ? sup === 'TOYO' : sup === 'BRIDGESTONE';
       return match && (s === '新規発注' || s === '発注済');
     });
     if(!targets.length) { alert('対象データがありません'); return; }
 
     const html = buildPdfHtml(maker, targets);
-    _pdfOverlayMaker = maker;
     openPdfOverlay(html, maker);
 
   } catch(e) {
@@ -1754,153 +1574,11 @@ function closePdfOverlay() {
   window.removeEventListener('popstate', _onPopStatePdf);
 }
 
-let _pdfOverlayMaker = '';  // 印刷中のメーカーを記憶
-
 function printPdfOverlay() {
   const frame = document.getElementById('pdf-overlay-frame');
   if (!frame) return;
-  // 印刷後にステータス更新を行う
-  const afterPrint = () => { markOrdersAsSent(_pdfOverlayMaker); };
-  try {
-    const iframeDoc = frame.contentDocument || frame.contentWindow?.document;
-    const htmlContent = iframeDoc?.documentElement?.outerHTML || '';
-    const fname = iframeDoc?.title || 'TMFoo_発注書';
-    if (htmlContent) {
-      const printWin = window.open('', '_blank');
-      if (printWin) {
-        printWin.document.write(htmlContent);
-        printWin.document.close();
-        printWin.document.title = fname;
-        printWin.onafterprint = () => { printWin.close(); afterPrint(); };
-        setTimeout(() => { printWin.focus(); printWin.print(); }, 300);
-        return;
-      }
-    }
-  } catch(e) { console.warn('新ウィンドウprint失敗:', e); }
   frame.contentWindow.focus();
   frame.contentWindow.print();
-  afterPrint();
-}
-
-// ─── 発注書送信済み処理：新規発注→発注済＋発注書レコード作成 ──────────────────
-async function markOrdersAsSent(maker) {
-  if(!maker) return;
-  try {
-    const targets = orders.filter(o => {
-      const s   = propStr(o,'ステータス');
-      const sup = propStr(o,'仕入先');
-      const match = sup === maker;
-      return match && s === '新規発注';
-    });
-    if(!targets.length) return;
-
-    // 新規発注→発注済に更新
-    const patchErrors = [];
-    const patchTasks = targets.map(o =>
-      notionPatch(o.id, { 'ステータス': {select:{name:'発注済'}} })
-        .catch(e => { patchErrors.push(`${propStr(o,'タイヤサイズ')}: ${e.message}`); return null; })
-    );
-    await Promise.all(patchTasks);
-
-    if(patchErrors.length) {
-      console.warn('markOrdersAsSent patch errors:', patchErrors);
-    }
-
-    // 発注書（送付用）DBにレコードを作成
-    const successTargets = targets.filter((o, i) => !patchErrors.some(e => e.startsWith(propStr(o,'タイヤサイズ'))));
-    const pageIds = successTargets.map(o => o.id);
-    const today = new Date().toISOString().split('T')[0];
-    const supName = maker === 'TOYO' ? 'TOYO' : 'BRIDGESTONE';
-    const sheetName = `発注書_${supName}_${today}`;
-    if(pageIds.length) {
-      await notionCreate(HACCHUSHEET_DB, {
-        '発注書名':   {title:[{text:{content: sheetName}}]},
-        '仕入先':     {select:{name: supName}},
-        '作成日':     {date:{start: today}},
-        '発注行 1':   {relation: pageIds.map(id => ({id}))},
-        '送付確認':   {checkbox: true},
-      });
-    }
-
-    const okCount = targets.length - patchErrors.length;
-    if(patchErrors.length) {
-      showFeedback('error', `⚠ ${okCount}/${targets.length}件を発注済に更新（${patchErrors.length}件失敗）\n` + patchErrors.join('\n'));
-    } else {
-      showFeedback('success', `✓ ${targets.length}件を発注済に更新しました`);
-    }
-    // リロード
-    await loadOrders();
-    onPdfMakerChange();
-  } catch(e) {
-    console.error('markOrdersAsSent error:', e);
-    showFeedback('error', '発注済の更新中にエラー: ' + e.message);
-  }
-}
-
-// ─── 未送信リスト表示 ──────────────────────────────────────────────────────────
-function renderUnsentList() {
-  const section = document.getElementById('unsent-section');
-  const listEl  = document.getElementById('unsent-list');
-  if(!section || !listEl) return;
-
-  const unsent = orders.filter(o => hasNoPdf(o));
-  if(unsent.length === 0) {
-    section.style.display = 'none';
-    return;
-  }
-  section.style.display = 'block';
-
-  // メーカー別にグループ化
-  const groups = {};
-  for(const o of unsent) {
-    const sup = propStr(o,'仕入先') || 'その他';
-    if(!groups[sup]) groups[sup] = [];
-    groups[sup].push(o);
-  }
-
-  let html = '';
-  const makerOrder = ['TOYO','BRIDGESTONE','DUNLOP','MICHELIN'];
-  const sorted = Object.keys(groups).sort((a,b) => {
-    const ia = makerOrder.indexOf(a), ib = makerOrder.indexOf(b);
-    return (ia<0?99:ia) - (ib<0?99:ib);
-  });
-
-  for(const sup of sorted) {
-    const items = groups[sup];
-    const total = items.reduce((s,o) => s + (Number(propStr(o,'数量')) || 0), 0);
-    html += `<div style="margin-bottom:8px;">
-      <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:4px;">${sup} (${items.length}件 / ${total}本)</div>`;
-    for(const o of items) {
-      const pat  = propStr(o,'パターン') || '—';
-      const size = propStr(o,'サイズコード') || propStr(o,'サイズ') || propStr(o,'タイヤサイズ');
-      const qty  = propStr(o,'数量');
-      const st   = propStr(o,'ステータス');
-      const badge = st === '新規発注'
-        ? '<span style="font-size:9px;background:#fef3cd;color:#856404;padding:1px 5px;border-radius:4px;font-weight:600;">新規</span>'
-        : '<span style="font-size:9px;background:#d1ecf1;color:#0c5460;padding:1px 5px;border-radius:4px;font-weight:600;">発注済</span>';
-      html += `<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-bottom:0.5px solid var(--border);font-size:12px;">
-        ${badge}
-        <span style="font-weight:600;">${pat}</span>
-        <span style="color:var(--muted);flex:1;">${size}</span>
-        <span style="font-weight:700;color:var(--accent);">${qty}本</span>
-      </div>`;
-    }
-    html += `</div>`;
-  }
-  listEl.innerHTML = html;
-}
-
-// ─── 未送信バッジ更新 ──────────────────────────────────────────────────────────
-function updateUnsentBadge() {
-  const badge = document.getElementById('unsent-badge');
-  if(!badge) return;
-  const count = orders.filter(o => hasNoPdf(o)).length;
-  if(count > 0) {
-    badge.textContent = count;
-    badge.style.display = 'inline-block';
-  } else {
-    badge.style.display = 'none';
-  }
 }
 
 // ─── 一覧レンダリング ─────────────────────────────────────────────────────────
@@ -1947,8 +1625,18 @@ function renderPending() {
       return;
     }
     try {
-      // 検索クエリがあればフィルタ適用
-      reRenderPending();
+      const pending = orders.filter(o => {
+        const s = propStr(o,'ステータス');
+        return s === '新規発注' || s === '発注済';
+      });
+      if(!pending.length) {
+        el.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div>未入荷の発注はありません</div>';
+        return;
+      }
+      el.innerHTML = '<div class="sec-label">未入荷（'+pending.length+'件）</div>' + pending.map(o => {
+      try { return orderCardHTML(o); }
+      catch(e) { console.error('card error:', o.id, e); return ''; }
+    }).join('');
     } catch(e) {
       console.error('renderPending error:', e);
       el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div>表示エラー<br><span style="font-size:11px;word-break:break-all;">${e.message}</span></div>`;
@@ -1959,120 +1647,6 @@ function renderPending() {
   });
 }
 
-function renderPendingGrouped(pending) {
-  // メーカー順序・色
-  const makerOrder = ['TOYO','BRIDGESTONE','DUNLOP','MICHELIN',''];
-  const makerColors = {TOYO:'var(--accent)',BRIDGESTONE:'var(--blue)',DUNLOP:'#7c3aed',MICHELIN:'#059669'};
-  // 倉庫色
-  const whColors = {'五日市':'#d97706','志和':'#2563eb','倉庫未定':'var(--muted)'};
-  const whOrder  = ['五日市','志和','倉庫未定',''];
-  // パターン色（メーカー色をベースに少し薄く）
-  const patColors = {TOYO:'#c05800',BRIDGESTONE:'#1d4ed8',DUNLOP:'#6d28d9',MICHELIN:'#047857'};
-
-  // 倉庫→メーカー→パターン→アイテムのツリー構築
-  const tree = {};
-  pending.forEach(o => {
-    const maker = propStr(o,'タイヤメーカー') || propStr(o,'仕入先') || 'その他';
-    const wh    = propStr(o,'納入予定場所') || '未定';
-    const pat   = propStr(o,'パターン') || '—';
-    if (!tree[wh]) tree[wh] = {};
-    if (!tree[wh][maker]) tree[wh][maker] = {};
-    if (!tree[wh][maker][pat]) tree[wh][maker][pat] = [];
-    tree[wh][maker][pat].push(o);
-  });
-
-  // 倉庫ソート
-  const whKeys = Object.keys(tree).sort((a,b) => {
-    const ai = whOrder.indexOf(a), bi = whOrder.indexOf(b);
-    return (ai===-1?99:ai) - (bi===-1?99:bi);
-  });
-
-  const totalQty = pending.reduce((s,o) => s + (Number(propStr(o,'数量'))||0), 0);
-  let html = `<div class="sec-label">未入荷（${pending.length}件 / ${totalQty}本）</div>`;
-
-  whKeys.forEach(wh => {
-    const makerTree = tree[wh];
-    const whItems = Object.values(makerTree).flatMap(m => Object.values(m).flat());
-    const whQty = whItems.reduce((s,o) => s + (Number(propStr(o,'数量'))||0), 0);
-    const wColor = whColors[wh] || 'var(--muted)';
-
-    html += `<div class="maker-group">
-      <div class="maker-header">
-        <span class="maker-label" style="color:${wColor};">📍 ${wh}</span>
-        <span class="maker-count">${whItems.length}件 ${whQty}本</span>
-        <div class="maker-line" style="background:${wColor};opacity:0.3;"></div>
-      </div>`;
-
-    // メーカーソート
-    const makers = Object.keys(makerTree).sort((a,b) => {
-      const ai = makerOrder.indexOf(a), bi = makerOrder.indexOf(b);
-      return (ai===-1?99:ai) - (bi===-1?99:bi);
-    });
-
-    makers.forEach(maker => {
-      const patTree = makerTree[maker];
-      const makerItems = Object.values(patTree).flat();
-      const makerQty = makerItems.reduce((s,o) => s + (Number(propStr(o,'数量'))||0), 0);
-      const mColor = makerColors[maker] || 'var(--muted)';
-
-      html += `<div class="wh-group">
-        <div class="wh-header">
-          <span class="wh-label" style="color:${mColor};">${maker}</span>
-          <span class="wh-count">${makerItems.length}件 ${makerQty}本</span>
-        </div>`;
-
-      // パターンをアルファベット順にソート
-      const patKeys = Object.keys(patTree).sort();
-      const pColor = patColors[maker] || 'var(--text)';
-
-      patKeys.forEach(pat => {
-        const items = patTree[pat];
-        const patQty = items.reduce((s,o) => s + (Number(propStr(o,'数量'))||0), 0);
-        html += `<div class="pat-group">
-          <div class="pat-header"><span style="color:${pColor};">${pat}</span><span style="margin-left:6px;font-size:10px;color:var(--muted);font-weight:500;">${items.length}件 ${patQty}本</span></div>`;
-        items.forEach(o => {
-          html += pendingRowHTML(o);
-        });
-        html += `</div>`;
-      });
-
-      html += `</div>`;
-    });
-
-    html += `</div>`;
-  });
-  return html;
-}
-
-function pendingRowHTML(o) {
-  const st   = propStr(o,'ステータス') || '新規発注';
-  const sizeRaw = propStr(o,'サイズ') || '';
-  const sizeCode = propStr(o,'サイズコード') || '';
-  const dispSize = sizeRaw || sizeCode || propStr(o,'タイヤサイズ') || '—';
-  const qty  = propStr(o,'数量') || '';
-  const loc  = propStr(o,'納入予定場所') || '';
-  const date = (propStr(o,'発注日') || '').slice(5); // MM-DD
-  const due  = (propStr(o,'納期予定日') || '').slice(5);
-  const memo = propStr(o,'備考欄') || '';
-  const badgeCls = STATUS_BADGE[st] || 'badge-new';
-  const noPdfBadge = hasNoPdf(o) ? `<span class="badge badge-nopdf">⚠</span>` : '';
-
-  return `<div class="pat-row" onclick="openDetail('${o.id}')">
-    <div class="pr-size">${dispSize}</div>
-    <div class="pr-qty">${qty}</div>
-    <div class="pr-loc">${loc}</div>
-    <div class="pr-date">${date}</div>
-    <div class="pr-due">${due ? '→'+due : ''}</div>
-    <div class="pr-memo">${memo.slice(0,12)}</div>
-    <div class="pr-cancel">
-      <button onclick="event.stopPropagation(); confirmCancel('${o.id}')">取消</button>
-    </div>
-    <div class="pr-btn">
-      <button onclick="event.stopPropagation(); openNyukoModal('${o.id}')">入庫</button>
-    </div>
-  </div>`;
-}
-
 function orderCardHTML(o) {
   const st   = propStr(o,'ステータス') || '新規発注';
   const size = propStr(o,'タイヤサイズ');
@@ -2081,239 +1655,47 @@ function orderCardHTML(o) {
   const pat  = propStr(o,'パターン') || '';
   const memo = propStr(o,'備考欄');
   const date = propStr(o,'発注日');
-  const loc  = propStr(o,'納入予定場所') || '';
-  const due  = propStr(o,'納期予定日') || '';
   const num  = o.id.slice(-8).toUpperCase();
   const badgeCls  = STATUS_BADGE[st] || 'badge-new';
   const noPdfBadge = hasNoPdf(o)
-    ? `<span class="badge badge-nopdf">⚠ 未発行</span>`
+    ? `<span class="badge badge-nopdf">⚠ 発注書未発行</span>`
     : '';
   // 未入荷（新規発注・発注済）のみ入庫ボタンを表示
   const isPending = (st === '新規発注' || st === '発注済');
   const nyukoBtn = isPending ? `
-    <div class="card-nyuko">
-      <button class="nyuko-btn" onclick="event.stopPropagation(); openNyukoModal('${o.id}')">
-        📦 入庫
+    <div style="border-top:0.5px solid var(--border);margin-top:8px;padding-top:8px;">
+      <button onclick="event.stopPropagation(); openNyukoModal('${o.id}')"
+        style="width:100%;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.4);
+        border-radius:8px;padding:8px;color:#22c55e;font-size:13px;font-weight:700;cursor:pointer;">
+        📦 入庫登録
       </button>
     </div>` : '';
 
-  // メーカー色分け
-  const supColor = sup === 'BRIDGESTONE' ? 'var(--blue)' : sup === 'TOYO' ? 'var(--accent)' : 'var(--muted)';
-
   return `<div class="order-card" onclick="openDetail('${o.id}')">
-    <div class="card-info">
-      <div class="card-top">
-        <div style="display:flex;align-items:center;gap:6px;">
-          <span class="card-num">PO-${num}</span>
-          <span style="font-size:10px;font-weight:700;color:${supColor};">${sup || ''}</span>
-        </div>
-        <div style="display:flex;gap:4px;align-items:center;">
-          <div class="badge ${badgeCls}">${st}</div>
-          ${noPdfBadge}
-        </div>
+    <div class="card-top">
+      <div class="card-num">PO-${num}</div>
+      <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
+        <div class="badge ${badgeCls}">${st}</div>
+        ${noPdfBadge}
       </div>
-      <div style="display:flex;align-items:baseline;gap:5px;flex-wrap:wrap;margin-bottom:2px;">
-        ${pat ? `<span style="font-size:13px;font-weight:800;color:var(--text);">${pat}</span>` : ''}
-        <span style="font-size:13px;font-weight:700;color:var(--text);">${size || '—'}</span>
+    </div>
+    <div class="card-main" style="padding:4px 0 0;">
+      <!-- メーカー -->
+      <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:2px;">${sup || '—'}</div>
+      <!-- パターン + サイズ 太文字 -->
+      <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;">
+        ${pat ? `<span style="font-size:13px;font-weight:700;color:var(--text);">${pat}</span>` : ''}
+        <span style="font-size:15px;font-weight:700;color:var(--text);">${size || '—'}</span>
       </div>
-      <div class="card-meta">
-        ${qty ? `<div class="meta-item"><span class="meta-val" style="font-weight:700;color:var(--accent);">${qty}本</span></div>` : ''}
-        ${loc ? `<div class="meta-item">${loc}</div>` : ''}
-        ${date ? `<div class="meta-item">${date}</div>` : ''}
-        ${due ? `<div class="meta-item">納期 ${due}</div>` : ''}
-        ${memo ? `<div class="meta-item" style="color:var(--text);font-style:italic;">${memo.slice(0,15)}</div>` : ''}
-      </div>
+    </div>
+    <div class="card-meta" style="margin-top:4px;">
+      ${qty ? `<div class="meta-item">数量 <span class="meta-val" style="font-weight:700;color:var(--accent);">${qty}本</span></div>` : ''}
+      ${memo ? `<div class="meta-item"><span class="meta-val">${memo.slice(0,20)}</span></div>` : ''}
+      ${date ? `<div class="meta-item">${date}</div>` : ''}
     </div>
     ${nyukoBtn}
   </div>`;
 }
-
-// ─── 未入荷 検索 ─────────────────────────────────────────────────────────────
-let pendingSearchQuery = '';
-let pendingSearchTimer = null;
-
-function onPendingSearch(val) {
-  const q = val.trim();
-  const clearBtn = document.getElementById('pending-search-clear');
-  const iconEl   = document.getElementById('pending-search-icon');
-  if (q) { clearBtn.style.display = 'block'; iconEl.style.display = 'none'; }
-  else   { clearBtn.style.display = 'none';  iconEl.style.display = ''; }
-
-  // デバウンス
-  clearTimeout(pendingSearchTimer);
-  pendingSearchTimer = setTimeout(() => {
-    showPendingSuggestions(q);
-  }, 150);
-}
-
-function showPendingSuggestions(q) {
-  const dd = document.getElementById('pending-suggest');
-  if (!q) { dd.style.display = 'none'; pendingSearchQuery = ''; reRenderPending(); return; }
-
-  // orders配列から未入荷のみ
-  const pending = (orders || []).filter(o => {
-    const s = propStr(o,'ステータス');
-    return s === '新規発注' || s === '発注済';
-  });
-  if (!pending.length) { dd.style.display = 'none'; return; }
-
-  const ql = q.toLowerCase();
-
-  // 候補を収集: パターン名、サイズ、メーカー、倉庫
-  const suggestions = [];
-  const seen = new Set();
-
-  // パターン候補
-  pending.forEach(o => {
-    const pat = propStr(o,'パターン');
-    if (pat && !seen.has('pat:'+pat) && pat.toLowerCase().includes(ql)) {
-      seen.add('pat:'+pat);
-      suggestions.push({ label: pat, cat: 'パターン', value: pat });
-    }
-  });
-
-  // サイズ候補
-  pending.forEach(o => {
-    const sz = propStr(o,'サイズ') || propStr(o,'サイズコード') || propStr(o,'タイヤサイズ');
-    if (sz && !seen.has('sz:'+sz) && sz.toLowerCase().includes(ql)) {
-      seen.add('sz:'+sz);
-      suggestions.push({ label: sz, cat: 'サイズ', value: sz });
-    }
-  });
-
-  // メーカー候補
-  pending.forEach(o => {
-    const mk = propStr(o,'タイヤメーカー') || propStr(o,'仕入先');
-    if (mk && !seen.has('mk:'+mk) && mk.toLowerCase().includes(ql)) {
-      seen.add('mk:'+mk);
-      suggestions.push({ label: mk, cat: 'メーカー', value: mk });
-    }
-  });
-
-  // 倉庫候補
-  pending.forEach(o => {
-    const wh = propStr(o,'納入予定場所');
-    if (wh && !seen.has('wh:'+wh) && wh.toLowerCase().includes(ql)) {
-      seen.add('wh:'+wh);
-      suggestions.push({ label: wh, cat: '倉庫', value: wh });
-    }
-  });
-
-  if (!suggestions.length) {
-    // 候補がなくてもフリーテキストで絞り込み
-    pendingSearchQuery = q;
-    reRenderPending();
-    dd.style.display = 'none';
-    return;
-  }
-
-  // 最大12件
-  const top = suggestions.slice(0, 12);
-  dd.innerHTML = top.map(s =>
-    `<div class="pending-suggest-item" onclick="pickPendingSuggestion('${s.value.replace(/'/g, "\\'")}')">` +
-    `<span class="pending-suggest-cat">${s.cat}</span>` +
-    `<span>${highlightMatch(s.label, q)}</span></div>`
-  ).join('');
-  dd.style.display = 'block';
-}
-
-function highlightMatch(text, q) {
-  if (!q) return text;
-  const idx = text.toLowerCase().indexOf(q.toLowerCase());
-  if (idx === -1) return text;
-  const before = text.slice(0, idx);
-  const match  = text.slice(idx, idx + q.length);
-  const after  = text.slice(idx + q.length);
-  return `${before}<strong style="color:var(--accent);">${match}</strong>${after}`;
-}
-
-function pickPendingSuggestion(val) {
-  const input = document.getElementById('pending-search-input');
-  input.value = val;
-  pendingSearchQuery = val;
-  document.getElementById('pending-suggest').style.display = 'none';
-  const clearBtn = document.getElementById('pending-search-clear');
-  const iconEl   = document.getElementById('pending-search-icon');
-  clearBtn.style.display = 'block';
-  iconEl.style.display = 'none';
-  reRenderPending();
-}
-
-function clearPendingSearch() {
-  const input = document.getElementById('pending-search-input');
-  input.value = '';
-  pendingSearchQuery = '';
-  document.getElementById('pending-suggest').style.display = 'none';
-  document.getElementById('pending-search-clear').style.display = 'none';
-  document.getElementById('pending-search-icon').style.display = '';
-  reRenderPending();
-  input.focus();
-}
-
-function reRenderPending() {
-  const el = document.getElementById('pending-container');
-  if (!orders || !orders.length) return;
-
-  // ── 本伝待ちボタン ──
-  try {
-    const honMachi = orders.filter(o => {
-      const s = propStr(o,'ステータス');
-      const kari = o.properties['仮伝票']?.checkbox || false;
-      const hon = o.properties['本伝票']?.checkbox || false;
-      return s === '納入済' && kari && !hon;
-    });
-    let honBtn = document.getElementById('hon-machi-btn');
-    if (honMachi.length > 0) {
-      if (!honBtn) {
-        honBtn = document.createElement('button');
-        honBtn.id = 'hon-machi-btn';
-        honBtn.style.cssText = 'width:100%;padding:12px;margin-bottom:12px;border-radius:10px;border:1.5px solid rgba(59,130,246,.4);background:rgba(59,130,246,.08);color:#3b82f6;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;';
-        honBtn.onclick = openHonMachiModal;
-        el.parentNode.insertBefore(honBtn, el);
-      }
-      honBtn.textContent = `📄 本伝待ち（${honMachi.length}件）`;
-      honBtn.style.display = 'block';
-    } else if (honBtn) {
-      honBtn.style.display = 'none';
-    }
-  } catch(e) { console.warn('本伝待ちボタンエラー:', e); }
-
-  try {
-    let pending = orders.filter(o => {
-      const s = propStr(o,'ステータス');
-      return s === '新規発注' || s === '発注済';
-    });
-    if (pendingSearchQuery) {
-      const ql = pendingSearchQuery.toLowerCase();
-      pending = pending.filter(o => {
-        const pat  = (propStr(o,'パターン') || '').toLowerCase();
-        const sz   = (propStr(o,'サイズ') || propStr(o,'サイズコード') || propStr(o,'タイヤサイズ') || '').toLowerCase();
-        const mk   = (propStr(o,'タイヤメーカー') || propStr(o,'仕入先') || '').toLowerCase();
-        const wh   = (propStr(o,'納入予定場所') || '').toLowerCase();
-        const memo = (propStr(o,'備考欄') || '').toLowerCase();
-        return pat.includes(ql) || sz.includes(ql) || mk.includes(ql) || wh.includes(ql) || memo.includes(ql);
-      });
-    }
-    if (!pending.length) {
-      const msg = pendingSearchQuery
-        ? `「${pendingSearchQuery}」に該当する未入荷はありません`
-        : '未入荷の発注はありません';
-      el.innerHTML = `<div class="empty-state"><div class="empty-icon">${pendingSearchQuery ? '🔍' : '✅'}</div>${msg}</div>`;
-      return;
-    }
-    el.innerHTML = renderPendingGrouped(pending);
-  } catch(e) {
-    console.error('reRenderPending error:', e);
-  }
-}
-
-// ドロップダウンを外クリックで閉じる
-document.addEventListener('click', function(e) {
-  const wrap = document.querySelector('.pending-search-wrap');
-  if (wrap && !wrap.contains(e.target)) {
-    document.getElementById('pending-suggest').style.display = 'none';
-  }
-});
 
 // ─── フィルター ───────────────────────────────────────────────────────────────
 function filterMaker(btn) {
@@ -2447,69 +1829,6 @@ async function updateDetail() {
 function closeModal(e) {
   if(e && e.target !== document.getElementById('detail-modal')) return;
   document.getElementById('detail-modal').classList.remove('open');
-}
-
-// ─── 取り消し確認 ─────────────────────────────────────────────────────────────
-function confirmCancel(id) {
-  const o = orders.find(x => x.id === id);
-  if (!o) return;
-  const pat  = propStr(o,'パターン') || '';
-  const size = propStr(o,'サイズ') || propStr(o,'サイズコード') || propStr(o,'タイヤサイズ');
-  const qty  = propStr(o,'数量') || '';
-  const loc  = propStr(o,'納入予定場所') || '';
-
-  const overlay = document.createElement('div');
-  overlay.className = 'cancel-confirm';
-  overlay.innerHTML = `<div class="cancel-box">
-    <div class="cb-title">発注を取り消しますか？</div>
-    <div class="cb-desc">${pat} ${size}<br>${qty}本 / ${loc}</div>
-    <div class="cb-btns">
-      <button class="cb-no" id="cancel-no">戻る</button>
-      <button class="cb-yes" id="cancel-yes">取り消す</button>
-    </div>
-  </div>`;
-  document.body.appendChild(overlay);
-
-  document.getElementById('cancel-no').onclick = () => overlay.remove();
-  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
-  document.getElementById('cancel-yes').onclick = async () => {
-    const yesBtn = document.getElementById('cancel-yes');
-    yesBtn.disabled = true; yesBtn.textContent = '処理中…';
-    try {
-      // 1) 発注管理表のステータスを「キャンセル」に更新
-      await notionPatch(id, { 'ステータス': { select: { name: 'キャンセル' } } });
-
-      // 2) 入出庫DBの「発注中」レコードをアーカイブ（削除）
-      let stockMsg = '';
-      try {
-        const delResult = await fooDeleteStockOrders({
-          size:      size,
-          pattern:   pat,
-          warehouse: loc,
-          qty:       parseInt(qty, 10) || undefined,
-        });
-        if (delResult.deleted > 0) {
-          stockMsg = '\n入出庫DB「発注中」' + delResult.deleted + '件を削除しました';
-        }
-        if (delResult.errors.length > 0) {
-          stockMsg += '\n⚠️ 一部エラー: ' + delResult.errors.join(', ');
-        }
-      } catch (stockErr) {
-        stockMsg = '\n⚠️ 入出庫DBの削除に失敗: ' + stockErr.message;
-      }
-
-      // ローカル更新
-      const idx = orders.findIndex(x => x.id === id);
-      if (idx >= 0) orders[idx].properties['ステータス'].select = { name: 'キャンセル' };
-      overlay.remove();
-      renderPending();
-      showFeedback('success', '取り消しました' + stockMsg);
-    } catch(e) {
-      yesBtn.textContent = 'エラー';
-      showFeedback('error', '取り消しに失敗: ' + e.message);
-      setTimeout(() => overlay.remove(), 2000);
-    }
-  };
 }
 
 // ─── 新規発注フォーム ─────────────────────────────────────────────────────────
@@ -2772,16 +2091,12 @@ async function submitOrder() {
   const pattern   = document.getElementById('f-pattern')?.value || '';
   const location  = document.getElementById('f-location').value;
   const orderdate = document.getElementById('f-orderdate').value;
-  const noukiKakunin = document.getElementById('f-duedate-unknown').checked;
-  const duedate   = noukiKakunin ? '' : document.getElementById('f-duedate').value;
+  const duedate   = document.getElementById('f-duedate').value;
   const memo      = document.getElementById('f-memo').value.trim();
 
   if(!supplier)         { showFeedback('error','仕入先を選択してください'); return; }
   if(!selSize)          { showFeedback('error','タイヤサイズを選択してください'); return; }
-  if(!pattern)          { showFeedback('error','パターンを選択してください'); return; }
-  if(!location)         { showFeedback('error','納入予定場所を選択してください'); return; }
   if(selDBs.size === 0) { showFeedback('error','連携するDBを1つ以上選択してください'); return; }
-  if(!duedate && !noukiKakunin) { showFeedback('error','納期予定日を入力するか「納期確認」にチェックしてください'); return; }
 
   const btn = document.getElementById('btn-submit');
   btn.disabled = true;
@@ -2812,7 +2127,7 @@ async function submitOrder() {
     // 1) 発注管理表 に登録
     const orderProps = {
       'タイヤサイズ': {title:[{text:{content: titleText}}]},
-      'ステータス':   {select:{name:'発注済'}},
+      'ステータス':   {select:{name:'新規発注'}},
       '数量':         {number: qty},
       '種別':         {select:{name:'タイヤ'}},
     };
@@ -2839,45 +2154,45 @@ async function submitOrder() {
 
     await notionCreate(ORDER_DB, orderProps);
 
-    // 2) 入出庫DBに「発注中」レコードを並列作成（foo-common.js 共通関数使用）
+    // 2) 入出庫DBに「発注中」レコードを並列作成
+    const now = new Date();
+    const ym  = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}`;
+
+    // パターン+サイズからDBを自動判定（手動選択はフォールバック）
     const autoKeys = detectDbKeys(selSize, pattern);
     const targetKeys = autoKeys.length ? autoKeys : Array.from(selDBs);
 
-    const stockItems = targetKeys.map(key => {
+    const dbTasks = targetKeys.map(key => {
       const db = DB_MAP[key];
-      if (!db) return null;
-      return {
-        dbKey:     key,
-        size:      selSize,
-        pattern:   pattern,
-        warehouse: fooWarehouseFull(location),
-        qty:       qty,
-        creator:   loginUser || '自動取込',
-        memo:      memo,
+      if(!db) return Promise.resolve(null);
+      const wField = db.warehouseField;
+      const props = {
+        'タイトル': {title:[{text:{content: titleText}}]},
+        '区分':     {select:{name:'発注中'}},
+        '数量':     {number: qty},
+        '年月':     {rich_text:[{text:{content: ym}}]},
       };
+      if(loginUser)  props['作成者']    = {select:{name: loginUser}};
+      if(memo)       props['メモ']      = {rich_text:[{text:{content: memo}}]};
+      if(selSize)    props['サイズコード'] = {select:{name: selSize}};
+      if(pattern)    props['パターン名']   = {select:{name: pattern}};
+      if(location)   props[wField]      = {select:{name: location === '五日市' ? '五日市倉庫' : location === '志和' ? '志和倉庫' : location === '海田' ? '海田倉庫' : location === '未定' ? '未定' : location}};
+      return notionCreate(db.id, props).catch(e => ({error:e.message, db: db.name}));
     }).filter(Boolean);
 
-    if (!stockItems.length) {
-      showFeedback('success', `発注管理表に登録しました ✓\n⚠️ 対応する入出庫DBが見つからなかったため「発注中」は未登録です`);
-    } else {
-      const stockResult = await fooCreateStockOrdersBatch(stockItems);
-      const failed = stockResult.errors;
+    const results = await Promise.all(dbTasks);
+    const failed  = results.filter(r => r?.error);
 
-      if(failed.length) {
-        showFeedback('success', `発注管理表に登録しました ✓\n入出庫DBへの書き込みに一部失敗:\n${failed.join('\n')}`);
-      } else {
-        const dbNames = targetKeys.map(k => DB_MAP[k]?.name).filter(Boolean).join('、');
-        showFeedback('success', `登録完了 ✓\n発注管理表 ＋ 入出庫DB（${dbNames}）に「発注中」を記録しました`);
-      }
+    if(failed.length) {
+      const names = failed.map(f => f.db).join('、');
+      showFeedback('success', `発注管理表に登録しました ✓\n入出庫DB（${names}）への書き込みに一部失敗しました`);
+    } else {
+      const dbNames = targetKeys.map(k => DB_MAP[k]?.name).filter(Boolean).join('、');
+      showFeedback('success', `登録完了 ✓\n発注管理表 ＋ 入出庫DB（${dbNames}）に「発注中」を記録しました`);
     }
 
     resetForm();
-    // 発注書プレビュータブに遷移（仕入先を自動選択）
-    await loadOrders();
-    switchTab('pdf');
-    // メーカーラジオを自動選択してプレビュー表示
-    const makerRadio = document.querySelector(`input[name="pdf-maker"][value="${supplier}"]`);
-    if (makerRadio) { makerRadio.checked = true; onPdfMakerChange(); }
+    loadOrders();
 
   } catch(e) {
     showFeedback('error', '登録に失敗しました: ' + e.message);
@@ -2926,96 +2241,8 @@ function hideFeedback() {
   el.className = 'feedback';
 }
 
-// ─── 本伝待ちモーダル ─────────────────────────────────────────────────────────
-function openHonMachiModal() {
-  const honMachi = orders.filter(o => {
-    const s = propStr(o,'ステータス');
-    const kari = o.properties['仮伝票']?.checkbox || false;
-    const hon = o.properties['本伝票']?.checkbox || false;
-    return s === '納入済' && kari && !hon;
-  });
-  let overlay = document.getElementById('hon-machi-overlay');
-  if (!overlay) {
-    overlay = document.createElement('div');
-    overlay.id = 'hon-machi-overlay';
-    overlay.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;align-items:flex-end;justify-content:center;';
-    overlay.onclick = function(e) { if (e.target === overlay) closeHonMachiModal(); };
-    overlay.innerHTML = `<div style="background:var(--s1);border-radius:20px 20px 0 0;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;padding:20px 16px 32px;">
-      <div style="width:40px;height:4px;background:var(--border2,#555);border-radius:2px;margin:0 auto 16px;"></div>
-      <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px;">📄 本伝待ちリスト</div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:16px;">本伝票が届いたらチェックを入れてください（在庫には影響しません）</div>
-      <div id="hon-machi-list"></div>
-    </div>`;
-    document.body.appendChild(overlay);
-  }
-  const listEl = document.getElementById('hon-machi-list');
-  if (!honMachi.length) {
-    listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);">本伝待ちはありません</div>';
-  } else {
-    listEl.innerHTML = honMachi.map(o => {
-      const title = propStr(o,'タイヤサイズ') || '—';
-      const pattern = propStr(o,'パターン') || '';
-      const supplier = propStr(o,'仕入先') || '';
-      const qty = o.properties['数量']?.number || '';
-      const delivDate = o.properties['納品日']?.date?.start || '';
-      const kari = o.properties['仮伝票']?.checkbox ? '✅仮伝' : '';
-      return `<div id="hon-row-${o.id}" style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:600;color:var(--text);">${pattern} ${title}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${supplier} ${qty ? qty+'本' : ''} ${delivDate ? '納品:'+delivDate : ''} ${kari}</div>
-        </div>
-        <button onclick="completeHonDen('${o.id}')" style="flex-shrink:0;padding:8px 16px;border-radius:8px;border:none;background:#22c55e;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">
-          本伝 ✓
-        </button>
-      </div>`;
-    }).join('');
-  }
-  overlay.style.display = 'flex';
-}
-
-function closeHonMachiModal() {
-  const overlay = document.getElementById('hon-machi-overlay');
-  if (overlay) overlay.style.display = 'none';
-}
-
-async function completeHonDen(pageId) {
-  const row = document.getElementById('hon-row-' + pageId);
-  if (row) {
-    row.style.opacity = '0.4';
-    row.querySelector('button').textContent = '処理中...';
-    row.querySelector('button').disabled = true;
-  }
-  try {
-    // ★ 在庫には一切触れない。発注管理の本伝票チェックのみ更新
-    await notionPatch(pageId, { '本伝票': { checkbox: true } });
-    if (row) row.remove();
-    // ボタンのカウント更新
-    const remaining = document.querySelectorAll('[id^="hon-row-"]').length;
-    const btn = document.getElementById('hon-machi-btn');
-    if (remaining === 0) {
-      if (btn) btn.style.display = 'none';
-      closeHonMachiModal();
-      showFeedback('success', '✓ 全ての本伝票を処理しました');
-    } else {
-      if (btn) btn.textContent = `📄 本伝待ち（${remaining}件）`;
-      showFeedback('success', '✓ 本伝票を完了にしました');
-    }
-    // orders配列も更新
-    const ord = orders.find(o => o.id === pageId);
-    if (ord) ord.properties['本伝票'] = { checkbox: true, type: 'checkbox' };
-  } catch(e) {
-    if (row) {
-      row.style.opacity = '1';
-      row.querySelector('button').textContent = '本伝 ✓';
-      row.querySelector('button').disabled = false;
-    }
-    showFeedback('error', '本伝票の更新に失敗しました: ' + e.message);
-  }
-}
-
 // ─── 初期ロード ───────────────────────────────────────────────────────────────
 renderPending();
-loadOrders();
 </script>
 </body>
 </html>

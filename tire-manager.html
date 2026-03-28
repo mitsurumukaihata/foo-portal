@@ -1156,8 +1156,10 @@ function renderStockResult(size, catKey, records) {
   var result = calcStock(records, catKey);
   var stock = result.stock; var prepStock = result.prepStock; var orderStock = result.orderStock;
   var MAKER_ORDER = ['TOYO','BRIDGESTONE','DUNLOP','MICHELIN','PIRELLI'];
+  var MAKER_COLOR = {'TOYO':'var(--accent)','BRIDGESTONE':'var(--blue)','DUNLOP':'var(--green)','MICHELIN':'var(--yellow)','PIRELLI':'var(--red)'};
   var sortedPatterns = db.patterns.slice().sort(function(a, b) {
     var oA = MAKER_ORDER.indexOf(getMaker(a)), oB = MAKER_ORDER.indexOf(getMaker(b));
+    if (oA === -1) oA = 99; if (oB === -1) oB = 99;
     if (oA !== oB) return oA - oB;
     var sA = WAREHOUSES.reduce(function(s,w){ return s+(stock[a]?.[w]||0); },0);
     var sB = WAREHOUSES.reduce(function(s,w){ return s+(stock[b]?.[w]||0); },0);
@@ -1173,7 +1175,14 @@ function renderStockResult(size, catKey, records) {
   html += '<div style="text-align:center;flex:1;min-width:0;"><div style="font-size:9px;color:var(--accent);">準備中</div></div>';
   html += '<div style="text-align:center;flex:1;min-width:0;"><div style="font-size:9px;color:var(--accent);">発注中</div></div>';
   html += '</div></div>';
+  var _lastMaker = null;
   sortedPatterns.forEach(function(p) {
+    var maker = getMaker(p);
+    if (maker !== _lastMaker) {
+      _lastMaker = maker;
+      var mc = MAKER_COLOR[maker] || 'var(--muted)';
+      html += '<div style="margin-top:12px;margin-bottom:2px;padding:3px 6px;background:var(--s2);border-left:3px solid ' + mc + ';border-radius:0 4px 4px 0;"><span style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:' + mc + ';">' + maker + '</span></div>';
+    }
     var prep = prepStock[p] || 0; var ord = orderStock[p] || 0;
     html += '<div class="stock-row"><div class="stock-pattern"><span style="font-weight:600;">' + p + '</span></div><div class="stock-counts">';
     WAREHOUSES.forEach(function(w) {

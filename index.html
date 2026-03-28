@@ -1439,7 +1439,7 @@ async function notionAPI(method, path, body) {
 // 確定並び順（2026-03-28）:
 //   現場・業務: タイヤ入出庫 → 出勤簿 → 顧客管理 → タスク管理
 //   事務: 発注管理 → 自動発注 → 棚卸表 → 福利厚生
-//   EC/マーケ: オークション → SNS用素材アップロード
+//   EC/マーケ: オークション → EC/マーケ管理 → SNS用素材アップロード
 //   コミュニティ: 会議内容 → 部長コミュニティ → リーダーコミュニティ → マーケ/EC
 //   マニュアル: タイヤ交換マニュアル → 作業報告書 → 社内制度ルール
 //   管理: DB繰越管理
@@ -1467,6 +1467,8 @@ const APP_DEFS = [
   // ── EC/マーケ ──
   { key: '🏷️ オークション',      id: 'auction', label: 'オークション',       sub: '出品 · 落札 · 履歴',       section: 'EC/マーケ',   url: 'https://mitsurumukaihata.github.io/foo-portal/auction.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L3 7v10l9 5 9-5V7z"/><polyline points="3 7 12 12 21 7"/><line x1="12" y1="12" x2="12" y2="22"/></svg>` },
+  { key: '📊 EC/マーケ管理',     id: 'ecmarket', label: 'EC/マーケ管理',      sub: 'Instagram · 売上 · 分析',  section: 'EC/マーケ',   url: 'https://mitsurumukaihata.github.io/foo-portal/instagram-manager.html',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/><line x1="12" y1="17" x2="12" y2="21"/><polyline points="7 8 12 13 17 8"/></svg>` },
   { key: '📸 広報協力', id: 'sns_upload', label: 'SNS用素材アップロード', sub: '撮影素材の共有 · Google Drive連携', section: 'EC/マーケ', url: 'https://mitsurumukaihata.github.io/foo-portal/sns-upload.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>` },
   // ── コミュニティ ──

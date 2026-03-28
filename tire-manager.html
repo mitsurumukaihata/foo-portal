@@ -504,6 +504,8 @@ function launchApp() {
   document.getElementById('app').style.display = 'flex';
   resetState(); renderEntry(); renderStockHome();
   fetchPatternMakerDB(); // バックグラウンドで廃盤パターンを取得
+  // 価格検索の全DBサイズを先読み（価格タブを開く前に完了させる）
+  Object.keys(PRICE_DB_MAP).forEach(key => fetchPriceSizes(key));
 }
 function logout() { localStorage.removeItem('tire_name'); location.reload(); }
 
@@ -1393,13 +1395,21 @@ async function priceFilterSizes(v) {
   const c = document.getElementById('price-size-candidates'); const btn = document.getElementById('price-search-btn');
   if (!c) return;
   if (q.length < 3) { c.innerHTML = q.length > 0 ? `<div style="text-align:center;padding:8px;font-size:12px;color:var(--muted);">あと${3-q.length}文字入力してください</div>` : ''; if (btn) { btn.disabled=true; btn.textContent='サイズを選択してください'; } return; }
-  if (!PRICE_SIZE_CACHE[priceState.dbKey]) c.innerHTML = `<div style="text-align:center;padding:8px;font-size:12px;color:var(--muted);">サイズ一覧を取得中…</div>`;
-  const sizes = await fetchPriceSizes(priceState.dbKey);
   const nq = normalizeSizeQuery(q);
-  const hits = sizes.filter(s => normalizeSizeStr(s).includes(nq) || s.toUpperCase().includes(q.replace(/\s/g,''))).slice(0,15);
-  if (hits.length === 0) { c.innerHTML = `<div style="text-align:center;padding:8px;font-size:12px;color:var(--muted);">候補なし</div>`; priceState.selectedSize=q; if(btn){btn.disabled=false;btn.textContent=`「${q}」のパターンを選ぶ →`;} return; }
-  c.innerHTML = hits.map(s=>`<div class="candidate${priceState.selectedSize===s?' sel':''}" onclick="pricePickSize('${s}')"><span class="candidate-text">${s}</span><span class="candidate-badge">選択</span></div>`).join('');
-  if (priceState.selectedSize && hits.includes(priceState.selectedSize) && btn) { btn.disabled=false; btn.textContent=`${priceState.selectedSize} のパターンを選ぶ →`; }
+  function renderHits(sizes) {
+    const hits = sizes.filter(s => normalizeSizeStr(s).includes(nq) || s.toUpperCase().includes(q.replace(/\s/g,''))).slice(0,15);
+    if (hits.length === 0) return false;
+    c.innerHTML = hits.map(s=>`<div class="candidate${priceState.selectedSize===s?' sel':''}" onclick="pricePickSize('${s}')"><span class="candidate-text">${s}</span><span class="candidate-badge">選択</span></div>`).join('');
+    if (priceState.selectedSize && hits.includes(priceState.selectedSize) && btn) { btn.disabled=false; btn.textContent=`${priceState.selectedSize} のパターンを選ぶ →`; }
+    return true;
+  }
+  // キャッシュがなければフォールバックを即時表示（待ち時間ゼロ）
+  if (!PRICE_SIZE_CACHE[priceState.dbKey]) {
+    const fallback = PRICE_SIZE_MAP_FALLBACK[priceState.dbKey] || [];
+    if (!renderHits(fallback)) c.innerHTML = `<div style="text-align:center;padding:8px;font-size:12px;color:var(--muted);">サイズ一覧を取得中…</div>`;
+  }
+  const sizes = await fetchPriceSizes(priceState.dbKey);
+  if (!renderHits(sizes)) { c.innerHTML = `<div style="text-align:center;padding:8px;font-size:12px;color:var(--muted);">候補なし</div>`; priceState.selectedSize=q; if(btn){btn.disabled=false;btn.textContent=`「${q}」のパターンを選ぶ →`;} }
 }
 function pricePickSize(s) {
   priceState.selectedSize=s; priceState.query=s;
@@ -1408,9 +1418,16 @@ function pricePickSize(s) {
   const btn=document.getElementById('price-search-btn'); if(btn){btn.disabled=false;btn.textContent=`${s} のパターンを選ぶ →`;}
 }
 function priceClearSearch() { priceState.query=''; priceState.selectedSize=''; priceState.step='search'; priceState.patternRows=[]; priceState.selectedPattern=''; priceState.results=[]; priceState.estOpen={}; priceState.estPct={}; priceState.estQty={}; renderPriceHome(); }
+const PRICE_PATTERN_CACHE = {};
 async function priceGoPattern() {
   if (priceState.loading) return;
   const sz = priceState.selectedSize || priceState.query; if (!sz) return;
+  // キャッシュがあれば即時表示（APIコールなし）
+  const cacheKey = `${priceState.dbKey}::${sz}`;
+  if (PRICE_PATTERN_CACHE[cacheKey]) {
+    priceState.patternRows=PRICE_PATTERN_CACHE[cacheKey]; priceState.step='pattern'; priceState.selectedPattern=''; priceState.loading=false;
+    renderPricePatternStep(); return;
+  }
   priceState.loading = true;
   document.getElementById('price-content').innerHTML = '<div class="content"><div class="loading-wrap"><div class="spinner"></div><div class="loading-text">パターンデータを取得中…</div></div></div>';
   const db = PRICE_DB_MAP[priceState.dbKey];
@@ -1418,6 +1435,7 @@ async function priceGoPattern() {
     let all = [], cursor;
     while (true) { const body = { filter: { property: 'サイズ', rich_text: { contains: sz } }, page_size: 100 }; if (cursor) body.start_cursor = cursor; const res = await notionAPI('POST', `/databases/${db.id}/query`, body); if (res.object === 'error') throw new Error(res.message); all = all.concat(res.results); if (!res.has_more) break; cursor = res.next_cursor; }
     priceState.patternRows = all.map(r => { const p = r.properties; return { id:r.id, size:p['サイズ']?.rich_text?.[0]?.plain_text||'', pattern:p['パターン']?.select?.name||'', maker:p['メーカー']?.select?.name||'', cat:p['カテゴリ']?.select?.name||'', price:p['価格']?.number??null, note:p['備考']?.rich_text?.[0]?.plain_text||'', weight:p['加重指数']?.rich_text?.[0]?.plain_text||'' }; });
+    PRICE_PATTERN_CACHE[cacheKey] = priceState.patternRows; // キャッシュ保存（次回から即時）
     priceState.loading=false; priceState.step='pattern'; priceState.selectedPattern=''; renderPricePatternStep();
   } catch(e) { priceState.loading=false; document.getElementById('price-content').innerHTML=`<div class="content"><div class="error-box">取得に失敗しました。<br><small>${e.message}</small></div><button class="btn-secondary" onclick="priceState.step='search';renderPriceHome()">← 戻る</button></div>`; }
 }

@@ -214,6 +214,15 @@ body{
 }
 .empty-icon{font-size:36px;margin-bottom:8px;}
 .loading-state{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
+/* ─── マイナス在庫バナー ─── */
+.neg-banner{background:rgba(239,68,68,0.1);border:1.5px solid var(--red);border-radius:10px;padding:12px 14px;margin-bottom:12px;cursor:pointer;transition:all 0.15s;}
+.neg-banner:active{transform:scale(0.98);}
+.neg-banner-row{display:flex;align-items:center;gap:10px;}
+.neg-banner-badge{background:var(--red);color:#fff;border-radius:20px;font-size:11px;font-weight:700;padding:2px 8px;margin-left:auto;white-space:nowrap;}
+.neg-modal-wrap{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9000;display:flex;align-items:flex-end;}
+.neg-modal{width:100%;max-width:480px;margin:0 auto;background:var(--s1);border-radius:16px 16px 0 0;padding:20px 16px 40px;max-height:80vh;overflow-y:auto;}
+.neg-item{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all 0.12s;}
+.neg-item:active{transform:scale(0.98);border-color:var(--red);}
 
 /* ── 未入荷 検索窓 ── */
 .pending-search-wrap{
@@ -460,6 +469,7 @@ body{
 
 <!-- ══ 未入荷タブ ══ -->
 <div class="body" id="pane-pending">
+  <div id="neg-banner-order"></div>
   <div class="pending-search-wrap">
     <input type="text" class="pending-search" id="pending-search-input"
            placeholder="パターン・サイズ・メーカーで検索..."
@@ -2828,6 +2838,64 @@ function hideFeedback() {
   const el = document.getElementById('form-feedback');
   el.className = 'feedback';
 }
+
+// ─── マイナス在庫バナー（tire-manager.htmlと共有のlocalStorageを参照）────────
+(function() {
+  let items = [];
+  try { items = JSON.parse(localStorage.getItem('foo_neg_stock') || '[]'); } catch(e) {}
+  if (!items.length) return;
+
+  const groups = {};
+  items.forEach(i => {
+    const k = `${i.catKey}||${i.size}`;
+    if (!groups[k]) groups[k] = { catKey: i.catKey, size: i.size, rows: [] };
+    groups[k].rows.push(i);
+  });
+  const cnt = Object.keys(groups).length;
+
+  const banner = document.getElementById('neg-banner-order');
+  if (!banner) return;
+  banner.innerHTML = `<div class="neg-banner" onclick="showOrderNegModal()">
+    <div class="neg-banner-row">
+      <span style="font-size:20px;">🚨</span>
+      <div>
+        <div style="font-weight:700;font-size:13px;color:var(--red);">在庫マイナス検出</div>
+        <div style="font-size:11px;color:var(--muted);">タップして確認・修正してください</div>
+      </div>
+      <span class="neg-banner-badge">${cnt}件</span>
+    </div>
+  </div>`;
+
+  window.showOrderNegModal = function() {
+    let html = '';
+    Object.values(groups).forEach(g => {
+      const details = g.rows.map(r =>
+        `<span style="font-size:11px;background:rgba(239,68,68,0.12);color:var(--red);font-weight:700;padding:2px 6px;border-radius:4px;">${r.pattern} ${(r.warehouse||'').replace('倉庫','')}:${r.qty}</span>`
+      ).join('');
+      const url = `tire-manager.html?neg_size=${encodeURIComponent(g.size)}&neg_cat=${encodeURIComponent(g.catKey)}`;
+      html += `<div class="neg-item" onclick="location.href='${url}'">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;">${g.size}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${g.catKey}</div>
+          <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">${details}</div>
+        </div>
+        <div style="color:var(--red);font-size:20px;flex-shrink:0;">›</div>
+      </div>`;
+    });
+    const ov = document.createElement('div');
+    ov.id = 'order-neg-modal';
+    ov.className = 'neg-modal-wrap';
+    ov.innerHTML = `<div class="neg-modal">
+      <div style="text-align:center;font-size:28px;margin-bottom:4px;">🚨</div>
+      <div style="font-size:16px;font-weight:700;text-align:center;color:var(--red);margin-bottom:2px;">在庫マイナス一覧</div>
+      <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:16px;">タップするとタイヤ入出庫の在庫確認へ移動します</div>
+      ${html}
+      <button onclick="document.getElementById('order-neg-modal').remove()" style="width:100%;margin-top:12px;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;padding:13px;color:var(--text);font-size:14px;font-family:'Noto Sans JP',sans-serif;cursor:pointer;font-weight:700;">閉じる</button>
+    </div>`;
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+    document.body.appendChild(ov);
+  };
+})();
 
 // ─── 初期ロード ───────────────────────────────────────────────────────────────
 renderPending();

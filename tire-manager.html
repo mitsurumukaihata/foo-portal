@@ -241,6 +241,15 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .stock-count-num.positive { color: var(--green); }
 .stock-count-label { font-size: 9px; color: var(--muted); margin-top: 1px; }
 .stock-empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; }
+/* ─── マイナス在庫バナー ─── */
+.neg-banner { background:rgba(239,68,68,0.1); border:1.5px solid var(--red); border-radius:10px; padding:12px 14px; margin-bottom:12px; cursor:pointer; transition:all 0.15s; }
+.neg-banner:active { transform:scale(0.98); }
+.neg-banner-row { display:flex; align-items:center; gap:10px; }
+.neg-banner-badge { background:var(--red); color:#fff; border-radius:20px; font-size:11px; font-weight:700; padding:2px 8px; margin-left:auto; white-space:nowrap; }
+.neg-modal-wrap { position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9000; display:flex; align-items:flex-end; }
+.neg-modal { width:100%; max-width:480px; margin:0 auto; background:var(--s1); border-radius:16px 16px 0 0; padding:20px 16px 40px; max-height:80vh; overflow-y:auto; }
+.neg-item { background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:8px; cursor:pointer; display:flex; align-items:center; gap:12px; transition:all 0.12s; }
+.neg-item:active { transform:scale(0.98); border-color:var(--red); }
 .cat-select-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 16px 20px; }
 .cat-sel-btn { background: var(--s2); border: 1.5px solid var(--border); border-radius: 10px; padding: 14px 12px; cursor: pointer; text-align: left; transition: all 0.12s; }
 .cat-sel-btn:active { transform: scale(0.97); }
@@ -499,6 +508,89 @@ function startApp() {
   launchApp();
 }
 function showGateError(msg) { const el = document.getElementById('gate-error'); el.textContent = msg; el.style.display = 'block'; }
+// ─── マイナス在庫キャッシュ ───────────────────────────────────────────────────
+let NEGATIVE_STOCK_ITEMS = [];
+try { NEGATIVE_STOCK_ITEMS = JSON.parse(localStorage.getItem('foo_neg_stock') || '[]'); } catch(e) {}
+
+function saveNegStock() {
+  try { localStorage.setItem('foo_neg_stock', JSON.stringify(NEGATIVE_STOCK_ITEMS)); } catch(e) {}
+}
+
+function updateNegStock(catKey, size, stock) {
+  // このサイズ×カテゴリの既存エントリをリセット
+  NEGATIVE_STOCK_ITEMS = NEGATIVE_STOCK_ITEMS.filter(i => !(i.catKey === catKey && i.size === size));
+  const now = Date.now();
+  Object.entries(stock).forEach(([pattern, warehouses]) => {
+    Object.entries(warehouses).forEach(([warehouse, qty]) => {
+      if (qty < 0) NEGATIVE_STOCK_ITEMS.push({ catKey, size, pattern, warehouse, qty, t: now });
+    });
+  });
+  saveNegStock();
+}
+
+function getNegBannerHTML() {
+  if (!NEGATIVE_STOCK_ITEMS.length) return '';
+  const groups = {};
+  NEGATIVE_STOCK_ITEMS.forEach(i => {
+    const k = `${i.catKey}||${i.size}`;
+    if (!groups[k]) groups[k] = { catKey: i.catKey, size: i.size };
+  });
+  const cnt = Object.keys(groups).length;
+  return `<div class="neg-banner" onclick="showNegModal()">
+    <div class="neg-banner-row">
+      <span style="font-size:20px;">🚨</span>
+      <div>
+        <div style="font-weight:700;font-size:13px;color:var(--red);">在庫マイナス検出</div>
+        <div style="font-size:11px;color:var(--muted);">タップして確認・修正してください</div>
+      </div>
+      <span class="neg-banner-badge">${cnt}件</span>
+    </div>
+  </div>`;
+}
+
+function showNegModal() {
+  const groups = {};
+  NEGATIVE_STOCK_ITEMS.forEach(i => {
+    const k = `${i.catKey}||${i.size}`;
+    if (!groups[k]) groups[k] = { catKey: i.catKey, size: i.size, rows: [] };
+    groups[k].rows.push(i);
+  });
+  let html = '';
+  Object.values(groups).forEach(g => {
+    const db = DB_MAP[g.catKey];
+    const dbName = db ? `${db.icon} ${db.name}` : g.catKey;
+    const details = g.rows.map(r =>
+      `<span style="font-size:11px;background:rgba(239,68,68,0.12);color:var(--red);font-weight:700;padding:2px 6px;border-radius:4px;">${r.pattern} ${r.warehouse.replace('倉庫','')}:${r.qty}</span>`
+    ).join('');
+    html += `<div class="neg-item" onclick="goToNegStock('${g.size}','${g.catKey}')">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;">${g.size}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">${dbName}</div>
+        <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">${details}</div>
+      </div>
+      <div style="color:var(--red);font-size:20px;flex-shrink:0;">›</div>
+    </div>`;
+  });
+  const ov = document.createElement('div');
+  ov.id = 'neg-modal';
+  ov.className = 'neg-modal-wrap';
+  ov.innerHTML = `<div class="neg-modal">
+    <div style="text-align:center;font-size:28px;margin-bottom:4px;">🚨</div>
+    <div style="font-size:16px;font-weight:700;text-align:center;color:var(--red);margin-bottom:2px;">在庫マイナス一覧</div>
+    <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:16px;">タップすると在庫確認へ移動します</div>
+    ${html}
+    <button onclick="document.getElementById('neg-modal').remove()" style="width:100%;margin-top:12px;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;padding:13px;color:var(--text);font-size:14px;font-family:'Noto Sans JP',sans-serif;cursor:pointer;font-weight:700;">閉じる</button>
+  </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+
+function goToNegStock(size, catKey) {
+  document.getElementById('neg-modal')?.remove();
+  switchTab('stock');
+  loadStockData(size, catKey);
+}
+
 function launchApp() {
   document.getElementById('token-gate').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
@@ -506,6 +598,12 @@ function launchApp() {
   fetchPatternMakerDB(); // バックグラウンドで廃盤パターンを取得
   // 価格検索の全DBサイズを先読み（価格タブを開く前に完了させる）
   Object.keys(PRICE_DB_MAP).forEach(key => fetchPriceSizes(key));
+  // order.htmlからのディープリンク対応
+  const params = new URLSearchParams(window.location.search);
+  const negSize = params.get('neg_size'), negCat = params.get('neg_cat');
+  if (negSize && negCat) {
+    setTimeout(() => { switchTab('stock'); loadStockData(negSize, negCat); }, 400);
+  }
 }
 function logout() { localStorage.removeItem('tire_name'); location.reload(); }
 
@@ -537,6 +635,7 @@ function renderEntry() {
 function renderSize(el) {
   el.innerHTML = `
     <div class="content">
+      ${getNegBannerHTML()}
       <div class="screen-label">ステップ 1</div>
       <div class="screen-title">タイヤサイズを入力</div>
       <div class="search-box">
@@ -1098,7 +1197,8 @@ async function submitPrepToShukko(pageId, catKey) {
 let stockState = { step: 0, size: '', cat: '', records: [] };
 function renderStockHome() {
   const el = document.getElementById('stock-content');
-  el.innerHTML = `<div class="stock-size-search"><div class="screen-label" style="padding:16px 0 6px;">在庫確認</div><div class="screen-title">タイヤサイズを入力</div><div style="height:12px;"></div><div class="search-box"><input id="stock-sz" type="text" placeholder="例：275 または 27580" autocomplete="off" inputmode="numeric"><button class="search-clear" onclick="document.getElementById('stock-sz').value='';filterStockSizes('')">✕</button></div><div id="stock-sz-candidates" class="candidates"></div></div>`;
+  const _negHtml = getNegBannerHTML();
+  el.innerHTML = `<div class="stock-size-search">${_negHtml ? `<div style="padding-top:16px;padding-bottom:0;">${_negHtml}</div>` : ''}<div class="screen-label" style="padding:${_negHtml?'4':'16'}px 0 6px;">在庫確認</div><div class="screen-title">タイヤサイズを入力</div><div style="height:12px;"></div><div class="search-box"><input id="stock-sz" type="text" placeholder="例：275 または 27580" autocomplete="off" inputmode="numeric"><button class="search-clear" onclick="document.getElementById('stock-sz').value='';filterStockSizes('')">✕</button></div><div id="stock-sz-candidates" class="candidates"></div></div>`;
   document.getElementById('stock-sz').addEventListener('input', e => filterStockSizes(e.target.value));
 }
 function filterStockSizes(v) {
@@ -1196,6 +1296,7 @@ function renderStockResult(size, catKey, records) {
   var db = DB_MAP[catKey];
   var result = calcStock(records, catKey);
   var stock = result.stock; var prepStock = result.prepStock; var orderStock = result.orderStock;
+  updateNegStock(catKey, size, stock); // マイナス在庫を検出してキャッシュ更新
   var MAKER_ORDER = ['TOYO','BRIDGESTONE','DUNLOP','MICHELIN','PIRELLI'];
   var MAKER_COLOR = {'TOYO':'var(--accent)','BRIDGESTONE':'var(--blue)','DUNLOP':'var(--green)','MICHELIN':'var(--yellow)','PIRELLI':'var(--red)'};
   var sortedPatterns = db.patterns.slice().sort(function(a, b) {

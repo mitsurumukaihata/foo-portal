@@ -378,7 +378,7 @@ function getMaker(pattern) {
   const p = pattern.toUpperCase();
   if (['XJE4'].includes(pattern)) return 'MICHELIN';
   if (['FR01','TR01','R02','R01','TG01','ALL ROADS','WINTER D','ADR26','GU01'].includes(pattern)) return 'PIRELLI';
-  if (p.startsWith('W') || ['R225','R241','LV01','W300','RTM810','RTM804','RTM807','RTM81C-170','RTM890','RTW910','RTW911','RTW970','RTG610'].includes(pattern)) return 'BRIDGESTONE';
+  if (p.startsWith('W') || ['R225','R241','LV01','W300','M801','M804','M804Z','M810','M890','RTM810','RTM804','RTM807','RTM81C-170','RTM890','RTW910','RTW911','RTW970','RTG610'].includes(pattern)) return 'BRIDGESTONE';
   if (['LT01','SV01','VAN01','SPLT50','SPLT21','SPLT22'].includes(p) || p.startsWith('SP')) return 'DUNLOP';
   return 'TOYO';
 }

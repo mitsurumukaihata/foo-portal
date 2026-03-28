@@ -1435,35 +1435,41 @@ async function notionAPI(method, path, body) {
 }
 
 // ─── アプリ定義 ──────────────────────────────────────────────────────────────
+// ⚠️ 並び順は固定。変更・削除禁止。新規追加時は必ずユーザーに確認してから追加すること。
+// 確定並び順（2026-03-28）:
+//   現場・業務: タイヤ入出庫 → 出勤簿 → 顧客管理 → タスク管理
+//   事務: 発注管理 → 自動発注 → 棚卸表 → 福利厚生
+//   EC/マーケ: オークション → SNS用素材アップロード
+//   コミュニティ: 会議内容 → 部長コミュニティ → リーダーコミュニティ → マーケ/EC
+//   マニュアル: タイヤ交換マニュアル → 作業報告書 → 社内制度ルール
+//   管理: DB繰越管理
+//   経理: 資金繰り → 月次KPI → 借入一覧 → 設備投資予定表 → サブスク管理 → サンフレチケット
+//   給与: 給与明細
 const APP_DEFS = [
+  // ── 現場・業務 ──
   { key: '🚛 タイヤ入出庫',      id: 'tire',    label: 'タイヤ入出庫',       sub: '在庫管理 · 価格検索',      section: '現場・業務',   url: 'https://mitsurumukaihata.github.io/foo-portal/tire-manager.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>` },
   { key: '📅 出勤簿',            id: 'kintai',  label: '出勤簿',             sub: '打刻 · 勤怠履歴',          section: '現場・業務',   url: 'https://mitsurumukaihata.github.io/foo-portal/kintai.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="14" x2="8" y2="14" stroke-width="2.5"/><line x1="12" y1="14" x2="12" y2="14" stroke-width="2.5"/><line x1="8" y1="18" x2="8" y2="18" stroke-width="2.5"/><line x1="12" y1="18" x2="12" y2="18" stroke-width="2.5"/></svg>` },
   { key: '👤 顧客情報',          id: 'customer',label: '顧客情報',           sub: '検索 · 確認 · 登録',       section: '現場・業務',   action: 'goCustomers()',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>` },
-  { key: '📋 発注管理',          id: 'order',   label: '発注管理',           sub: '仕入れ発注 · 入出庫DB連携', section: '事務',   url: 'https://mitsurumukaihata.github.io/foo-portal/order.html',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>` },
-  { key: '💊 福利厚生',          id: 'welfare', label: '福利厚生',           sub: '申請 · 集計',              section: '事務',   url: 'https://mitsurumukaihata.github.io/foo-portal/welfare.html',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8"/><line x1="6" y1="9" x2="14" y2="9"/><line x1="6" y1="13" x2="10" y2="13"/><circle cx="18" cy="18" r="4"/><line x1="18" y1="15" x2="18" y2="21"/><line x1="15" y1="18" x2="21" y2="18"/></svg>` },
-  { key: '🏷️ オークション',      id: 'auction', label: 'オークション',       sub: '出品 · 落札 · 履歴',       section: 'EC/マーケ',   url: 'https://mitsurumukaihata.github.io/foo-portal/auction.html',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L3 7v10l9 5 9-5V7z"/><polyline points="3 7 12 12 21 7"/><line x1="12" y1="12" x2="12" y2="22"/></svg>` },
-  { key: '🤖 自動発注',          id: 'auto',    label: '自動発注',           sub: '在庫アラート · 発注書PDF',  section: '事務',   url: 'https://mitsurumukaihata.github.io/foo-portal/auto-order.html',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>` },
-  { key: '資金繰り',              id: 'cashflow',label: '資金繰り',           sub: '入出金管理 · 残高 · 返済',  section: '経理',   url: 'https://mitsurumukaihata.github.io/foo-portal/cashflow.html',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>` },
-  { key: '🧞 サンフレチケット',      id: 'sanfre', label: 'サンフレチケット',    sub: '観戦者名簿 · チケット管理',  section: '経理',   url: 'https://mitsurumukaihata.github.io/foo-portal/sanfre-ticket.html',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#6B2D8B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>` },
-  { key: '💳 サブスク管理',          id: 'subscription', label: 'サブスク管理',      sub: '月額 · 年額 · 契約更新',    section: '経理',   url: 'https://mitsurumukaihata.github.io/foo-portal/subscription-manager.html',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>` },
-  { key: '🏗️ 設備購入予定表',       id: 'equipment', label: '設備購入予定表',    sub: '見積 · 発注 · 納品管理',    section: '経理',   url: 'https://mitsurumukaihata.github.io/foo-portal/equipment-purchase.html',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>` },
-  { key: '🏦 借入一覧',              id: 'loan',    label: '借入一覧',           sub: '返済状況 · 引落予定',       section: '経理',   url: 'https://mitsurumukaihata.github.io/foo-portal/loan.html',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M3 10h18"/><path d="M5 6l7-3 7 3"/><line x1="4" y1="10" x2="4" y2="21"/><line x1="8" y1="10" x2="8" y2="21"/><line x1="12" y1="10" x2="12" y2="21"/><line x1="16" y1="10" x2="16" y2="21"/><line x1="20" y1="10" x2="20" y2="21"/></svg>` },
-  { key: '📊 月次KPI',               id: 'kpi',     label: '月次KPI',            sub: '達成率 · 前年比 · トレンド', section: '経理',   url: 'https://mitsurumukaihata.github.io/foo-portal/kpi.html',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>` },
   { key: '✅ タスク管理',         id: 'task',    label: 'タスク管理',         sub: 'スポット · シーズン · 定期', section: '現場・業務', url: 'https://mitsurumukaihata.github.io/foo-portal/task-manager-app.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>` },
+  // ── 事務 ──
+  { key: '📋 発注管理',          id: 'order',   label: '発注管理',           sub: '仕入れ発注 · 入出庫DB連携', section: '事務',   url: 'https://mitsurumukaihata.github.io/foo-portal/order.html',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>` },
+  { key: '🤖 自動発注',          id: 'auto',    label: '自動発注',           sub: '在庫アラート · 発注書PDF',  section: '事務',   url: 'https://mitsurumukaihata.github.io/foo-portal/auto-order.html',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>` },
+  { key: '📦 棚卸表',               id: 'tanaoroshi', label: '棚卸表',           sub: '在庫集計 · 棚卸PDF発行',     section: '事務',   url: 'https://mitsurumukaihata.github.io/foo-portal/tanaoroshi.html',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>` },
+  { key: '💊 福利厚生',          id: 'welfare', label: '福利厚生',           sub: '申請 · 集計',              section: '事務',   url: 'https://mitsurumukaihata.github.io/foo-portal/welfare.html',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8"/><line x1="6" y1="9" x2="14" y2="9"/><line x1="6" y1="13" x2="10" y2="13"/><circle cx="18" cy="18" r="4"/><line x1="18" y1="15" x2="18" y2="21"/><line x1="15" y1="18" x2="21" y2="18"/></svg>` },
+  // ── EC/マーケ ──
+  { key: '🏷️ オークション',      id: 'auction', label: 'オークション',       sub: '出品 · 落札 · 履歴',       section: 'EC/マーケ',   url: 'https://mitsurumukaihata.github.io/foo-portal/auction.html',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L3 7v10l9 5 9-5V7z"/><polyline points="3 7 12 12 21 7"/><line x1="12" y1="12" x2="12" y2="22"/></svg>` },
+  { key: '📸 広報協力', id: 'sns_upload', label: 'SNS用素材アップロード', sub: '撮影素材の共有 · Google Drive連携', section: 'EC/マーケ', url: 'https://mitsurumukaihata.github.io/foo-portal/sns-upload.html',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>` },
+  // ── コミュニティ ──
   { key: '📣 会議内容',          id: 'meeting', label: '会議内容',           sub: '準備中',                   section: 'コミュニティ', coming: true,
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>` },
   { key: '👔 部長コミュニティ',   id: 'manager', label: '部長コミュニティ',   sub: 'コミュ · 会議 · タスク · 面談', section: 'コミュニティ', url: 'https://mitsurumukaihata.github.io/foo-portal/manager.html',
@@ -1472,21 +1478,30 @@ const APP_DEFS = [
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>` },
   { key: '📢 マーケ・EC', id: 'marketing', label: 'マーケ・EC', sub: 'コミュ · オークション · SNS', section: 'コミュニティ', url: 'https://mitsurumukaihata.github.io/foo-portal/marketing.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="12" y1="7" x2="12" y2="13"/></svg>` },
-  { key: '📸 広報協力', id: 'sns_upload', label: 'SNS用素材アップロード', sub: '撮影素材の共有 · Google Drive連携', section: 'EC/マーケ', url: 'https://mitsurumukaihata.github.io/foo-portal/sns-upload.html',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>` },
+  // ── マニュアル ──
   { key: '📖 タイヤ交換マニュアル', id: 'manual', label: 'タイヤ交換マニュアル', sub: '準備中',                section: 'マニュアル',   coming: true,
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>` },
   { key: '📝 作業報告書',         id: 'report',  label: '作業報告書',         sub: '準備中',                   section: 'マニュアル',   coming: true,
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>` },
   { key: '📘 社内制度・ルール',   id: 'rules',   label: '社内制度・ルール',   sub: '理念 · 行動指針 · 勤務ルール',  section: 'マニュアル',   allAccess: true, url: 'https://mitsurumukaihata.github.io/foo-portal/company-rules.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="14" y2="11"/></svg>` },
-  { key: '📦 棚卸表',               id: 'tanaoroshi', label: '棚卸表',           sub: '在庫集計 · 棚卸PDF発行',     section: '事務',   url: 'https://mitsurumukaihata.github.io/foo-portal/tanaoroshi.html',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>` },
-  // 管理系（管理者のみ表示）
+  // ── 管理 ──
   { key: '🔄 DB繰越管理',         id: 'kurikoshi', label: 'DB繰越管理',       sub: '在庫DB繰越 · データ最適化',  section: '管理',   url: 'https://mitsurumukaihata.github.io/foo-portal/db-renewal.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>` },
-  // 📦 発注データ取込 → 自動発注で在庫DB連携するようになったため廃止（2026-03-23）
-  // 給与明細は特殊（別途処理）
+  // ── 経理 ──
+  { key: '資金繰り',              id: 'cashflow',label: '資金繰り',           sub: '入出金管理 · 残高 · 返済',  section: '経理',   url: 'https://mitsurumukaihata.github.io/foo-portal/cashflow.html',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>` },
+  { key: '📊 月次KPI',               id: 'kpi',     label: '月次KPI',            sub: '達成率 · 前年比 · トレンド', section: '経理',   url: 'https://mitsurumukaihata.github.io/foo-portal/kpi.html',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>` },
+  { key: '🏦 借入一覧',              id: 'loan',    label: '借入一覧',           sub: '返済状況 · 引落予定',       section: '経理',   url: 'https://mitsurumukaihata.github.io/foo-portal/loan.html',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M3 10h18"/><path d="M5 6l7-3 7 3"/><line x1="4" y1="10" x2="4" y2="21"/><line x1="8" y1="10" x2="8" y2="21"/><line x1="12" y1="10" x2="12" y2="21"/><line x1="16" y1="10" x2="16" y2="21"/><line x1="20" y1="10" x2="20" y2="21"/></svg>` },
+  { key: '🏗️ 設備購入予定表',       id: 'equipment', label: '設備購入予定表',    sub: '見積 · 発注 · 納品管理',    section: '経理',   url: 'https://mitsurumukaihata.github.io/foo-portal/equipment-purchase.html',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>` },
+  { key: '💳 サブスク管理',          id: 'subscription', label: 'サブスク管理',      sub: '月額 · 年額 · 契約更新',    section: '経理',   url: 'https://mitsurumukaihata.github.io/foo-portal/subscription-manager.html',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>` },
+  { key: '🧞 サンフレチケット',      id: 'sanfre', label: 'サンフレチケット',    sub: '観戦者名簿 · チケット管理',  section: '経理',   url: 'https://mitsurumukaihata.github.io/foo-portal/sanfre-ticket.html',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#6B2D8B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>` },
+  // ── 給与 ──
   { key: '💴 給与明細',          id: 'payslip', label: '給与明細',           sub: '自分の明細を確認',          section: '給与',         action: 'openPayslip()',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>` },
 ];
@@ -1648,7 +1663,7 @@ function renderPortalApps(user) {
 
   let html = '';
 
-  const sectionOrder = ['現場・業務', '事務', '経理', 'EC/マーケ', 'コミュニティ', 'マニュアル', '管理'];
+  const sectionOrder = ['現場・業務', '事務', 'EC/マーケ', 'コミュニティ', 'マニュアル', '管理', '経理', '給与'];
 
   sectionOrder.forEach(secName => {
     const items = sections[secName];

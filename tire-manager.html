@@ -1482,12 +1482,34 @@ async function priceGoFetchPattern(sz) {
   } catch(e) { priceState.loading=false; document.getElementById('price-content').innerHTML=`<div class="content"><div class="error-box">取得に失敗しました。<br><small>${e.message}</small></div><button class="btn-secondary" onclick="priceState.step='search';renderPriceHome()">← 戻る</button></div>`; }
 }
 function renderPricePatternStep() {
-  const rows=priceState.patternRows; const MAKER_ORDER=['TOYO TIRES','BRIDGESTONE','DUNLOP','YOKOHAMA']; const makerLabel={'TOYO TIRES':'TOYO','BRIDGESTONE':'BS','DUNLOP':'DUNLOP','YOKOHAMA':'YOKO','all':'全メーカー'};
-  const patMap={}; rows.forEach(r=>{const key=r.pattern+'|'+r.maker; if(!patMap[key]) patMap[key]={pattern:r.pattern,maker:r.maker,minPrice:r.price}; else if(r.price!==null&&(patMap[key].minPrice===null||r.price<patMap[key].minPrice)) patMap[key].minPrice=r.price;});
-  let pats=Object.values(patMap).filter(p=>!DISCONTINUED_PATTERNS.has(p.pattern)).filter(p=>priceState.makerFilter==='all'||p.maker===priceState.makerFilter);
-  pats.sort((a,b)=>{const ai=MAKER_ORDER.indexOf(a.maker),bi=MAKER_ORDER.indexOf(b.maker);const md=(ai===-1?99:ai)-(bi===-1?99:bi);return md!==0?md:a.pattern.localeCompare(b.pattern);});
-  const makers=['all',...MAKER_ORDER.filter(m=>Object.values(patMap).some(p=>p.maker===m))];
-  document.getElementById('price-content').innerHTML=`<div class="price-search-wrap"><button class="btn-secondary" style="margin-bottom:12px;margin-top:4px;" onclick="priceState.step='search';renderPriceHome()">← ${priceState.selectedSize} を変更</button><div class="screen-label">パターンを選択</div><div style="font-size:20px;font-weight:900;font-family:'DM Mono',monospace;color:var(--accent);margin-bottom:10px;">${priceState.selectedSize}</div><div class="price-db-tabs" style="margin-bottom:12px;">${makers.map(m=>`<div class="price-db-tab${priceState.makerFilter===m?' active':''}" onclick="pricePatternFilterMaker('${m}')">${makerLabel[m]||m}</div>`).join('')}</div><div class="pattern-list">${pats.length===0?'<div class="price-empty">該当するパターンが見つかりません</div>':pats.map(p=>{const key=p.pattern+'|'+p.maker,sel=priceState.selectedPattern===key;return`<div class="pattern-item${sel?' sel':''}" onclick="pricePickPattern('${key.replace(/'/g,"\\'")}')"><div class="pattern-dot"></div><div><div class="pattern-name">${p.pattern}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${p.maker}</div></div><div style="margin-left:auto;text-align:right;flex-shrink:0;">${p.minPrice!==null?`<div style="font-size:14px;font-weight:700;color:var(--accent);">¥${p.minPrice.toLocaleString()}</div><div style="font-size:9px;color:var(--muted);">A表〜</div>`:'<div style="font-size:12px;color:var(--muted);">要確認</div>'}</div></div>`;}).join('')}</div><button class="btn-primary" id="price-pattern-btn" style="margin-top:8px;" onclick="priceGoResult()" ${priceState.selectedPattern?'':'disabled'}>${priceState.selectedPattern?priceState.selectedPattern.split('|')[0]+' の価格を見る →':'パターンを選択してください'}</button></div>`;
+  const rows = priceState.patternRows;
+  // 'TOYO TIRES' と 'TOYO' 両方対応（価格DBのメーカー表記ゆれを吸収）
+  const PM_ORDER = ['TOYO','TOYO TIRES','BRIDGESTONE','DUNLOP','MICHELIN','PIRELLI','YOKOHAMA'];
+  const PM_COLOR = {'TOYO':'var(--accent)','TOYO TIRES':'var(--accent)','BRIDGESTONE':'var(--blue)','DUNLOP':'var(--green)','MICHELIN':'var(--yellow)','PIRELLI':'var(--red)','YOKOHAMA':'var(--muted)'};
+  // パターンごとに最安値をまとめる
+  const patMap = {};
+  rows.forEach(r => { const key=r.pattern+'|'+r.maker; if(!patMap[key]) patMap[key]={pattern:r.pattern,maker:r.maker,minPrice:r.price}; else if(r.price!==null&&(patMap[key].minPrice===null||r.price<patMap[key].minPrice)) patMap[key].minPrice=r.price; });
+  const pats = Object.values(patMap).filter(p => !DISCONTINUED_PATTERNS.has(p.pattern));
+  pats.sort((a,b) => { const ai=PM_ORDER.indexOf(a.maker),bi=PM_ORDER.indexOf(b.maker); const md=(ai===-1?99:ai)-(bi===-1?99:bi); return md!==0?md:a.pattern.localeCompare(b.pattern); });
+  // メーカー別グループに分ける
+  const groups = {};
+  pats.forEach(p => { if(!groups[p.maker]) groups[p.maker]=[]; groups[p.maker].push(p); });
+  const orderedMakers = [...PM_ORDER.filter(m=>groups[m]), ...Object.keys(groups).filter(m=>!PM_ORDER.includes(m))];
+  let listHtml = '';
+  if (pats.length === 0) {
+    listHtml = '<div class="price-empty">該当するパターンが見つかりません</div>';
+  } else {
+    orderedMakers.forEach(maker => {
+      const mc = PM_COLOR[maker] || 'var(--muted)';
+      const label = maker.replace(' TIRES','');
+      listHtml += `<div style="margin-top:10px;margin-bottom:2px;padding:3px 8px;background:var(--s2);border-left:3px solid ${mc};border-radius:0 4px 4px 0;"><span style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:${mc};">${label}</span></div>`;
+      groups[maker].forEach(p => {
+        const key=p.pattern+'|'+p.maker, sel=priceState.selectedPattern===key;
+        listHtml += `<div class="pattern-item${sel?' sel':''}" onclick="pricePickPattern('${key.replace(/'/g,"\\'")}')"><div class="pattern-dot" style="background:${sel?'var(--accent)':mc}"></div><div class="pattern-name">${p.pattern}</div><div style="margin-left:auto;text-align:right;flex-shrink:0;">${p.minPrice!==null?`<div style="font-size:14px;font-weight:700;color:var(--accent);">¥${p.minPrice.toLocaleString()}</div><div style="font-size:9px;color:var(--muted);">A表〜</div>`:'<div style="font-size:12px;color:var(--muted);">要確認</div>'}</div></div>`;
+      });
+    });
+  }
+  document.getElementById('price-content').innerHTML=`<div class="price-search-wrap"><button class="btn-secondary" style="margin-bottom:12px;margin-top:4px;" onclick="priceState.step='search';renderPriceHome()">← ${priceState.selectedSize} を変更</button><div class="screen-label">パターンを選択</div><div style="font-size:20px;font-weight:900;font-family:'DM Mono',monospace;color:var(--accent);margin-bottom:10px;">${priceState.selectedSize}</div><div class="pattern-list">${listHtml}</div><button class="btn-primary" id="price-pattern-btn" style="margin-top:8px;" onclick="priceGoResult()" ${priceState.selectedPattern?'':'disabled'}>${priceState.selectedPattern?priceState.selectedPattern.split('|')[0]+' の価格を見る →':'パターンを選択してください'}</button></div>`;
 }
 function pricePatternFilterMaker(maker) { priceState.makerFilter=maker; priceState.selectedPattern=''; renderPricePatternStep(); }
 function pricePickPattern(key) { priceState.selectedPattern=key; document.querySelectorAll('.pattern-item').forEach(el=>el.classList.remove('sel')); event.currentTarget.classList.add('sel'); const btn=document.getElementById('price-pattern-btn'); if(btn){btn.disabled=false;btn.textContent=key.split('|')[0]+' の価格を見る →';} }

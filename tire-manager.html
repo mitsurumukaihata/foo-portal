@@ -271,6 +271,42 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .price-count-bar { display: flex; justify-content: space-between; align-items: center; padding: 8px 0 10px; border-bottom: 0.5px solid var(--border); margin-bottom: 10px; }
 .price-count-text { font-size: 11px; color: var(--muted); }
 .price-sort-sel { background: var(--s2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 11px; color: var(--text); font-family: 'Noto Sans JP', sans-serif; outline: none; cursor: pointer; }
+.customer-inp { width:100%; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:12px 14px; font-size:15px; font-weight:700; font-family:'Noto Sans JP',sans-serif; color:var(--text); outline:none; margin-bottom:12px; transition:border-color 0.15s; }
+.customer-inp:focus { border-color:var(--accent); }
+/* ダイアル式ピッカー */
+.dial-btn { background:var(--s2); border:1.5px solid var(--border); border-radius:8px; padding:6px 0; font-size:18px; font-weight:700; color:var(--text); font-family:'DM Mono',monospace; cursor:pointer; min-width:54px; text-align:center; user-select:none; touch-action:manipulation; }
+.dial-btn:active { background:var(--s3); border-color:var(--accent); }
+.dial-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:2000; display:flex; align-items:flex-end; justify-content:center; }
+.dial-sheet { background:var(--s1); border-radius:20px 20px 0 0; width:100%; max-width:480px; }
+.dial-hdr { display:flex; justify-content:space-between; align-items:center; padding:16px 20px 12px; border-bottom:0.5px solid var(--border); }
+.dial-hdr-title { font-size:15px; font-weight:700; }
+.dial-done { font-size:16px; font-weight:700; color:var(--accent); cursor:pointer; padding:4px 8px; }
+.dial-drum-wrap { position:relative; height:220px; }
+.dial-drum { height:220px; overflow-y:scroll; scroll-snap-type:y mandatory; scrollbar-width:none; -ms-overflow-style:none; }
+.dial-drum::-webkit-scrollbar { display:none; }
+.dial-item { height:44px; display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:700; font-family:'DM Mono',monospace; color:var(--text); scroll-snap-align:center; }
+.dial-highlight { position:absolute; top:50%; left:20px; right:20px; height:44px; transform:translateY(-50%); border-top:2px solid var(--accent); border-bottom:2px solid var(--accent); pointer-events:none; border-radius:4px; background:rgba(240,165,0,0.05); }
+/* スクショ用見積表示 */
+.ss-overlay { position:fixed; inset:0; background:#fff; z-index:3000; overflow-y:auto; padding:40px 24px 80px; color:#111; font-family:'Noto Sans JP',sans-serif; }
+.ss-close-btn { position:fixed; top:16px; right:16px; background:#111; color:#fff; border:none; border-radius:8px; padding:9px 18px; font-size:13px; font-weight:700; cursor:pointer; z-index:3001; }
+.ss-brand { font-size:11px; letter-spacing:0.15em; color:#999; margin-bottom:4px; }
+.ss-doc-title { font-size:28px; font-weight:900; margin-bottom:4px; }
+.ss-date { font-size:12px; color:#999; margin-bottom:20px; }
+.ss-customer-row { font-size:20px; font-weight:700; border-bottom:2px solid #111; padding-bottom:10px; margin-bottom:20px; }
+.ss-tire-box { background:#f4f4f4; border-radius:10px; padding:14px 16px; margin-bottom:20px; }
+.ss-tire-pattern { font-size:22px; font-weight:900; }
+.ss-tire-size { font-size:14px; color:#666; margin-top:2px; font-family:'DM Mono',monospace; }
+.ss-table { width:100%; border-collapse:collapse; margin-bottom:8px; }
+.ss-table th { font-size:11px; color:#888; font-weight:700; text-align:right; padding:6px 4px; border-bottom:2px solid #e0e0e0; }
+.ss-table th:first-child { text-align:left; }
+.ss-table td { font-size:14px; padding:8px 4px; border-bottom:0.5px solid #eee; }
+.ss-table td:not(:first-child) { text-align:right; font-family:'DM Mono',monospace; }
+.ss-subtotal { font-weight:700; font-size:15px; background:#f9f9f9; }
+.ss-total { font-weight:900; font-size:17px; color:#e07000; background:#fff7ed; }
+.ss-memo-box { background:#f9f9f9; border-radius:8px; padding:12px 14px; font-size:13px; color:#444; margin-top:16px; line-height:1.6; }
+.ss-footer { font-size:11px; color:#ccc; text-align:center; margin-top:40px; }
+.ss-screenshot-btn { width:100%; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:11px; color:var(--text); font-size:13px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; margin-top:8px; transition:all 0.15s; }
+.ss-screenshot-btn:active { transform:scale(0.98); border-color:var(--accent); }
 </style>
 </head>
 <body>
@@ -1196,7 +1232,60 @@ const PRICE_DB_MAP = {
   'pc':  { id: '2f6a695f-8e88-81e8-8f56-ccd99cec9c74', name: 'PC', icon: '🚗' },
   'stl': { id: '249a695f-8e88-8162-8ddd-e4fdbf285c2d', name: 'スタッドレス', icon: '❄️' }
 };
-let priceState = { initialized: false, dbKey: 'ltl', query: '', selectedSize: '', makerFilter: 'all', step: 'search', patternRows: [], selectedPattern: '', results: [], loading: false, estOpen: {}, estPct: {} };
+let priceState = { initialized: false, dbKey: 'ltl', query: '', selectedSize: '', makerFilter: 'all', step: 'search', patternRows: [], selectedPattern: '', results: [], loading: false, estOpen: {}, estPct: {}, estQty: {}, customerName: '' };
+function getPriceQty(cardId, field, def) { return priceState.estQty[cardId]?.[field] ?? def; }
+function setPriceQty(cardId, field, val) { if (!priceState.estQty[cardId]) priceState.estQty[cardId] = {}; priceState.estQty[cardId][field] = val; }
+// ダイアルピッカー
+let _dialCardId='', _dialField='', _dialBp=null, _dialMin=1, _dialMax=20;
+function openDial(cardId, field, label, min, max, bp) {
+  _dialCardId=cardId; _dialField=field; _dialBp=bp; _dialMin=min; _dialMax=max;
+  const cur = getPriceQty(cardId, field, min);
+  const ov = document.createElement('div');
+  ov.className='dial-overlay'; ov.id='dial-overlay';
+  ov.onclick = e => { if(e.target===ov) closeDial(); };
+  const nums = []; for(let i=min;i<=max;i++) nums.push(i);
+  ov.innerHTML = `<div class="dial-sheet"><div class="dial-hdr"><div class="dial-hdr-title">${label}</div><div class="dial-done" onclick="closeDial()">完了</div></div><div class="dial-drum-wrap"><div class="dial-drum" id="dial-drum"><div style="height:88px;"></div>${nums.map(n=>`<div class="dial-item">${n}</div>`).join('')}<div style="height:88px;"></div></div><div class="dial-highlight"></div></div></div>`;
+  document.body.appendChild(ov);
+  const drum = document.getElementById('dial-drum');
+  const idx = nums.indexOf(cur);
+  if(idx>=0) drum.scrollTop = idx * 44;
+  drum.addEventListener('scroll', () => {
+    const i = Math.round(drum.scrollTop / 44);
+    const v = nums[Math.max(0, Math.min(i, nums.length-1))];
+    setPriceQty(cardId, field, v);
+    const btn = document.getElementById(cardId+'-'+field);
+    if(btn){ btn.textContent=v; btn.dataset.val=v; }
+    priceCalcEst(cardId, bp);
+  });
+}
+function closeDial() { const ov=document.getElementById('dial-overlay'); if(ov) ov.remove(); }
+// スクショ用見積表示
+function showEstimateScreenshot(cardId, bp, patStr, sizeStr, makerStr) {
+  const pct=priceState.estPct[cardId]||100;
+  const tireUnit=bp!==null?Math.round(bp*pct/100):0;
+  const tQty=getPriceQty(cardId,'tqty',4);
+  const items=[
+    {name:`タイヤ (${pct===100?'A表':pct+'%'})`,unit:tireUnit,qty:tQty},
+    {name:'工賃',unit:priceEstVal(cardId+'-ku'),qty:getPriceQty(cardId,'kq',4)},
+    {name:'廃タイヤ',unit:priceEstVal(cardId+'-hu'),qty:getPriceQty(cardId,'hq',4)},
+    {name:'出張',unit:priceEstVal(cardId+'-su'),qty:getPriceQty(cardId,'sq',1)},
+  ];
+  const o1n=priceEstStr(cardId+'-o1n')||'その他1', o1u=priceEstVal(cardId+'-o1u'), o1q=getPriceQty(cardId,'o1q',1);
+  if(o1u>0) items.push({name:o1n,unit:o1u,qty:o1q});
+  const o2n=priceEstStr(cardId+'-o2n')||'その他2', o2u=priceEstVal(cardId+'-o2u'), o2q=getPriceQty(cardId,'o2q',1);
+  if(o2u>0) items.push({name:o2n,unit:o2u,qty:o2q});
+  const activeItems=items.filter(it=>it.unit>0&&it.qty>0);
+  const total=activeItems.reduce((s,it)=>s+it.unit*it.qty,0);
+  const taxTotal=Math.round(total*1.1);
+  const memo=document.getElementById(cardId+'-memo')?.value||'';
+  const cust=priceState.customerName||'';
+  const d=new Date(); const dateStr=`${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
+  const rows=activeItems.map(it=>`<tr><td>${it.name}</td><td>¥${it.unit.toLocaleString()}</td><td>${it.qty}</td><td>¥${(it.unit*it.qty).toLocaleString()}</td></tr>`).join('');
+  const ov=document.createElement('div');
+  ov.className='ss-overlay'; ov.id='ss-overlay';
+  ov.innerHTML=`<button class="ss-close-btn" onclick="document.getElementById('ss-overlay').remove()">✕ 閉じる</button><div class="ss-brand">f.o.o タイヤ</div><div class="ss-doc-title">見積書</div><div class="ss-date">${dateStr}</div>${cust?`<div class="ss-customer-row">${cust} 御中</div>`:''}<div class="ss-tire-box"><div class="ss-tire-pattern">${patStr}</div><div class="ss-tire-size">${sizeStr}　${makerStr}</div></div><table class="ss-table"><thead><tr><th>項目</th><th>単価</th><th>数量</th><th>金額</th></tr></thead><tbody>${rows}</tbody><tfoot><tr class="ss-subtotal"><td colspan="3">税別合計</td><td>¥${total.toLocaleString()}</td></tr><tr class="ss-total"><td colspan="3">税込合計（10%）</td><td>¥${taxTotal.toLocaleString()}</td></tr></tfoot></table>${memo?`<div class="ss-memo-box">${memo}</div>`:''}<div class="ss-footer">スクリーンショットして共有してください</div>`;
+  document.body.appendChild(ov);
+}
 const PRICE_SIZE_MAP_FALLBACK = { 'ltl': ['225/80R17.5','225/90R17.5','215/70R17.5','235/70R17.5','245/80R17.5','245/70R19.5','265/70R19.5','9R19.5','275/70R22.5','275/80R22.5','295/70R22.5','295/80R22.5','255/70R22.5','315/80R22.5','385/65R22.5','11R22.5','10R22.5'], 'lts': ['175/75R15','185/65R15','185/75R15','195/75R15','195/85R15','205/80R15','185/70R16','185/85R16','195/85R16','205/65R16','205/70R16','225/70R16','205/75R16','205/85R16','215/85R16','225/85R16','195/60R17.5','195/70R17.5','205/60R17.5','225/60R17.5','205/70R17.5','205/80R17.5','215/70R17.5 118/116'], 'van': ['145/80R12','145R12','155R12','165/80R13','165R13','145R13','155R13','175R13','155/80R14','165/80R14','165R14','175/80R14','175R14','185/80R14','185R14','195R14','195/80R15','185/75R15','195/70R15','215/70R15','185/80R15','195/80R15','205/80R15'], 'pc': ['145/65R15','155/65R13','155/65R14','165/65R13','165/65R14','165/65R15','165/70R13','165/70R14','175/65R14','175/65R15','175/70R14','185/65R14','185/65R15','195/65R15','195/65R16','205/65R15','205/65R16'], 'stl': [] };
 const PRICE_SIZE_CACHE = {};
 async function fetchPriceSizes(dbKey) {
@@ -1221,7 +1310,7 @@ function renderPriceHome() {
   if (priceState.step === 'pattern') { renderPricePatternStep(); return; }
   if (priceState.step === 'result') { renderPriceResultStep(); return; }
   const el = document.getElementById('price-content');
-  el.innerHTML = `<div class="price-search-wrap"><div class="screen-label" style="padding-top:4px;">価格検索</div><div class="screen-title" style="margin-bottom:10px;">A表 価格参照</div><div class="price-db-tabs">${Object.entries(PRICE_DB_MAP).map(([k,db])=>`<div class="price-db-tab${priceState.dbKey===k?' active':''}" onclick="priceSelectDb('${k}')">${db.icon} ${db.name}</div>`).join('')}</div><div class="screen-sub" style="margin-bottom:8px;">サイズを入力（3文字以上で候補表示）</div><div class="search-box" style="margin-bottom:6px;"><input id="price-search-inp" type="search" placeholder="例：225 または 22585R16" autocomplete="off" inputmode="numeric" lang="en" value="${priceState.query}" oninput="priceInputNormalize(this)"><button class="search-clear" onclick="priceClearSearch()">✕</button></div><div id="price-size-candidates" class="candidates" style="margin-bottom:6px;"></div><button class="btn-primary" id="price-search-btn" style="margin-bottom:12px;" onclick="priceGoPattern()" ${priceState.selectedSize?'':'disabled'}>${priceState.selectedSize ? priceState.selectedSize+' のパターンを選ぶ →' : 'サイズを選択してください'}</button></div>`;
+  el.innerHTML = `<div class="price-search-wrap"><div class="screen-label" style="padding-top:4px;">価格検索</div><div class="screen-title" style="margin-bottom:10px;">A表 価格参照</div><input class="customer-inp" id="price-customer-inp" placeholder="お客様名" value="${priceState.customerName||''}" oninput="priceState.customerName=this.value"><div class="price-db-tabs">${Object.entries(PRICE_DB_MAP).map(([k,db])=>`<div class="price-db-tab${priceState.dbKey===k?' active':''}" onclick="priceSelectDb('${k}')">${db.icon} ${db.name}</div>`).join('')}</div><div class="screen-sub" style="margin-bottom:8px;">サイズを入力（3文字以上で候補表示）</div><div class="search-box" style="margin-bottom:6px;"><input id="price-search-inp" type="search" placeholder="例：225 または 22585R16" autocomplete="off" inputmode="numeric" lang="en" value="${priceState.query}" oninput="priceInputNormalize(this)"><button class="search-clear" onclick="priceClearSearch()">✕</button></div><div id="price-size-candidates" class="candidates" style="margin-bottom:6px;"></div><button class="btn-primary" id="price-search-btn" style="margin-bottom:12px;" onclick="priceGoPattern()" ${priceState.selectedSize?'':'disabled'}>${priceState.selectedSize ? priceState.selectedSize+' のパターンを選ぶ →' : 'サイズを選択してください'}</button></div>`;
   if (priceState.query?.length >= 3) priceFilterSizes(priceState.query);
 }
 function priceInputNormalize(el) {
@@ -1250,7 +1339,7 @@ function pricePickSize(s) {
   const c=document.getElementById('price-size-candidates'); if(c) c.querySelectorAll('.candidate').forEach(el=>el.classList.toggle('sel',el.querySelector('.candidate-text').textContent===s));
   const btn=document.getElementById('price-search-btn'); if(btn){btn.disabled=false;btn.textContent=`${s} のパターンを選ぶ →`;}
 }
-function priceClearSearch() { priceState.query=''; priceState.selectedSize=''; priceState.step='search'; priceState.patternRows=[]; priceState.selectedPattern=''; priceState.results=[]; priceState.estOpen={}; priceState.estPct={}; renderPriceHome(); }
+function priceClearSearch() { priceState.query=''; priceState.selectedSize=''; priceState.step='search'; priceState.patternRows=[]; priceState.selectedPattern=''; priceState.results=[]; priceState.estOpen={}; priceState.estPct={}; priceState.estQty={}; renderPriceHome(); }
 async function priceGoPattern() {
   if (priceState.loading) return;
   const sz = priceState.selectedSize || priceState.query; if (!sz) return;
@@ -1286,21 +1375,23 @@ function buildPriceCard(r,idx) {
   const curPctVal=r.price!==null?Math.round(r.price*pct/100):null;
   const pctOuterHtml=isOpen?`<div style="padding:0 20px 0;"><div style="background:var(--s1);border:1.5px solid var(--border2);border-radius:10px;padding:12px 14px;margin-bottom:8px;"><div class="screen-label" style="margin-bottom:8px;">掛率を選択（内部用）</div><div class="pct-tabs" id="${cardId}-pcts">${pctTabsHtml}</div></div></div>`:'';
   const numAttr=(id,val)=>`id="${cardId}-${id}" type="text" inputmode="decimal" value="${val}" onfocus="priceNumFocus(this)" onblur="priceNumBlur(this,'${cardId}',${bp})" oninput="priceNumInput(this,'${cardId}',${bp})" class="est-inp"`;
-  const qtyAttr=(id,val)=>`id="${cardId}-${id}" type="text" inputmode="numeric" value="${val}" onfocus="priceNumFocus(this)" onblur="priceNumBlur(this,'${cardId}',${bp})" oninput="priceNumInput(this,'${cardId}',${bp})" class="est-inp"`;
+  // ダイアルボタン（数量用）
+  const dq=(field,def,label,min,max)=>{const v=getPriceQty(cardId,field,def);return`<button class="dial-btn" id="${cardId}-${field}" data-val="${v}" onclick="openDial('${cardId}','${field}','${label}',${min},${max},${bp})">${v}</button>`;};
   const tireUnitDisp=curPctVal!==null?curPctVal.toLocaleString():'-';
-  return `${pctOuterHtml}<div class="price-card" id="${cardId}" style="cursor:pointer;"><div onclick="priceToggleEst('${cardId}',${bp})"><div style="display:flex;justify-content:space-between;align-items:flex-start;"><div><div style="font-size:22px;font-weight:900;font-family:'DM Mono',monospace;color:var(--text);letter-spacing:-0.02em;line-height:1.1;">${r.size}</div><div style="display:flex;align-items:center;gap:6px;margin-top:5px;"><span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(240,165,0,0.12);color:var(--accent);">${r.pattern}</span><span style="font-size:11px;color:var(--muted);">${r.maker}</span></div>${r.weight?`<div style="font-size:11px;color:var(--muted);margin-top:3px;">${r.weight}</div>`:''}</div><div style="text-align:right;flex-shrink:0;margin-left:12px;">${isOpen?'<div style="font-size:12px;color:var(--muted);">見積もり 閉じる ↑</div>':'<div style="font-size:10px;color:var(--muted);">見積もり ↓</div>'}</div></div>${r.note?`<div class="price-note" style="margin-top:8px;">${r.note}</div>`:''}</div><div id="${cardId}-est" style="display:${isOpen?'block':'none'};"><div style="height:0.5px;background:var(--border);margin:12px 0;"></div><div class="screen-label" style="margin-bottom:4px;">追加項目</div><div style="display:grid;grid-template-columns:1fr 80px 64px;gap:5px;margin-bottom:4px;"><div></div><div style="font-size:10px;color:var(--muted);text-align:right;">単価</div><div style="font-size:10px;color:var(--muted);text-align:right;">数量</div></div><div class="est-row"><span class="est-lbl">タイヤ</span><div id="${cardId}-tunit" style="font-size:13px;color:var(--accent);font-family:'DM Mono',monospace;text-align:right;padding:7px 4px;">¥${tireUnitDisp}</div><input ${qtyAttr('tqty','4')} style="text-align:right;"></div><div class="est-row"><span class="est-lbl">工賃</span><input ${numAttr('ku','3,000')}><input ${qtyAttr('kq','4')}></div><div class="est-row"><span class="est-lbl">廃タイヤ</span><input ${numAttr('hu','500')}><input ${qtyAttr('hq','4')}></div><div class="est-row"><span class="est-lbl">出張</span><input ${numAttr('su','0')}><input ${qtyAttr('sq','1')}></div><div class="est-row"><input type="text" placeholder="その他1" id="${cardId}-o1n" class="est-inp" style="text-align:left;font-size:12px;" oninput="priceCalcEst('${cardId}',${bp})"><input ${numAttr('o1u','0')}><input ${qtyAttr('o1q','1')}></div><div class="est-row"><input type="text" placeholder="その他2" id="${cardId}-o2n" class="est-inp" style="text-align:left;font-size:12px;" oninput="priceCalcEst('${cardId}',${bp})"><input ${numAttr('o2u','0')}><input ${qtyAttr('o2q','1')}></div><div class="screen-label" style="margin-top:10px;margin-bottom:4px;">備考</div><textarea id="${cardId}-memo" placeholder="メモ・特記事項" class="memo-input" style="min-height:60px;font-size:13px;"></textarea><div id="${cardId}-bd" style="margin:10px 0 6px;font-size:12px;"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;"><div style="background:var(--s2);border-radius:8px;padding:10px 12px;"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">税別合計</div><div style="font-size:18px;font-weight:900;color:var(--text);font-family:'DM Mono',monospace;" id="${cardId}-tot">-</div></div><div style="background:var(--s2);border-radius:8px;padding:10px 12px;"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">税込（10%）</div><div style="font-size:18px;font-weight:900;color:var(--accent);font-family:'DM Mono',monospace;" id="${cardId}-tax">-</div></div></div></div></div>`;
+  const escPat=r.pattern.replace(/'/g,"\\'"), escSize=r.size.replace(/'/g,"\\'"), escMaker=r.maker.replace(/'/g,"\\'");
+  return `${pctOuterHtml}<div class="price-card" id="${cardId}" style="cursor:pointer;"><div onclick="priceToggleEst('${cardId}',${bp})"><div style="display:flex;justify-content:space-between;align-items:flex-start;"><div><div style="font-size:22px;font-weight:900;font-family:'DM Mono',monospace;color:var(--text);letter-spacing:-0.02em;line-height:1.1;">${r.size}</div><div style="display:flex;align-items:center;gap:6px;margin-top:5px;"><span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(240,165,0,0.12);color:var(--accent);">${r.pattern}</span><span style="font-size:11px;color:var(--muted);">${r.maker}</span></div>${r.weight?`<div style="font-size:11px;color:var(--muted);margin-top:3px;">${r.weight}</div>`:''}</div><div style="text-align:right;flex-shrink:0;margin-left:12px;">${isOpen?'<div style="font-size:12px;color:var(--muted);">見積もり 閉じる ↑</div>':'<div style="font-size:10px;color:var(--muted);">見積もり ↓</div>'}</div></div>${r.note?`<div class="price-note" style="margin-top:8px;">${r.note}</div>`:''}</div><div id="${cardId}-est" style="display:${isOpen?'block':'none'};"><div style="height:0.5px;background:var(--border);margin:12px 0;"></div><div class="screen-label" style="margin-bottom:4px;">追加項目</div><div style="display:grid;grid-template-columns:1fr 80px 60px;gap:5px;margin-bottom:4px;"><div></div><div style="font-size:10px;color:var(--muted);text-align:right;">単価</div><div style="font-size:10px;color:var(--muted);text-align:center;">数量</div></div><div class="est-row"><span class="est-lbl">タイヤ</span><div id="${cardId}-tunit" style="font-size:13px;color:var(--accent);font-family:'DM Mono',monospace;text-align:right;padding:7px 4px;">¥${tireUnitDisp}</div>${dq('tqty',4,'タイヤ 本数',1,20)}</div><div class="est-row"><span class="est-lbl">工賃</span><input ${numAttr('ku','3,000')}>${dq('kq',4,'工賃 数量',1,20)}</div><div class="est-row"><span class="est-lbl">廃タイヤ</span><input ${numAttr('hu','500')}>${dq('hq',4,'廃タイヤ 数量',1,20)}</div><div class="est-row"><span class="est-lbl">出張</span><input ${numAttr('su','0')}>${dq('sq',1,'出張 回数',1,10)}</div><div class="est-row"><input type="text" placeholder="その他1" id="${cardId}-o1n" class="est-inp" style="text-align:left;font-size:12px;" oninput="priceCalcEst('${cardId}',${bp})"><input ${numAttr('o1u','0')}>${dq('o1q',1,'その他1 数量',1,20)}</div><div class="est-row"><input type="text" placeholder="その他2" id="${cardId}-o2n" class="est-inp" style="text-align:left;font-size:12px;" oninput="priceCalcEst('${cardId}',${bp})"><input ${numAttr('o2u','0')}>${dq('o2q',1,'その他2 数量',1,20)}</div><div class="screen-label" style="margin-top:10px;margin-bottom:4px;">備考</div><textarea id="${cardId}-memo" placeholder="メモ・特記事項" class="memo-input" style="min-height:60px;font-size:13px;"></textarea><div id="${cardId}-bd" style="margin:10px 0 6px;font-size:12px;"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;"><div style="background:var(--s2);border-radius:8px;padding:10px 12px;"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">税別合計</div><div style="font-size:18px;font-weight:900;color:var(--text);font-family:'DM Mono',monospace;" id="${cardId}-tot">-</div></div><div style="background:var(--s2);border-radius:8px;padding:10px 12px;"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">税込（10%）</div><div style="font-size:18px;font-weight:900;color:var(--accent);font-family:'DM Mono',monospace;" id="${cardId}-tax">-</div></div></div><button class="ss-screenshot-btn" onclick="event.stopPropagation();showEstimateScreenshot('${cardId}',${bp},'${escPat}','${escSize}','${escMaker}')">見積書を表示（スクショ用）</button></div></div>`;
 }
 function priceToggleEst(cardId,basePrice) { priceState.estOpen[cardId]=!priceState.estOpen[cardId]; renderPriceResultStep(); if(priceState.estOpen[cardId]) setTimeout(()=>priceCalcEst(cardId,basePrice),30); }
 function priceSetPct(cardId,pct,basePrice) { priceState.estPct[cardId]=pct; const container=document.getElementById(cardId+'-pcts'); if(container) container.querySelectorAll('.pct-tab').forEach((el,i)=>{el.classList.toggle('active',[70,75,80,85,90,95,100][i]===pct);}); const tunit=document.getElementById(cardId+'-tunit'); if(tunit&&basePrice!==null) tunit.textContent='¥'+Math.round(basePrice*pct/100).toLocaleString(); priceCalcEst(cardId,basePrice); }
-function priceEstVal(id) { const el=document.getElementById(id); if(!el) return 0; return parseFloat(el.value.replace(/,/g,'').replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)))||0; }
+function priceEstVal(id) { const el=document.getElementById(id); if(!el) return 0; const v=el.dataset?.val!=null?String(el.dataset.val):el.value||'0'; return parseFloat(v.replace(/,/g,'').replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)))||0; }
 function priceEstStr(id) { return document.getElementById(id)?.value||''; }
 function priceNumFocus(el) { el.value=el.value.replace(/,/g,''); el.select(); }
 function priceNumBlur(el,cardId,basePrice) { const v=el.value.replace(/,/g,'').replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)); const n=parseFloat(v); if(!isNaN(n)&&n>0&&el.id?.match(/-(ku|hu|su|o1u|o2u)$/)) el.value=n.toLocaleString(); else if(!isNaN(n)) el.value=n===0?'0':String(n); priceCalcEst(cardId,basePrice); }
 function priceNumInput(el,cardId,basePrice) { let v=el.value.replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[^0-9,]/g,''); if(el.value!==v) el.value=v; priceCalcEst(cardId,basePrice); }
 function priceCalcEst(cardId,basePrice) {
-  const pct=priceState.estPct[cardId]||100; const tireUnit=basePrice!==null?Math.round(basePrice*pct/100):0; const tQty=priceEstVal(cardId+'-tqty');
+  const pct=priceState.estPct[cardId]||100; const tireUnit=basePrice!==null?Math.round(basePrice*pct/100):0; const tQty=getPriceQty(cardId,'tqty',4);
   const tunit=document.getElementById(cardId+'-tunit'); if(tunit&&basePrice!==null) tunit.textContent='¥'+tireUnit.toLocaleString();
-  const items=[{name:`タイヤ (${pct===100?'A表':pct+'%'})`,unit:tireUnit,qty:tQty},{name:'工賃',unit:priceEstVal(cardId+'-ku'),qty:priceEstVal(cardId+'-kq')},{name:'廃タイヤ',unit:priceEstVal(cardId+'-hu'),qty:priceEstVal(cardId+'-hq')},{name:'出張',unit:priceEstVal(cardId+'-su'),qty:priceEstVal(cardId+'-sq')}];
+  const items=[{name:`タイヤ (${pct===100?'A表':pct+'%'})`,unit:tireUnit,qty:tQty},{name:'工賃',unit:priceEstVal(cardId+'-ku'),qty:getPriceQty(cardId,'kq',4)},{name:'廃タイヤ',unit:priceEstVal(cardId+'-hu'),qty:getPriceQty(cardId,'hq',4)},{name:'出張',unit:priceEstVal(cardId+'-su'),qty:getPriceQty(cardId,'sq',1)}];
   const o1Name=priceEstStr(cardId+'-o1n').trim()||'その他1',o1Unit=priceEstVal(cardId+'-o1u'),o1Qty=priceEstVal(cardId+'-o1q'); if(o1Unit>0) items.push({name:o1Name,unit:o1Unit,qty:o1Qty});
   const o2Name=priceEstStr(cardId+'-o2n').trim()||'その他2',o2Unit=priceEstVal(cardId+'-o2u'),o2Qty=priceEstVal(cardId+'-o2q'); if(o2Unit>0) items.push({name:o2Name,unit:o2Unit,qty:o2Qty});
   let total=0,bdHtml=''; items.forEach(it=>{const sub=it.unit*it.qty;if(sub===0)return;total+=sub;bdHtml+=`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:0.5px solid var(--border);"><span style="color:var(--muted);">${it.name} × ${it.qty}</span><span>¥${sub.toLocaleString()}</span></div>`;});

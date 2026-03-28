@@ -1374,10 +1374,11 @@ function renderPriceHome() {
   priceState.initialized = true;
   if (priceState.step === 'pattern') { renderPricePatternStep(); return; }
   if (priceState.step === 'result') { renderPriceResultStep(); return; }
-  // タブを開いた瞬間にバックグラウンドでサイズ一覧を先読み
-  fetchPriceSizes(priceState.dbKey);
+  if (priceState.step === 'catselect') { renderPriceCatSelect(priceState._catSelectSz, priceState._catSelectKeys); return; }
+  // 全DBサイズを先読み
+  Object.keys(PRICE_DB_MAP).forEach(key => fetchPriceSizes(key));
   const el = document.getElementById('price-content');
-  el.innerHTML = `<div class="price-search-wrap"><div class="screen-label" style="padding-top:4px;">価格検索</div><div class="screen-title" style="margin-bottom:10px;">A表 価格参照</div><div class="price-db-tabs">${Object.entries(PRICE_DB_MAP).map(([k,db])=>`<div class="price-db-tab${priceState.dbKey===k?' active':''}" onclick="priceSelectDb('${k}')">${db.icon} ${db.name}</div>`).join('')}</div><div class="screen-sub" style="margin-bottom:8px;">サイズを入力（3文字以上で候補表示）</div><div class="search-box" style="margin-bottom:6px;"><input id="price-search-inp" type="search" placeholder="例：225 または 22585R16" autocomplete="off" inputmode="numeric" lang="en" value="${priceState.query}" oninput="priceInputNormalize(this)"><button class="search-clear" onclick="priceClearSearch()">✕</button></div><div id="price-size-candidates" class="candidates" style="margin-bottom:6px;"></div><button class="btn-primary" id="price-search-btn" style="margin-bottom:12px;" onclick="priceGoPattern()" ${priceState.selectedSize?'':'disabled'}>${priceState.selectedSize ? priceState.selectedSize+' のパターンを選ぶ →' : 'サイズを選択してください'}</button></div>`;
+  el.innerHTML = `<div class="price-search-wrap"><div class="screen-label" style="padding-top:4px;">価格検索</div><div class="screen-title" style="margin-bottom:10px;">A表 価格参照</div><div class="screen-sub" style="margin-bottom:8px;">サイズを入力（3文字以上で候補表示）</div><div class="search-box" style="margin-bottom:6px;"><input id="price-search-inp" type="search" placeholder="例：225 または 22585R16" autocomplete="off" inputmode="numeric" lang="en" value="${priceState.query}" oninput="priceInputNormalize(this)"><button class="search-clear" onclick="priceClearSearch()">✕</button></div><div id="price-size-candidates" class="candidates" style="margin-bottom:6px;"></div><button class="btn-primary" id="price-search-btn" style="margin-bottom:12px;" onclick="priceGoPattern()" ${priceState.selectedSize?'':'disabled'}>${priceState.selectedSize ? priceState.selectedSize+' のパターンを選ぶ →' : 'サイズを選択してください'}</button></div>`;
   if (priceState.query?.length >= 3) priceFilterSizes(priceState.query);
 }
 let _priceSizeTimer = null;
@@ -1390,6 +1391,23 @@ function priceInputNormalize(el) {
 }
 function normalizeSizeQuery(q) { return q.replace(/[\/R\.]/gi,'').replace(/\s/g,'').toUpperCase(); }
 function normalizeSizeStr(s) { return s.replace(/[\/R\.]/gi,'').replace(/\s/g,'').toUpperCase(); }
+function getMergedPriceSizes(useCache) {
+  // 全DBのサイズをマージ（useCache=trueならキャッシュ優先、falseならフォールバックのみ）
+  const all = new Set();
+  Object.keys(PRICE_DB_MAP).forEach(key => {
+    const src = (useCache && PRICE_SIZE_CACHE[key]?.length > 0) ? PRICE_SIZE_CACHE[key] : (PRICE_SIZE_MAP_FALLBACK[key] || []);
+    src.forEach(s => all.add(s));
+  });
+  return [...all].sort((a, b) => a.localeCompare(b, 'ja', {numeric: true}));
+}
+function findDbsForSize(sz) {
+  // サイズがどのDBに存在するか判定
+  const nSz = normalizeSizeStr(sz);
+  return Object.keys(PRICE_DB_MAP).filter(key => {
+    const sizes = PRICE_SIZE_CACHE[key]?.length > 0 ? PRICE_SIZE_CACHE[key] : (PRICE_SIZE_MAP_FALLBACK[key] || []);
+    return sizes.some(s => normalizeSizeStr(s) === nSz || normalizeSizeStr(s).includes(nSz));
+  });
+}
 async function priceFilterSizes(v) {
   priceState.query = v; const q = v.trim();
   const c = document.getElementById('price-size-candidates'); const btn = document.getElementById('price-search-btn');
@@ -1403,13 +1421,14 @@ async function priceFilterSizes(v) {
     if (priceState.selectedSize && hits.includes(priceState.selectedSize) && btn) { btn.disabled=false; btn.textContent=`${priceState.selectedSize} のパターンを選ぶ →`; }
     return true;
   }
-  // キャッシュがなければフォールバックを即時表示（待ち時間ゼロ）
-  if (!PRICE_SIZE_CACHE[priceState.dbKey]) {
-    const fallback = PRICE_SIZE_MAP_FALLBACK[priceState.dbKey] || [];
-    if (!renderHits(fallback)) c.innerHTML = `<div style="text-align:center;padding:8px;font-size:12px;color:var(--muted);">サイズ一覧を取得中…</div>`;
+  // フォールバック（全DB）を即時表示
+  const allCached = Object.keys(PRICE_DB_MAP).every(k => PRICE_SIZE_CACHE[k]?.length > 0);
+  if (!allCached) {
+    if (!renderHits(getMergedPriceSizes(false))) c.innerHTML = `<div style="text-align:center;padding:8px;font-size:12px;color:var(--muted);">サイズ一覧を取得中…</div>`;
   }
-  const sizes = await fetchPriceSizes(priceState.dbKey);
-  if (!renderHits(sizes)) { c.innerHTML = `<div style="text-align:center;padding:8px;font-size:12px;color:var(--muted);">候補なし</div>`; priceState.selectedSize=q; if(btn){btn.disabled=false;btn.textContent=`「${q}」のパターンを選ぶ →`;} }
+  // 全DB取得後にマージして更新
+  await Promise.all(Object.keys(PRICE_DB_MAP).map(k => fetchPriceSizes(k)));
+  if (!renderHits(getMergedPriceSizes(true))) { c.innerHTML = `<div style="text-align:center;padding:8px;font-size:12px;color:var(--muted);">候補なし</div>`; priceState.selectedSize=q; if(btn){btn.disabled=false;btn.textContent=`「${q}」のパターンを選ぶ →`;} }
 }
 function pricePickSize(s) {
   priceState.selectedSize=s; priceState.query=s;
@@ -1422,6 +1441,29 @@ const PRICE_PATTERN_CACHE = {};
 async function priceGoPattern() {
   if (priceState.loading) return;
   const sz = priceState.selectedSize || priceState.query; if (!sz) return;
+  // どのDBにそのサイズがあるか判定
+  const matchKeys = findDbsForSize(sz);
+  if (matchKeys.length === 0) {
+    // どのDBにもない → 入力値そのままで全DB中から最初に見つかったDBで検索
+    priceState.dbKey = Object.keys(PRICE_DB_MAP)[0];
+    await priceGoFetchPattern(sz); return;
+  }
+  if (matchKeys.length === 1) {
+    // 1つだけ → 自動選択してスキップ
+    priceState.dbKey = matchKeys[0];
+    await priceGoFetchPattern(sz); return;
+  }
+  // 複数 → カテゴリ選択画面へ
+  priceState.step = 'catselect'; priceState._catSelectSz = sz; priceState._catSelectKeys = matchKeys;
+  renderPriceCatSelect(sz, matchKeys);
+}
+function renderPriceCatSelect(sz, dbKeys) {
+  const el = document.getElementById('price-content');
+  el.innerHTML = `<div class="content"><div class="screen-label">価格検索 - カテゴリ選択</div><div class="screen-title" style="margin-bottom:6px;">カテゴリーを選択</div><div class="screen-sub" style="margin-bottom:16px;">${sz} が複数のカテゴリで見つかりました</div><div class="cat-grid">${dbKeys.map(k=>{const db=PRICE_DB_MAP[k];return `<div class="cat-card" onclick="priceSelectCatAndFetch('${k}','${sz}')"><span class="cat-icon">${db.icon}</span><div class="cat-name">${db.name}</div></div>`;}).join('')}</div><button class="btn-secondary" style="margin-top:12px;" onclick="priceState.step='search';renderPriceHome()">← 戻る</button></div>`;
+}
+function priceSelectCatAndFetch(key, sz) { priceState.dbKey = key; priceGoFetchPattern(sz); }
+async function priceGoFetchPattern(sz) {
+  if (priceState.loading) return;
   // キャッシュがあれば即時表示（APIコールなし）
   const cacheKey = `${priceState.dbKey}::${sz}`;
   if (PRICE_PATTERN_CACHE[cacheKey]) {

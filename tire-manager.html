@@ -620,8 +620,8 @@ function renderPattern(el) {
       <button class="btn-danger" onclick="cancelEntry()">✕ 取り消し（最初に戻る）</button>
     </div>`;
 }
-const MAKER_COLOR_MAP = {'TOYO TIRES':'var(--accent)','BRIDGESTONE':'var(--blue)','DUNLOP':'var(--green)','MICHELIN':'var(--yellow)','PIRELLI':'var(--red)'};
-const MAKER_PRIORITY = ['TOYO TIRES','BRIDGESTONE','DUNLOP','MICHELIN','PIRELLI'];
+const MAKER_COLOR_MAP = {'TOYO':'var(--accent)','BRIDGESTONE':'var(--blue)','DUNLOP':'var(--green)','MICHELIN':'var(--yellow)','PIRELLI':'var(--red)'};
+const MAKER_PRIORITY = ['TOYO','BRIDGESTONE','DUNLOP','MICHELIN','PIRELLI'];
 function renderPatternItems(patterns, query) {
   const q = query.trim().toLowerCase();
   const hits = (q ? patterns.filter(p => p.toLowerCase().includes(q)) : patterns).filter(p => !DISCONTINUED_PATTERNS.has(p));

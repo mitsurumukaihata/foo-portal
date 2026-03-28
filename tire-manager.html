@@ -603,13 +603,35 @@ function renderPattern(el) {
       <button class="btn-danger" onclick="cancelEntry()">✕ 取り消し（最初に戻る）</button>
     </div>`;
 }
+const MAKER_COLOR_MAP = {'TOYO TIRES':'var(--accent)','BRIDGESTONE':'var(--blue)','DUNLOP':'var(--green)','MICHELIN':'var(--yellow)','PIRELLI':'var(--red)'};
+const MAKER_PRIORITY = ['TOYO TIRES','BRIDGESTONE','DUNLOP','MICHELIN','PIRELLI'];
 function renderPatternItems(patterns, query) {
   const q = query.trim().toLowerCase();
   const hits = q ? patterns.filter(p => p.toLowerCase().includes(q)) : patterns;
   if (hits.length === 0) return `<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">該当なし</div>`;
-  return hits.map(p => {
-    const sel = state.pattern === p;
-    return `<div class="pattern-item${sel ? ' sel' : ''}" onclick="pickPattern('${p}')"><div class="pattern-dot" style="background:${sel ? 'var(--accent)' : 'var(--border)'}"></div><div class="pattern-name">${p}</div></div>`;
+  // 検索中はフラット表示（メーカーバッジ付き）
+  if (q) {
+    return hits.map(p => {
+      const sel = state.pattern === p;
+      const maker = getMaker(p);
+      const mc = MAKER_COLOR_MAP[maker] || 'var(--muted)';
+      const label = maker.replace(' TIRES','');
+      return `<div class="pattern-item${sel ? ' sel' : ''}" onclick="pickPattern('${p}')"><div class="pattern-dot" style="background:${sel?'var(--accent)':mc}"></div><div class="pattern-name">${p}</div><span style="margin-left:auto;font-size:10px;font-weight:700;color:${mc};">${label}</span></div>`;
+    }).join('');
+  }
+  // 通常はメーカー別グループ表示
+  const groups = {};
+  hits.forEach(p => { const m = getMaker(p); if (!groups[m]) groups[m] = []; groups[m].push(p); });
+  const orderedMakers = [...MAKER_PRIORITY.filter(m => groups[m]), ...Object.keys(groups).filter(m => !MAKER_PRIORITY.includes(m))];
+  return orderedMakers.map(maker => {
+    const mc = MAKER_COLOR_MAP[maker] || 'var(--muted)';
+    const label = maker.replace(' TIRES','');
+    const header = `<div style="margin-top:10px;margin-bottom:2px;padding:3px 8px;background:var(--s2);border-left:3px solid ${mc};border-radius:0 4px 4px 0;"><span style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:${mc};">${label}</span></div>`;
+    const items = groups[maker].map(p => {
+      const sel = state.pattern === p;
+      return `<div class="pattern-item${sel?' sel':''}" onclick="pickPattern('${p}')"><div class="pattern-dot" style="background:${sel?'var(--accent)':mc}"></div><div class="pattern-name">${p}</div></div>`;
+    }).join('');
+    return header + items;
   }).join('');
 }
 function filterPatterns(q) { const db = DB_MAP[state.cat]; const list = document.getElementById('pattern-list'); if (list) list.innerHTML = renderPatternItems(db.patterns, q); }

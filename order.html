@@ -1206,15 +1206,16 @@ async function submitNyuko() {
       });
     }
 
-    // ②-b 入出庫DBの「発注中」レコードを削除（入庫数分）
+    // ②-b 入出庫DBの「発注中」レコードを削除・更新
     let stockCleanMsg = '';
     try {
-      const delQty = (nokori > 0 && nokoriChk) ? nyukoQty : undefined; // 残数あり→入庫分だけ削除、全数→全削除
+      // 元の発注数（モーダル開いた時点の数量）でレコードを特定して削除
+      const origQty = window._nyukoOrdQty || nyukoQty;
       const delResult = await fooDeleteStockOrders({
         size:      sizeCode || size,
         pattern:   pattern,
         warehouse: warehouse,
-        qty:       delQty,
+        qty:       origQty,  // 元の発注数で数量フィルタ→該当レコードのみ削除
       });
       if (delResult.deleted > 0) {
         stockCleanMsg = `\n発注中${delResult.deleted}件を削除`;
@@ -1222,8 +1223,24 @@ async function submitNyuko() {
       if (delResult.errors.length > 0) {
         stockCleanMsg += '\n⚠️ ' + delResult.errors.join(', ');
       }
+
+      // 残数あり→残数分の「発注中」レコードを新規作成
+      if (nokori > 0 && nokoriChk) {
+        const autoKeys = detectDbKeys(sizeCode || size, pattern);
+        if (autoKeys.length) {
+          await fooCreateStockOrdersBatch(autoKeys.map(key => ({
+            dbKey:     key,
+            size:      sizeCode || size,
+            pattern:   pattern,
+            warehouse: warehouse,
+            qty:       nokori,
+            creator:   loginUser || '自動取込',
+          })));
+          stockCleanMsg += `\n発注中${nokori}本を再登録`;
+        }
+      }
     } catch (stockErr) {
-      console.warn('発注中レコード削除エラー:', stockErr);
+      console.warn('発注中レコード処理エラー:', stockErr);
     }
 
     // ③ 完了

@@ -378,14 +378,18 @@ async function fooDeleteStockOrders(params) {
     if (wh && dbInfo.wField) {
       filter.and.push({ property: dbInfo.wField, select: { equals: wh } });
     }
+    // 数量フィルタ：qty指定時は「その数量のレコードのみ」に絞り込む
+    // （同一サイズ・パターン・倉庫の別注文のレコードを誤削除しないため）
+    if (params.qty) {
+      filter.and.push({ property: '数量', number: { equals: params.qty } });
+    }
 
     try {
       const res = await fooNotionQuery(dbInfo.stockId, { filter, page_size: 100 });
       const pages = (res.results || []).filter(p => !p.archived);
 
-      // qty指定があればその数だけ、なければ全件アーカイブ
-      const limit = params.qty ? params.qty : pages.length;
-      const targets = pages.slice(0, limit);
+      // qty指定あり→1件のみ削除（1注文=1レコードの原則）、なし→全件削除
+      const targets = params.qty ? pages.slice(0, 1) : pages;
 
       for (const page of targets) {
         try {

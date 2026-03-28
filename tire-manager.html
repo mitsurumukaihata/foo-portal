@@ -88,7 +88,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .prep-compact-item { display:flex; align-items:center; gap:6px; padding:7px 10px; border-bottom:1px solid var(--border); cursor:pointer; transition:background 0.1s; }
 .prep-compact-item:last-child { border-bottom:none; }
 .prep-compact-item:active { background:var(--s3); }
-.prep-compact-size { font-size:12px; font-weight:600; color:var(--muted); font-family:'DM Mono',monospace; flex:1; min-width:0; }
+.prep-compact-size { font-size:12px; font-weight:600; color:var(--text); font-family:'DM Mono',monospace; flex:1; min-width:0; }
 .prep-compact-pattern { font-size:12px; font-weight:700; color:var(--text); flex-shrink:0; min-width:50px; }
 .prep-compact-qty { font-size:12px; font-weight:700; color:var(--green); flex-shrink:0; min-width:30px; text-align:right; }
 .prep-compact-memo { font-size:10px; color:var(--muted); flex-shrink:0; }
@@ -805,7 +805,7 @@ function renderPrepListByCat(catKey, records) {
         const size = p['サイズコード']?.select?.name || '―';
         const qty = p['数量']?.number ?? 0;
         const memo = p['メモ']?.rich_text?.[0]?.plain_text || '';
-        html += `<div class="prep-compact-item" onclick="renderPrepEdit('${r.id}','${catKey}')"><span class="prep-compact-pattern">${pattern}</span><span class="prep-compact-size">${size}</span><span class="prep-compact-qty">${qty}本</span>${memo?`<span class="prep-compact-memo">📝${memo}</span>`:''}</div>`;
+        html += `<div class="prep-compact-item" onclick="renderPrepEdit('${r.id}','${catKey}')"><span class="prep-compact-pattern">${pattern}</span><span class="prep-compact-size">${size}</span><span class="prep-compact-qty">${qty}本</span>${memo?`<span class="prep-compact-memo">${memo}</span>`:''}</div>`;
       });
 
       html += `</div></div>`;
@@ -907,7 +907,7 @@ function renderAllPrepList(items) {
       html += `<div class="prep-compact-group">`;
 
       destItems.forEach(item => {
-        html += `<div class="prep-compact-item" onclick="renderPrepEdit('${item.id}','${item.catKey}')"><span class="prep-compact-pattern">${item.pattern}</span><span class="prep-compact-size">${item.size}</span><span class="prep-cat-tag" style="flex-shrink:0;">${item.catIcon}</span><span class="prep-compact-qty">${item.qty}本</span>${item.memo?`<span class="prep-compact-memo">📝${item.memo}</span>`:''}</div>`;
+        html += `<div class="prep-compact-item" onclick="renderPrepEdit('${item.id}','${item.catKey}')"><span class="prep-compact-pattern">${item.pattern}</span><span class="prep-compact-size">${item.size}</span><span class="prep-cat-tag" style="flex-shrink:0;">${item.catName}</span><span class="prep-compact-qty">${item.qty}本</span>${item.memo?`<span class="prep-compact-memo">📝${item.memo}</span>`:''}</div>`;
       });
 
       html += `</div></div>`;

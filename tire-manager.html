@@ -1297,35 +1297,46 @@ function showEstimateScreenshot(cardId, bp, patStr, sizeStr, makerStr) {
 }
 const PRICE_SIZE_MAP_FALLBACK = { 'ltl': ['225/80R17.5','225/90R17.5','215/70R17.5','235/70R17.5','245/80R17.5','245/70R19.5','265/70R19.5','9R19.5','275/70R22.5','275/80R22.5','295/70R22.5','295/80R22.5','255/70R22.5','315/80R22.5','385/65R22.5','11R22.5','10R22.5'], 'lts': ['175/75R15','185/65R15','185/75R15','195/75R15','195/85R15','205/80R15','185/70R16','185/85R16','195/85R16','205/65R16','205/70R16','225/70R16','205/75R16','205/85R16','215/85R16','225/85R16','195/60R17.5','195/70R17.5','205/60R17.5','225/60R17.5','205/70R17.5','205/80R17.5','215/70R17.5 118/116'], 'van': ['145/80R12','145R12','155R12','165/80R13','165R13','145R13','155R13','175R13','155/80R14','165/80R14','165R14','175/80R14','175R14','185/80R14','185R14','195R14','195/80R15','185/75R15','195/70R15','215/70R15','185/80R15','195/80R15','205/80R15'], 'pc': ['145/65R15','155/65R13','155/65R14','165/65R13','165/65R14','165/65R15','165/70R13','165/70R14','175/65R14','175/65R15','175/70R14','185/65R14','185/65R15','195/65R15','195/65R16','205/65R15','205/65R16'], 'stl': [] };
 const PRICE_SIZE_CACHE = {};
+const PRICE_SIZE_FETCHING = {};
 async function fetchPriceSizes(dbKey) {
   if (PRICE_SIZE_CACHE[dbKey]?.length > 0) return PRICE_SIZE_CACHE[dbKey];
+  if (PRICE_SIZE_FETCHING[dbKey]) return PRICE_SIZE_FETCHING[dbKey];
   const db = PRICE_DB_MAP[dbKey];
-  try {
-    const allSizes = new Set(); let cursor;
-    for (let page = 0; page < 5; page++) {
-      const body = { page_size: 100 }; if (cursor) body.start_cursor = cursor;
-      const res = await notionAPI('POST', `/databases/${db.id}/query`, body);
-      if (res.object === 'error') break;
-      res.results.forEach(r => { const sz = r.properties['サイズ']?.rich_text?.[0]?.plain_text; if (sz?.trim()) allSizes.add(sz.trim()); });
-      if (!res.has_more) break; cursor = res.next_cursor;
-    }
-    const sorted = [...allSizes].sort((a, b) => a.localeCompare(b, 'ja', { numeric: true }));
-    PRICE_SIZE_CACHE[dbKey] = sorted; return sorted;
-  } catch(e) { return PRICE_SIZE_MAP_FALLBACK[dbKey] || []; }
+  PRICE_SIZE_FETCHING[dbKey] = (async () => {
+    try {
+      const allSizes = new Set(); let cursor;
+      for (let page = 0; page < 5; page++) {
+        const body = { page_size: 100 }; if (cursor) body.start_cursor = cursor;
+        const res = await notionAPI('POST', `/databases/${db.id}/query`, body);
+        if (res.object === 'error') break;
+        res.results.forEach(r => { const sz = r.properties['サイズ']?.rich_text?.[0]?.plain_text; if (sz?.trim()) allSizes.add(sz.trim()); });
+        if (!res.has_more) break; cursor = res.next_cursor;
+      }
+      const sorted = [...allSizes].sort((a, b) => a.localeCompare(b, 'ja', { numeric: true }));
+      PRICE_SIZE_CACHE[dbKey] = sorted; return sorted;
+    } catch(e) { return PRICE_SIZE_MAP_FALLBACK[dbKey] || []; }
+    finally { delete PRICE_SIZE_FETCHING[dbKey]; }
+  })();
+  return PRICE_SIZE_FETCHING[dbKey];
 }
 function priceSelectDb(key) { priceState.dbKey=key; priceState.step='search'; priceState.query=''; priceState.selectedSize=''; priceState.makerFilter='all'; priceState.patternRows=[]; priceState.selectedPattern=''; priceState.results=[]; priceState.estOpen={}; priceState.estPct={}; renderPriceHome(); }
 function renderPriceHome() {
   priceState.initialized = true;
   if (priceState.step === 'pattern') { renderPricePatternStep(); return; }
   if (priceState.step === 'result') { renderPriceResultStep(); return; }
+  // タブを開いた瞬間にバックグラウンドでサイズ一覧を先読み
+  fetchPriceSizes(priceState.dbKey);
   const el = document.getElementById('price-content');
   el.innerHTML = `<div class="price-search-wrap"><div class="screen-label" style="padding-top:4px;">価格検索</div><div class="screen-title" style="margin-bottom:10px;">A表 価格参照</div><div class="price-db-tabs">${Object.entries(PRICE_DB_MAP).map(([k,db])=>`<div class="price-db-tab${priceState.dbKey===k?' active':''}" onclick="priceSelectDb('${k}')">${db.icon} ${db.name}</div>`).join('')}</div><div class="screen-sub" style="margin-bottom:8px;">サイズを入力（3文字以上で候補表示）</div><div class="search-box" style="margin-bottom:6px;"><input id="price-search-inp" type="search" placeholder="例：225 または 22585R16" autocomplete="off" inputmode="numeric" lang="en" value="${priceState.query}" oninput="priceInputNormalize(this)"><button class="search-clear" onclick="priceClearSearch()">✕</button></div><div id="price-size-candidates" class="candidates" style="margin-bottom:6px;"></div><button class="btn-primary" id="price-search-btn" style="margin-bottom:12px;" onclick="priceGoPattern()" ${priceState.selectedSize?'':'disabled'}>${priceState.selectedSize ? priceState.selectedSize+' のパターンを選ぶ →' : 'サイズを選択してください'}</button></div>`;
   if (priceState.query?.length >= 3) priceFilterSizes(priceState.query);
 }
+let _priceSizeTimer = null;
 function priceInputNormalize(el) {
   let v = el.value.replace(/[Ａ-Ｚａ-ｚ０-９]/g, c => String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[／]/g,'/').replace(/[．]/g,'.').replace(/　/g,' ').toUpperCase();
   if (el.value !== v) { const pos = el.selectionStart; el.value = v; try { el.setSelectionRange(pos,pos); } catch(e) {} }
-  priceState.query = v; priceFilterSizes(v);
+  priceState.query = v;
+  clearTimeout(_priceSizeTimer);
+  _priceSizeTimer = setTimeout(() => priceFilterSizes(v), 200);
 }
 function normalizeSizeQuery(q) { return q.replace(/[\/R\.]/gi,'').replace(/\s/g,'').toUpperCase(); }
 function normalizeSizeStr(s) { return s.replace(/[\/R\.]/gi,'').replace(/\s/g,'').toUpperCase(); }

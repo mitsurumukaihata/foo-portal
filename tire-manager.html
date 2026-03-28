@@ -740,16 +740,76 @@ async function loadPrepList(catKey) {
 function renderPrepListByCat(catKey, records) {
   const el = document.getElementById('entry-content');
   const db = DB_MAP[catKey];
-  let listHtml = records.length === 0 ? `<div class="prep-empty">準備中のタイヤはありません</div>` : records.map(r => {
+
+  if (records.length === 0) {
+    el.innerHTML = `<div class="content"><div class="screen-label">準備中タイヤ一覧</div><div class="screen-title">${db.icon} ${db.name}</div><div class="prep-empty">準備中のタイヤはありません</div><button class="btn-secondary" style="margin-top:8px;" onclick="renderEntry()">← 戻る</button></div>`;
+    return;
+  }
+
+  // 倉庫 → 出庫先 でグループ化
+  const byWarehouse = {};
+  records.forEach(r => {
     const p = r.properties;
+    const wh = p[db.warehouseField]?.select?.name || '不明';
     const dest = p['出庫先']?.rich_text?.[0]?.plain_text || '（出庫先なし）';
-    const pattern = p['パターン名']?.select?.name || '―';
-    const size = p['サイズコード']?.select?.name || '―';
-    const qty = p['数量']?.number ?? '―';
-    const warehouse = p[db.warehouseField]?.select?.name || '―';
-    return `<div class="prep-list-item" onclick="renderPrepEdit('${r.id}','${catKey}')"><div class="prep-row1"><span class="prep-dest">${dest}</span><span class="prep-pattern">${pattern}</span><span class="prep-size">${size}</span></div><div class="prep-row2"><span class="prep-qty">📦 ${qty}本</span><span class="prep-warehouse">🏭 ${warehouse}</span></div></div>`;
-  }).join('');
-  el.innerHTML = `<div class="content"><div class="screen-label">準備中タイヤ一覧</div><div class="screen-title">${db.icon} ${db.name}</div><div style="font-size:12px;color:var(--muted);margin-bottom:12px;">${records.length}件の準備中タイヤ</div>${listHtml}<button class="btn-secondary" style="margin-top:8px;" onclick="renderEntry()">← 戻る</button></div>`;
+    if (!byWarehouse[wh]) byWarehouse[wh] = {};
+    if (!byWarehouse[wh][dest]) byWarehouse[wh][dest] = [];
+    byWarehouse[wh][dest].push(r);
+  });
+
+  const whOrder = ['五日市倉庫','志和倉庫','海田倉庫'];
+  const sortedWh = Object.keys(byWarehouse).sort((a, b) => {
+    const ia = whOrder.indexOf(a), ib = whOrder.indexOf(b);
+    if (ia >= 0 && ib >= 0) return ia - ib;
+    if (ia >= 0) return -1;
+    if (ib >= 0) return 1;
+    return a.localeCompare(b, 'ja');
+  });
+
+  const totalQty = records.reduce((s, r) => s + (r.properties['数量']?.number || 0), 0);
+
+  let html = '';
+  sortedWh.forEach(wh => {
+    const dests = byWarehouse[wh];
+    const whQty = Object.values(dests).flat().reduce((s, r) => s + (r.properties['数量']?.number || 0), 0);
+
+    html += `<div class="prep-wh-group">`;
+    html += `<div class="prep-wh-header">${wh}<span class="prep-wh-total">${whQty}本</span></div>`;
+
+    // 出庫先を五十音順（出庫先なしは末尾）
+    const sortedDests = Object.keys(dests).sort((a, b) => {
+      if (a === '（出庫先なし）') return 1;
+      if (b === '（出庫先なし）') return -1;
+      return a.localeCompare(b, 'ja');
+    });
+
+    sortedDests.forEach(dest => {
+      const destRecords = dests[dest];
+      const destQty = destRecords.reduce((s, r) => s + (r.properties['数量']?.number || 0), 0);
+
+      html += `<div class="prep-dest-group">`;
+      html += `<div class="prep-dest-header"><span class="prep-dest-name">${dest}</span><span class="prep-dest-total">${destQty}本</span></div>`;
+
+      destRecords.forEach(r => {
+        const p = r.properties;
+        const pattern = p['パターン名']?.select?.name || '―';
+        const size = p['サイズコード']?.select?.name || '―';
+        const qty = p['数量']?.number ?? 0;
+        const memo = p['メモ']?.rich_text?.[0]?.plain_text || '';
+        html += `<div class="prep-all-item" onclick="renderPrepEdit('${r.id}','${catKey}')">`;
+        html += `<div class="prep-all-row1"><span class="prep-all-size">${size}</span><span class="prep-all-qty">${qty}本</span></div>`;
+        html += `<div class="prep-all-row2"><span class="prep-pattern">${pattern}</span></div>`;
+        if (memo) html += `<div class="prep-row3">📝 ${memo}</div>`;
+        html += `</div>`;
+      });
+
+      html += `</div>`;
+    });
+
+    html += `</div>`;
+  });
+
+  el.innerHTML = `<div class="content"><div class="screen-label">準備中タイヤ一覧</div><div class="screen-title">${db.icon} ${db.name}</div><div style="font-size:12px;color:var(--muted);margin-bottom:12px;">${records.length}件 ／ ${totalQty}本</div>${html}<button class="btn-secondary" style="margin-top:8px;" onclick="renderEntry()">← 戻る</button></div>`;
 }
 
 // ─── 全カテゴリ横断：準備中タイヤ一覧（出庫先別） ───────────────────────────

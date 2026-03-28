@@ -52,10 +52,10 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .gate-staff-btn:active { transform: scale(0.97); }
 .gate-staff-btn.selected { border-color: var(--accent); background: rgba(240,165,0,0.1); color: var(--accent); }
 .prep-divider { text-align:center; color:var(--muted); font-size:12px; margin:12px 0; letter-spacing:0.05em; }
-.btn-prep { width:100%; background:rgba(240,165,0,0.1); border:1.5px solid var(--accent); border-radius:10px; padding:13px; color:var(--accent); font-size:14px; font-family:'Noto Sans JP',sans-serif; cursor:pointer; font-weight:700; transition:all 0.15s; }
+.btn-prep { width:100%; background:rgba(240,165,0,0.1); border:1.5px solid var(--accent); border-radius:10px; padding:13px; color:var(--text); font-size:14px; font-family:'Noto Sans JP',sans-serif; cursor:pointer; font-weight:700; transition:all 0.15s; }
 .btn-prep:active { transform:scale(0.97); }
 .prep-cat-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:4px; }
-.prep-cat-btn { background:rgba(240,165,0,0.08); border:1.5px solid var(--accent); border-radius:8px; padding:10px 6px; color:var(--accent); font-size:11px; font-family:'Noto Sans JP',sans-serif; cursor:pointer; font-weight:700; transition:all 0.15s; line-height:1.3; }
+.prep-cat-btn { background:rgba(240,165,0,0.08); border:1.5px solid var(--accent); border-radius:8px; padding:10px 6px; color:var(--text); font-size:11px; font-family:'Noto Sans JP',sans-serif; cursor:pointer; font-weight:700; transition:all 0.15s; line-height:1.3; }
 .prep-cat-btn:active { transform:scale(0.96); }
 .btn-prep-list { width:100%; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:13px; color:var(--text); font-size:14px; font-family:'Noto Sans JP',sans-serif; cursor:pointer; font-weight:700; transition:all 0.15s; }
 .btn-prep-list:active { transform:scale(0.97); }
@@ -84,6 +84,14 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .prep-all-row2 { display:flex; gap:8px; align-items:center; }
 .prep-cat-tag { font-size:10px; color:var(--muted); background:var(--s1); border:1px solid var(--border); padding:1px 6px; border-radius:4px; }
 .prep-row3 { font-size:11px; color:var(--muted); margin-top:3px; }
+.prep-compact-group { border:1px solid var(--border); border-radius:8px; overflow:hidden; margin-bottom:6px; }
+.prep-compact-item { display:flex; align-items:center; gap:6px; padding:7px 10px; border-bottom:1px solid var(--border); cursor:pointer; transition:background 0.1s; }
+.prep-compact-item:last-child { border-bottom:none; }
+.prep-compact-item:active { background:var(--s3); }
+.prep-compact-size { font-size:12px; font-weight:700; color:var(--text); font-family:'DM Mono',monospace; min-width:105px; flex-shrink:0; }
+.prep-compact-pattern { font-size:12px; font-weight:700; color:var(--accent); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.prep-compact-qty { font-size:12px; font-weight:700; color:var(--green); flex-shrink:0; min-width:30px; text-align:right; }
+.prep-compact-memo { font-size:10px; color:var(--muted); flex-shrink:0; }
 #app { display: none; flex-direction: column; min-height: 100vh; }
 .header { background: var(--s1); border-bottom: 0.5px solid var(--border); padding: 14px 20px 10px; position: sticky; top: 0; z-index: 100; }
 .header-brand { font-size: 10px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 2px; }
@@ -789,6 +797,7 @@ function renderPrepListByCat(catKey, records) {
 
       html += `<div class="prep-dest-group">`;
       html += `<div class="prep-dest-header"><span class="prep-dest-name">${dest}</span><span class="prep-dest-total">${destQty}本</span></div>`;
+      html += `<div class="prep-compact-group">`;
 
       destRecords.forEach(r => {
         const p = r.properties;
@@ -796,14 +805,10 @@ function renderPrepListByCat(catKey, records) {
         const size = p['サイズコード']?.select?.name || '―';
         const qty = p['数量']?.number ?? 0;
         const memo = p['メモ']?.rich_text?.[0]?.plain_text || '';
-        html += `<div class="prep-all-item" onclick="renderPrepEdit('${r.id}','${catKey}')">`;
-        html += `<div class="prep-all-row1"><span class="prep-all-size">${size}</span><span class="prep-all-qty">${qty}本</span></div>`;
-        html += `<div class="prep-all-row2"><span class="prep-pattern">${pattern}</span></div>`;
-        if (memo) html += `<div class="prep-row3">📝 ${memo}</div>`;
-        html += `</div>`;
+        html += `<div class="prep-compact-item" onclick="renderPrepEdit('${r.id}','${catKey}')"><span class="prep-compact-size">${size}</span><span class="prep-compact-pattern">${pattern}</span><span class="prep-compact-qty">${qty}本</span>${memo?`<span class="prep-compact-memo">📝${memo}</span>`:''}</div>`;
       });
 
-      html += `</div>`;
+      html += `</div></div>`;
     });
 
     html += `</div>`;
@@ -899,16 +904,13 @@ function renderAllPrepList(items) {
 
       html += `<div class="prep-dest-group">`;
       html += `<div class="prep-dest-header"><span class="prep-dest-name">${dest}</span><span class="prep-dest-total">${destQty}本</span></div>`;
+      html += `<div class="prep-compact-group">`;
 
       destItems.forEach(item => {
-        html += `<div class="prep-all-item" onclick="renderPrepEdit('${item.id}','${item.catKey}')">`;
-        html += `<div class="prep-all-row1"><span class="prep-all-size">${item.size}</span><span class="prep-all-qty">${item.qty}本</span></div>`;
-        html += `<div class="prep-all-row2"><span class="prep-pattern">${item.pattern}</span><span class="prep-cat-tag">${item.catIcon} ${item.catName}</span></div>`;
-        if (item.memo) html += `<div class="prep-row3">📝 ${item.memo}</div>`;
-        html += `</div>`;
+        html += `<div class="prep-compact-item" onclick="renderPrepEdit('${item.id}','${item.catKey}')"><span class="prep-compact-size">${item.size}</span><span class="prep-compact-pattern">${item.pattern}</span><span class="prep-cat-tag" style="flex-shrink:0;">${item.catIcon}</span><span class="prep-compact-qty">${item.qty}本</span>${item.memo?`<span class="prep-compact-memo">📝${item.memo}</span>`:''}</div>`;
       });
 
-      html += `</div>`;
+      html += `</div></div>`;
     });
 
     html += `</div>`;
@@ -978,6 +980,7 @@ function renderPrepEdit(pageId, catKey) {
 }
 
 async function submitPrepToShukko(pageId, catKey) {
+  if (!confirm('この準備タイヤを「出庫」に変更しますか？\nNotionDBのデータを更新します。')) return;
   const btn = document.getElementById('prep-send-btn');
   if (btn) { btn.disabled = true; btn.textContent = '更新中…'; }
   const dest = document.getElementById('prep-dest')?.value.trim() || '';
@@ -1372,6 +1375,8 @@ async function createRecord(kubun, warehouse) {
 }
 
 async function submitEntry() {
+  const _kubunLabel = state.isMove ? `${state.moveDir?.from}→${state.moveDir?.to} 移動` : `${state.kubun} / ${state.warehouse}`;
+  if (!confirm(`NotionDBにデータを追加します。よろしいですか？\n\n${state.pattern} ${state.size} ${state.qty}本\n${_kubunLabel}`)) return;
   const btn = document.getElementById('send-btn');
   if (btn) { btn.disabled = true; btn.textContent = '送信中…'; }
   try {
@@ -1720,6 +1725,7 @@ function closeHistoryEdit() {
 }
 
 async function saveHistoryEdit(pageId, idx) {
+  if (!confirm('この履歴データを修正しますか？\nNotionDBのデータを上書きします。')) return;
   const kubun = document.getElementById('edit-kubun').value;
   const qty = parseInt(document.getElementById('edit-qty').value) || 1;
   const memo = document.getElementById('edit-memo').value.trim();

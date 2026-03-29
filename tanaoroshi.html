@@ -526,7 +526,8 @@ function generatePDF() {
       '<span>印刷ダイアログで「PDFとして保存」を選択してください</span>' +
     '</div>' +
     pagesHtml +
-    '</body></html>';
+    '<script src="foo-swipe.js"></script>
+</body></html>';
 
   // 新しいウィンドウで開く
   const w = window.open('', '_blank');
@@ -545,5 +546,6 @@ document.getElementById('pdf-btn').addEventListener('click', generatePDF);
 // ════════ INIT ════════
 window.addEventListener('load', init);
 </script>
+<script src="foo-swipe.js"></script>
 </body>
 </html>

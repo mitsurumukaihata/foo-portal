@@ -1956,11 +1956,24 @@ function renderHistory() {
     monthOpts += `<option value="${m}"${m === historyMonth ? ' selected' : ''}>${m}月</option>`;
   }
 
+  // 区分一覧をレコードから生成（出現数順）
+  const kubunCounts = {};
+  historyRecords.forEach(r => {
+    const k = r.properties?.['区分']?.select?.name || '';
+    if (k) kubunCounts[k] = (kubunCounts[k] || 0) + 1;
+  });
+  const historyKubuns = Object.entries(kubunCounts).sort((a,b) => b[1]-a[1]).map(e => e[0]);
+
   let html = `
     <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">
       <select id="hist-year" onchange="changeHistoryPeriod(+this.value, +document.getElementById('hist-month').value)" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);font-size:13px;font-family:inherit;color:var(--text);">${yearOpts}</select>
       <select id="hist-month" onchange="changeHistoryPeriod(+document.getElementById('hist-year').value, +this.value)" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);font-size:13px;font-family:inherit;color:var(--text);">${monthOpts}</select>
     </div>
+    <div class="search-box" style="margin-bottom:8px;">
+      <input id="history-search" type="text" inputmode="numeric" placeholder="例：275 または 27580" autocomplete="off">
+      <button class="search-clear" onclick="window._historySelectedSize='';document.getElementById('history-search').value='';filterHistorySizes('');applyHistoryFilter('')">✕</button>
+    </div>
+    <div id="history-candidates" class="candidates"></div>
     <div id="pattern-tags" style="display:flex;gap:5px;overflow-x:auto;margin-bottom:8px;padding-bottom:4px;-webkit-overflow-scrolling:touch;">
       ${(() => {
         const pSel = historyPatternFilter === '全部';
@@ -1973,17 +1986,17 @@ function renderHistory() {
       })()}
     </div>
     <div id="kubun-tags" style="display:flex;gap:5px;overflow-x:auto;margin-bottom:8px;padding-bottom:4px;-webkit-overflow-scrolling:touch;">
-      ${['全部','入庫','出庫','準備','移動入庫','移動出庫','返品（倉庫へ）','返品（メーカーへ）'].map(k => {
-        const sel = k === historyKubunFilter;
-        const col = k === '全部' ? 'var(--accent)' : kubunColor(k);
-        return `<button onclick="filterKubun('${k}')" style="flex-shrink:0;padding:4px 10px;border-radius:16px;font-size:10px;font-weight:600;font-family:inherit;cursor:pointer;border:1.5px solid ${col};background:${sel ? col : 'transparent'};color:${sel ? '#fff' : col};transition:all 0.15s;">${k}</button>`;
-      }).join('')}
+      ${(() => {
+        const kAll = historyKubunFilter === '全部';
+        let tags = `<button onclick="filterKubun('全部')" style="flex-shrink:0;padding:4px 10px;border-radius:16px;font-size:10px;font-weight:600;font-family:inherit;cursor:pointer;border:1.5px solid var(--accent);background:${kAll ? 'var(--accent)' : 'transparent'};color:${kAll ? '#fff' : 'var(--accent)'};transition:all 0.15s;">全部</button>`;
+        historyKubuns.forEach(k => {
+          const sel = k === historyKubunFilter;
+          const col = kubunColor(k);
+          tags += `<button onclick="filterKubun('${k}')" style="flex-shrink:0;padding:4px 10px;border-radius:16px;font-size:10px;font-weight:600;font-family:inherit;cursor:pointer;border:1.5px solid ${col};background:${sel ? col : 'transparent'};color:${sel ? '#fff' : col};transition:all 0.15s;">${k}</button>`;
+        });
+        return tags;
+      })()}
     </div>
-    <div class="search-box">
-      <input id="history-search" type="text" inputmode="numeric" placeholder="例：275 または 27580" autocomplete="off">
-      <button class="search-clear" onclick="window._historySelectedSize='';document.getElementById('history-search').value='';filterHistorySizes('');applyHistoryFilter('')">✕</button>
-    </div>
-    <div id="history-candidates" class="candidates"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <div style="font-size:11px;color:var(--muted);" id="history-count">${historyYear}年${historyMonth > 0 ? historyMonth+'月' : ''}の履歴（${historyRecords.length}件）</div>
       <button onclick="loadHistory(true)" style="background:var(--s3);border:1px solid var(--border2);border-radius:6px;padding:4px 8px;font-size:10px;color:var(--text);cursor:pointer;font-family:inherit;">↻ 更新</button>

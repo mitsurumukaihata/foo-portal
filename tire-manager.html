@@ -1833,6 +1833,15 @@ async function submitEntry() {
 let historyLoaded = false;
 let historyRecords = [];
 
+// ── 区分カラー（履歴・フィルターで共用）──
+function kubunColor(k) {
+  if (k.includes('入庫') || k.includes('返品（倉庫')) return 'var(--green)';
+  if (k.includes('出庫') || k.includes('準備')) return 'var(--red)';
+  if (k.includes('返品（メーカー')) return 'var(--purple)';
+  if (k === '発注中') return 'var(--blue)';
+  return 'var(--muted)';
+}
+
 // ── 履歴フィルター状態 ──
 let historyYear = new Date().getFullYear();
 let historyMonth = new Date().getMonth() + 1; // 1-12, 0=全月
@@ -1923,14 +1932,6 @@ function renderHistory() {
     return '';
   };
 
-  const kubunColor = (k) => {
-    if (k.includes('入庫') || k.includes('返品（倉庫')) return 'var(--green)';
-    if (k.includes('出庫') || k.includes('準備')) return 'var(--red)';
-    if (k.includes('返品（メーカー')) return 'var(--purple)';
-    if (k === '発注中') return 'var(--blue)';
-    return 'var(--muted)';
-  };
-
   // サイズ候補リストを全カテゴリから生成（重複排除）
   const allSizes = [...new Set(Object.values(DB_MAP).flatMap(db => db.sizes || []))].sort();
 
@@ -1938,7 +1939,7 @@ function renderHistory() {
   const now = new Date();
   const curYear = now.getFullYear();
   let yearOpts = '';
-  for (let y = 2026; y >= 2025; y--) {
+  for (let y = curYear; y >= 2024; y--) {
     yearOpts += `<option value="${y}"${y === historyYear ? ' selected' : ''}>${y}年</option>`;
   }
   let monthOpts = `<option value="0"${historyMonth === 0 ? ' selected' : ''}>全月</option>`;

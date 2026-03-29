@@ -650,8 +650,17 @@ async function backgroundNegScan() {
         if (!bySize[size][pattern]) bySize[size][pattern] = {};
         bySize[size][pattern][warehouse] = (bySize[size][pattern][warehouse] || 0) + sign * qty;
       });
-      // マイナス検出・キャッシュ更新
-      Object.entries(bySize).forEach(([size, patterns]) => updateNegStock(catKey, size, patterns));
+      // マイナス検出・キャッシュ更新（このカテゴリの全エントリをクリアしてから再登録）
+      NEGATIVE_STOCK_ITEMS = NEGATIVE_STOCK_ITEMS.filter(i => i.catKey !== catKey);
+      const now = Date.now();
+      Object.entries(bySize).forEach(([size, patterns]) => {
+        Object.entries(patterns).forEach(([pattern, warehouses]) => {
+          Object.entries(warehouses).forEach(([warehouse, qty]) => {
+            if (qty < 0) NEGATIVE_STOCK_ITEMS.push({ catKey, size, pattern, warehouse, qty, t: now });
+          });
+        });
+      });
+      saveNegStock();
     } catch(e) { console.warn('backgroundNegScan', catKey, e.message); }
   }
   refreshNegBanners(); // スキャン完了後にバナーを更新

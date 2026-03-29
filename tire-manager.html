@@ -2262,6 +2262,22 @@ function applyHistoryFilter(query) {
   const q = (query || '').trim().toLowerCase();
   const kf = historyKubunFilter;
   const pf = historyPatternFilter;
+
+  // ① サイズで絞ったレコードからパターン候補を生成
+  const sizeMatchedRecords = historyRecords.filter(r => {
+    const size = (r.properties?.['サイズコード']?.select?.name || '').toLowerCase();
+    return !q || size.includes(q);
+  });
+  rebuildPatternTags(sizeMatchedRecords);
+
+  // ② サイズ＋パターンで絞ったレコードから区分候補を生成
+  const sizePtnMatchedRecords = sizeMatchedRecords.filter(r => {
+    const pattern = r.properties?.['パターン名']?.select?.name || '';
+    return pf === '全部' || pattern === pf;
+  });
+  rebuildKubunTags(sizePtnMatchedRecords);
+
+  // ③ カードの表示/非表示
   const cards = document.querySelectorAll('[id^="hist-"]');
   let shown = 0;
   cards.forEach(card => {
@@ -2269,9 +2285,10 @@ function applyHistoryFilter(query) {
     const kubun = card.getAttribute('data-kubun') || '';
     const pattern = card.getAttribute('data-pattern') || '';
     const sizeMatch = !q || size.includes(q);
-    const kubunMatch = kf === '全部' || kubun === kf;
     const patternMatch = pf === '全部' || pattern === pf;
-    const match = sizeMatch && kubunMatch && patternMatch;
+    const kubunDisplay = (kubun === '移動入庫' || kubun === '移動出庫') ? '移動入出庫' : kubun;
+    const kubunMatch = kf === '全部' || kubunDisplay === kf;
+    const match = sizeMatch && patternMatch && kubunMatch;
     card.style.display = match ? '' : 'none';
     if (match) shown++;
   });
@@ -2285,34 +2302,65 @@ function applyHistoryFilter(query) {
   }
 }
 
+// パターンタグを動的に再構築（サイズで絞った結果から）
+function rebuildPatternTags(records) {
+  const el = document.getElementById('pattern-tags');
+  if (!el) return;
+  const counts = {};
+  records.forEach(r => {
+    const p = r.properties?.['パターン名']?.select?.name || '';
+    if (p) counts[p] = (counts[p] || 0) + 1;
+  });
+  const patterns = Object.entries(counts).sort((a,b) => b[1]-a[1]).map(e => e[0]);
+  // 選択中パターンが候補に無ければリセット
+  if (historyPatternFilter !== '全部' && !patterns.includes(historyPatternFilter)) {
+    historyPatternFilter = '全部';
+  }
+  const pSel = historyPatternFilter === '全部';
+  let html = `<button onclick="filterPattern('全部')" style="flex-shrink:0;padding:4px 10px;border-radius:16px;font-size:10px;font-weight:600;font-family:inherit;cursor:pointer;border:1.5px solid var(--accent);background:${pSel ? 'var(--accent)' : 'transparent'};color:${pSel ? '#fff' : 'var(--accent)'};transition:all 0.15s;">全部</button>`;
+  patterns.forEach(p => {
+    const s = p === historyPatternFilter;
+    html += `<button onclick="filterPattern('${p}')" style="flex-shrink:0;padding:4px 10px;border-radius:16px;font-size:10px;font-weight:600;font-family:inherit;cursor:pointer;border:1.5px solid var(--blue);background:${s ? 'var(--blue)' : 'transparent'};color:${s ? '#fff' : 'var(--blue)'};transition:all 0.15s;">${p}</button>`;
+  });
+  el.innerHTML = html;
+}
+
+// 区分タグを動的に再構築（サイズ＋パターンで絞った結果から）
+function rebuildKubunTags(records) {
+  const el = document.getElementById('kubun-tags');
+  if (!el) return;
+  const counts = {};
+  records.forEach(r => {
+    let k = r.properties?.['区分']?.select?.name || '';
+    // 移動入庫・移動出庫 → 移動入出庫に統合
+    if (k === '移動入庫' || k === '移動出庫') k = '移動入出庫';
+    if (k) counts[k] = (counts[k] || 0) + 1;
+  });
+  const kubuns = Object.entries(counts).sort((a,b) => b[1]-a[1]).map(e => e[0]);
+  // 選択中区分が候補に無ければリセット
+  if (historyKubunFilter !== '全部' && !kubuns.includes(historyKubunFilter)) {
+    historyKubunFilter = '全部';
+  }
+  const kAll = historyKubunFilter === '全部';
+  let html = `<button onclick="filterKubun('全部')" style="flex-shrink:0;padding:4px 10px;border-radius:16px;font-size:10px;font-weight:600;font-family:inherit;cursor:pointer;border:1.5px solid var(--accent);background:${kAll ? 'var(--accent)' : 'transparent'};color:${kAll ? '#fff' : 'var(--accent)'};transition:all 0.15s;">全部</button>`;
+  kubuns.forEach(k => {
+    const sel = k === historyKubunFilter;
+    const col = kubunColor(k);
+    html += `<button onclick="filterKubun('${k}')" style="flex-shrink:0;padding:4px 10px;border-radius:16px;font-size:10px;font-weight:600;font-family:inherit;cursor:pointer;border:1.5px solid ${col};background:${sel ? col : 'transparent'};color:${sel ? '#fff' : col};transition:all 0.15s;">${k}</button>`;
+  });
+  el.innerHTML = html;
+}
+
 function filterKubun(kubun) {
   historyKubunFilter = kubun;
-  const tags = document.getElementById('kubun-tags');
-  if (tags) {
-    tags.querySelectorAll('button').forEach(btn => {
-      const k = btn.textContent;
-      const sel = k === kubun;
-      const col = k === '全部' ? 'var(--accent)' : kubunColor(k);
-      btn.style.background = sel ? col : 'transparent';
-      btn.style.color = sel ? '#fff' : col;
-    });
-  }
   const searchInput = document.getElementById('history-search');
   applyHistoryFilter(searchInput ? searchInput.value : '');
 }
 
 function filterPattern(pattern) {
   historyPatternFilter = pattern;
-  const tags = document.getElementById('pattern-tags');
-  if (tags) {
-    tags.querySelectorAll('button').forEach(btn => {
-      const p = btn.textContent;
-      const sel = p === pattern;
-      const col = p === '全部' ? 'var(--accent)' : 'var(--blue)';
-      btn.style.background = sel ? col : 'transparent';
-      btn.style.color = sel ? '#fff' : col;
-    });
-  }
+  // パターン変更時は区分をリセット
+  historyKubunFilter = '全部';
   const searchInput = document.getElementById('history-search');
   applyHistoryFilter(searchInput ? searchInput.value : '');
 }

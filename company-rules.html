@@ -12,6 +12,11 @@
   --text:#f0f0f0; --muted:#71717a; --border:#27272a; --border2:#3f3f46;
   --accent:#f0a500; --green:#22c55e; --red:#ef4444; --blue:#3b82f6; --purple:#a78bfa;
 }
+[data-theme="light"] {
+  --bg:#f8f8f8; --s1:#ffffff; --s2:#f0f0f0; --s3:#e4e4e7;
+  --text:#18181b; --muted:#71717a; --border:#e4e4e7; --border2:#d4d4d8;
+  --accent:#d4880a;
+}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);-webkit-text-size-adjust:100%;min-height:100vh;padding-bottom:80px;}
 .header{position:sticky;top:0;z-index:100;background:var(--bg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:14px 20px 10px;border-bottom:1px solid var(--border);}
@@ -119,6 +124,10 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text
 </div>
 
 <script>
+(function(){
+  var t = localStorage.getItem('foo_portal_theme') || 'auto';
+  if (t !== 'auto') document.documentElement.setAttribute('data-theme', t);
+})();
 const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
 const SESSION_KEY = 'foo_portal_session';
 const PARENT_PAGE_ID = '1cea695f8e8880fb8a93c3519a29228d';

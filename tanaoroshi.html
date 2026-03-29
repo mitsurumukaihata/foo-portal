@@ -161,7 +161,7 @@ function loadSession() {
   try { return JSON.parse(localStorage.getItem('foo_user')); } catch(e) { return null; }
 }
 function applyTheme() {
-  const theme = localStorage.getItem('foo_theme');
+  const theme = localStorage.getItem('foo_portal_theme');
   if (theme) document.documentElement.setAttribute('data-theme', theme);
 }
 

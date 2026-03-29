@@ -477,6 +477,7 @@ function toggleTheme() {
 function updateThemeButton() {
   const theme = localStorage.getItem('foo_portal_theme') || 'auto';
   const btn = document.getElementById('theme-toggle');
+  if (!btn) return;
   if (theme === 'light') btn.textContent = '☀️';
   else btn.textContent = '🌙';
 }
@@ -1104,7 +1105,8 @@ function init() {
   document.getElementById('auth-error').classList.remove('show');
   document.getElementById('app').style.display = 'block';
   updateThemeButton();
-  document.getElementById('theme-toggle').onclick = toggleTheme;
+  const themeBtn = document.getElementById('theme-toggle');
+  if (themeBtn) themeBtn.onclick = toggleTheme;
   renderNav();
   document.getElementById('fab').classList.add('show');
   localStorage.setItem('foo_portal_seen_leader', new Date().toISOString());

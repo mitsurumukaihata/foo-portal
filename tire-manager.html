@@ -697,6 +697,8 @@ function switchTab(tab) {
   document.getElementById('page-' + tab).classList.add('active');
   if (tab === 'price' && !priceState.initialized) renderPriceHome();
   if (tab === 'history') loadHistory();
+  // タブ切替時にスタックをリセット
+  window._fooNavStack = [];
 }
 
 function renderStepBar() {
@@ -985,9 +987,15 @@ function renderDone(el) {
     </div>`;
 }
 
-function goStep(n) { state.step = n; renderEntry(); }
-function cancelEntry() { resetState(); renderEntry(); }
-function newEntry() { resetState(); renderEntry(); }
+function goStep(n) {
+  state.step = n;
+  renderEntry();
+  // ステップ前進時にバックスタックを再構築
+  window._fooNavStack = [];
+  if (n > 0) fooNavPush(function() { goStep(n - 1); });
+}
+function cancelEntry() { resetState(); window._fooNavStack = []; renderEntry(); }
+function newEntry() { resetState(); window._fooNavStack = []; renderEntry(); }
 
 // ─── 準備リスト機能 ──────────────────────────────────────────────────────────
 
@@ -1553,7 +1561,7 @@ async function fetchPriceSizes(dbKey) {
   })();
   return PRICE_SIZE_FETCHING[dbKey];
 }
-function priceSelectDb(key) { priceState.dbKey=key; priceState.step='search'; priceState.query=''; priceState.selectedSize=''; priceState.makerFilter='all'; priceState.patternRows=[]; priceState.selectedPattern=''; priceState.results=[]; priceState.estOpen={}; priceState.estPct={}; renderPriceHome(); }
+function priceSelectDb(key) { priceState.dbKey=key; priceState.step='search'; priceState.query=''; priceState.selectedSize=''; priceState.makerFilter='all'; priceState.patternRows=[]; priceState.selectedPattern=''; priceState.results=[]; priceState.estOpen={}; priceState.estPct={}; window._fooNavStack=[]; fooNavPush(function(){priceState.dbKey='';priceState.step='home';window._fooNavStack=[];renderPriceHome();}); renderPriceHome(); }
 function renderPriceHome() {
   priceState.initialized = true;
   if (priceState.step === 'pattern') { renderPricePatternStep(); return; }
@@ -1652,7 +1660,7 @@ async function priceGoFetchPattern(sz) {
   const cacheKey = `${priceState.dbKey}::${sz}`;
   if (PRICE_PATTERN_CACHE[cacheKey]) {
     priceState.patternRows=PRICE_PATTERN_CACHE[cacheKey]; priceState.step='pattern'; priceState.selectedPattern=''; priceState.loading=false;
-    renderPricePatternStep(); return;
+    window._fooNavStack=[]; fooNavPush(function(){priceClearSearch();}); renderPricePatternStep(); return;
   }
   priceState.loading = true;
   document.getElementById('price-content').innerHTML = '<div class="content"><div class="loading-wrap"><div class="spinner"></div><div class="loading-text">パターンデータを取得中…</div></div></div>';
@@ -1662,7 +1670,7 @@ async function priceGoFetchPattern(sz) {
     while (true) { const body = { filter: { property: 'サイズ', rich_text: { contains: sz } }, page_size: 100 }; if (cursor) body.start_cursor = cursor; const res = await notionAPI('POST', `/databases/${db.id}/query`, body); if (res.object === 'error') throw new Error(res.message); all = all.concat(res.results); if (!res.has_more) break; cursor = res.next_cursor; }
     priceState.patternRows = all.map(r => { const p = r.properties; return { id:r.id, size:p['サイズ']?.rich_text?.[0]?.plain_text||'', pattern:p['パターン']?.select?.name||'', maker:p['メーカー']?.select?.name||'', cat:p['カテゴリ']?.select?.name||'', price:p['価格']?.number??null, note:p['備考']?.rich_text?.[0]?.plain_text||'', weight:p['加重指数']?.rich_text?.[0]?.plain_text||'' }; });
     PRICE_PATTERN_CACHE[cacheKey] = priceState.patternRows; // キャッシュ保存（次回から即時）
-    priceState.loading=false; priceState.step='pattern'; priceState.selectedPattern=''; renderPricePatternStep();
+    priceState.loading=false; priceState.step='pattern'; priceState.selectedPattern=''; window._fooNavStack=[]; fooNavPush(function(){priceClearSearch();}); renderPricePatternStep();
   } catch(e) { priceState.loading=false; document.getElementById('price-content').innerHTML=`<div class="content"><div class="error-box">取得に失敗しました。<br><small>${e.message}</small></div><button class="btn-secondary" onclick="priceState.step='search';renderPriceHome()">← 戻る</button></div>`; }
 }
 function renderPricePatternStep() {
@@ -1697,7 +1705,7 @@ function renderPricePatternStep() {
 }
 function pricePatternFilterMaker(maker) { priceState.makerFilter=maker; priceState.selectedPattern=''; renderPricePatternStep(); }
 function pricePickPattern(key) { priceState.selectedPattern=key; document.querySelectorAll('.pattern-item').forEach(el=>el.classList.remove('sel')); event.currentTarget.classList.add('sel'); const btn=document.getElementById('price-pattern-btn'); if(btn){btn.disabled=false;btn.textContent=key.split('|')[0]+' の価格を見る →';} }
-function priceGoResult() { if(!priceState.selectedPattern) return; const [pat,maker]=priceState.selectedPattern.split('|'); priceState.results=priceState.patternRows.filter(r=>r.pattern===pat&&r.maker===maker); priceState.results.sort((a,b)=>{if(a.price===null)return 1;if(b.price===null)return -1;return a.price-b.price;}); priceState.step='result'; priceState.estOpen={}; priceState.estPct={}; renderPriceResultStep(); }
+function priceGoResult() { if(!priceState.selectedPattern) return; const [pat,maker]=priceState.selectedPattern.split('|'); priceState.results=priceState.patternRows.filter(r=>r.pattern===pat&&r.maker===maker); priceState.results.sort((a,b)=>{if(a.price===null)return 1;if(b.price===null)return -1;return a.price-b.price;}); priceState.step='result'; priceState.estOpen={}; priceState.estPct={}; fooNavPush(function(){priceState.step='pattern';priceState.selectedPattern='';renderPricePatternStep();}); renderPriceResultStep(); }
 function renderPriceResultStep() {
   const rows=priceState.results;
   document.getElementById('price-content').innerHTML=`<div class="price-search-wrap" style="padding-bottom:0;"><button class="btn-secondary" style="margin-bottom:12px;margin-top:4px;" onclick="priceState.step='pattern';renderPricePatternStep()">← パターン選択に戻る</button><div class="screen-label">検索結果</div><div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px;"><span style="font-size:20px;font-weight:900;font-family:'DM Mono',monospace;color:var(--accent);">${priceState.selectedSize}</span><span style="font-size:13px;font-weight:700;color:var(--text);">${priceState.selectedPattern.split('|')[0]}</span><span style="font-size:11px;color:var(--muted);">${rows.length}件</span></div></div><div class="price-result-list" id="price-cards-area">${rows.map((r,idx)=>buildPriceCard(r,idx)).join('')}</div>`;

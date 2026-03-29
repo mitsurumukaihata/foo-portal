@@ -987,12 +987,13 @@ function renderDone(el) {
     </div>`;
 }
 
-function goStep(n) {
+function goStep(n, fromPopstate) {
   state.step = n;
   renderEntry();
-  // ステップ前進時にバックスタックを再構築
-  window._fooNavStack = [];
-  if (n > 0) fooNavPush(function() { goStep(n - 1); });
+  // popstateから呼ばれた場合はpushしない（無限ループ防止）
+  if (!fromPopstate && n > 0) {
+    fooNavPush(function() { goStep(n - 1, true); });
+  }
 }
 function cancelEntry() { resetState(); window._fooNavStack = []; renderEntry(); }
 function newEntry() { resetState(); window._fooNavStack = []; renderEntry(); }

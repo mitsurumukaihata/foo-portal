@@ -1846,6 +1846,7 @@ function kubunColor(k) {
 let historyYear = new Date().getFullYear();
 let historyMonth = new Date().getMonth() + 1; // 1-12, 0=全月
 let historyKubunFilter = '全部'; // 区分フィルター
+let historyPatternFilter = '全部'; // パターンフィルター
 
 async function loadHistory(forceReload) {
   const el = document.getElementById('history-content');
@@ -1935,6 +1936,14 @@ function renderHistory() {
   // サイズ候補リストを全カテゴリから生成（重複排除）
   const allSizes = [...new Set(Object.values(DB_MAP).flatMap(db => db.sizes || []))].sort();
 
+  // パターン一覧をロード済みレコードから生成（重複排除・出現数順）
+  const patternCounts = {};
+  historyRecords.forEach(r => {
+    const p = r.properties?.['パターン名']?.select?.name || '';
+    if (p) patternCounts[p] = (patternCounts[p] || 0) + 1;
+  });
+  const historyPatterns = Object.entries(patternCounts).sort((a,b) => b[1]-a[1]).map(e => e[0]);
+
   // 年月セレクターを生成
   const now = new Date();
   const curYear = now.getFullYear();
@@ -1952,11 +1961,22 @@ function renderHistory() {
       <select id="hist-year" onchange="changeHistoryPeriod(+this.value, +document.getElementById('hist-month').value)" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);font-size:13px;font-family:inherit;color:var(--text);">${yearOpts}</select>
       <select id="hist-month" onchange="changeHistoryPeriod(+document.getElementById('hist-year').value, +this.value)" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);font-size:13px;font-family:inherit;color:var(--text);">${monthOpts}</select>
     </div>
-    <div id="kubun-tags" style="display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;padding-bottom:4px;-webkit-overflow-scrolling:touch;">
+    <div id="pattern-tags" style="display:flex;gap:5px;overflow-x:auto;margin-bottom:8px;padding-bottom:4px;-webkit-overflow-scrolling:touch;">
+      ${(() => {
+        const pSel = historyPatternFilter === '全部';
+        let tags = `<button onclick="filterPattern('全部')" style="flex-shrink:0;padding:4px 10px;border-radius:16px;font-size:10px;font-weight:600;font-family:inherit;cursor:pointer;border:1.5px solid var(--accent);background:${pSel ? 'var(--accent)' : 'transparent'};color:${pSel ? '#fff' : 'var(--accent)'};transition:all 0.15s;">全部</button>`;
+        historyPatterns.forEach(p => {
+          const s = p === historyPatternFilter;
+          tags += `<button onclick="filterPattern('${p}')" style="flex-shrink:0;padding:4px 10px;border-radius:16px;font-size:10px;font-weight:600;font-family:inherit;cursor:pointer;border:1.5px solid var(--blue);background:${s ? 'var(--blue)' : 'transparent'};color:${s ? '#fff' : 'var(--blue)'};transition:all 0.15s;">${p}</button>`;
+        });
+        return tags;
+      })()}
+    </div>
+    <div id="kubun-tags" style="display:flex;gap:5px;overflow-x:auto;margin-bottom:8px;padding-bottom:4px;-webkit-overflow-scrolling:touch;">
       ${['全部','入庫','出庫','準備','移動入庫','移動出庫','返品（倉庫へ）','返品（メーカーへ）'].map(k => {
         const sel = k === historyKubunFilter;
         const col = k === '全部' ? 'var(--accent)' : kubunColor(k);
-        return `<button onclick="filterKubun('${k}')" style="flex-shrink:0;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;border:1.5px solid ${col};background:${sel ? col : 'transparent'};color:${sel ? '#fff' : col};transition:all 0.15s;">${k}</button>`;
+        return `<button onclick="filterKubun('${k}')" style="flex-shrink:0;padding:4px 10px;border-radius:16px;font-size:10px;font-weight:600;font-family:inherit;cursor:pointer;border:1.5px solid ${col};background:${sel ? col : 'transparent'};color:${sel ? '#fff' : col};transition:all 0.15s;">${k}</button>`;
       }).join('')}
     </div>
     <div class="search-box">
@@ -1964,9 +1984,9 @@ function renderHistory() {
       <button class="search-clear" onclick="window._historySelectedSize='';document.getElementById('history-search').value='';filterHistorySizes('');applyHistoryFilter('')">✕</button>
     </div>
     <div id="history-candidates" class="candidates"></div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-      <div style="font-size:12px;color:var(--muted);" id="history-count">${historyYear}年${historyMonth > 0 ? historyMonth+'月' : ''}の履歴（${historyRecords.length}件）</div>
-      <button onclick="loadHistory(true)" style="background:var(--s3);border:1px solid var(--border2);border-radius:6px;padding:5px 10px;font-size:11px;color:var(--text);cursor:pointer;font-family:inherit;">↻ 更新</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div style="font-size:11px;color:var(--muted);" id="history-count">${historyYear}年${historyMonth > 0 ? historyMonth+'月' : ''}の履歴（${historyRecords.length}件）</div>
+      <button onclick="loadHistory(true)" style="background:var(--s3);border:1px solid var(--border2);border-radius:6px;padding:4px 8px;font-size:10px;color:var(--text);cursor:pointer;font-family:inherit;">↻ 更新</button>
     </div>`;
 
   // サイズ候補をグローバルに保持
@@ -1985,23 +2005,20 @@ function renderHistory() {
     const catIcon = DB_MAP[r._catKey]?.icon || '';
 
     html += `
-    <div onclick="openHistoryDetail(${idx})" style="background:var(--s2);border:0.5px solid var(--border);border-left:3px solid ${kubunColor(kubun)};border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;transition:background 0.15s;" id="hist-${idx}" data-size="${(size||'').toLowerCase()}" data-kubun="${kubun}" ontouchstart="this.style.background='var(--s3)'" ontouchend="this.style.background='var(--s2)'">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-        <div style="display:flex;align-items:center;gap:6px;">
-          <span style="font-size:14px;">${catIcon}</span>
-          <span style="font-size:13px;font-weight:700;">${pattern || '—'}</span>
-        </div>
-        <span style="font-size:10px;color:var(--muted);">${fmt(r.created_time)}</span>
-      </div>
-      <div style="font-size:15px;font-weight:900;letter-spacing:0.02em;margin-bottom:6px;font-family:'DM Mono',monospace;color:var(--text);">${size || '—'}</div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-        <span style="font-size:11px;font-weight:600;color:${kubunColor(kubun)};background:color-mix(in srgb,${kubunColor(kubun)} 12%,transparent);padding:2px 8px;border-radius:4px;">${kubun || '—'}</span>
-        <span style="font-size:13px;font-weight:700;color:var(--accent);">${qty}本</span>
-        <span style="font-size:11px;color:var(--muted);">${warehouse}</span>
-      </div>
+    <div onclick="openHistoryDetail(${idx})" style="background:var(--s2);border:0.5px solid var(--border);border-left:3px solid ${kubunColor(kubun)};border-radius:8px;padding:7px 10px;margin-bottom:4px;cursor:pointer;transition:background 0.15s;" id="hist-${idx}" data-size="${(size||'').toLowerCase()}" data-kubun="${kubun}" data-pattern="${pattern}" ontouchstart="this.style.background='var(--s3)'" ontouchend="this.style.background='var(--s2)'">
       <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div style="font-size:10px;color:var(--muted);">${creator ? '担当:'+creator : ''}${shukko ? ' ▸'+shukko : ''}</div>
-        <span style="font-size:9px;color:var(--muted);">タップで詳細 ›</span>
+        <div style="display:flex;align-items:center;gap:5px;">
+          <span style="font-size:12px;">${catIcon}</span>
+          <span style="font-size:12px;font-weight:700;">${pattern || '—'}</span>
+          <span style="font-size:13px;font-weight:900;font-family:'DM Mono',monospace;color:var(--text);margin-left:2px;">${size || '—'}</span>
+        </div>
+        <span style="font-size:9px;color:var(--muted);">${fmt(r.created_time)}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
+        <span style="font-size:10px;font-weight:600;color:${kubunColor(kubun)};background:color-mix(in srgb,${kubunColor(kubun)} 12%,transparent);padding:1px 7px;border-radius:4px;">${kubun || '—'}</span>
+        <span style="font-size:12px;font-weight:700;color:var(--accent);">${qty}本</span>
+        <span style="font-size:10px;color:var(--muted);">${warehouse}</span>
+        ${creator ? `<span style="font-size:9px;color:var(--muted);">${creator}</span>` : ''}
       </div>
     </div>`;
   });
@@ -2231,27 +2248,32 @@ function pickHistorySize(s) {
 function applyHistoryFilter(query) {
   const q = (query || '').trim().toLowerCase();
   const kf = historyKubunFilter;
+  const pf = historyPatternFilter;
   const cards = document.querySelectorAll('[id^="hist-"]');
   let shown = 0;
   cards.forEach(card => {
     const size = card.getAttribute('data-size') || '';
     const kubun = card.getAttribute('data-kubun') || '';
+    const pattern = card.getAttribute('data-pattern') || '';
     const sizeMatch = !q || size.includes(q);
     const kubunMatch = kf === '全部' || kubun === kf;
-    const match = sizeMatch && kubunMatch;
+    const patternMatch = pf === '全部' || pattern === pf;
+    const match = sizeMatch && kubunMatch && patternMatch;
     card.style.display = match ? '' : 'none';
     if (match) shown++;
   });
   const countEl = document.getElementById('history-count');
   if (countEl) {
-    const label = kf !== '全部' ? `[${kf}]` : '';
-    countEl.textContent = (q || kf !== '全部') ? `${label}${q ? '「'+q+'」' : ''} ${shown}件` : `直近の入出庫履歴（最新${historyRecords.length}件）`;
+    const labels = [];
+    if (pf !== '全部') labels.push(pf);
+    if (kf !== '全部') labels.push(kf);
+    const prefix = labels.length ? `[${labels.join('/')}] ` : '';
+    countEl.textContent = (q || labels.length) ? `${prefix}${q ? '「'+q+'」' : ''} ${shown}件` : `直近の入出庫履歴（最新${historyRecords.length}件）`;
   }
 }
 
 function filterKubun(kubun) {
   historyKubunFilter = kubun;
-  // タグボタンのスタイルを更新
   const tags = document.getElementById('kubun-tags');
   if (tags) {
     tags.querySelectorAll('button').forEach(btn => {
@@ -2262,7 +2284,22 @@ function filterKubun(kubun) {
       btn.style.color = sel ? '#fff' : col;
     });
   }
-  // 現在の検索クエリと組み合わせてフィルタ適用
+  const searchInput = document.getElementById('history-search');
+  applyHistoryFilter(searchInput ? searchInput.value : '');
+}
+
+function filterPattern(pattern) {
+  historyPatternFilter = pattern;
+  const tags = document.getElementById('pattern-tags');
+  if (tags) {
+    tags.querySelectorAll('button').forEach(btn => {
+      const p = btn.textContent;
+      const sel = p === pattern;
+      const col = p === '全部' ? 'var(--accent)' : 'var(--blue)';
+      btn.style.background = sel ? col : 'transparent';
+      btn.style.color = sel ? '#fff' : col;
+    });
+  }
   const searchInput = document.getElementById('history-search');
   applyHistoryFilter(searchInput ? searchInput.value : '');
 }

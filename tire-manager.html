@@ -1836,6 +1836,7 @@ let historyRecords = [];
 // ── 履歴フィルター状態 ──
 let historyYear = new Date().getFullYear();
 let historyMonth = new Date().getMonth() + 1; // 1-12, 0=全月
+let historyKubunFilter = '全部'; // 区分フィルター
 
 async function loadHistory(forceReload) {
   const el = document.getElementById('history-content');
@@ -1870,7 +1871,7 @@ async function loadHistory(forceReload) {
       const res = await notionAPI('POST', `/databases/${db.id}/query`, {
         filter: dateFilter,
         sorts: [{ timestamp: 'created_time', direction: 'descending' }],
-        page_size: 25,
+        page_size: 100,
       });
       (res.results || []).forEach(r => {
         // 繰越レコードはクライアント側で除外（DBにオプション未登録の場合APIエラー回避）
@@ -1883,7 +1884,7 @@ async function loadHistory(forceReload) {
     await Promise.all(fetches);
 
     allRecords.sort((a, b) => (b.created_time || '').localeCompare(a.created_time || ''));
-    historyRecords = allRecords.slice(0, 50);
+    historyRecords = allRecords.slice(0, 200);
     historyLoaded = true;
     renderHistory();
   } catch(e) {
@@ -1937,7 +1938,7 @@ function renderHistory() {
   const now = new Date();
   const curYear = now.getFullYear();
   let yearOpts = '';
-  for (let y = curYear; y >= curYear - 3; y--) {
+  for (let y = 2026; y >= 2025; y--) {
     yearOpts += `<option value="${y}"${y === historyYear ? ' selected' : ''}>${y}年</option>`;
   }
   let monthOpts = `<option value="0"${historyMonth === 0 ? ' selected' : ''}>全月</option>`;
@@ -1949,6 +1950,13 @@ function renderHistory() {
     <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">
       <select id="hist-year" onchange="changeHistoryPeriod(+this.value, +document.getElementById('hist-month').value)" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);font-size:13px;font-family:inherit;color:var(--text);">${yearOpts}</select>
       <select id="hist-month" onchange="changeHistoryPeriod(+document.getElementById('hist-year').value, +this.value)" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);font-size:13px;font-family:inherit;color:var(--text);">${monthOpts}</select>
+    </div>
+    <div id="kubun-tags" style="display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;padding-bottom:4px;-webkit-overflow-scrolling:touch;">
+      ${['全部','入庫','出庫','準備','移動入庫','移動出庫','返品（倉庫へ）','返品（メーカーへ）'].map(k => {
+        const sel = k === historyKubunFilter;
+        const col = k === '全部' ? 'var(--accent)' : kubunColor(k);
+        return `<button onclick="filterKubun('${k}')" style="flex-shrink:0;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;border:1.5px solid ${col};background:${sel ? col : 'transparent'};color:${sel ? '#fff' : col};transition:all 0.15s;">${k}</button>`;
+      }).join('')}
     </div>
     <div class="search-box">
       <input id="history-search" type="text" inputmode="numeric" placeholder="例：275 または 27580" autocomplete="off">
@@ -1976,7 +1984,7 @@ function renderHistory() {
     const catIcon = DB_MAP[r._catKey]?.icon || '';
 
     html += `
-    <div onclick="openHistoryDetail(${idx})" style="background:var(--s2);border:0.5px solid var(--border);border-left:3px solid ${kubunColor(kubun)};border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:background 0.15s;" id="hist-${idx}" data-size="${(size||'').toLowerCase()}" ontouchstart="this.style.background='var(--s3)'" ontouchend="this.style.background='var(--s2)'">
+    <div onclick="openHistoryDetail(${idx})" style="background:var(--s2);border:0.5px solid var(--border);border-left:3px solid ${kubunColor(kubun)};border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;transition:background 0.15s;" id="hist-${idx}" data-size="${(size||'').toLowerCase()}" data-kubun="${kubun}" ontouchstart="this.style.background='var(--s3)'" ontouchend="this.style.background='var(--s2)'">`;
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
         <div style="display:flex;align-items:center;gap:6px;">
           <span style="font-size:14px;">${catIcon}</span>
@@ -2221,18 +2229,41 @@ function pickHistorySize(s) {
 
 function applyHistoryFilter(query) {
   const q = (query || '').trim().toLowerCase();
+  const kf = historyKubunFilter;
   const cards = document.querySelectorAll('[id^="hist-"]');
   let shown = 0;
   cards.forEach(card => {
     const size = card.getAttribute('data-size') || '';
-    const match = !q || size.includes(q);
+    const kubun = card.getAttribute('data-kubun') || '';
+    const sizeMatch = !q || size.includes(q);
+    const kubunMatch = kf === '全部' || kubun === kf;
+    const match = sizeMatch && kubunMatch;
     card.style.display = match ? '' : 'none';
     if (match) shown++;
   });
   const countEl = document.getElementById('history-count');
   if (countEl) {
-    countEl.textContent = q ? `「${query}」の検索結果: ${shown}件` : `直近の入出庫履歴（最新${historyRecords.length}件）`;
+    const label = kf !== '全部' ? `[${kf}]` : '';
+    countEl.textContent = (q || kf !== '全部') ? `${label}${q ? '「'+q+'」' : ''} ${shown}件` : `直近の入出庫履歴（最新${historyRecords.length}件）`;
   }
+}
+
+function filterKubun(kubun) {
+  historyKubunFilter = kubun;
+  // タグボタンのスタイルを更新
+  const tags = document.getElementById('kubun-tags');
+  if (tags) {
+    tags.querySelectorAll('button').forEach(btn => {
+      const k = btn.textContent;
+      const sel = k === kubun;
+      const col = k === '全部' ? 'var(--accent)' : kubunColor(k);
+      btn.style.background = sel ? col : 'transparent';
+      btn.style.color = sel ? '#fff' : col;
+    });
+  }
+  // 現在の検索クエリと組み合わせてフィルタ適用
+  const searchInput = document.getElementById('history-search');
+  applyHistoryFilter(searchInput ? searchInput.value : '');
 }
 </script>
 </body>

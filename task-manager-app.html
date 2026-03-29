@@ -355,7 +355,7 @@ async function fetchAllTasks() {
   do {
     const body = { page_size: 100 };
     if (cursor) body.start_cursor = cursor;
-    const res = await notionAPI('POST', `/v1/databases/${TASK_DB}/query`, body);
+    const res = await notionAPI('POST', `/databases/${TASK_DB}/query`, body);
     all = all.concat(res.results || []);
     cursor = res.has_more ? res.next_cursor : null;
   } while (cursor);
@@ -683,7 +683,7 @@ async function updateStatus(taskId, newStatus, el) {
   renderContent();
 
   try {
-    await notionAPI('PATCH', `/v1/pages/${taskId}`, {
+    await notionAPI('PATCH', `/pages/${taskId}`, {
       properties: { 'ステータス': { status: { name: newStatus } } }
     });
     showToast(`ステータスを「${newStatus}」に変更しました`, 'success');
@@ -714,7 +714,7 @@ async function toggleSeason(taskId, seasonKey, wasDone) {
   }
 
   try {
-    await notionAPI('PATCH', `/v1/pages/${taskId}`, {
+    await notionAPI('PATCH', `/pages/${taskId}`, {
       properties: { [seasonKey]: { select: { name: newVal } } }
     });
   } catch(e) {
@@ -738,7 +738,7 @@ async function toggleSeasonDetail(taskId, seasonKey, wasDone, btn) {
   renderContent();
 
   try {
-    await notionAPI('PATCH', `/v1/pages/${taskId}`, {
+    await notionAPI('PATCH', `/pages/${taskId}`, {
       properties: { [seasonKey]: { select: { name: newVal } } }
     });
   } catch(e) {
@@ -815,7 +815,7 @@ async function submitNewTask() {
   if (effort) properties['工数レベル'] = { select: { name: effort } };
 
   try {
-    const res = await notionAPI('POST', '/v1/pages', {
+    const res = await notionAPI('POST', '/pages', {
       parent: { database_id: TASK_DB },
       properties
     });

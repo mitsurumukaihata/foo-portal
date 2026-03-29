@@ -2006,34 +2006,45 @@ function renderHistory() {
   window._historySizes = allSizes;
   window._historySelectedSize = '';
 
+  // 倉庫別にグループ分け
+  const warehouseGroups = {};
   historyRecords.forEach((r, idx) => {
-    const kubun = propStr(r, '区分');
-    const size = propStr(r, 'サイズコード');
-    const pattern = propStr(r, 'パターン名');
-    const qty = propStr(r, '数量');
-    const creator = propStr(r, '作成者');
-    const memo = propStr(r, 'メモ');
-    const shukko = propStr(r, '出庫先');
-    const warehouse = propStr(r, '倉庫') || propStr(r, '出庫倉庫');
-    const catIcon = DB_MAP[r._catKey]?.icon || '';
+    const wh = (r.properties?.['倉庫']?.select?.name || r.properties?.['出庫倉庫']?.select?.name || '不明').replace(/倉庫$/, '');
+    if (!warehouseGroups[wh]) warehouseGroups[wh] = [];
+    warehouseGroups[wh].push({ r, idx });
+  });
 
-    html += `
-    <div onclick="openHistoryDetail(${idx})" style="background:var(--s2);border:0.5px solid var(--border);border-left:3px solid ${kubunColor(kubun)};border-radius:8px;padding:7px 10px;margin-bottom:4px;cursor:pointer;transition:background 0.15s;" id="hist-${idx}" data-size="${(size||'').toLowerCase()}" data-kubun="${kubun}" data-pattern="${pattern}" ontouchstart="this.style.background='var(--s3)'" ontouchend="this.style.background='var(--s2)'">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div style="display:flex;align-items:center;gap:5px;">
-          <span style="font-size:12px;">${catIcon}</span>
-          <span style="font-size:12px;font-weight:700;">${pattern || '—'}</span>
-          <span style="font-size:13px;font-weight:900;font-family:'DM Mono',monospace;color:var(--text);margin-left:2px;">${size || '—'}</span>
+  Object.entries(warehouseGroups).forEach(([wh, items]) => {
+    html += `<div class="wh-group" data-wh="${wh}">
+      <div style="font-size:11px;font-weight:700;color:var(--accent);padding:6px 0 4px;border-bottom:1px solid var(--border);margin-bottom:4px;">📦 ${wh}倉庫（${items.length}件）</div>`;
+    items.forEach(({ r, idx }) => {
+      const kubun = r.properties?.['区分']?.select?.name || '';
+      const size = r.properties?.['サイズコード']?.select?.name || '';
+      const pattern = r.properties?.['パターン名']?.select?.name || '';
+      const qty = r.properties?.['数量']?.number ?? '';
+      const creator = r.properties?.['作成者']?.select?.name || '';
+      const shukko = r.properties?.['出庫先']?.rich_text?.[0]?.plain_text || r.properties?.['出庫先']?.select?.name || '';
+      const catIcon = DB_MAP[r._catKey]?.icon || '';
+
+      html += `
+      <div onclick="openHistoryDetail(${idx})" style="background:var(--s2);border:0.5px solid var(--border);border-left:3px solid ${kubunColor(kubun)};border-radius:8px;padding:7px 10px;margin-bottom:4px;cursor:pointer;transition:background 0.15s;" id="hist-${idx}" data-size="${(size||'').toLowerCase()}" data-kubun="${kubun}" data-pattern="${pattern}" ontouchstart="this.style.background='var(--s3)'" ontouchend="this.style.background='var(--s2)'">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="display:flex;align-items:center;gap:5px;">
+            <span style="font-size:12px;">${catIcon}</span>
+            <span style="font-size:12px;font-weight:700;">${pattern || '—'}</span>
+            <span style="font-size:13px;font-weight:900;font-family:'DM Mono',monospace;color:var(--text);margin-left:2px;">${size || '—'}</span>
+          </div>
+          <span style="font-size:9px;color:var(--muted);">${fmt(r.created_time)}</span>
         </div>
-        <span style="font-size:9px;color:var(--muted);">${fmt(r.created_time)}</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
-        <span style="font-size:10px;font-weight:600;color:${kubunColor(kubun)};background:color-mix(in srgb,${kubunColor(kubun)} 12%,transparent);padding:1px 7px;border-radius:4px;">${kubun || '—'}</span>
-        <span style="font-size:12px;font-weight:700;color:var(--accent);">${qty}本</span>
-        <span style="font-size:10px;color:var(--muted);">${warehouse}</span>
-        ${creator ? `<span style="font-size:9px;color:var(--muted);">${creator}</span>` : ''}
-      </div>
-    </div>`;
+        <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
+          <span style="font-size:10px;font-weight:600;color:${kubunColor(kubun)};background:color-mix(in srgb,${kubunColor(kubun)} 12%,transparent);padding:1px 7px;border-radius:4px;">${kubun || '—'}</span>
+          <span style="font-size:12px;font-weight:700;color:var(--accent);">${qty}本</span>
+          ${shukko ? `<span style="font-size:10px;color:var(--text);">▸${shukko}</span>` : ''}
+          ${creator ? `<span style="font-size:9px;color:var(--muted);">${creator}</span>` : ''}
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
   });
 
   el.innerHTML = html;
@@ -2300,6 +2311,13 @@ function applyHistoryFilter(query) {
     const prefix = labels.length ? `[${labels.join('/')}] ` : '';
     countEl.textContent = (q || labels.length) ? `${prefix}${q ? '「'+q+'」' : ''} ${shown}件` : `直近の入出庫履歴（最新${historyRecords.length}件）`;
   }
+  // ④ 倉庫グループヘッダーの表示/非表示（中身が全て非表示なら隠す）
+  document.querySelectorAll('.wh-group').forEach(g => {
+    const visibleCards = g.querySelectorAll('[id^="hist-"]');
+    let hasVisible = false;
+    visibleCards.forEach(c => { if (c.style.display !== 'none') hasVisible = true; });
+    g.style.display = hasVisible ? '' : 'none';
+  });
 }
 
 // パターンタグを動的に再構築（サイズで絞った結果から）

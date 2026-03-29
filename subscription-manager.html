@@ -41,8 +41,10 @@
 body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; max-width:480px; margin:0 auto; overflow-x:hidden; }
 
 /* ── Header ── */
-.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 0; position:sticky; top:0; z-index:100; }
+.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:100; }
 .header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+.header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+.header-back { font-size:11px; color:var(--muted); text-decoration:none; border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; }
 .back-btn { display:flex; align-items:center; gap:4px; color:var(--accent); font-size:13px; font-weight:700; text-decoration:none; padding:4px 0; }
 .back-btn:active { opacity:0.6; }
 .header-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
@@ -167,17 +169,16 @@ textarea.form-input { min-height:80px; resize:vertical; line-height:1.6; }
 <!-- Header -->
 <div class="header">
   <div class="header-top">
-    <a href="https://mitsurumukaihata.github.io/foo-portal/" class="back-btn">← ポータル</a>
+    <div class="header-brand">F.o.o · 経理</div>
+    <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
   </div>
-  <div class="header-row">
-    <div class="header-title">💳 サブスク<span>管理</span></div>
-  </div>
-  <div class="nav">
+  <div class="header-title">サブスク<span>管理</span></div>
+</div>
+<div class="nav">
     <button class="nav-btn active" onclick="switchTab('list')">一覧 <span class="nav-badge" id="badge-count">0</span></button>
     <button class="nav-btn" onclick="switchTab('category')">カテゴリ</button>
     <button class="nav-btn" onclick="switchTab('add')">＋新規</button>
   </div>
-</div>
 
 <!-- List Tab -->
 <div class="page show" id="page-list">

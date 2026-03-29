@@ -47,10 +47,16 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .app-title { font-size:20px; font-weight:900; letter-spacing:-0.03em; padding:0 20px 4px; }
 .app-title span { color:var(--accent); }
 .app-subtitle { font-size:11px; color:var(--muted); padding:0 20px 12px; }
-
 .header-controls { display:flex; align-items:center; gap:8px; }
 .theme-toggle { background:var(--s2); border:1px solid var(--border); border-radius:8px; width:36px; height:36px; color:var(--text); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
 .theme-toggle:active { background:var(--s3); }
+/* ── 統一ヘッダー ── */
+.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:100; }
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+.header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+.header-back { font-size:11px; color:var(--muted); text-decoration:none; border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; }
+.header-title { font-size:17px; font-weight:900; letter-spacing:-0.02em; }
+.header-title span { color:var(--accent); }
 
 /* ── ナビ ── */
 .nav { display:flex; gap:2px; padding:0 20px 12px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
@@ -261,17 +267,13 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 <div id="app" style="display:none;">
 
 <!-- ── ヘッダー ── -->
-<div class="app-header">
-  <a href="https://mitsurumukaihata.github.io/foo-portal/" class="portal-link" id="portal-back-link" onclick="return confirmLeave()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    ポータル
-  </a>
-  <div class="header-controls">
-    <button class="theme-toggle" id="theme-toggle">🌙</button>
+<div class="header">
+  <div class="header-top">
+    <div class="header-brand">F.o.o · EC/マーケ</div>
+    <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/" id="portal-back-link" onclick="return confirmLeave()">← ポータル</a>
   </div>
+  <div class="header-title">SNS用素材<span>アップロード</span></div>
 </div>
-<div class="app-title">SNS用素材<span>アップロード</span></div>
-<div class="app-subtitle">撮影素材の共有 · Google Drive連携</div>
 
 <!-- ── ナビ ── -->
 <div class="nav">

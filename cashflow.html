@@ -47,6 +47,13 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .app-title { font-size:20px; font-weight:900; letter-spacing:-0.03em; padding:0 20px 4px; }
 .app-title span { color:var(--accent); }
 .app-subtitle { font-size:11px; color:var(--muted); padding:0 20px 12px; }
+/* ── 統一ヘッダー ── */
+.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:100; }
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+.header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+.header-back { font-size:11px; color:var(--muted); text-decoration:none; border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; }
+.header-title { font-size:17px; font-weight:900; letter-spacing:-0.02em; }
+.header-title span { color:var(--accent); }
 
 /* ── 月セレクタ ── */
 .month-bar { display:flex; align-items:center; justify-content:center; gap:12px; padding:8px 20px 16px; }
@@ -160,14 +167,13 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 <body>
 
 <!-- ── ヘッダー ── -->
-<div class="app-header">
-  <a href="https://mitsurumukaihata.github.io/foo-portal/" class="portal-link">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    ポータル
-  </a>
+<div class="header">
+  <div class="header-top">
+    <div class="header-brand">F.o.o · 経理</div>
+    <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
+  </div>
+  <div class="header-title">資金<span>繰り</span></div>
 </div>
-<div class="app-title">資金<span>繰り</span></div>
-<div class="app-subtitle">入出金管理 · 残高確認 · 返済スケジュール</div>
 
 <!-- ── 月セレクタ ── -->
 <div class="month-bar">

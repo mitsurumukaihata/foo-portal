@@ -41,11 +41,14 @@
 body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;min-height:100vh;min-height:100dvh;max-width:480px;margin:0 auto;overflow-x:hidden;display:flex;flex-direction:column;}
 
 /* ── Header ── */
-.header{background:var(--s1);border-bottom:0.5px solid var(--border);padding:14px 20px 12px;position:sticky;top:0;z-index:100;}
+.header{background:var(--s1);border-bottom:0.5px solid var(--border);padding:14px 20px 10px;position:sticky;top:0;z-index:100;}
 .header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;}
+.header-brand{font-size:10px;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;}
+.header-back{font-size:11px;color:var(--muted);text-decoration:none;border:0.5px solid var(--border);border-radius:20px;padding:3px 10px;}
 .back-btn{color:var(--accent);text-decoration:none;font-size:13px;font-weight:700;display:flex;align-items:center;gap:2px;}
 .back-btn:active{opacity:.6;}
-.header-title{font-size:18px;font-weight:900;letter-spacing:-0.02em;}
+.header-title{font-size:17px;font-weight:900;letter-spacing:-0.02em;}
+.header-title span{color:var(--accent);}
 
 /* ── Nav Tabs ── */
 .nav{display:flex;background:var(--s1);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:90;}
@@ -176,9 +179,10 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-seri
 <!-- Header -->
 <div class="header">
   <div class="header-top">
-    <a href="https://mitsurumukaihata.github.io/foo-portal/" class="back-btn">&larr; ポータル</a>
+    <div class="header-brand">F.o.o · 管理</div>
+    <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
   </div>
-  <div class="header-title">&#x1F69B; 車両マスタ</div>
+  <div class="header-title">車番<span>履歴</span></div>
 </div>
 
 <!-- Nav -->

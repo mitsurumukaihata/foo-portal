@@ -57,22 +57,14 @@ body {
 }
 
 /* ── ヘッダー ── */
-.header {
-  position: sticky; top: 0; z-index: 100;
-  background: var(--s1);
-  border-bottom: 0.5px solid var(--border);
-  padding: 14px 16px;
-  display: flex; align-items: center; gap: 10px;
-  flex-shrink: 0;
-}
-.back-btn {
-  background: transparent; border: none;
-  color: var(--accent); font-size: 22px;
-  cursor: pointer; line-height: 1; padding: 0 4px;
-  font-family: inherit; flex-shrink: 0;
-}
-.header-title { font-size: 15px; font-weight: 900; flex: 1; }
-.header-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.header { position:sticky; top:0; z-index:100; background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; flex-shrink:0; }
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+.header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+.header-back { font-size:11px; color:var(--muted); text-decoration:none; border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; }
+.header-title { font-size:17px; font-weight:900; letter-spacing:-0.02em; }
+.header-title span { color:var(--accent); }
+.back-btn { background:transparent; border:none; color:var(--accent); font-size:22px; cursor:pointer; line-height:1; padding:0 4px; font-family:inherit; flex-shrink:0; }
+.header-sub { font-size:11px; color:var(--muted); margin-top:1px; }
 
 /* ── フィルタータブ ── */
 .filter-bar {
@@ -171,12 +163,11 @@ body {
 
 <!-- ── メイン画面 ── -->
 <div class="header">
-  <button class="back-btn" onclick="goBack()">‹</button>
-  <div>
-    <div class="header-title" id="header-title">💴 給与明細</div>
-    <div class="header-sub" id="header-sub"></div>
-    <div class="header-sub" id="header-sub">読み込み中...</div>
+  <div class="header-top">
+    <div class="header-brand">F.o.o · 給与</div>
+    <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
   </div>
+  <div class="header-title">給与<span>明細</span></div>
 </div>
 
 <div class="filter-bar" id="filter-bar">

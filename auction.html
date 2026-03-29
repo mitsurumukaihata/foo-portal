@@ -62,6 +62,13 @@ html,body{height:100%;font-family:'Noto Sans JP','Hiragino Sans',sans-serif;font
 .header-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
 .user-badge{font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--amber);color:var(--amber);background:var(--bg2);white-space:nowrap;}
 .portal-btn{font-size:11px;padding:3px 9px;border-radius:6px;cursor:pointer;border:1px solid var(--amber);color:var(--amber);background:transparent;text-decoration:none;white-space:nowrap;}
+/* ── 統一ヘッダー ── */
+.header{background:var(--bg2);border-bottom:0.5px solid var(--border);padding:14px 20px 10px;position:sticky;top:0;z-index:100;flex-shrink:0;}
+.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;}
+.header-brand{font-size:10px;color:var(--text3);letter-spacing:0.12em;text-transform:uppercase;}
+.header-back{font-size:11px;color:var(--text3);text-decoration:none;border:0.5px solid var(--border2);border-radius:20px;padding:3px 10px;}
+.header-title-unified{font-size:17px;font-weight:900;letter-spacing:-0.02em;}
+.header-title-unified span{color:var(--amber);}
 
 .tab-bar{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;}
 .tab-btn{flex:1;padding:10px;text-align:center;font-size:13px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--text3);border-bottom:2px solid transparent;}
@@ -382,10 +389,13 @@ select.sep-input { appearance: none; -webkit-appearance: none;
 <body>
 
 <div id="app">
-  <div class="app-header">
-    <div class="app-title">オークション管理</div>
-    <div class="header-right">
-      <a class="portal-btn" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
+  <div class="header">
+    <div class="header-top">
+      <div class="header-brand">F.o.o · EC/マーケ</div>
+      <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div class="header-title-unified">オークション<span>管理</span></div>
       <div class="user-badge" id="user-badge">—</div>
     </div>
   </div>

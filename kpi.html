@@ -10,9 +10,12 @@
 @media(prefers-color-scheme:light){:root{--bg:#f5efe6;--s1:#ede4d4;--s2:#f0e8da;--s3:#e8dcc8;--border:#e8d8c4;--text:#2c1810;--muted:#8a7a6a}}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);max-width:480px;margin:0 auto;min-height:100dvh;overflow-x:hidden}
-.header{background:var(--s1);border-bottom:0.5px solid var(--border);padding:14px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100}
+.header{background:var(--s1);border-bottom:0.5px solid var(--border);padding:14px 20px 10px;position:sticky;top:0;z-index:100}
+.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;}
+.header-brand{font-size:10px;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;}
+.header-back{font-size:11px;color:var(--muted);text-decoration:none;border:0.5px solid var(--border);border-radius:20px;padding:3px 10px;}
 .back-btn{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:0 4px}
-.header-title{font-size:15px;font-weight:700}
+.header-title{font-size:17px;font-weight:900;letter-spacing:-0.02em;}
 .header-title span{color:var(--accent)}
 
 /* 月切り替え */
@@ -92,8 +95,11 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text
 <body>
 
 <div class="header">
-  <button class="back-btn" onclick="location.href='https://mitsurumukaihata.github.io/foo-portal/'">‹</button>
-  <div class="header-title">📊 月次<span>KPI</span>管理</div>
+  <div class="header-top">
+    <div class="header-brand">F.o.o · 経理</div>
+    <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
+  </div>
+  <div class="header-title">月次<span>KPI</span></div>
 </div>
 
 <div class="month-nav">

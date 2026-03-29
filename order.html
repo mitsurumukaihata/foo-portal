@@ -54,23 +54,14 @@ body{
 }
 
 /* ── ヘッダー ── */
-.header{
-  background:var(--s1);padding:14px 16px 10px;
-  border-bottom:1px solid var(--border);
-  position:sticky;top:0;z-index:100;
-}
-.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;}
-.back-btn{
-  display:flex;align-items:center;gap:4px;
-  color:var(--accent);font-size:14px;font-weight:700;
-  text-decoration:none;background:none;border:none;cursor:pointer;padding:4px 0;font-family:inherit;
-}
-.header-title{font-size:15px;font-weight:700;color:var(--text);}
-.theme-btn{
-  background:transparent;border:1px solid var(--border2);
-  border-radius:20px;padding:4px 10px;color:var(--muted);
-  font-size:13px;cursor:pointer;font-family:inherit;
-}
+.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:100; }
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+.header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+.header-back { font-size:11px; color:var(--muted); text-decoration:none; border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; }
+.header-title { font-size:17px; font-weight:900; letter-spacing:-0.02em; }
+.header-title span { color:var(--accent); }
+.back-btn{display:flex;align-items:center;gap:4px;color:var(--accent);font-size:14px;font-weight:700;text-decoration:none;background:none;border:none;cursor:pointer;padding:4px 0;font-family:inherit;}
+.theme-btn{background:transparent;border:1px solid var(--border2);border-radius:20px;padding:4px 10px;color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit;}
 
 /* ── タブ ── */
 .tabs{
@@ -451,13 +442,10 @@ body{
 
 <div class="header">
   <div class="header-top">
-    <a class="back-btn" href="index.html">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-      ポータル
-    </a>
-    <div class="header-title">発注管理</div>
-    <button class="theme-btn" id="theme-btn" onclick="cycleTheme()">🌙</button>
+    <div class="header-brand">F.o.o · 事務</div>
+    <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
   </div>
+  <div class="header-title">発注<span>管理</span></div>
 </div>
 
 <div class="tabs">

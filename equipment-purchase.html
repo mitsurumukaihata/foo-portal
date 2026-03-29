@@ -46,6 +46,9 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 
 /* ── Header ── */
 .header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:100; }
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+.header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+.header-back { font-size:11px; color:var(--muted); text-decoration:none; border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; }
 .back-btn { display:inline-block; color:var(--accent); font-size:13px; font-weight:700; text-decoration:none; padding:4px 0; margin-bottom:2px; }
 .back-btn:active { opacity:0.6; }
 .header-title { font-size:17px; font-weight:900; letter-spacing:-0.02em; }
@@ -181,7 +184,10 @@ textarea.form-input { min-height:80px; resize:vertical; line-height:1.6; }
 <body>
 
 <div class="header">
-  <a href="https://mitsurumukaihata.github.io/foo-portal/" class="back-btn">&larr; ポータル</a>
+  <div class="header-top">
+    <div class="header-brand">F.o.o · 経理</div>
+    <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
+  </div>
   <div class="header-title">設備購入<span>予定表</span></div>
 </div>
 

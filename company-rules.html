@@ -14,10 +14,14 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);-webkit-text-size-adjust:100%;min-height:100vh;padding-bottom:80px;}
-.header{position:sticky;top:0;z-index:100;background:rgba(14,14,16,0.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:14px 20px 10px;border-bottom:1px solid var(--border);}
-.header-top{display:flex;align-items:center;gap:10px;}
+.header{position:sticky;top:0;z-index:100;background:var(--bg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:14px 20px 10px;border-bottom:1px solid var(--border);}
+.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;}
+.header-brand{font-size:10px;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;}
+.header-back{font-size:11px;color:var(--muted);text-decoration:none;border:0.5px solid var(--border);border-radius:20px;padding:3px 10px;}
 .back-btn{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:4px;}
 .header h1{font-size:17px;font-weight:900;color:var(--text);flex:1;}
+.header-title{font-size:17px;font-weight:900;letter-spacing:-0.02em;}
+.header-title span{color:var(--accent);}
 .header-sub{font-size:10px;color:var(--muted);margin-top:2px;letter-spacing:.03em;}
 .search-wrap{padding:12px 20px 4px;}
 .search-box{position:relative;}
@@ -84,10 +88,10 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text
 
 <div class="header">
   <div class="header-top">
-    <button class="back-btn" onclick="location.href='index.html'">‹</button>
-    <h1>🦌 社内ルール</h1>
+    <div class="header-brand">F.o.o · マニュアル</div>
+    <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
   </div>
-  <div class="header-sub">会社理念・行動指針・勤務ルール</div>
+  <div class="header-title">社内制度・<span>ルール</span></div>
 </div>
 
 <div class="search-wrap">

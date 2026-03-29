@@ -49,11 +49,10 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 .auth-btn { display:block; background:var(--accent); border-radius:10px; padding:15px; text-align:center; color:#fff; font-size:15px; font-weight:700; text-decoration:none; }
 
 /* ── ヘッダー ── */
-.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 0; position:sticky; top:0; z-index:100; }
+.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:100; }
 .header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
 .header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
-.header-back { display:flex; align-items:center; gap:4px; color:var(--accent); font-size:14px; font-weight:700; text-decoration:none; padding:4px 0; }
-.header-back svg { width:14px; height:14px; }
+.header-back { font-size:11px; color:var(--muted); text-decoration:none; border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; }
 .header-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
 .header-title { font-size:17px; font-weight:900; letter-spacing:-0.02em; }
 .header-title span { color:var(--accent); }
@@ -192,20 +191,12 @@ html { scroll-behavior:smooth; }
 <div id="app" style="display:none;">
   <div class="header">
     <div class="header-top">
-      <div class="header-brand">f.o.o · タスク管理</div>
-      <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-        ポータル
-      </a>
+      <div class="header-brand">F.o.o · 現場・業務</div>
+      <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
     </div>
     <div class="header-row">
       <div class="header-title">タスク<span>管理</span></div>
       <div class="header-actions">
-        <div class="theme-toggle" id="themeToggle">
-          <button class="theme-btn" data-t="auto" onclick="setTheme('auto')">自動</button>
-          <button class="theme-btn" data-t="light" onclick="setTheme('light')">☀</button>
-          <button class="theme-btn" data-t="dark" onclick="setTheme('dark')">🌙</button>
-        </div>
         <button class="btn-icon" onclick="toggleFilter()" title="フィルター">⚙</button>
         <button class="btn-add" onclick="openAddPanel()">＋ 追加</button>
       </div>

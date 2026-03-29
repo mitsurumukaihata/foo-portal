@@ -48,19 +48,21 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-seri
 .auth-msg{font-size:13px;color:var(--muted);}
 
 /* ── ヘッダー ── */
-.ca-header{
-  background:var(--s1);border-bottom:0.5px solid var(--border);
-  padding:14px 16px;display:flex;align-items:center;gap:10px;
-  position:sticky;top:0;z-index:100;flex-shrink:0;
-}
+.ca-header{background:var(--s1);border-bottom:0.5px solid var(--border);padding:14px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100;flex-shrink:0;}
 .ca-back-btn{background:transparent;border:none;color:var(--accent);font-size:22px;cursor:pointer;line-height:1;padding:0 4px;font-family:inherit;}
 .ca-title{font-size:16px;font-weight:900;flex:1;}
 .ca-count-badge{font-size:11px;background:rgba(240,165,0,0.15);color:var(--accent);border:1px solid rgba(240,165,0,0.3);border-radius:12px;padding:2px 8px;font-weight:700;display:none;}
 .ca-new-btn{background:var(--accent);border:none;border-radius:20px;padding:6px 14px;color:#fff;font-size:12px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;}
-
 /* テーマトグル */
 .theme-toggle{background:transparent;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:4px 8px;color:rgba(255,255,255,0.7);font-size:14px;cursor:pointer;line-height:1;font-family:inherit;transition:all 0.15s;}
 [data-theme="light"] .theme-toggle,[data-theme="light"] .theme-toggle{border-color:rgba(0,0,0,0.15);color:rgba(0,0,0,0.5);}
+/* ── 統一ヘッダー ── */
+.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:100; }
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+.header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+.header-back { font-size:11px; color:var(--muted); text-decoration:none; border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; }
+.header-title { font-size:17px; font-weight:900; letter-spacing:-0.02em; }
+.header-title span { color:var(--accent); }
 
 /* ── 検索 ── */
 .ca-search-wrap{padding:10px 14px;background:var(--s1);border-bottom:0.5px solid var(--border);flex-shrink:0;}
@@ -195,12 +197,18 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-seri
 <div id="main-app" style="display:none;flex-direction:column;min-height:100vh;">
 
   <!-- ヘッダー -->
-  <div class="ca-header">
-    <button class="ca-back-btn" onclick="goPortal()" title="ポータルへ戻る">‹</button>
-    <div class="ca-title">👤 顧客情報</div>
-    <span id="ca-count-badge" class="ca-count-badge"></span>
-    <button class="theme-toggle" id="theme-toggle-btn" onclick="cycleTheme()" title="テーマ切り替え">🌙</button>
-    <button class="ca-new-btn" onclick="openCustForm(null)">+ 新規</button>
+  <div class="header">
+    <div class="header-top">
+      <div class="header-brand">F.o.o · 現場・業務</div>
+      <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div class="header-title">顧客<span>情報</span></div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="ca-count-badge" class="ca-count-badge"></span>
+        <button class="ca-new-btn" onclick="openCustForm(null)">+ 新規</button>
+      </div>
+    </div>
   </div>
 
   <!-- 検索 -->

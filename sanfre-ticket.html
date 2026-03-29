@@ -41,23 +41,17 @@
 body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; min-height:100dvh; max-width:480px; margin:0 auto; overflow-x:hidden; }
 
 /* ── Header ── */
-.header {
-  background: linear-gradient(135deg, #6B2D8B 0%, #8B45AB 50%, #A55DBB 100%);
-  padding: 14px 20px 0;
-  position: sticky; top: 0; z-index: 100;
-  color: #fff;
-}
+.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:100; }
 .header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
-.header-brand { font-size:10px; color:rgba(255,255,255,.6); letter-spacing:0.12em; text-transform:uppercase; }
-.header-back { display:flex; align-items:center; gap:4px; color:#fff; font-size:13px; font-weight:700; text-decoration:none; padding:4px 0; opacity:.85; }
-.header-back:active { opacity:.6; }
-.header-back svg { width:14px; height:14px; }
+.header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+.header-back { font-size:11px; color:var(--muted); text-decoration:none; border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; }
+.header-title { font-size:17px; font-weight:900; letter-spacing:-0.02em; }
+.header-title span { color:var(--accent); }
 .header-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-.header-title { font-size:18px; font-weight:900; letter-spacing:-0.02em; }
-.header-sub { font-size:11px; color:rgba(255,255,255,.65); margin-top:1px; }
+.header-sub { font-size:11px; color:var(--muted); margin-top:1px; }
 .header-actions { display:flex; gap:8px; align-items:center; }
-.btn-theme { width:32px; height:32px; border-radius:8px; background:rgba(255,255,255,.15); border:none; color:#fff; font-size:15px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
-.btn-theme:active { background:rgba(255,255,255,.25); }
+.btn-theme { width:32px; height:32px; border-radius:8px; background:var(--s3); border:none; color:var(--text); font-size:15px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.btn-theme:active { background:var(--s2); }
 
 /* ── Tabs ── */
 .nav { display:flex; background:var(--s1); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:90; }
@@ -258,20 +252,10 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 <!-- Header -->
 <div class="header">
   <div class="header-top">
-    <a class="header-back" href="index.html">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-      戻る
-    </a>
-    <div class="header-actions">
-      <button class="btn-theme" onclick="toggleTheme()" title="テーマ切替">🌓</button>
-    </div>
+    <div class="header-brand">F.o.o · 経理</div>
+    <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
   </div>
-  <div class="header-row">
-    <div>
-      <div class="header-title">⚽ サンフレチケット</div>
-      <div class="header-sub">観戦者名簿 2026</div>
-    </div>
-  </div>
+  <div class="header-title">サンフレ<span>チケット</span></div>
 </div>
 
 <!-- Tabs -->

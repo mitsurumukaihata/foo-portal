@@ -41,12 +41,14 @@
 body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; max-width:480px; margin:0 auto; padding-bottom:32px; }
 
 /* ── Header ── */
-.header { background:linear-gradient(135deg, var(--s1) 0%, var(--s2) 100%); border-bottom:1px solid var(--border); padding:16px 20px; position:sticky; top:0; z-index:100; backdrop-filter:blur(12px); }
-.header-top { display:flex; align-items:center; justify-content:space-between; }
+.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:100; }
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+.header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+.header-back { font-size:11px; color:var(--muted); text-decoration:none; border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; }
+.header-title { font-size:17px; font-weight:900; letter-spacing:-0.02em; }
+.header-title span { color:var(--accent); }
 .back-btn { color:var(--muted); font-size:12px; font-weight:600; text-decoration:none; display:flex; align-items:center; gap:2px; letter-spacing:0.02em; }
 .back-btn:active { opacity:0.7; }
-.header-title { font-size:15px; font-weight:700; color:var(--text); }
-.header-title span { color:var(--accent); }
 
 /* ── Tabs ── */
 .nav { display:flex; background:var(--s1); border-bottom:1px solid var(--border); position:sticky; top:53px; z-index:99; }
@@ -172,9 +174,10 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 
 <div class="header">
   <div class="header-top">
-    <a href="https://mitsurumukaihata.github.io/foo-portal/" class="back-btn">&larr; ポータル</a>
-    <div class="header-title">EC/<span>マーケ管理</span></div>
+    <div class="header-brand">F.o.o · EC/マーケ</div>
+    <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
   </div>
+  <div class="header-title">EC/マーケ<span>管理</span></div>
 </div>
 
 <div class="nav">

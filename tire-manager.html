@@ -93,10 +93,12 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .prep-compact-qty { font-size:12px; font-weight:700; color:var(--green); flex-shrink:0; min-width:30px; text-align:right; }
 .prep-compact-memo { font-size:10px; color:var(--muted); flex-shrink:0; }
 #app { display: none; flex-direction: column; min-height: 100vh; }
-.header { background: var(--s1); border-bottom: 0.5px solid var(--border); padding: 14px 20px 10px; position: sticky; top: 0; z-index: 100; }
-.header-brand { font-size: 10px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 2px; }
-.header-title { font-size: 17px; font-weight: 900; letter-spacing: -0.02em; }
-.header-title span { color: var(--accent); }
+.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:100; }
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+.header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+.header-back { font-size:11px; color:var(--muted); text-decoration:none; border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; }
+.header-title { font-size:17px; font-weight:900; letter-spacing:-0.02em; }
+.header-title span { color:var(--accent); }
 .nav { display: flex; background: var(--s1); border-bottom: 0.5px solid var(--border); }
 .nav-btn { flex: 1; padding: 10px 6px 8px; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--muted); font-size: 12px; font-family: 'Noto Sans JP', sans-serif; cursor: pointer; transition: all 0.15s; }
 .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
@@ -353,12 +355,9 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 
 <div id="app">
   <div class="header">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
-      <div class="header-brand">Tire Manager f.o.o</div>
-      <a href="https://mitsurumukaihata.github.io/foo-portal/" style="display:flex;align-items:center;gap:4px;color:var(--accent);font-size:14px;font-weight:700;text-decoration:none;padding:4px 0;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-        ポータル
-      </a>
+    <div class="header-top">
+      <div class="header-brand">F.o.o · 現場・業務</div>
+      <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
     </div>
     <div class="header-title">タイヤ<span>入出庫</span></div>
   </div>

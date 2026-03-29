@@ -78,29 +78,19 @@ body {
 }
 
 /* ─── HEADER ─── */
-.app-header {
-  position: sticky; top: 0; z-index: 100;
-  background: var(--charcoal);
-  border-bottom: 0.5px solid var(--border);
-  padding: 14px 16px 10px;
-  display: flex; align-items: center; gap: 10px;
-}
-.header-icon {
-  width: 34px; height: 34px; border-radius: 50%;
-  background: var(--amber); display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
+.app-header { position: sticky; top: 0; z-index: 100; background: var(--charcoal); border-bottom: 0.5px solid var(--border); padding: 14px 16px 10px; display: flex; align-items: center; gap: 10px; }
+.header-icon { width: 34px; height: 34px; border-radius: 50%; background: var(--amber); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .header-icon svg { width: 18px; height: 18px; fill: #fff; }
 .header-titles { flex: 1; }
-.header-title { font-size: 16px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
 .header-sub { font-size: 11px; color: var(--text2); margin-top: 1px; }
-.portal-back-btn {
-  font-size: 12px; color: var(--text2); font-weight: 500;
-  background: var(--surface2); border: 0.5px solid var(--border2);
-  padding: 6px 12px; border-radius: 20px;
-  text-decoration: none; flex-shrink: 0;
-  transition: color .15s, border-color .15s;
-}
+.portal-back-btn { font-size: 12px; color: var(--text2); font-weight: 500; background: var(--surface2); border: 0.5px solid var(--border2); padding: 6px 12px; border-radius: 20px; text-decoration: none; flex-shrink: 0; transition: color .15s, border-color .15s; }
+/* ── 統一ヘッダー ── */
+.header { background:var(--charcoal); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:100; }
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+.header-brand { font-size:10px; color:var(--text3); letter-spacing:0.12em; text-transform:uppercase; }
+.header-back { font-size:11px; color:var(--text3); text-decoration:none; border:0.5px solid var(--border2); border-radius:20px; padding:3px 10px; }
+.header-title { font-size:17px; font-weight:900; letter-spacing:-0.02em; }
+.header-title span { color:var(--amber); }
 .session-badge {
   display: flex; align-items: center; gap: 6px;
   background: var(--amber-light); border: 0.5px solid rgba(240,165,0,0.25);
@@ -400,15 +390,12 @@ select.form-control { background-image: url("data:image/svg+xml,%3Csvg xmlns='ht
 </head>
 <body>
 
-<div class="app-header">
-  <div class="header-icon">
-    <svg viewBox="0 0 20 20"><path d="M10 2a6 6 0 00-6 6c0 2.5 1.5 4.7 3.7 5.6L7 17h6l-.7-3.4A6 6 0 0010 2z"/></svg>
+<div class="header">
+  <div class="header-top">
+    <div class="header-brand">F.o.o · 事務</div>
+    <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
   </div>
-  <div class="header-titles">
-    <div class="header-title">福利厚生</div>
-    <div class="header-sub">有限会社タイヤマネージャー f.o.o</div>
-  </div>
-  <a href="https://mitsurumukaihata.github.io/foo-portal/" class="portal-back-btn">← ポータル</a>
+  <div class="header-title">福利<span>厚生</span></div>
 </div>
 
 <div id="session-badge" class="session-badge" style="display:none">

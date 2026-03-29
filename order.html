@@ -2869,6 +2869,9 @@ function hideFeedback() {
       </div>
       <span class="neg-banner-badge">${cnt}件</span>
     </div>
+    <div style="margin-top:8px;text-align:right;">
+      <button onclick="event.stopPropagation();localStorage.removeItem('foo_neg_stock');location.href='tire-manager.html?rescan=1'" style="background:none;border:1px solid var(--red);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--red);cursor:pointer;font-family:'Noto Sans JP',sans-serif;">🔄 再スキャン</button>
+    </div>
   </div>`;
 
   window.showOrderNegModal = function() {

@@ -545,7 +545,19 @@ function getNegBannerHTML() {
       </div>
       <span class="neg-banner-badge">${cnt}件</span>
     </div>
+    <div style="margin-top:8px;text-align:right;">
+      <button onclick="event.stopPropagation();negRescan(this)" style="background:none;border:1px solid var(--red);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--red);cursor:pointer;font-family:'Noto Sans JP',sans-serif;">🔄 再スキャン</button>
+    </div>
   </div>`;
+}
+
+async function negRescan(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ スキャン中…'; }
+  await backgroundNegScan();
+  if (btn && !NEGATIVE_STOCK_ITEMS.length) {
+    // マイナス在庫が解消された場合
+    refreshNegBanners();
+  }
 }
 
 function showNegModal() {
@@ -650,11 +662,18 @@ function launchApp() {
   document.getElementById('app').style.display = 'flex';
   resetState(); renderEntry(); renderStockHome();
   fetchPatternMakerDB(); // バックグラウンドで廃盤パターンを取得
+  // rescan=1 の場合はキャッシュクリアしてから再スキャン
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('rescan') === '1') {
+    NEGATIVE_STOCK_ITEMS = [];
+    saveNegStock();
+    refreshNegBanners();
+    history.replaceState(null, '', location.pathname); // URLパラメータを消す
+  }
   backgroundNegScan();  // バックグラウンドでマイナス在庫を全スキャン
   // 価格検索の全DBサイズを先読み（価格タブを開く前に完了させる）
   Object.keys(PRICE_DB_MAP).forEach(key => fetchPriceSizes(key));
   // order.htmlからのディープリンク対応
-  const params = new URLSearchParams(window.location.search);
   const negSize = params.get('neg_size'), negCat = params.get('neg_cat');
   if (negSize && negCat) {
     setTimeout(() => { switchTab('stock'); loadStockData(negSize, negCat); }, 400);

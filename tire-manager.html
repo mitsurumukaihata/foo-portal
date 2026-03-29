@@ -1984,7 +1984,7 @@ function renderHistory() {
     const catIcon = DB_MAP[r._catKey]?.icon || '';
 
     html += `
-    <div onclick="openHistoryDetail(${idx})" style="background:var(--s2);border:0.5px solid var(--border);border-left:3px solid ${kubunColor(kubun)};border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;transition:background 0.15s;" id="hist-${idx}" data-size="${(size||'').toLowerCase()}" data-kubun="${kubun}" ontouchstart="this.style.background='var(--s3)'" ontouchend="this.style.background='var(--s2)'">`;
+    <div onclick="openHistoryDetail(${idx})" style="background:var(--s2);border:0.5px solid var(--border);border-left:3px solid ${kubunColor(kubun)};border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;transition:background 0.15s;" id="hist-${idx}" data-size="${(size||'').toLowerCase()}" data-kubun="${kubun}" ontouchstart="this.style.background='var(--s3)'" ontouchend="this.style.background='var(--s2)'">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
         <div style="display:flex;align-items:center;gap:6px;">
           <span style="font-size:14px;">${catIcon}</span>

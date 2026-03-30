@@ -182,7 +182,7 @@ textarea.form-input { min-height:70px; resize:vertical; line-height:1.6; }
   <div class="form-page">
     <div class="form-group">
       <label class="form-label">種類<span class="req">*</span></label>
-      <select class="form-input" id="f-shurui">
+      <select class="form-input" id="f-shurui" onchange="onShuruiChange()">
         <option value="">選択してください</option>
         <option value="BOX（TB）">BOX（TB）</option>
         <option value="BOX（LT）">BOX（LT）</option>
@@ -194,6 +194,7 @@ textarea.form-input { min-height:70px; resize:vertical; line-height:1.6; }
     <div class="form-group">
       <label class="form-label">商品名<span class="req">*</span></label>
       <input class="form-input" id="f-shohin" type="text" placeholder="例：ガムテープ">
+      <div id="shohin-candidates" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
     </div>
     <div class="form-row">
       <div class="form-group">
@@ -339,6 +340,77 @@ function getStatusBadge(status) {
   return '';
 }
 
+// ─── 商品名キャッシュ（種類別） ──────────────────────────────────────────
+var productCache = {};  // { 'BOX（TB）': ['ガムテープ', '養生テープ', ...] }
+var productCacheLoaded = false;
+
+async function loadProductCache() {
+  if (productCacheLoaded) return;
+  try {
+    var cursor = null;
+    var all = [];
+    do {
+      var body = { page_size: 100 };
+      if (cursor) body.start_cursor = cursor;
+      var res = await fooNotionQuery(BIHIN_DB, body);
+      all = all.concat(res.results || []);
+      cursor = res.has_more ? res.next_cursor : null;
+    } while (cursor);
+
+    productCache = {};
+    all.forEach(function(r) {
+      var shurui = propStr(r, '種類');
+      var shohin = propStr(r, '商品名');
+      if (!shurui || !shohin) return;
+      if (!productCache[shurui]) productCache[shurui] = new Set();
+      productCache[shurui].add(shohin);
+    });
+    // Set → Array（ソート済み）
+    Object.keys(productCache).forEach(function(k) {
+      productCache[k] = Array.from(productCache[k]).sort();
+    });
+    productCacheLoaded = true;
+  } catch(e) {
+    console.warn('商品キャッシュ読み込みエラー:', e);
+  }
+}
+
+function onShuruiChange() {
+  var shurui = document.getElementById('f-shurui').value;
+  var container = document.getElementById('shohin-candidates');
+  var input = document.getElementById('f-shohin');
+  input.value = '';
+  container.innerHTML = '';
+
+  if (!shurui) return;
+
+  loadProductCache().then(function() {
+    var items = productCache[shurui] || [];
+    if (!items.length) {
+      container.innerHTML = '<div style="font-size:11px;color:var(--muted);">この種類の履歴はありません。商品名を入力してください</div>';
+      return;
+    }
+    var html = '';
+    items.forEach(function(name) {
+      html += '<button type="button" onclick="pickShohin(this)" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;font-family:inherit;cursor:pointer;border:1.5px solid var(--accent);background:transparent;color:var(--accent);transition:all 0.15s;">' + name + '</button>';
+    });
+    container.innerHTML = html;
+  });
+}
+
+function pickShohin(btn) {
+  document.getElementById('f-shohin').value = btn.textContent;
+  // 選択状態を視覚的に反映
+  var container = document.getElementById('shohin-candidates');
+  var buttons = container.querySelectorAll('button');
+  buttons.forEach(function(b) {
+    b.style.background = 'transparent';
+    b.style.color = 'var(--accent)';
+  });
+  btn.style.background = 'var(--accent)';
+  btn.style.color = '#fff';
+}
+
 // ─── タブ切り替え ──────────────────────────────────────────────────────
 function switchTab(tab) {
   curTab = tab;
@@ -466,11 +538,19 @@ async function submitOrder() {
     await fooNotionCreate(BIHIN_DB, props);
     showToast('発注を登録しました');
 
+    // キャッシュに追加（次回すぐ候補に出るように）
+    if (!productCache[shurui]) productCache[shurui] = [];
+    if (productCache[shurui].indexOf(shohin) === -1) {
+      productCache[shurui].push(shohin);
+      productCache[shurui].sort();
+    }
+
     // フォームリセット
     document.getElementById('f-shurui').value = '';
     document.getElementById('f-shohin').value = '';
     document.getElementById('f-qty').value = '';
     document.getElementById('f-biko').value = '';
+    document.getElementById('shohin-candidates').innerHTML = '';
 
   } catch(e) {
     alert('エラー: ' + e.message);

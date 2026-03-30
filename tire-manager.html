@@ -371,7 +371,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
     <div class="step-bar" id="step-bar"></div>
     <div id="entry-content"></div>
   </div>
-  <div class="page" id="page-stock"><div id="stock-content"></div></div>
+  <div class="page" id="page-stock" style="overflow:hidden;display:flex;flex-direction:column;"><div id="stock-content" style="flex:1;overflow:hidden;display:flex;flex-direction:column;"></div></div>
   <div class="page" id="page-price"><div id="price-content"></div></div>
   <div class="page" id="page-history"><div id="history-content"></div></div>
 </div>
@@ -1399,16 +1399,20 @@ function renderStockResult(size, catKey, records) {
     var sB = WAREHOUSES.reduce(function(s,w){ return s+(stock[b]?.[w]||0); },0);
     return sB - sA;
   });
-  var html = '<div class="content">';
+  var html = '<div style="display:flex;flex-direction:column;height:100%;">';
+  // 固定ヘッダー部分
+  html += '<div style="flex-shrink:0;padding:20px 20px 0;">';
   html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><button onclick="renderStockHome()" style="background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:0;">&#8592;</button><div class="screen-label" style="margin:0;">在庫確認</div></div>';
   html += '<div class="screen-title" style="font-family:\'DM Mono\',monospace;font-size:18px;">' + size + '</div>';
   html += '<div class="screen-sub" style="margin-bottom:0;">' + db.name + '</div>';
-  html += '<div style="margin-top:16px;">';
-  html += '<div style="display:flex;padding:8px 0;border-bottom:1px solid var(--border);margin-bottom:4px;position:sticky;top:0;background:var(--bg);z-index:10;"><div style="display:flex;flex:1;">';
+  html += '<div style="display:flex;padding:8px 0;border-bottom:1px solid var(--border);margin-top:12px;"><div style="display:flex;flex:1;">';
   WAREHOUSES.map(function(w){ return w.replace('倉庫',''); }).forEach(function(l) { html += '<div style="text-align:center;flex:1;min-width:0;"><div style="font-size:9px;color:var(--muted);">' + l + '</div></div>'; });
   html += '<div style="text-align:center;flex:1;min-width:0;"><div style="font-size:9px;color:var(--accent);">準備中</div></div>';
   html += '<div style="text-align:center;flex:1;min-width:0;"><div style="font-size:9px;color:var(--accent);">発注中</div></div>';
   html += '</div></div>';
+  html += '</div>'; // 固定ヘッダー終了
+  // スクロール可能なリスト部分
+  html += '<div style="flex:1;overflow-y:auto;padding:0 20px 20px;-webkit-overflow-scrolling:touch;">';
   // パターンを在庫有無で分類
   var hasStockPatterns = sortedPatterns.filter(function(p) {
     var total = WAREHOUSES.reduce(function(s,w){ return s+(stock[p]?.[w]||0); },0);
@@ -1453,8 +1457,9 @@ function renderStockResult(size, catKey, records) {
 
   renderStockGroup(hasStockPatterns, '在庫あり', 'rgba(45,138,78,0.08)');
   renderStockGroup(noStockPatterns, '在庫なし', 'rgba(140,133,121,0.08)');
-  html += '</div><div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);">全 ' + records.length + ' 件のレコードから計算 &#183; ' + new Date().toLocaleTimeString('ja-JP') + ' 取得</div>';
-  html += '<button class="btn-primary" style="margin-top:16px;" onclick="renderStockHome()">&#128269; 別のサイズを検索</button></div>';
+  html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);">全 ' + records.length + ' 件のレコードから計算 &#183; ' + new Date().toLocaleTimeString('ja-JP') + ' 取得</div>';
+  html += '<button class="btn-primary" style="margin-top:16px;" onclick="renderStockHome()">&#128269; 別のサイズを検索</button>';
+  html += '</div></div>'; // スクロール領域終了 + 全体flex終了
   el.innerHTML = html;
 }
 function onStockTap(el) { _currentPattern = el.getAttribute('data-pattern'); stockHistory(el.getAttribute('data-mode')); }

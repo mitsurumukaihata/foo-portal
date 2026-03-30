@@ -1437,7 +1437,7 @@ async function notionAPI(method, path, body) {
 // ─── アプリ定義 ──────────────────────────────────────────────────────────────
 // ⚠️ 並び順は固定。変更・削除禁止。新規追加時は必ずユーザーに確認してから追加すること。
 // 確定並び順（2026-03-28）:
-//   現場・業務: タイヤ入出庫 → 出勤簿 → 顧客管理 → タスク管理
+//   現場・業務: タイヤ入出庫 → 出勤簿 → 顧客管理 → タスク管理 → 備品発注
 //   事務: 発注管理 → 自動発注 → 棚卸表 → 福利厚生
 //   EC/マーケ: オークション → EC/マーケ管理 → SNS用素材アップロード
 //   コミュニティ: 会議内容 → 部長コミュニティ → リーダーコミュニティ → マーケ/EC
@@ -1455,6 +1455,8 @@ const APP_DEFS = [
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>` },
   { key: '✅ タスク管理',         id: 'task',    label: 'タスク管理',         sub: 'スポット · シーズン · 定期', section: '現場・業務', url: 'https://mitsurumukaihata.github.io/foo-portal/task-manager-app.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>` },
+  { key: '📦 備品発注',           id: 'bihin',   label: '備品発注',           sub: '備品 · 発注書 · 入荷管理',  section: '現場・業務', url: 'https://mitsurumukaihata.github.io/foo-portal/bihin-order.html',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>` },
   // ── 事務 ──
   { key: '📋 発注管理',          id: 'order',   label: '発注管理',           sub: '仕入れ発注 · 入出庫DB連携', section: '事務',   url: 'https://mitsurumukaihata.github.io/foo-portal/order.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>` },

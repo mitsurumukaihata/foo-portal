@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>備品発注管理 | f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --red: #ef4444;
+  --blue: #3b82f6; --purple: #a855f7; --yellow: #eab308;
+  --pink: #ec4899; --orange: #f97316; --gray: #6b7280;
+  --header-bg: rgba(16,16,21,0.92);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+    --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208; --muted: #a08060;
+    --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --red: #dc2626;
+    --blue: #2563eb; --purple: #9333ea; --yellow: #d97706;
+    --pink: #db2777; --orange: #ea580c; --gray: #6b7280;
+    --header-bg: rgba(255,255,255,0.92);
+  }
+}
+[data-theme="dark"] {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --red: #ef4444;
+  --blue: #3b82f6; --purple: #a855f7; --yellow: #eab308;
+  --pink: #ec4899; --orange: #f97316; --gray: #6b7280;
+  --header-bg: rgba(16,16,21,0.92);
+}
+[data-theme="light"] {
+  --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+  --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208; --muted: #a08060;
+  --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --red: #dc2626;
+  --blue: #2563eb; --purple: #9333ea; --yellow: #d97706;
+  --pink: #db2777; --orange: #ea580c; --gray: #6b7280;
+  --header-bg: rgba(255,255,255,0.92);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; max-width:480px; margin:0 auto; overflow-x:hidden; scrollbar-width:none; }
+body::-webkit-scrollbar { display:none; }
+
+/* ── Header ── */
+.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:100; }
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+.header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+.header-back { font-size:11px; color:var(--muted); text-decoration:none; border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; }
+.header-back:active { opacity:0.6; }
+.header-title { font-size:17px; font-weight:900; letter-spacing:-0.02em; }
+.header-title span { color:var(--accent); }
+
+/* ── Tabs ── */
+.tabs { display:flex; background:var(--s1); border-bottom:0.5px solid var(--border); position:sticky; top:52px; z-index:99; }
+.tab-btn { flex:1; padding:10px 6px 8px; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--muted); font-size:12px; font-weight:500; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; text-align:center; }
+.tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+.tab-badge { display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 4px; background:var(--s3); border-radius:8px; font-size:10px; font-weight:700; margin-left:3px; color:var(--muted); }
+.tab-btn.active .tab-badge { background:rgba(240,165,0,0.2); color:var(--accent); }
+
+/* ── Pages ── */
+.page { display:none; padding:0 0 100px; }
+.page.show { display:block; }
+
+/* ── Cards ── */
+.card { background:var(--s2); border:1.5px solid var(--border); border-radius:12px; padding:14px 16px; margin:0 12px 8px; transition:all 0.2s; }
+.card:active { transform:scale(0.98); }
+.card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:6px; }
+.card-name { font-size:14px; font-weight:700; line-height:1.4; flex:1; }
+.card-meta { display:flex; flex-wrap:wrap; gap:6px 12px; font-size:11px; color:var(--muted); }
+.card-meta strong { color:var(--text); font-weight:600; }
+.card-actions { margin-top:10px; display:flex; gap:6px; }
+
+/* ── Badges ── */
+.badge { display:inline-block; font-size:9px; font-weight:700; padding:2px 8px; border-radius:20px; white-space:nowrap; }
+.badge-box-tb { background:var(--blue); color:#fff; }
+.badge-box-lt { background:var(--purple); color:#fff; }
+.badge-box-pc { background:var(--pink); color:#fff; }
+.badge-valve { background:var(--orange); color:#fff; }
+.badge-nut { background:var(--gray); color:#fff; }
+.badge-new { background:rgba(240,165,0,0.15); color:var(--accent); }
+.badge-sent { background:rgba(59,130,246,0.15); color:var(--blue); }
+.badge-done { background:rgba(34,197,94,0.15); color:var(--green); }
+.badge-cancel { background:rgba(239,68,68,0.15); color:var(--red); }
+
+/* ── Buttons ── */
+.btn { padding:8px 14px; border-radius:8px; border:none; font-size:12px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; text-align:center; }
+.btn:active { opacity:0.8; transform:scale(0.97); }
+.btn-green { background:var(--green); color:#fff; flex:1; }
+.btn-accent { background:var(--accent); color:#fff; }
+.btn-blue { background:var(--blue); color:#fff; }
+.btn-outline { background:var(--s3); border:1px solid var(--border); color:var(--text); }
+.btn-submit { width:100%; padding:14px; border-radius:12px; background:var(--accent); border:none; color:#fff; font-size:15px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; margin-top:8px; }
+.btn-submit:active { opacity:0.8; transform:scale(0.98); }
+.btn-submit:disabled { opacity:0.4; cursor:default; transform:none; }
+
+/* ── Form ── */
+.form-page { padding:14px 16px 100px; }
+.form-group { margin-bottom:14px; }
+.form-label { font-size:11px; color:var(--muted); font-weight:600; margin-bottom:5px; display:block; }
+.form-label .req { color:var(--red); margin-left:2px; }
+.form-input { width:100%; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:12px 14px; font-size:14px; color:var(--text); outline:none; font-family:'Noto Sans JP',sans-serif; transition:border-color 0.15s; -webkit-appearance:none; appearance:none; }
+.form-input:focus { border-color:var(--accent); }
+.form-input::placeholder { color:var(--muted); opacity:0.6; }
+select.form-input { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2368687a' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; padding-right:32px; }
+textarea.form-input { min-height:70px; resize:vertical; line-height:1.6; }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+/* ── Section header ── */
+.section-header { display:flex; align-items:center; gap:8px; padding:14px 16px 8px; }
+.section-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.section-title { font-size:13px; font-weight:700; flex:1; }
+.section-count { font-size:11px; color:var(--muted); font-weight:500; }
+
+/* ── Toast ── */
+.toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:var(--green); color:#fff; padding:10px 24px; border-radius:10px; font-size:13px; font-weight:700; z-index:500; opacity:0; transition:opacity 0.3s; pointer-events:none; max-width:90%; text-align:center; }
+.toast.show { opacity:1; }
+
+/* ── Loading ── */
+.loading { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; }
+.spinner { display:inline-block; width:20px; height:20px; border:2px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; margin-bottom:8px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── Empty state ── */
+.empty { text-align:center; padding:40px 20px; color:var(--muted); }
+.empty-icon { font-size:32px; margin-bottom:8px; }
+.empty-text { font-size:13px; }
+
+/* ── PDF Preview ── */
+.pdf-section { padding:14px 16px; }
+.pdf-group { background:var(--s2); border:1.5px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:8px; }
+.pdf-group-title { font-size:12px; font-weight:700; color:var(--accent); margin-bottom:8px; }
+.pdf-item { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:0.5px solid var(--border); font-size:12px; }
+.pdf-item:last-child { border-bottom:none; }
+.pdf-item-name { flex:1; font-weight:500; }
+.pdf-item-qty { font-family:'DM Mono',monospace; font-weight:700; color:var(--accent); margin-left:8px; }
+.pdf-item-memo { font-size:10px; color:var(--muted); margin-left:8px; max-width:100px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* ── History ── */
+.hist-card { background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin:0 12px 6px; }
+.hist-top { display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:4px; }
+.hist-name { font-size:13px; font-weight:600; flex:1; }
+.hist-meta { font-size:10px; color:var(--muted); display:flex; flex-wrap:wrap; gap:4px 10px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="header-brand">F.o.o · 現場・業務</div>
+    <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
+  </div>
+  <div class="header-title">備品<span>発注管理</span></div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" id="tab-pending"  onclick="switchTab('pending')">未入荷<span class="tab-badge" id="badge-pending">0</span></button>
+  <button class="tab-btn"        id="tab-new"      onclick="switchTab('new')">＋ 新規発注</button>
+  <button class="tab-btn"        id="tab-pdf"      onclick="switchTab('pdf')">発注書</button>
+  <button class="tab-btn"        id="tab-history"  onclick="switchTab('history')">履歴</button>
+</div>
+
+<!-- ══ 未入荷タブ ══ -->
+<div class="page show" id="pane-pending">
+  <div class="loading" id="pending-loading"><div class="spinner"></div><br>読み込み中...</div>
+  <div id="pending-list"></div>
+  <div class="empty" id="pending-empty" style="display:none;">
+    <div class="empty-icon">📦</div>
+    <div class="empty-text">未入荷の備品はありません</div>
+  </div>
+</div>
+
+<!-- ══ 新規発注タブ ══ -->
+<div class="page" id="pane-new">
+  <div class="form-page">
+    <div class="form-group">
+      <label class="form-label">種類<span class="req">*</span></label>
+      <select class="form-input" id="f-shurui">
+        <option value="">選択してください</option>
+        <option value="BOX（TB）">BOX（TB）</option>
+        <option value="BOX（LT）">BOX（LT）</option>
+        <option value="BOX（PC）">BOX（PC）</option>
+        <option value="バルブ">バルブ</option>
+        <option value="ナット">ナット</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">商品名<span class="req">*</span></label>
+      <input class="form-input" id="f-shohin" type="text" placeholder="例：ガムテープ">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">数量<span class="req">*</span></label>
+        <input class="form-input" id="f-qty" type="number" inputmode="numeric" min="1" placeholder="10">
+      </div>
+      <div class="form-group">
+        <label class="form-label">発注担当</label>
+        <input class="form-input" id="f-tanto" type="text" readonly>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">備考</label>
+      <textarea class="form-input" id="f-biko" placeholder="補足事項があれば記入"></textarea>
+    </div>
+    <button class="btn-submit" id="btn-order" onclick="submitOrder()">発注する</button>
+  </div>
+</div>
+
+<!-- ══ 発注書タブ ══ -->
+<div class="page" id="pane-pdf">
+  <div class="pdf-section">
+    <div id="pdf-preview"></div>
+    <div class="empty" id="pdf-empty" style="display:none;">
+      <div class="empty-icon">📋</div>
+      <div class="empty-text">発注対象の備品はありません</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;" id="pdf-buttons" style="display:none;">
+      <button class="btn-submit" id="btn-pdf" onclick="downloadPdf()" style="background:var(--accent);">
+        📥 発注書PDFをダウンロード
+      </button>
+      <button class="btn-submit" id="btn-mark-sent" onclick="markAllAsSent()" style="background:var(--blue);">
+        ✅ 発注書送信済み
+      </button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center;line-height:1.6;">
+      PDFをダウンロード後、メールで送信してください
+    </div>
+  </div>
+</div>
+
+<!-- ══ 履歴タブ ══ -->
+<div class="page" id="pane-history">
+  <div class="loading" id="history-loading"><div class="spinner"></div><br>読み込み中...</div>
+  <div id="history-list"></div>
+  <div class="empty" id="history-empty" style="display:none;">
+    <div class="empty-icon">📝</div>
+    <div class="empty-text">履歴はまだありません</div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="foo-common.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// bihin-order.html — 備品発注管理
+// ═══════════════════════════════════════════════════════════════════════
+
+const BIHIN_DB = '332a695f8e888054bd78cfd959bd1734';
+const THEME_KEY = 'foo_portal_theme';
+const SESSION_KEY = 'foo_portal_session';
+
+let loginUser = '';
+let allOrders = [];
+let curTab = 'pending';
+
+// ─── テーマ ────────────────────────────────────────────────────────────
+function applyTheme(t) {
+  var root = document.documentElement;
+  if (t === 'auto') root.removeAttribute('data-theme');
+  else root.setAttribute('data-theme', t);
+}
+function cycleTheme() {
+  var cur = localStorage.getItem(THEME_KEY) || 'auto';
+  var next = cur === 'auto' ? 'dark' : cur === 'dark' ? 'light' : 'auto';
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+}
+(function() {
+  var saved = localStorage.getItem(THEME_KEY) || 'auto';
+  applyTheme(saved);
+})();
+
+// ─── ログインユーザー取得 ──────────────────────────────────────────────
+(function() {
+  try {
+    var raw = localStorage.getItem(SESSION_KEY);
+    if (raw) {
+      var s = JSON.parse(raw);
+      loginUser = s.name || '';
+    }
+  } catch(e) {}
+})();
+
+// ─── ヘルパー ──────────────────────────────────────────────────────────
+function propStr(page, key) {
+  var p = page.properties[key];
+  if (!p) return '';
+  if (p.title) return (p.title[0] || {}).plain_text || '';
+  if (p.rich_text) return (p.rich_text[0] || {}).plain_text || '';
+  if (p.select) return (p.select || {}).name || '';
+  if (p.number !== undefined && p.number !== null) return String(p.number);
+  if (p.date) return (p.date || {}).start || '';
+  return '';
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  return iso.replace(/-/g, '/');
+}
+
+function todayISO() {
+  var d = new Date();
+  var y = d.getFullYear();
+  var m = String(d.getMonth() + 1).padStart(2, '0');
+  var dd = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + dd;
+}
+
+function showToast(msg) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(function() { el.classList.remove('show'); }, 2500);
+}
+
+function getCatBadgeClass(shurui) {
+  if (shurui === 'BOX（TB）') return 'badge-box-tb';
+  if (shurui === 'BOX（LT）') return 'badge-box-lt';
+  if (shurui === 'BOX（PC）') return 'badge-box-pc';
+  if (shurui === 'バルブ') return 'badge-valve';
+  if (shurui === 'ナット') return 'badge-nut';
+  return 'badge-box-tb';
+}
+
+function getStatusBadge(status) {
+  if (status === '新規発注') return '<span class="badge badge-new">新規発注</span>';
+  if (status === '発注済') return '<span class="badge badge-sent">発注済</span>';
+  if (status === '納入済') return '<span class="badge badge-done">納入済</span>';
+  if (status === 'キャンセル') return '<span class="badge badge-cancel">キャンセル</span>';
+  return '';
+}
+
+// ─── タブ切り替え ──────────────────────────────────────────────────────
+function switchTab(tab) {
+  curTab = tab;
+  var tabs = ['pending', 'new', 'pdf', 'history'];
+  tabs.forEach(function(t) {
+    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+    document.getElementById('pane-' + t).classList.toggle('show', t === tab);
+  });
+  if (tab === 'pending') loadPending();
+  if (tab === 'pdf') loadPdf();
+  if (tab === 'history') loadHistory();
+}
+
+// ─── データ取得 ────────────────────────────────────────────────────────
+async function loadPending() {
+  var loading = document.getElementById('pending-loading');
+  var list = document.getElementById('pending-list');
+  var empty = document.getElementById('pending-empty');
+  loading.style.display = 'block';
+  list.innerHTML = '';
+  empty.style.display = 'none';
+
+  try {
+    var data = await fooNotionQuery(BIHIN_DB, {
+      filter: { property: 'ステータス', select: { equals: '発注済' } },
+      sorts: [{ property: '日付', direction: 'descending' }]
+    });
+    var items = data.results || [];
+    loading.style.display = 'none';
+    document.getElementById('badge-pending').textContent = items.length;
+
+    if (!items.length) {
+      empty.style.display = 'block';
+      return;
+    }
+
+    var html = '';
+    html += '<div class="section-header">';
+    html += '<div class="section-dot" style="background:var(--blue);"></div>';
+    html += '<div class="section-title">発注済（未入荷）</div>';
+    html += '<div class="section-count">' + items.length + '件</div>';
+    html += '</div>';
+
+    items.forEach(function(item) {
+      var id = item.id;
+      var shurui = propStr(item, '種類');
+      var shohin = propStr(item, '商品名');
+      var qty = propStr(item, '数量');
+      var dt = fmtDate(propStr(item, '日付'));
+      var tanto = propStr(item, '発注担当');
+      var biko = propStr(item, '備考');
+      var catClass = getCatBadgeClass(shurui);
+
+      html += '<div class="card">';
+      html += '<div class="card-top">';
+      html += '<div class="card-name">' + shohin + '</div>';
+      html += '<span class="badge ' + catClass + '">' + shurui + '</span>';
+      html += '</div>';
+      html += '<div class="card-meta">';
+      html += '<span>数量: <strong>' + qty + '</strong></span>';
+      html += '<span>発注日: <strong>' + dt + '</strong></span>';
+      html += '<span>担当: <strong>' + tanto + '</strong></span>';
+      html += '</div>';
+      if (biko) {
+        html += '<div style="font-size:11px;color:var(--muted);margin-top:6px;">備考: ' + biko + '</div>';
+      }
+      html += '<div class="card-actions">';
+      html += '<button class="btn btn-green" onclick="markReceived(\'' + id + '\')">📦 入荷</button>';
+      html += '</div>';
+      html += '</div>';
+    });
+
+    list.innerHTML = html;
+  } catch(e) {
+    loading.style.display = 'none';
+    list.innerHTML = '<div class="empty"><div class="empty-text">エラー: ' + e.message + '</div></div>';
+    console.error(e);
+  }
+}
+
+// ─── 入荷処理 ──────────────────────────────────────────────────────────
+async function markReceived(pageId) {
+  if (!confirm('この備品を「納入済」にしますか？')) return;
+  try {
+    await fooNotionPatch(pageId, { 'ステータス': { select: { name: '納入済' } } });
+    showToast('納入済に更新しました');
+    loadPending();
+  } catch(e) {
+    alert('エラー: ' + e.message);
+    console.error(e);
+  }
+}
+
+// ─── 新規発注 ──────────────────────────────────────────────────────────
+async function submitOrder() {
+  var shurui = document.getElementById('f-shurui').value;
+  var shohin = document.getElementById('f-shohin').value.trim();
+  var qty = parseInt(document.getElementById('f-qty').value, 10);
+  var biko = document.getElementById('f-biko').value.trim();
+  var tanto = document.getElementById('f-tanto').value.trim() || loginUser || '向畑 充';
+
+  if (!shurui) { alert('種類を選択してください'); return; }
+  if (!shohin) { alert('商品名を入力してください'); return; }
+  if (!qty || qty < 1) { alert('数量を1以上で入力してください'); return; }
+
+  var btn = document.getElementById('btn-order');
+  btn.disabled = true;
+  btn.textContent = '登録中...';
+
+  try {
+    var titleText = shurui + '　' + shohin + ' x' + qty;
+    var props = {
+      '名前': { title: [{ text: { content: titleText } }] },
+      '商品名': { rich_text: [{ text: { content: shohin } }] },
+      '数量': { number: qty },
+      '日付': { date: { start: todayISO() } },
+      '種類': { select: { name: shurui } },
+      'ステータス': { select: { name: '新規発注' } },
+      '発注担当': { select: { name: tanto } }
+    };
+    if (biko) {
+      props['備考'] = { rich_text: [{ text: { content: biko } }] };
+    }
+
+    await fooNotionCreate(BIHIN_DB, props);
+    showToast('発注を登録しました');
+
+    // フォームリセット
+    document.getElementById('f-shurui').value = '';
+    document.getElementById('f-shohin').value = '';
+    document.getElementById('f-qty').value = '';
+    document.getElementById('f-biko').value = '';
+
+  } catch(e) {
+    alert('エラー: ' + e.message);
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '発注する';
+  }
+}
+
+// ─── 発注書タブ ────────────────────────────────────────────────────────
+async function loadPdf() {
+  var preview = document.getElementById('pdf-preview');
+  var empty = document.getElementById('pdf-empty');
+  var buttons = document.getElementById('pdf-buttons');
+  preview.innerHTML = '<div class="loading"><div class="spinner"></div><br>読み込み中...</div>';
+  empty.style.display = 'none';
+
+  try {
+    var data = await fooNotionQuery(BIHIN_DB, {
+      filter: {
+        or: [
+          { property: 'ステータス', select: { equals: '新規発注' } },
+          { property: 'ステータス', select: { equals: '発注済' } }
+        ]
+      },
+      sorts: [{ property: '種類', direction: 'ascending' }, { property: '日付', direction: 'descending' }]
+    });
+    var items = data.results || [];
+    allOrders = items;
+
+    if (!items.length) {
+      preview.innerHTML = '';
+      empty.style.display = 'block';
+      buttons.style.display = 'none';
+      return;
+    }
+
+    buttons.style.display = 'flex';
+
+    var newItems = items.filter(function(o) { return propStr(o, 'ステータス') === '新規発注'; });
+    var sentItems = items.filter(function(o) { return propStr(o, 'ステータス') === '発注済'; });
+
+    var html = '';
+
+    if (newItems.length) {
+      html += '<div class="pdf-group">';
+      html += '<div class="pdf-group-title">■ 今回発注分（' + newItems.length + '件）</div>';
+      newItems.forEach(function(o) {
+        var shurui = propStr(o, '種類');
+        var shohin = propStr(o, '商品名');
+        var qty = propStr(o, '数量');
+        var biko = propStr(o, '備考');
+        html += '<div class="pdf-item">';
+        html += '<span class="badge ' + getCatBadgeClass(shurui) + '" style="margin-right:6px;">' + shurui + '</span>';
+        html += '<span class="pdf-item-name">' + shohin + '</span>';
+        if (biko) html += '<span class="pdf-item-memo">' + biko + '</span>';
+        html += '<span class="pdf-item-qty">x' + qty + '</span>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    if (sentItems.length) {
+      html += '<div class="pdf-group">';
+      html += '<div class="pdf-group-title" style="color:var(--blue);">■ 未入荷（既発注分）（' + sentItems.length + '件）</div>';
+      sentItems.forEach(function(o) {
+        var shurui = propStr(o, '種類');
+        var shohin = propStr(o, '商品名');
+        var qty = propStr(o, '数量');
+        var biko = propStr(o, '備考');
+        html += '<div class="pdf-item">';
+        html += '<span class="badge ' + getCatBadgeClass(shurui) + '" style="margin-right:6px;">' + shurui + '</span>';
+        html += '<span class="pdf-item-name">' + shohin + '</span>';
+        if (biko) html += '<span class="pdf-item-memo">' + biko + '</span>';
+        html += '<span class="pdf-item-qty">x' + qty + '</span>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    preview.innerHTML = html;
+  } catch(e) {
+    preview.innerHTML = '<div class="empty"><div class="empty-text">エラー: ' + e.message + '</div></div>';
+    console.error(e);
+  }
+}
+
+// ─── PDF生成 ───────────────────────────────────────────────────────────
+function buildPdfHtml() {
+  var now = new Date();
+  var issued = now.getFullYear() + '年' + (now.getMonth() + 1) + '月' + now.getDate() + '日 '
+    + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+  var issuer = loginUser || '向畑 充';
+  var issuerShort = issuer.replace(/\s+/g, ' ').split(' ')[0] || issuer;
+
+  var newItems = allOrders.filter(function(o) { return propStr(o, 'ステータス') === '新規発注'; });
+  var sentItems = allOrders.filter(function(o) { return propStr(o, 'ステータス') === '発注済'; });
+  var totalNew = newItems.reduce(function(s, o) { return s + (Number(propStr(o, '数量')) || 0); }, 0);
+  var totalSent = sentItems.reduce(function(s, o) { return s + (Number(propStr(o, '数量')) || 0); }, 0);
+
+  var TH = 'padding:4px 6px;font-size:8pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;white-space:nowrap;';
+  var tdStyle = function(i, extra) {
+    return 'padding:4px 6px;font-size:8pt;text-align:center;border:0.3px solid #b8cfe8;'
+      + (i % 2 === 1 ? 'background:#f0f5fc;' : 'background:#fff;')
+      + 'white-space:nowrap;' + (extra || '');
+  };
+
+  var mkRow = function(o, i) {
+    var shurui = propStr(o, '種類');
+    var shohin = propStr(o, '商品名');
+    var qty = propStr(o, '数量');
+    var biko = propStr(o, '備考') || '';
+    return '<tr>'
+      + '<td style="' + tdStyle(i) + '">' + shurui + '</td>'
+      + '<td style="' + tdStyle(i, 'text-align:left;') + '">' + shohin + '</td>'
+      + '<td style="' + tdStyle(i, 'font-weight:bold;color:#1a1a18;') + '">' + qty + '</td>'
+      + '<td style="' + tdStyle(i, 'text-align:left;white-space:normal;color:#888;') + '">' + biko + '</td>'
+      + '</tr>';
+  };
+
+  var newTable = '';
+  if (newItems.length) {
+    newTable = '<div style="font-size:8pt;font-weight:bold;color:#2563a8;margin:6px 0 3px;">■ 今回発注分</div>'
+      + '<table style="width:100%;border-collapse:collapse;">'
+      + '<thead><tr>'
+      + '<th style="' + TH + 'width:18%;">種類</th>'
+      + '<th style="' + TH + 'width:40%;">商品名</th>'
+      + '<th style="' + TH + 'width:10%;">数量</th>'
+      + '<th style="' + TH + 'width:32%;">備考</th>'
+      + '</tr></thead><tbody>';
+    newItems.forEach(function(o, i) { newTable += mkRow(o, i); });
+    newTable += '</tbody></table>';
+  }
+
+  var sentTable = '';
+  if (sentItems.length) {
+    sentTable = '<div style="font-size:7pt;font-weight:bold;color:#2563a8;margin:8px 0 3px;">■ 未入荷（既発注分）</div>'
+      + '<table style="width:100%;border-collapse:collapse;">'
+      + '<thead><tr>'
+      + '<th style="' + TH + 'width:18%;">種類</th>'
+      + '<th style="' + TH + 'width:40%;">商品名</th>'
+      + '<th style="' + TH + 'width:10%;">数量</th>'
+      + '<th style="' + TH + 'width:32%;">備考</th>'
+      + '</tr></thead><tbody>';
+    sentItems.forEach(function(o, i) { sentTable += mkRow(o, i); });
+    sentTable += '</tbody></table>';
+  }
+
+  var dsF = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
+  var pdfFilename = 'TMFoo_備品発注書_' + issuerShort + '_' + dsF;
+
+  var pdfHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    + '<title>' + pdfFilename + '</title>'
+    + '<style>'
+    + '*{box-sizing:border-box;margin:0;padding:0;}'
+    + 'body{font-family:"Hiragino Kaku Gothic ProN","IPAGothic",sans-serif;padding:10mm 8mm;font-size:8pt;color:#1a1a18;}'
+    + 'table{width:100%;border-collapse:collapse;}'
+    + '</style></head><body>'
+    + '<table style="width:100%;border-collapse:collapse;border-bottom:2px solid #2563a8;padding-bottom:4px;margin-bottom:8px;">'
+    + '<tr>'
+    + '<td style="vertical-align:middle;">'
+    + '<div style="font-size:14pt;font-weight:bold;color:#2563a8;">発　注　書</div>'
+    + '<div style="font-size:7pt;color:#666;margin-top:2px;">発行日：' + issued + '　発行者：' + issuerShort + '</div>'
+    + '</td>'
+    + '<td style="text-align:right;vertical-align:top;">'
+    + '<div style="font-size:10pt;font-weight:bold;">(有)タイヤマネージャーフー</div>'
+    + '<div style="font-size:7pt;color:#666;line-height:1.5;">〒731-5141 広島県広島市佐伯区千同３丁目３９４－１　TEL：082-942-3730</div>'
+    + '</td>'
+    + '</tr></table>'
+    + '<table style="width:100%;border-collapse:collapse;border:1.5px solid #2563a8;background:#e8f0fa;margin-bottom:10px;">'
+    + '<tr><td style="padding:4px 8px;">'
+    + '<div style="font-size:7pt;color:#2563a8;font-weight:bold;margin-bottom:1px;">発注先</div>'
+    + '<div style="font-size:8pt;font-weight:bold;">株式会社アクトシステム　御中</div>'
+    + '</td></tr></table>'
+    + newTable
+    + sentTable
+    + '<div style="text-align:right;margin-top:4px;padding-top:3px;border-top:0.5px solid #e0dcd6;font-size:7pt;color:#666;">'
+    + '今回発注合計：<span style="font-size:9pt;font-weight:bold;color:#2563a8;">' + totalNew + '</span>'
+    + '　　未入荷合計：<span style="font-size:8pt;font-weight:bold;color:#1a1a18;">' + totalSent + '</span>'
+    + '</div>'
+    + '<div style="background:#e8f0fa;border:0.5px solid #b8cfe8;padding:4px 8px;margin-top:6px;font-size:7pt;color:#666;line-height:1.5;">'
+    + '<div>※ 未入荷分は引き続きよろしくお願いいたします。</div>'
+    + '<div>※ 納期等に変更がある場合はご連絡ください。</div>'
+    + '</div>'
+    + '<div style="border-top:0.5px solid #e0dcd6;margin-top:6px;padding-top:3px;display:flex;justify-content:space-between;font-size:6pt;color:#aaa;">'
+    + '<span>(有)タイヤマネージャーフー　広島市佐伯区千同３-３９４-１　TEL：082-942-3730</span>'
+    + '<span>自動生成　' + issued + '</span>'
+    + '</div>'
+    + '</body></html>';
+
+  return pdfHtml;
+}
+
+function downloadPdf() {
+  if (!allOrders.length) { alert('対象データがありません'); return; }
+
+  var btn = document.getElementById('btn-pdf');
+  btn.disabled = true;
+  btn.textContent = '生成中...';
+
+  try {
+    var html = buildPdfHtml();
+    openPdfOverlay(html);
+  } catch(e) {
+    alert('エラー: ' + e.message);
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📥 発注書PDFをダウンロード';
+  }
+}
+
+// ─── アプリ内PDFオーバーレイ ───────────────────────────────────────────
+function openPdfOverlay(html) {
+  var existing = document.getElementById('pdf-overlay');
+  if (existing) existing.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'pdf-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:1000;background:var(--bg);display:flex;flex-direction:column;max-width:480px;margin:0 auto;overflow:hidden;';
+
+  var headerBar = document.createElement('div');
+  headerBar.style.cssText = 'background:var(--s1);border-bottom:0.5px solid var(--border);padding:13px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;';
+
+  var closeBtn = document.createElement('button');
+  closeBtn.style.cssText = 'background:transparent;border:none;color:var(--accent);font-size:22px;cursor:pointer;line-height:1;padding:0 4px;font-family:inherit;';
+  closeBtn.textContent = '\u2039';
+  closeBtn.onclick = closePdfOverlay;
+
+  var titleDiv = document.createElement('div');
+  titleDiv.style.cssText = 'flex:1;';
+  titleDiv.innerHTML = '<div style="font-size:14px;font-weight:900;">📄 備品発注書</div><div style="font-size:11px;color:var(--muted);margin-top:1px;">印刷してPDFとして保存できます</div>';
+
+  var printBtn = document.createElement('button');
+  printBtn.style.cssText = 'background:var(--accent);border:none;border-radius:20px;padding:8px 16px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;flex-shrink:0;';
+  printBtn.textContent = '🖨️ 印刷 / PDF保存';
+  printBtn.onclick = printPdfOverlay;
+
+  headerBar.appendChild(closeBtn);
+  headerBar.appendChild(titleDiv);
+  headerBar.appendChild(printBtn);
+
+  var iframe = document.createElement('iframe');
+  iframe.id = 'pdf-overlay-frame';
+  iframe.style.cssText = 'flex:1;border:none;width:100%;background:#fff;';
+  iframe.title = '発注書プレビュー';
+
+  overlay.appendChild(headerBar);
+  overlay.appendChild(iframe);
+  document.body.appendChild(overlay);
+
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(html);
+  iframe.contentDocument.close();
+
+  history.pushState({ pdfOverlay: true }, '', location.href);
+  window.addEventListener('popstate', onPopStatePdf, { once: true });
+}
+
+function onPopStatePdf(e) {
+  if (e.state && e.state.pdfOverlay) {
+    closePdfOverlay();
+  }
+}
+
+function closePdfOverlay() {
+  var overlay = document.getElementById('pdf-overlay');
+  if (overlay) overlay.remove();
+  window.removeEventListener('popstate', onPopStatePdf);
+}
+
+function printPdfOverlay() {
+  var frame = document.getElementById('pdf-overlay-frame');
+  if (frame && frame.contentWindow) {
+    frame.contentWindow.print();
+  }
+}
+
+// ─── 発注書送信済み（新規発注→発注済に一括変更）──────────────────────
+async function markAllAsSent() {
+  var newItems = allOrders.filter(function(o) { return propStr(o, 'ステータス') === '新規発注'; });
+  if (!newItems.length) {
+    alert('新規発注の備品はありません');
+    return;
+  }
+  if (!confirm(newItems.length + '件の新規発注を「発注済」にしますか？')) return;
+
+  var btn = document.getElementById('btn-mark-sent');
+  btn.disabled = true;
+  btn.textContent = '更新中...';
+
+  try {
+    for (var i = 0; i < newItems.length; i++) {
+      await fooNotionPatch(newItems[i].id, { 'ステータス': { select: { name: '発注済' } } });
+    }
+    showToast(newItems.length + '件を発注済に更新しました');
+    loadPdf();
+    // 未入荷タブのバッジも更新
+    loadPendingCount();
+  } catch(e) {
+    alert('エラー: ' + e.message);
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✅ 発注書送信済み';
+  }
+}
+
+async function loadPendingCount() {
+  try {
+    var data = await fooNotionQuery(BIHIN_DB, {
+      filter: { property: 'ステータス', select: { equals: '発注済' } },
+      page_size: 100
+    });
+    document.getElementById('badge-pending').textContent = (data.results || []).length;
+  } catch(e) {}
+}
+
+// ─── 履歴タブ ──────────────────────────────────────────────────────────
+async function loadHistory() {
+  var loading = document.getElementById('history-loading');
+  var list = document.getElementById('history-list');
+  var empty = document.getElementById('history-empty');
+  loading.style.display = 'block';
+  list.innerHTML = '';
+  empty.style.display = 'none';
+
+  try {
+    var data = await fooNotionQuery(BIHIN_DB, {
+      filter: {
+        or: [
+          { property: 'ステータス', select: { equals: '納入済' } },
+          { property: 'ステータス', select: { equals: 'キャンセル' } }
+        ]
+      },
+      sorts: [{ property: '日付', direction: 'descending' }],
+      page_size: 50
+    });
+    var items = data.results || [];
+    loading.style.display = 'none';
+
+    if (!items.length) {
+      empty.style.display = 'block';
+      return;
+    }
+
+    var html = '';
+    items.forEach(function(item) {
+      var shurui = propStr(item, '種類');
+      var shohin = propStr(item, '商品名');
+      var qty = propStr(item, '数量');
+      var status = propStr(item, 'ステータス');
+      var dt = fmtDate(propStr(item, '日付'));
+      var catClass = getCatBadgeClass(shurui);
+
+      html += '<div class="hist-card">';
+      html += '<div class="hist-top">';
+      html += '<span class="badge ' + catClass + '" style="margin-right:6px;">' + shurui + '</span>';
+      html += '<span class="hist-name">' + shohin + '</span>';
+      html += getStatusBadge(status);
+      html += '</div>';
+      html += '<div class="hist-meta">';
+      html += '<span>数量: <strong>' + qty + '</strong></span>';
+      html += '<span>日付: ' + dt + '</span>';
+      html += '</div>';
+      html += '</div>';
+    });
+
+    list.innerHTML = html;
+  } catch(e) {
+    loading.style.display = 'none';
+    list.innerHTML = '<div class="empty"><div class="empty-text">エラー: ' + e.message + '</div></div>';
+    console.error(e);
+  }
+}
+
+// ─── 初期化 ────────────────────────────────────────────────────────────
+(function init() {
+  // 発注担当フィールドにログインユーザーをセット
+  var tantoField = document.getElementById('f-tanto');
+  if (tantoField) {
+    tantoField.value = loginUser || '';
+  }
+  // デフォルトタブ読み込み
+  loadPending();
+})();
+</script>
+<script src="foo-swipe.js"></script>
+</body>
+</html>

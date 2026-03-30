@@ -253,6 +253,31 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .setup-notice-icon { font-size:48px; margin-bottom:12px; }
 .setup-notice-title { font-size:16px; font-weight:700; margin-bottom:8px; }
 .setup-notice-msg { font-size:13px; color:var(--muted); line-height:1.8; }
+
+/* ── 使い方ガイド（ギガファイル便） ── */
+.giga-open-btn { display:block; background:var(--accent); color:#fff; text-align:center; padding:14px; border-radius:10px; font-size:15px; font-weight:700; text-decoration:none; margin-bottom:20px; }
+.giga-open-btn:active { opacity:0.85; }
+.howto-heading { font-size:15px; font-weight:900; color:var(--accent); margin-bottom:14px; padding-bottom:6px; border-bottom:2px solid var(--border); }
+.howto-step { background:var(--s1); border:1px solid var(--border); border-radius:14px; padding:16px; margin-bottom:14px; box-shadow:0 1px 4px rgba(0,0,0,0.04); }
+.howto-step-header { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.howto-num { width:28px; height:28px; border-radius:50%; border:3px solid #e74c3c; color:#e74c3c; font-size:13px; font-weight:900; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.howto-step-title { font-size:14px; font-weight:700; color:var(--text); }
+.howto-mock { background:#e8f4f8; border:1px solid #c8dfe8; border-radius:10px; overflow:hidden; margin-bottom:10px; }
+.howto-mock-bar { background:#d0e8f0; padding:6px 10px; font-size:10px; color:#456; font-family:'DM Mono',monospace; border-bottom:1px solid #c8dfe8; }
+.howto-desc { font-size:13px; color:var(--text); line-height:1.7; }
+.howto-desc strong { color:var(--accent); }
+.howto-fake-btn { display:inline-block; background:#4a90d9; color:#fff; padding:10px 28px; border-radius:6px; font-size:13px; font-weight:700; }
+.howto-period-btn { display:inline-block; background:#fff; border:1px solid #bbb; border-radius:4px; padding:5px 8px; font-size:10px; color:#555; }
+.howto-period-active { background:#e74c3c; color:#fff; border-color:#e74c3c; }
+.howto-url-row { display:flex; align-items:center; gap:6px; }
+.howto-url-field { flex:1; background:#fff; border:1px solid #bbb; border-radius:4px; padding:7px 8px; font-size:10px; color:#456; font-family:'DM Mono',monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.howto-copy-btn { background:#4a90d9; color:#fff; padding:7px 14px; border-radius:4px; font-size:10px; font-weight:700; white-space:nowrap; }
+.howto-file-row { background:#fff; border:1px solid #ddd; border-radius:4px; padding:6px 8px; font-size:11px; color:#456; margin-bottom:4px; }
+.howto-matome-btn { display:inline-block; background:#e67e22; color:#fff; padding:10px 28px; border-radius:6px; font-size:13px; font-weight:700; }
+.howto-dl-btn { display:inline-block; background:#27ae60; color:#fff; padding:10px 28px; border-radius:6px; font-size:13px; font-weight:700; }
+.howto-progress-track { width:100%; height:6px; background:#ddd; border-radius:3px; overflow:hidden; }
+.howto-progress-bar { width:100%; height:100%; background:#22c55e; border-radius:3px; }
+.howto-tap-circle { position:absolute; width:22px; height:22px; border-radius:50%; border:3px solid #e74c3c; color:#e74c3c; font-size:10px; font-weight:900; display:flex; align-items:center; justify-content:center; background:rgba(231,76,60,0.1); pointer-events:none; }
 </style>
 </head>
 <body>
@@ -281,6 +306,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
   <button class="nav-btn" data-tab="list">素材一覧</button>
   <button class="nav-btn" data-tab="log">みんなの投稿</button>
   <button class="nav-btn" data-tab="guide">撮影ガイド</button>
+  <button class="nav-btn" data-tab="howto">使い方</button>
 </div>
 
 <!-- ── ページ: アップロード ── -->
@@ -489,6 +515,166 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
     </div>
   </div>
 
+</div>
+
+<!-- ── ページ: 使い方（ギガファイル便） ── -->
+<div class="page" id="page-howto">
+
+  <a href="https://gigafile.nu" target="_blank" rel="noopener" class="giga-open-btn">ギガファイル便を開く ↗</a>
+
+  <div class="howto-heading">アップロード手順</div>
+
+  <!-- Step 1 -->
+  <div class="howto-step">
+    <div class="howto-step-header"><div class="howto-num">1</div><div class="howto-step-title">gigafile.nu を開く</div></div>
+    <div class="howto-mock">
+      <div class="howto-mock-bar">gigafile.nu</div>
+      <div style="text-align:center;padding:18px 12px;">
+        <div style="font-size:18px;font-weight:900;color:#e74c3c;margin-bottom:6px;">GigaFile便</div>
+        <div style="font-size:10px;color:#888;">大容量ファイル転送サービス</div>
+      </div>
+    </div>
+    <div class="howto-desc">上のボタン、またはSafari/Chromeで <strong>gigafile.nu</strong> を開きます</div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="howto-step">
+    <div class="howto-step-header"><div class="howto-num">2</div><div class="howto-step-title">保持期限を変更</div></div>
+    <div class="howto-mock">
+      <div style="padding:14px 12px;">
+        <div style="font-size:10px;color:#888;margin-bottom:6px;">ファイルの保持期限</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          <span class="howto-period-btn">3日</span>
+          <span class="howto-period-btn">5日</span>
+          <span class="howto-period-btn">7日</span>
+          <span class="howto-period-btn">14日</span>
+          <span class="howto-period-btn">30日</span>
+          <span class="howto-period-btn">60日</span>
+          <span class="howto-period-btn howto-period-active" style="position:relative;">100日<span class="howto-tap-circle" style="top:-10px;right:-10px;">!</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="howto-desc"><strong>100日</strong>を選択してください（期限が長いほど安心です）</div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="howto-step">
+    <div class="howto-step-header"><div class="howto-num">3</div><div class="howto-step-title">ファイルを選択</div></div>
+    <div class="howto-mock">
+      <div style="padding:18px 12px;text-align:center;">
+        <div style="position:relative;display:inline-block;">
+          <div class="howto-fake-btn">ファイルを選択</div>
+          <span class="howto-tap-circle" style="top:-10px;right:-14px;">!</span>
+        </div>
+        <div style="font-size:10px;color:#888;margin-top:8px;">または ドラッグ&ドロップ</div>
+      </div>
+    </div>
+    <div class="howto-desc">タップして写真・動画を選びます（複数選択OK）</div>
+  </div>
+
+  <!-- Step 4 -->
+  <div class="howto-step">
+    <div class="howto-step-header"><div class="howto-num">4</div><div class="howto-step-title">アップロード完了</div></div>
+    <div class="howto-mock">
+      <div style="padding:14px 12px;">
+        <div style="font-size:10px;color:#888;margin-bottom:6px;">photo_001.jpg</div>
+        <div class="howto-progress-track"><div class="howto-progress-bar"></div></div>
+        <div style="font-size:10px;color:#22c55e;text-align:right;margin-top:4px;">完了!</div>
+        <div class="howto-url-row" style="margin-top:10px;">
+          <div class="howto-url-field">https://gigafile.nu/xxxx-xxxx</div>
+        </div>
+      </div>
+    </div>
+    <div class="howto-desc">アップロードが終わるとURLが表示されます</div>
+  </div>
+
+  <!-- Step 5 -->
+  <div class="howto-step">
+    <div class="howto-step-header"><div class="howto-num">5</div><div class="howto-step-title">URLをコピー</div></div>
+    <div class="howto-mock">
+      <div style="padding:14px 12px;">
+        <div class="howto-url-row">
+          <div class="howto-url-field">https://gigafile.nu/xxxx-xxxx</div>
+          <div style="position:relative;display:inline-block;">
+            <div class="howto-copy-btn">コピー</div>
+            <span class="howto-tap-circle" style="top:-10px;right:-10px;">!</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="howto-desc">このURLをコピーして<strong>LINEなどで共有</strong>してください</div>
+  </div>
+
+  <div class="howto-heading" style="margin-top:28px;">まとめてアップロード</div>
+
+  <!-- Step 6 -->
+  <div class="howto-step">
+    <div class="howto-step-header"><div class="howto-num">6</div><div class="howto-step-title">複数ファイルをまとめる</div></div>
+    <div class="howto-mock">
+      <div style="padding:14px 12px;">
+        <div style="font-size:10px;color:#888;margin-bottom:4px;">アップロード済みファイル</div>
+        <div class="howto-file-row">📄 photo_001.jpg</div>
+        <div class="howto-file-row">📄 photo_002.jpg</div>
+        <div class="howto-file-row">🎬 movie_001.mp4</div>
+        <div style="text-align:center;margin-top:10px;position:relative;display:inline-block;">
+          <div class="howto-matome-btn">まとめる</div>
+          <span class="howto-tap-circle" style="top:-10px;right:-14px;">!</span>
+        </div>
+      </div>
+    </div>
+    <div class="howto-desc">複数ファイルをアップロード後、<strong>「まとめる」</strong>ボタンをタップ</div>
+  </div>
+
+  <!-- Step 7 -->
+  <div class="howto-step">
+    <div class="howto-step-header"><div class="howto-num">7</div><div class="howto-step-title">まとめURL</div></div>
+    <div class="howto-mock">
+      <div style="padding:14px 12px;">
+        <div style="font-size:10px;color:#22c55e;margin-bottom:6px;">3ファイルをまとめました</div>
+        <div class="howto-url-row">
+          <div class="howto-url-field">https://gigafile.nu/zzzz-zzzz</div>
+          <div style="position:relative;display:inline-block;">
+            <div class="howto-copy-btn">コピー</div>
+            <span class="howto-tap-circle" style="top:-10px;right:-10px;">!</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="howto-desc">1つのURLで全ファイルをまとめて共有できます</div>
+  </div>
+
+  <div class="howto-heading" style="margin-top:28px;">ダウンロード手順</div>
+
+  <!-- Step 8 -->
+  <div class="howto-step">
+    <div class="howto-step-header"><div class="howto-num">8</div><div class="howto-step-title">URLを開く</div></div>
+    <div class="howto-mock">
+      <div class="howto-mock-bar">gigafile.nu/xxxx-xxxx</div>
+      <div style="text-align:center;padding:14px 12px;">
+        <div style="font-size:12px;color:#555;margin-bottom:6px;">共有されたファイル</div>
+        <div class="howto-file-row">📄 photo_001.jpg (3.2MB)</div>
+        <div class="howto-file-row">🎬 movie_001.mp4 (45MB)</div>
+      </div>
+    </div>
+    <div class="howto-desc">共有されたURLを<strong>Safari / Chrome</strong>で開きます</div>
+  </div>
+
+  <!-- Step 9 -->
+  <div class="howto-step">
+    <div class="howto-step-header"><div class="howto-num">9</div><div class="howto-step-title">ダウンロード</div></div>
+    <div class="howto-mock">
+      <div style="padding:18px 12px;text-align:center;">
+        <div style="font-size:12px;color:#555;margin-bottom:10px;">ダウンロード準備完了</div>
+        <div style="position:relative;display:inline-block;">
+          <div class="howto-dl-btn">ダウンロード</div>
+          <span class="howto-tap-circle" style="top:-10px;right:-14px;">!</span>
+        </div>
+      </div>
+    </div>
+    <div class="howto-desc"><strong>ダウンロード</strong>ボタンをタップして保存します</div>
+  </div>
+
+  <div style="height:40px;"></div>
 </div>
 
 </div><!-- #app -->

@@ -83,7 +83,7 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 .alert-dot-big { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
 .alert-info { flex:1; min-width:0; }
 .alert-pattern { font-size:14px; font-weight:700; font-family:'DM Mono',monospace; }
-.alert-meta { font-size:13px; font-family:'DM Mono',monospace; color:var(--text); font-weight:700; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.alert-meta { font-size:13px; font-family:'DM Mono',monospace; color:var(--text); font-weight:700; margin-top:2px; word-break:break-all; }
 .alert-meta.sub { font-size:10px; font-family:'Noto Sans JP',sans-serif; color:var(--muted); }
 .alert-stocks { display:flex; gap:0; flex-shrink:0; }
 .st-cell { text-align:center; padding:0 8px; border-left:0.5px solid var(--border); }
@@ -935,7 +935,8 @@ function renderAlertPage() {
           <div class="alert-info">
             <div class="alert-pattern">${item.pattern} &nbsp;${makerTag}</div>
             <div class="alert-meta">${item.size}</div>
-            <div class="alert-meta sub">${item.category} ／ ${stockInfo}</div>
+            <div class="alert-meta sub">${item.category}</div>
+            <div class="alert-meta sub">${stockInfo}</div>
           </div>
           <div class="alert-stocks">
             <div class="st-cell">

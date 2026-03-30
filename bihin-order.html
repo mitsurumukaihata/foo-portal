@@ -198,9 +198,17 @@ textarea.form-input { min-height:70px; resize:vertical; line-height:1.6; }
         <input class="form-input" id="f-qty" type="number" inputmode="numeric" min="1" placeholder="10">
       </div>
       <div class="form-group">
-        <label class="form-label">発注担当</label>
-        <input class="form-input" id="f-tanto" type="text" readonly>
+        <label class="form-label">送り先<span class="req">*</span></label>
+        <select class="form-input" id="f-dest">
+          <option value="">選択</option>
+          <option value="五日市">五日市</option>
+          <option value="志和">志和</option>
+        </select>
       </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">発注担当</label>
+      <input class="form-input" id="f-tanto" type="text" readonly>
     </div>
     <div class="form-group">
       <label class="form-label">備考</label>
@@ -450,14 +458,35 @@ async function loadPending() {
       return;
     }
 
-    var html = '';
-    html += '<div class="section-header">';
-    html += '<div class="section-dot" style="background:var(--blue);"></div>';
-    html += '<div class="section-title">発注済（未入荷）</div>';
-    html += '<div class="section-count">' + items.length + '件</div>';
-    html += '</div>';
-
+    // 送り先でグループ分け
+    var groups = {};
     items.forEach(function(item) {
+      var dest = propStr(item, '送り先') || '未指定';
+      if (!groups[dest]) groups[dest] = [];
+      groups[dest].push(item);
+    });
+
+    var destOrder = ['五日市', '志和', '未指定'];
+    var html = '';
+
+    destOrder.forEach(function(dest) {
+      var grpItems = groups[dest];
+      if (!grpItems || !grpItems.length) return;
+      var destColor = dest === '五日市' ? 'var(--blue)' : dest === '志和' ? 'var(--green)' : 'var(--muted)';
+
+      html += '<div class="section-header">';
+      html += '<div class="section-dot" style="background:' + destColor + ';"></div>';
+      html += '<div class="section-title">' + dest + '</div>';
+      html += '<div class="section-count">' + grpItems.length + '件</div>';
+      html += '</div>';
+
+      grpItems.forEach(function(item) {
+        renderPendingCard(item);
+      });
+    });
+
+    // カード生成用の内部関数
+    function renderPendingCard(item) {
       var id = item.id;
       var shurui = propStr(item, '種類');
       var shohin = propStr(item, '商品名');
@@ -484,6 +513,7 @@ async function loadPending() {
       html += '<button class="btn btn-green" onclick="markReceived(\'' + id + '\')">📦 入荷</button>';
       html += '</div>';
       html += '</div>';
+    }
     });
 
     list.innerHTML = html;
@@ -512,12 +542,14 @@ async function submitOrder() {
   var shurui = document.getElementById('f-shurui').value;
   var shohin = document.getElementById('f-shohin').value.trim();
   var qty = parseInt(document.getElementById('f-qty').value, 10);
+  var dest = document.getElementById('f-dest').value;
   var biko = document.getElementById('f-biko').value.trim();
   var tanto = document.getElementById('f-tanto').value.trim() || loginUser || '向畑 充';
 
   if (!shurui) { alert('種類を選択してください'); return; }
-  if (!shohin) { alert('商品名を入力してください'); return; }
+  if (!shohin) { alert('商品名を選択してください'); return; }
   if (!qty || qty < 1) { alert('数量を1以上で入力してください'); return; }
+  if (!dest) { alert('送り先を選択してください'); return; }
 
   var btn = document.getElementById('btn-order');
   btn.disabled = true;
@@ -532,7 +564,8 @@ async function submitOrder() {
       '日付': { date: { start: todayISO() } },
       '種類': { select: { name: shurui } },
       'ステータス': { select: { name: '新規発注' } },
-      '発注担当': { select: { name: tanto } }
+      '発注担当': { select: { name: tanto } },
+      '送り先': { select: { name: dest } }
     };
     if (biko) {
       props['備考'] = { rich_text: [{ text: { content: biko } }] };
@@ -545,6 +578,7 @@ async function submitOrder() {
 
     // フォームリセット
     document.getElementById('f-shurui').value = '';
+    document.getElementById('f-dest').value = '';
     // 商品名ドロップダウンをリセット
     var selShohin = document.getElementById('f-shohin');
     while (selShohin.options.length > 1) selShohin.options.remove(1);
@@ -652,6 +686,18 @@ function buildPdfHtml() {
   var totalNew = newItems.reduce(function(s, o) { return s + (Number(propStr(o, '数量')) || 0); }, 0);
   var totalSent = sentItems.reduce(function(s, o) { return s + (Number(propStr(o, '数量')) || 0); }, 0);
 
+  // 送り先グループ分けヘルパー
+  var groupByDest = function(items) {
+    var g = {};
+    items.forEach(function(o) {
+      var d = propStr(o, '送り先') || '未指定';
+      if (!g[d]) g[d] = [];
+      g[d].push(o);
+    });
+    return g;
+  };
+  var destOrder = ['五日市', '志和', '未指定'];
+
   var TH = 'padding:4px 6px;font-size:8pt;font-weight:bold;text-align:center;background:#1a4a80;color:#fff;border:0.3px solid #b8cfe8;white-space:nowrap;';
   var tdStyle = function(i, extra) {
     return 'padding:4px 6px;font-size:8pt;text-align:center;border:0.3px solid #b8cfe8;'
@@ -668,6 +714,7 @@ function buildPdfHtml() {
     var shurui = propStr(o, '種類');
     var shohin = propStr(o, '商品名');
     var qty = propStr(o, '数量');
+    var dest = propStr(o, '送り先') || '—';
     var dt = fmtDatePdf(propStr(o, '日付'));
     var tanto = propStr(o, '発注担当') || '—';
     var biko = propStr(o, '備考') || '';
@@ -675,43 +722,42 @@ function buildPdfHtml() {
       + '<td style="' + tdStyle(i) + '">' + shurui + '</td>'
       + '<td style="' + tdStyle(i, 'text-align:left;') + '">' + shohin + '</td>'
       + '<td style="' + tdStyle(i, 'font-weight:bold;color:#1a1a18;') + '">' + qty + '</td>'
+      + '<td style="' + tdStyle(i) + '">' + dest + '</td>'
       + '<td style="' + tdStyle(i) + '">' + dt + '</td>'
       + '<td style="' + tdStyle(i) + '">' + tanto + '</td>'
       + '<td style="' + tdStyle(i, 'text-align:left;white-space:normal;color:#888;') + '">' + biko + '</td>'
       + '</tr>';
   };
 
-  var newTable = '';
-  if (newItems.length) {
-    newTable = '<div style="font-size:8pt;font-weight:bold;color:#2563a8;margin:6px 0 3px;">■ 今回発注分</div>'
-      + '<table style="width:100%;border-collapse:collapse;">'
-      + '<thead><tr>'
-      + '<th style="' + TH + 'width:14%;">種類</th>'
-      + '<th style="' + TH + 'width:28%;">商品名</th>'
-      + '<th style="' + TH + 'width:8%;">数量</th>'
-      + '<th style="' + TH + 'width:14%;">発注日</th>'
-      + '<th style="' + TH + 'width:10%;">発注者</th>'
-      + '<th style="' + TH + 'width:26%;">備考</th>'
-      + '</tr></thead><tbody>';
-    newItems.forEach(function(o, i) { newTable += mkRow(o, i); });
-    newTable += '</tbody></table>';
-  }
+  var THEAD = '<thead><tr>'
+    + '<th style="' + TH + 'width:14%;">種類</th>'
+    + '<th style="' + TH + 'width:24%;">商品名</th>'
+    + '<th style="' + TH + 'width:8%;">数量</th>'
+    + '<th style="' + TH + 'width:12%;">送り先</th>'
+    + '<th style="' + TH + 'width:12%;">発注日</th>'
+    + '<th style="' + TH + 'width:10%;">発注者</th>'
+    + '<th style="' + TH + 'width:20%;">備考</th>'
+    + '</tr></thead>';
 
-  var sentTable = '';
-  if (sentItems.length) {
-    sentTable = '<div style="font-size:7pt;font-weight:bold;color:#2563a8;margin:8px 0 3px;">■ 未入荷（既発注分）</div>'
-      + '<table style="width:100%;border-collapse:collapse;">'
-      + '<thead><tr>'
-      + '<th style="' + TH + 'width:14%;">種類</th>'
-      + '<th style="' + TH + 'width:28%;">商品名</th>'
-      + '<th style="' + TH + 'width:8%;">数量</th>'
-      + '<th style="' + TH + 'width:14%;">発注日</th>'
-      + '<th style="' + TH + 'width:10%;">発注者</th>'
-      + '<th style="' + TH + 'width:26%;">備考</th>'
-      + '</tr></thead><tbody>';
-    sentItems.forEach(function(o, i) { sentTable += mkRow(o, i); });
-    sentTable += '</tbody></table>';
-  }
+  var buildTable = function(items, label) {
+    if (!items.length) return '';
+    var grouped = groupByDest(items);
+    var out = '<div style="font-size:8pt;font-weight:bold;color:#2563a8;margin:6px 0 3px;">' + label + '</div>';
+    var rowIdx = 0;
+    destOrder.forEach(function(dest) {
+      var dItems = grouped[dest];
+      if (!dItems || !dItems.length) return;
+      out += '<div style="font-size:7pt;font-weight:bold;color:#444;margin:4px 0 2px;padding-left:4px;">📍 ' + dest + '（' + dItems.length + '件）</div>';
+      out += '<table style="width:100%;border-collapse:collapse;">' + THEAD + '<tbody>';
+      dItems.forEach(function(o) { out += mkRow(o, rowIdx++); });
+      out += '</tbody></table>';
+    });
+    return out;
+  };
+
+  var newTable = buildTable(newItems, '■ 今回発注分');
+
+  var sentTable = buildTable(sentItems, '■ 未入荷（既発注分）');
 
   var dsF = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
   var pdfFilename = 'TMFoo_備品発注書_' + issuerShort + '_' + dsF;

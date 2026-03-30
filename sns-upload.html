@@ -320,14 +320,11 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
   </div>
 
   <form id="upload-form" style="display:none;">
-    <!-- ファイル選択 -->
+    <!-- ギガファイルURL貼り付け -->
     <div class="form-group">
-      <label class="form-label">ファイル選択（写真・動画）</label>
-      <input type="file" id="file-input" multiple accept="image/*,video/*">
-      <label for="file-input" class="file-select-label" id="file-select-btn">
-        <span id="file-count">ファイルを選択</span>
-      </label>
-      <div class="file-preview" id="file-preview"></div>
+      <label class="form-label">ギガファイル便URL</label>
+      <input type="url" id="gigafile-url" class="form-input" placeholder="https://xx.gigafile.nu/xxxx-xxxx...">
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">ギガファイル便でアップロード後、コピーしたURLを貼り付けてください</div>
     </div>
 
     <!-- 作業日 -->
@@ -361,7 +358,8 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
       <div class="member-checks" id="member-checks">
         <label class="member-check"><input type="checkbox" value="向畑" checked><span>向畑</span></label>
         <label class="member-check"><input type="checkbox" value="矢島"><span>矢島</span></label>
-        <label class="member-check"><input type="checkbox" value="藤井"><span>藤井</span></label>
+        <label class="member-check"><input type="checkbox" value="大田"><span>大田</span></label>
+        <label class="member-check"><input type="checkbox" value="中川"><span>中川</span></label>
       </div>
     </div>
 
@@ -369,16 +367,6 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
     <div class="form-group">
       <label class="form-label">特記事項</label>
       <textarea id="notes" class="form-textarea" placeholder="いつもと違う作業があれば"></textarea>
-    </div>
-
-    <!-- 天気 -->
-    <div class="form-group">
-      <label class="form-label">天気</label>
-      <div class="select-chips" id="weather-chips">
-        <button type="button" class="select-chip" data-weather="晴☀️">晴☀️</button>
-        <button type="button" class="select-chip" data-weather="曇☁️">曇☁️</button>
-        <button type="button" class="select-chip" data-weather="雨🌧️">雨🌧️</button>
-      </div>
     </div>
 
     <!-- おすすめ度 -->
@@ -426,32 +414,6 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 <div class="page" id="page-guide">
 
   <div class="guide-section">
-    <div class="guide-section-icon">📱</div>
-    <div class="guide-section-title">iPhone設定ガイド</div>
-    <div class="guide-card">
-      <div class="guide-item">
-        <div class="guide-item-label">ビデオ撮影設定</div>
-        <div class="guide-item-value">設定 → カメラ → ビデオ撮影 →<br><strong>1080p HD / 30 fps</strong> に変更</div>
-      </div>
-      <div class="guide-item">
-        <div class="guide-item-label">なぜ30fps？</div>
-        <div class="guide-item-value">60fps → 30fpsでファイルサイズが約半分に。<br>SNS投稿には30fpsで十分です。</div>
-      </div>
-      <div class="guide-item">
-        <div class="guide-item-label">ファイルサイズの目安</div>
-        <div class="guide-item-value">
-          写真：1枚 2〜5MB（自動圧縮されます）<br>
-          動画30秒：約15〜25MB<br>
-          動画1分：約30〜50MB<br>
-          動画2分：約60〜100MB<br>
-          <strong>※ 1ファイル100MBまで対応</strong>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="guide-section">
-    <div class="guide-section-icon">📸</div>
     <div class="guide-section-title">撮影のコツ</div>
     <div class="guide-card">
       <div class="guide-item">
@@ -1332,9 +1294,7 @@ function removeFile(index) {
 
 function resetForm() {
   document.getElementById('upload-form').reset();
-  document.getElementById('file-input').value = '';
-  selectedFiles = [];
-  selectedWeather = null;
+  if (document.getElementById('gigafile-url')) document.getElementById('gigafile-url').value = '';
   selectedRating = null;
   updateFilePreview();
   updateFileCount();
@@ -1345,6 +1305,7 @@ function resetForm() {
   document.getElementById('progress-detail').textContent = '';
   document.getElementById('progress-detail').style.display = 'none';
   document.getElementById('submit-btn').disabled = false;
+  document.getElementById('submit-btn').textContent = 'アップロード';
   document.getElementById('work-date').value = getTodayDateString();
   document.getElementById('work-place').value = '';
   document.getElementById('notes').value = '';
@@ -1410,8 +1371,9 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
   _submitting = true;
 
   try {
-    if (selectedFiles.length === 0) {
-      showToast('ファイルを選択してください', 'error');
+    const gigaUrl = (document.getElementById('gigafile-url') || {}).value || '';
+    if (!gigaUrl) {
+      showToast('ギガファイル便のURLを貼り付けてください', 'error');
       _submitting = false;
       return;
     }
@@ -1434,27 +1396,10 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
       return;
     }
 
-    // プログレスバー表示
-    document.getElementById('progress-bar').style.display = 'block';
-    document.getElementById('submit-btn').disabled = true;
-
-    const folderName = (_resumeState && _resumeState.folderName) ? _resumeState.folderName : `${workDate}_${currentUserName}`;
-
-    // Google Drive にアップロード
-    let folderId;
-    try {
-      folderId = await uploadToGoogleDrive(selectedFiles, folderName);
-    } catch(driveErr) {
-      document.getElementById('progress-bar').style.display = 'none';
-      document.getElementById('progress-status').style.display = 'none';
-      document.getElementById('submit-btn').disabled = false;
-      showToast('Driveアップロード失敗: ' + driveErr.message, 'error');
-      _submitting = false;
-      return;
-    }
-
     // Notion に保存
-    updateProgressStatus('Notionに保存中...');
+    document.getElementById('submit-btn').disabled = true;
+    document.getElementById('submit-btn').textContent = '保存中...';
+    const folderName = `${workDate}_${currentUserName}`;
     const notionBody = {
       properties: {
         '素材名': { title: [{ text: { content: folderName } }] },
@@ -1462,12 +1407,10 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
         '作業日': { date: { start: workDate } },
         '作業場所': { rich_text: [{ text: { content: workPlace } }] },
         '作業内容': { select: { name: workType } },
-        '特記事項': { rich_text: [{ text: { content: notes } }] },
-        '天気': selectedWeather ? { select: { name: selectedWeather } } : undefined,
         'おすすめ度': selectedRating ? { select: { name: selectedRating } } : undefined,
         'ひとことコメント': { rich_text: [{ text: { content: comment } }] },
-        'フォルダID': { rich_text: [{ text: { content: folderId } }] },
-        'ファイル数': { number: selectedFiles.length },
+        '特記事項': { rich_text: [{ text: { content: notes } }] },
+        'フォルダID': { rich_text: [{ text: { content: gigaUrl } }] },
         '参加メンバー': { multi_select: Array.from(document.querySelectorAll('#member-checks input:checked')).map(cb => ({ name: cb.value })) }
       }
     };

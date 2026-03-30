@@ -698,8 +698,6 @@ const IMAGE_QUALITY = 0.75;
 let currentTab = 'upload';
 let currentFilter = 'all';
 let currentUserName = '';
-let selectedFiles = [];
-let selectedWeather = null;
 let selectedRating = null;
 let _submitting = false;
 let _resumeState = null; // レジューム用の状態
@@ -1218,86 +1216,12 @@ function getTodayDateString() {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ファイル選択
+// リセット
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-document.getElementById('file-input').addEventListener('change', (e) => {
-  selectedFiles = Array.from(e.target.files);
-
-  // サイズチェック
-  const oversized = selectedFiles.filter(f => f.size > MAX_FILE_SIZE);
-  if (oversized.length > 0) {
-    showToast(`100MB以上のファイルは送れません（${oversized.length}件）`, 'error');
-    selectedFiles = selectedFiles.filter(f => f.size <= MAX_FILE_SIZE);
-  }
-
-  updateFilePreview();
-  updateFileCount();
-});
-
-function updateFilePreview() {
-  const container = document.getElementById('file-preview');
-  container.innerHTML = '';
-
-  const maxShow = 4;
-  selectedFiles.slice(0, maxShow).forEach((file, idx) => {
-    const item = document.createElement('div');
-    item.className = 'file-preview-item';
-
-    // ×ボタン
-    const removeBtn = document.createElement('button');
-    removeBtn.className = 'file-preview-remove';
-    removeBtn.textContent = '✕';
-    removeBtn.onclick = (e) => {
-      e.stopPropagation();
-      removeFile(idx);
-    };
-    item.appendChild(removeBtn);
-
-    if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = document.createElement('img');
-        img.src = e.target.result;
-        item.appendChild(img);
-      };
-      reader.readAsDataURL(file);
-    } else if (file.type.startsWith('video/')) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const video = document.createElement('video');
-        video.src = e.target.result;
-        item.appendChild(video);
-        const icon = document.createElement('div');
-        icon.className = 'file-preview-video-icon';
-        icon.textContent = '▶';
-        item.appendChild(icon);
-      };
-      reader.readAsDataURL(file);
-    }
-
-    container.appendChild(item);
-  });
-
-  if (selectedFiles.length > maxShow) {
-    const more = document.createElement('div');
-    more.className = 'file-preview-more';
-    more.textContent = '+' + (selectedFiles.length - maxShow);
-    container.appendChild(more);
-  }
-}
-
-function removeFile(index) {
-  selectedFiles.splice(index, 1);
-  updateFilePreview();
-  updateFileCount();
-}
-
 function resetForm() {
   document.getElementById('upload-form').reset();
   if (document.getElementById('gigafile-url')) document.getElementById('gigafile-url').value = '';
   selectedRating = null;
-  updateFilePreview();
-  updateFileCount();
   document.querySelectorAll('.select-chip').forEach(btn => btn.classList.remove('active'));
   document.getElementById('progress-bar').style.display = 'none';
   document.getElementById('progress-fill').style.width = '0%';
@@ -1316,26 +1240,9 @@ function resetForm() {
   });
 }
 
-function updateFileCount() {
-  const btn = document.getElementById('file-select-btn');
-  const count = selectedFiles.length;
-  btn.innerHTML = count > 0
-    ? `<span>ファイル選択済み <strong>${count}</strong></span>`
-    : '<span>ファイルを選択</span>';
-}
-
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 天気 / おすすめ度
+// おすすめ度
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-document.getElementById('weather-chips').addEventListener('click', (e) => {
-  if (e.target.classList.contains('select-chip')) {
-    e.preventDefault();
-    document.querySelectorAll('#weather-chips .select-chip').forEach(btn => btn.classList.remove('active'));
-    e.target.classList.add('active');
-    selectedWeather = e.target.dataset.weather;
-  }
-});
-
 document.getElementById('rating-chips').addEventListener('click', (e) => {
   if (e.target.classList.contains('select-chip')) {
     e.preventDefault();
@@ -1431,7 +1338,7 @@ document.getElementById('upload-form').addEventListener('submit', async (e) => {
       document.getElementById('submit-btn').disabled = false;
       showToast('画像は保存済みですが、Notion登録に失敗しました。素材一覧に反映されません。', 'error', 6000);
       // ローカルにエラー記録を保持
-      addUploadError({ folderName, folderId, fileCount: selectedFiles.length, error: notionErr.message, time: new Date().toISOString() });
+      addUploadError({ folderName, gigaUrl, error: notionErr.message, time: new Date().toISOString() });
       _submitting = false;
       return;
     }

@@ -659,15 +659,24 @@ function buildPdfHtml() {
       + 'white-space:nowrap;' + (extra || '');
   };
 
+  var fmtDatePdf = function(iso) {
+    if (!iso) return '—';
+    return iso.replace(/-/g, '/');
+  };
+
   var mkRow = function(o, i) {
     var shurui = propStr(o, '種類');
     var shohin = propStr(o, '商品名');
     var qty = propStr(o, '数量');
+    var dt = fmtDatePdf(propStr(o, '日付'));
+    var tanto = propStr(o, '発注担当') || '—';
     var biko = propStr(o, '備考') || '';
     return '<tr>'
       + '<td style="' + tdStyle(i) + '">' + shurui + '</td>'
       + '<td style="' + tdStyle(i, 'text-align:left;') + '">' + shohin + '</td>'
       + '<td style="' + tdStyle(i, 'font-weight:bold;color:#1a1a18;') + '">' + qty + '</td>'
+      + '<td style="' + tdStyle(i) + '">' + dt + '</td>'
+      + '<td style="' + tdStyle(i) + '">' + tanto + '</td>'
       + '<td style="' + tdStyle(i, 'text-align:left;white-space:normal;color:#888;') + '">' + biko + '</td>'
       + '</tr>';
   };
@@ -677,10 +686,12 @@ function buildPdfHtml() {
     newTable = '<div style="font-size:8pt;font-weight:bold;color:#2563a8;margin:6px 0 3px;">■ 今回発注分</div>'
       + '<table style="width:100%;border-collapse:collapse;">'
       + '<thead><tr>'
-      + '<th style="' + TH + 'width:18%;">種類</th>'
-      + '<th style="' + TH + 'width:40%;">商品名</th>'
-      + '<th style="' + TH + 'width:10%;">数量</th>'
-      + '<th style="' + TH + 'width:32%;">備考</th>'
+      + '<th style="' + TH + 'width:14%;">種類</th>'
+      + '<th style="' + TH + 'width:28%;">商品名</th>'
+      + '<th style="' + TH + 'width:8%;">数量</th>'
+      + '<th style="' + TH + 'width:14%;">発注日</th>'
+      + '<th style="' + TH + 'width:10%;">発注者</th>'
+      + '<th style="' + TH + 'width:26%;">備考</th>'
       + '</tr></thead><tbody>';
     newItems.forEach(function(o, i) { newTable += mkRow(o, i); });
     newTable += '</tbody></table>';
@@ -691,10 +702,12 @@ function buildPdfHtml() {
     sentTable = '<div style="font-size:7pt;font-weight:bold;color:#2563a8;margin:8px 0 3px;">■ 未入荷（既発注分）</div>'
       + '<table style="width:100%;border-collapse:collapse;">'
       + '<thead><tr>'
-      + '<th style="' + TH + 'width:18%;">種類</th>'
-      + '<th style="' + TH + 'width:40%;">商品名</th>'
-      + '<th style="' + TH + 'width:10%;">数量</th>'
-      + '<th style="' + TH + 'width:32%;">備考</th>'
+      + '<th style="' + TH + 'width:14%;">種類</th>'
+      + '<th style="' + TH + 'width:28%;">商品名</th>'
+      + '<th style="' + TH + 'width:8%;">数量</th>'
+      + '<th style="' + TH + 'width:14%;">発注日</th>'
+      + '<th style="' + TH + 'width:10%;">発注者</th>'
+      + '<th style="' + TH + 'width:26%;">備考</th>'
       + '</tr></thead><tbody>';
     sentItems.forEach(function(o, i) { sentTable += mkRow(o, i); });
     sentTable += '</tbody></table>';

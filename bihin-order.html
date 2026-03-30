@@ -283,15 +283,20 @@ async function resolveMasterPages(orderItems) {
   // 重複排除
   idsToFetch = idsToFetch.filter(function(id, i, arr) { return arr.indexOf(id) === i; });
 
-  for (var i = 0; i < idsToFetch.length; i++) {
-    try {
-      var res = await fetch(FOO_WORKER + '/pages/' + idsToFetch[i]);
-      var page = await res.json();
-      var shurui = (page.properties['種類'] && page.properties['種類'].select && page.properties['種類'].select.name) || '';
-      var shohin = (page.properties['商品名'] && page.properties['商品名'].select && page.properties['商品名'].select.name) || '';
-      masterCache[idsToFetch[i]] = { shurui: shurui, shohin: shohin };
-    } catch(e) { console.warn('Master fetch error:', e); }
-  }
+  if (!idsToFetch.length) return; // キャッシュ済みなら即リターン
+
+  // 並列フェッチ（最大10件同時）
+  var promises = idsToFetch.map(function(id) {
+    return fetch(FOO_WORKER + '/pages/' + id)
+      .then(function(r) { return r.json(); })
+      .then(function(page) {
+        var shurui = (page.properties && page.properties['種類'] && page.properties['種類'].select && page.properties['種類'].select.name) || '';
+        var shohin = (page.properties && page.properties['商品名'] && page.properties['商品名'].select && page.properties['商品名'].select.name) || '';
+        masterCache[id] = { shurui: shurui, shohin: shohin };
+      })
+      .catch(function(e) { console.warn('Master fetch error:', id, e); });
+  });
+  await Promise.all(promises);
 }
 
 function getMasterInfo(orderItem) {

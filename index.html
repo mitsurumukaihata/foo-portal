@@ -1579,6 +1579,15 @@ function backToStaff() {
   document.getElementById('pin-error').classList.remove('visible');
 }
 
+// キーボードでPIN入力対応（PC用）
+document.addEventListener('keydown', function(e) {
+  const pinArea = document.querySelector('.pin-area');
+  if (!pinArea || !pinArea.classList.contains('visible')) return;
+  if (e.key >= '0' && e.key <= '9') { pinInput(e.key); e.preventDefault(); }
+  else if (e.key === 'Backspace' || e.key === 'Delete') { pinDel(); e.preventDefault(); }
+  else if (e.key === 'Enter') { submitPin(); e.preventDefault(); }
+});
+
 function pinInput(digit) {
   if (pinLocked || pinDigits.length >= 6) return;
   pinDigits.push(digit);

@@ -137,6 +137,10 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .card-subtitle { font-size:11px; color:var(--muted); }
 .card-meta { font-size:11px; color:var(--muted); margin-bottom:6px; }
 .card-info { font-size:12px; color:var(--text); margin-bottom:4px; }
+.card-actions { display:flex; gap:8px; margin-top:10px; border-top:1px solid var(--border); padding-top:10px; }
+.card-action-btn { flex:1; padding:8px 0; border:1px solid var(--border); border-radius:8px; background:var(--s2); font-size:12px; font-weight:600; cursor:pointer; font-family:'Noto Sans JP',sans-serif; color:var(--text); transition:all 0.15s; }
+.card-action-btn:active { opacity:0.7; }
+.card-action-btn.delete { color:var(--red); border-color:rgba(239,68,68,0.3); }
 .card-tags { display:flex; flex-wrap:wrap; gap:4px 6px; margin-bottom:8px; }
 .tag { display:inline-block; padding:3px 8px; border-radius:6px; font-size:10px; font-weight:600; }
 .tag-work { background:rgba(59,130,246,0.15); color:var(--blue); }
@@ -304,7 +308,6 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 <div class="nav">
   <button class="nav-btn active" data-tab="upload">アップロード</button>
   <button class="nav-btn" data-tab="list">素材一覧</button>
-  <button class="nav-btn" data-tab="log">みんなの投稿</button>
   <button class="nav-btn" data-tab="guide">撮影ガイド</button>
   <button class="nav-btn" data-tab="howto">使い方</button>
 </div>
@@ -403,11 +406,6 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
     <button class="chip" data-filter="used">使用済み</button>
   </div>
   <div id="list-content"></div>
-</div>
-
-<!-- ── ページ: みんなの投稿 ── -->
-<div class="page" id="page-log">
-  <div id="log-content"></div>
 </div>
 
 <!-- ── ページ: 撮影ガイド ── -->
@@ -1388,8 +1386,6 @@ function switchTab(tab) {
 
   if (tab === 'list') {
     loadMaterialList();
-  } else if (tab === 'log') {
-    loadActivityLog();
   }
 }
 
@@ -1452,22 +1448,28 @@ async function loadMaterialList() {
       const starCount = rating ? rating.length : 0;
       const ratingDisplay = starCount > 0 ? '★'.repeat(starCount) : '';
 
-      html += `<div class="card" onclick="showMaterialDetail('${mat.id}')">
-        <div class="card-header">
+      const members = getPropValue(mat, '参加メンバー') || [];
+      const gigaUrl = getPropValue(mat, 'フォルダID') || '';
+
+      html += `<div class="card">
+        <div class="card-header" onclick="showMaterialDetail('${mat.id}')">
           <div>
             <div class="card-title">${escapeHtml(name)}</div>
-            <div class="card-subtitle">${escapeHtml(author)}</div>
+            <div class="card-subtitle">${escapeHtml(author)}${members.length ? ' · ' + members.map(m => escapeHtml(m)).join(' ') : ''}</div>
           </div>
         </div>
-        <div class="card-meta">${date || '日付未設定'}${createdAt ? ` · 登録 ${createdAt}` : ''}</div>
+        <div class="card-meta" onclick="showMaterialDetail('${mat.id}')">${date || '日付未設定'}${createdAt ? ` · 登録 ${createdAt}` : ''}</div>
         <div class="card-tags">
           ${type ? `<span class="tag tag-work">${escapeHtml(type)}</span>` : ''}
-          ${weather ? `<span class="tag tag-weather">${escapeHtml(weather)}</span>` : ''}
-          ${fileCount ? `<span class="tag tag-count">${fileCount}ファイル</span>` : ''}
+          ${status === '使用済み' ? `<span class="tag tag-status">使用済み</span>` : ''}
         </div>
         ${ratingDisplay ? `<div class="card-info">おすすめ度: ${ratingDisplay}</div>` : ''}
         ${comment ? `<div class="card-info">${escapeHtml(comment)}</div>` : ''}
-        ${status === '使用済み' ? `<div style="margin-top:8px;"><span class="tag tag-status">使用済み</span></div>` : ''}
+        ${gigaUrl ? `<div class="card-info" style="margin-top:4px;"><a href="${escapeHtml(gigaUrl)}" target="_blank" style="color:var(--accent);font-size:12px;word-break:break-all;">🔗 ギガファイルURL</a></div>` : ''}
+        <div class="card-actions">
+          <button class="card-action-btn edit" onclick="editMaterial('${mat.id}')">✏️ 編集</button>
+          <button class="card-action-btn delete" onclick="deleteMaterial('${mat.id}','${escapeHtml(name)}')">🗑 削除</button>
+        </div>
       </div>`;
     });
 
@@ -1909,6 +1911,89 @@ async function markAsUsed(pageId) {
     showToast('使用済みにしました', 'success');
   } catch(err) {
     showToast('更新エラー: ' + err.message, 'error');
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 編集・削除
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function editMaterial(pageId) {
+  try {
+    const res = await notionAPI('POST', `/databases/${DB.material}/query`, {
+      filter: { property: '素材名', title: { is_not_empty: true } },
+      page_size: 100
+    });
+    const page = res.results.find(r => r.id === pageId);
+    if (!page) { showToast('素材が見つかりません', 'error'); return; }
+
+    const name = getPropValue(page, '素材名') || '';
+    const date = getPropValue(page, '作業日') || '';
+    const place = getPropValue(page, '作業場所') || '';
+    const type = getPropValue(page, '作業内容') || '';
+    const notes = getPropValue(page, '特記事項') || '';
+    const comment = getPropValue(page, 'ひとことコメント') || '';
+    const gigaUrl = getPropValue(page, 'フォルダID') || '';
+    const members = getPropValue(page, '参加メンバー') || [];
+
+    const workTypes = ['タイヤ交換','出張作業','倉庫作業','配達','その他'];
+    const memberList = ['向畑','矢島','大田','中川'];
+
+    let html = `<div class="detail-title">投稿を編集</div>`;
+    html += `<div class="form-group"><label class="form-label">ギガファイルURL</label>
+      <input type="url" id="edit-url" class="form-input" value="${escapeHtml(gigaUrl)}"></div>`;
+    html += `<div class="form-group"><label class="form-label">作業日</label>
+      <input type="date" id="edit-date" class="form-input" value="${date}"></div>`;
+    html += `<div class="form-group"><label class="form-label">作業場所</label>
+      <input type="text" id="edit-place" class="form-input" value="${escapeHtml(place)}"></div>`;
+    html += `<div class="form-group"><label class="form-label">作業内容</label>
+      <select id="edit-type" class="form-select">${workTypes.map(w => `<option value="${w}" ${w===type?'selected':''}>${w}</option>`).join('')}</select></div>`;
+    html += `<div class="form-group"><label class="form-label">参加メンバー</label>
+      <div class="member-checks" id="edit-members">${memberList.map(m => `<label class="member-check"><input type="checkbox" value="${m}" ${members.includes(m)?'checked':''}><span>${m}</span></label>`).join('')}</div></div>`;
+    html += `<div class="form-group"><label class="form-label">特記事項</label>
+      <textarea id="edit-notes" class="form-textarea">${escapeHtml(notes)}</textarea></div>`;
+    html += `<div class="form-group"><label class="form-label">ひとことコメント</label>
+      <input type="text" id="edit-comment" class="form-input" value="${escapeHtml(comment)}"></div>`;
+    html += `<div class="detail-buttons">
+      <button class="detail-btn primary" onclick="saveEdit('${pageId}')">保存</button>
+      <button class="detail-btn" onclick="closeDetail()">キャンセル</button>
+    </div>`;
+
+    document.getElementById('detail-content').innerHTML = html;
+    document.getElementById('detail-overlay').classList.add('show');
+    document.getElementById('detail-sheet').classList.add('show');
+  } catch(err) {
+    showToast('読み込みエラー: ' + err.message, 'error');
+  }
+}
+
+async function saveEdit(pageId) {
+  try {
+    const props = {
+      'フォルダID': { rich_text: [{ text: { content: document.getElementById('edit-url').value } }] },
+      '作業日': { date: { start: document.getElementById('edit-date').value } },
+      '作業場所': { rich_text: [{ text: { content: document.getElementById('edit-place').value } }] },
+      '作業内容': { select: { name: document.getElementById('edit-type').value } },
+      '特記事項': { rich_text: [{ text: { content: document.getElementById('edit-notes').value } }] },
+      'ひとことコメント': { rich_text: [{ text: { content: document.getElementById('edit-comment').value } }] },
+      '参加メンバー': { multi_select: Array.from(document.querySelectorAll('#edit-members input:checked')).map(cb => ({ name: cb.value })) }
+    };
+    await notionAPI('PATCH', `/pages/${pageId}`, { properties: props });
+    closeDetail();
+    loadMaterialList();
+    showToast('更新しました', 'success');
+  } catch(err) {
+    showToast('更新エラー: ' + err.message, 'error');
+  }
+}
+
+async function deleteMaterial(pageId, name) {
+  if (!confirm(`「${name}」を削除しますか？`)) return;
+  try {
+    await notionAPI('PATCH', `/pages/${pageId}`, { archived: true });
+    loadMaterialList();
+    showToast('削除しました', 'success');
+  } catch(err) {
+    showToast('削除エラー: ' + err.message, 'error');
   }
 }
 

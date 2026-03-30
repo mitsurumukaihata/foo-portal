@@ -1425,16 +1425,16 @@ function renderStockResult(size, catKey, records) {
   WH_COLS.forEach(function(wc, i) {
     var cols = 1 + (wc.hasPrep?1:0) + (wc.hasOrd?1:0);
     var bl = i > 0 ? 'border-left:1.5px solid var(--border);' : '';
-    colHeaderHtml += '<div style="flex:' + cols + ';text-align:center;' + bl + '"><div style="font-size:9px;font-weight:700;color:var(--text);padding:2px 0;">' + wc.short + '</div></div>';
+    colHeaderHtml += '<div style="flex:' + cols + ';text-align:center;' + bl + '"><div style="font-size:10px;font-weight:700;color:var(--text);padding:2px 0;">' + wc.short + '</div></div>';
   });
   colHeaderHtml += '</div>';
   // 下段: 在庫/準/発 ラベル
   colHeaderHtml += '<div style="display:flex;padding-bottom:4px;border-bottom:0.5px solid var(--border);margin-bottom:4px;">';
   WH_COLS.forEach(function(wc, i) {
     var bl = i > 0 ? 'border-left:1.5px solid var(--border);' : '';
-    colHeaderHtml += '<div style="flex:1;text-align:center;' + bl + '"><div style="font-size:8px;color:var(--muted);">在庫</div></div>';
-    if (wc.hasPrep) colHeaderHtml += '<div style="flex:1;text-align:center;"><div style="font-size:8px;color:var(--yellow);">準</div></div>';
-    if (wc.hasOrd) colHeaderHtml += '<div style="flex:1;text-align:center;"><div style="font-size:8px;color:var(--purple);">発</div></div>';
+    colHeaderHtml += '<div style="flex:1;text-align:center;' + bl + '"><div style="font-size:9px;color:var(--muted);">在庫</div></div>';
+    if (wc.hasPrep) colHeaderHtml += '<div style="flex:1;text-align:center;"><div style="font-size:9px;color:var(--yellow);">準備</div></div>';
+    if (wc.hasOrd) colHeaderHtml += '<div style="flex:1;text-align:center;"><div style="font-size:9px;color:var(--purple);">発注</div></div>';
   });
   colHeaderHtml += '</div>';
 
@@ -1480,18 +1480,18 @@ function renderStockResult(size, catKey, records) {
         // 在庫数
         html += '<div class="stock-count" style="cursor:' + (n!==0?'pointer':'default') + ';' + bl + '" ';
         if (n !== 0) html += 'data-pattern="' + pe + '" data-mode="' + w + '" onclick="onStockTap(this)"';
-        html += '><div class="stock-count-num ' + cls + '" style="font-size:14px;">' + n + '</div></div>';
+        html += '><div class="stock-count-num ' + cls + '" style="font-size:15px;">' + n + '</div></div>';
         // 準備
         if (wc.hasPrep) {
           html += '<div class="stock-count" style="cursor:' + (prep>0?'pointer':'default') + ';" ';
           if (prep > 0) html += 'data-pattern="' + pe + '" data-mode="準備_' + w + '" onclick="onStockTap(this)"';
-          html += '><div class="stock-count-num ' + (prep>0?'positive':'zero') + '" style="font-size:11px;' + (prep>0?'color:var(--yellow);':'') + '">' + prep + '</div></div>';
+          html += '><div class="stock-count-num ' + (prep>0?'positive':'zero') + '" style="font-size:13px;' + (prep>0?'color:var(--yellow);':'') + '">' + prep + '</div></div>';
         }
         // 発注中
         if (wc.hasOrd) {
           html += '<div class="stock-count" style="cursor:' + (ord>0?'pointer':'default') + ';" ';
           if (ord > 0) html += 'data-pattern="' + pe + '" data-mode="発注中_' + w + '" onclick="onStockTap(this)"';
-          html += '><div class="stock-count-num ' + (ord>0?'positive':'zero') + '" style="font-size:11px;' + (ord>0?'color:var(--purple);':'') + '">' + ord + '</div></div>';
+          html += '><div class="stock-count-num ' + (ord>0?'positive':'zero') + '" style="font-size:13px;' + (ord>0?'color:var(--purple);':'') + '">' + ord + '</div></div>';
         }
       });
       html += '</div></div>';

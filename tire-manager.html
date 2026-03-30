@@ -1404,7 +1404,7 @@ function renderStockResult(size, catKey, records) {
   html += '<div class="screen-title" style="font-family:\'DM Mono\',monospace;font-size:18px;">' + size + '</div>';
   html += '<div class="screen-sub" style="margin-bottom:0;">' + db.name + '</div>';
   html += '<div style="margin-top:16px;">';
-  html += '<div style="display:flex;padding:0 0 8px;border-bottom:1px solid var(--border);margin-bottom:4px;"><div style="display:flex;flex:1;">';
+  html += '<div style="display:flex;padding:8px 0;border-bottom:1px solid var(--border);margin-bottom:4px;position:sticky;top:0;background:var(--bg);z-index:10;"><div style="display:flex;flex:1;">';
   WAREHOUSES.map(function(w){ return w.replace('倉庫',''); }).forEach(function(l) { html += '<div style="text-align:center;flex:1;min-width:0;"><div style="font-size:9px;color:var(--muted);">' + l + '</div></div>'; });
   html += '<div style="text-align:center;flex:1;min-width:0;"><div style="font-size:9px;color:var(--accent);">準備中</div></div>';
   html += '<div style="text-align:center;flex:1;min-width:0;"><div style="font-size:9px;color:var(--accent);">発注中</div></div>';

@@ -184,16 +184,11 @@ textarea.form-input { min-height:70px; resize:vertical; line-height:1.6; }
       <label class="form-label">種類<span class="req">*</span></label>
       <select class="form-input" id="f-shurui" onchange="onShuruiChange()">
         <option value="">選択してください</option>
-        <option value="BOX（TB）">BOX（TB）</option>
-        <option value="BOX（LT）">BOX（LT）</option>
-        <option value="BOX（PC）">BOX（PC）</option>
-        <option value="バルブ">バルブ</option>
-        <option value="ナット">ナット</option>
       </select>
     </div>
     <div class="form-group">
       <label class="form-label">商品名<span class="req">*</span></label>
-      <input class="form-input" id="f-shohin" type="text" placeholder="例：ガムテープ">
+      <input class="form-input" id="f-shohin" type="text" placeholder="↑ 種類を選ぶと候補が表示されます" readonly>
       <div id="shohin-candidates" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
     </div>
     <div class="form-row">
@@ -340,54 +335,69 @@ function getStatusBadge(status) {
   return '';
 }
 
-// ─── 商品名キャッシュ（種類別） ──────────────────────────────────────────
-var productCache = {};  // { 'BOX（TB）': ['ガムテープ', '養生テープ', ...] }
-var productCacheLoaded = false;
+// ─── DBスキーマからマスター取得（種類・商品名を色でマッピング） ────────────
+var schemaLoaded = false;
+var shuruiOptions = [];    // [{ name, color }]
+var shohinByShurui = {};   // { '種類名': ['商品A', '商品B', ...] }
 
-async function loadProductCache() {
-  if (productCacheLoaded) return;
+async function loadSchema() {
+  if (schemaLoaded) return;
   try {
-    var cursor = null;
-    var all = [];
-    do {
-      var body = { page_size: 100 };
-      if (cursor) body.start_cursor = cursor;
-      var res = await fooNotionQuery(BIHIN_DB, body);
-      all = all.concat(res.results || []);
-      cursor = res.has_more ? res.next_cursor : null;
-    } while (cursor);
+    var res = await fetch(FOO_WORKER + '/databases/' + BIHIN_DB);
+    var db = await res.json();
+    var props = db.properties || {};
 
-    productCache = {};
-    all.forEach(function(r) {
-      var shurui = propStr(r, '種類');
-      var shohin = propStr(r, '商品名');
-      if (!shurui || !shohin) return;
-      if (!productCache[shurui]) productCache[shurui] = new Set();
-      productCache[shurui].add(shohin);
+    // 種類オプション
+    shuruiOptions = (props['種類'] && props['種類'].select && props['種類'].select.options) || [];
+
+    // 商品名オプション
+    var shohinOpts = (props['商品名'] && props['商品名'].select && props['商品名'].select.options) || [];
+
+    // 色→種類名マップ（同じ色の商品名をその種類に紐付け）
+    var colorToShurui = {};
+    shuruiOptions.forEach(function(opt) {
+      colorToShurui[opt.color] = opt.name;
     });
-    // Set → Array（ソート済み）
-    Object.keys(productCache).forEach(function(k) {
-      productCache[k] = Array.from(productCache[k]).sort();
+
+    // 商品名を種類ごとに振り分け（色マッチング）
+    shohinByShurui = {};
+    shuruiOptions.forEach(function(opt) {
+      shohinByShurui[opt.name] = [];
     });
-    productCacheLoaded = true;
+    shohinOpts.forEach(function(opt) {
+      var shurui = colorToShurui[opt.color];
+      if (shurui && shohinByShurui[shurui]) {
+        shohinByShurui[shurui].push(opt.name);
+      }
+    });
+
+    // 種類セレクトを動的生成
+    var sel = document.getElementById('f-shurui');
+    shuruiOptions.forEach(function(opt) {
+      var o = document.createElement('option');
+      o.value = opt.name;
+      o.textContent = opt.name;
+      sel.appendChild(o);
+    });
+
+    schemaLoaded = true;
   } catch(e) {
-    console.warn('商品キャッシュ読み込みエラー:', e);
+    console.warn('スキーマ読み込みエラー:', e);
   }
 }
 
 function onShuruiChange() {
   var shurui = document.getElementById('f-shurui').value;
   var container = document.getElementById('shohin-candidates');
-  var input = document.getElementById('f-shohin');
-  input.value = '';
+  document.getElementById('f-shohin').value = '';
   container.innerHTML = '';
 
   if (!shurui) return;
 
-  loadProductCache().then(function() {
-    var items = productCache[shurui] || [];
+  loadSchema().then(function() {
+    var items = shohinByShurui[shurui] || [];
     if (!items.length) {
-      container.innerHTML = '<div style="font-size:11px;color:var(--muted);">この種類の履歴はありません。商品名を入力してください</div>';
+      container.innerHTML = '<div style="font-size:11px;color:var(--muted);">この種類の商品が登録されていません</div>';
       return;
     }
     var html = '';
@@ -400,7 +410,6 @@ function onShuruiChange() {
 
 function pickShohin(btn) {
   document.getElementById('f-shohin').value = btn.textContent;
-  // 選択状態を視覚的に反映
   var container = document.getElementById('shohin-candidates');
   var buttons = container.querySelectorAll('button');
   buttons.forEach(function(b) {
@@ -524,7 +533,7 @@ async function submitOrder() {
     var titleText = shurui + '　' + shohin + ' x' + qty;
     var props = {
       '名前': { title: [{ text: { content: titleText } }] },
-      '商品名': { rich_text: [{ text: { content: shohin } }] },
+      '商品名': { select: { name: shohin } },
       '数量': { number: qty },
       '日付': { date: { start: todayISO() } },
       '種類': { select: { name: shurui } },
@@ -538,12 +547,7 @@ async function submitOrder() {
     await fooNotionCreate(BIHIN_DB, props);
     showToast('発注を登録しました');
 
-    // キャッシュに追加（次回すぐ候補に出るように）
-    if (!productCache[shurui]) productCache[shurui] = [];
-    if (productCache[shurui].indexOf(shohin) === -1) {
-      productCache[shurui].push(shohin);
-      productCache[shurui].sort();
-    }
+    // （スキーマベースのため追加キャッシュ不要）
 
     // フォームリセット
     document.getElementById('f-shurui').value = '';
@@ -929,7 +933,9 @@ async function loadHistory() {
 }
 
 // ─── 初期化 ────────────────────────────────────────────────────────────
-(function init() {
+(async function init() {
+  // スキーマ読み込み（種類・商品名マスター）
+  await loadSchema();
   // 発注担当フィールドにログインユーザーをセット
   var tantoField = document.getElementById('f-tanto');
   if (tantoField) {

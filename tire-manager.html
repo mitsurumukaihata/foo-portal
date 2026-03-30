@@ -1409,30 +1409,50 @@ function renderStockResult(size, catKey, records) {
   html += '<div style="text-align:center;flex:1;min-width:0;"><div style="font-size:9px;color:var(--accent);">準備中</div></div>';
   html += '<div style="text-align:center;flex:1;min-width:0;"><div style="font-size:9px;color:var(--accent);">発注中</div></div>';
   html += '</div></div>';
-  var _lastMaker = null;
-  sortedPatterns.forEach(function(p) {
-    var maker = getMaker(p);
-    if (maker !== _lastMaker) {
-      _lastMaker = maker;
-      var mc = MAKER_COLOR[maker] || 'var(--muted)';
-      html += '<div style="margin-top:12px;margin-bottom:2px;padding:3px 6px;background:var(--s2);border-left:3px solid ' + mc + ';border-radius:0 4px 4px 0;"><span style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:' + mc + ';">' + maker + '</span></div>';
-    }
-    var prep = prepStock[p] || 0; var ord = orderStock[p] || 0;
-    html += '<div class="stock-row"><div class="stock-pattern">' + p + '</div><div class="stock-counts">';
-    WAREHOUSES.forEach(function(w) {
-      var n = stock[p]?.[w] || 0; var cls = n > 0 ? 'positive' : (n < 0 ? 'negative' : 'zero');
-      html += '<div class="stock-count" style="cursor:' + (n!==0?'pointer':'default') + ';" ';
-      if (n !== 0) html += 'data-pattern="' + p.replace(/"/g,'&quot;') + '" data-mode="' + w + '" onclick="onStockTap(this)"';
-      html += '><div class="stock-count-num ' + cls + '">' + n + '</div><div class="stock-count-label">本</div></div>';
-    });
-    html += '<div class="stock-count" style="cursor:' + (prep>0?'pointer':'default') + ';border-left:1px solid var(--border);" ';
-    if (prep > 0) html += 'data-pattern="' + p.replace(/"/g,'&quot;') + '" data-mode="準備" onclick="onStockTap(this)"';
-    html += '><div class="stock-count-num ' + (prep>0?'positive':'zero') + '" style="' + (prep>0?'color:var(--yellow);':'') + '">' + prep + '</div><div class="stock-count-label">本</div></div>';
-    html += '<div class="stock-count" style="cursor:' + (ord>0?'pointer':'default') + ';" ';
-    if (ord > 0) html += 'data-pattern="' + p.replace(/"/g,'&quot;') + '" data-mode="発注中" onclick="onStockTap(this)"';
-    html += '><div class="stock-count-num ' + (ord>0?'positive':'zero') + '" style="' + (ord>0?'color:var(--purple);':'') + '">' + ord + '</div><div class="stock-count-label">本</div></div>';
-    html += '</div></div>';
+  // パターンを在庫有無で分類
+  var hasStockPatterns = sortedPatterns.filter(function(p) {
+    var total = WAREHOUSES.reduce(function(s,w){ return s+(stock[p]?.[w]||0); },0);
+    return total > 0 || (prepStock[p]||0) > 0 || (orderStock[p]||0) > 0;
   });
+  var noStockPatterns = sortedPatterns.filter(function(p) {
+    var total = WAREHOUSES.reduce(function(s,w){ return s+(stock[p]?.[w]||0); },0);
+    return total <= 0 && (prepStock[p]||0) <= 0 && (orderStock[p]||0) <= 0;
+  });
+
+  function renderStockGroup(patterns, groupLabel, groupColor) {
+    if (!patterns.length) return;
+    html += '<div style="margin-top:14px;margin-bottom:6px;padding:6px 10px;background:' + groupColor + ';border-radius:8px;display:flex;align-items:center;justify-content:space-between;">';
+    html += '<span style="font-size:12px;font-weight:800;color:' + (groupLabel === '在庫あり' ? 'var(--green)' : 'var(--muted)') + ';">' + groupLabel + '</span>';
+    html += '<span style="font-size:11px;color:var(--muted);">' + patterns.length + '件</span>';
+    html += '</div>';
+    var _lastMaker = null;
+    patterns.forEach(function(p) {
+      var maker = getMaker(p);
+      if (maker !== _lastMaker) {
+        _lastMaker = maker;
+        var mc = MAKER_COLOR[maker] || 'var(--muted)';
+        html += '<div style="margin-top:8px;margin-bottom:2px;padding:3px 6px;background:var(--s2);border-left:3px solid ' + mc + ';border-radius:0 4px 4px 0;"><span style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:' + mc + ';">' + maker + '</span></div>';
+      }
+      var prep = prepStock[p] || 0; var ord = orderStock[p] || 0;
+      html += '<div class="stock-row"><div class="stock-pattern">' + p + '</div><div class="stock-counts">';
+      WAREHOUSES.forEach(function(w) {
+        var n = stock[p]?.[w] || 0; var cls = n > 0 ? 'positive' : (n < 0 ? 'negative' : 'zero');
+        html += '<div class="stock-count" style="cursor:' + (n!==0?'pointer':'default') + ';" ';
+        if (n !== 0) html += 'data-pattern="' + p.replace(/"/g,'&quot;') + '" data-mode="' + w + '" onclick="onStockTap(this)"';
+        html += '><div class="stock-count-num ' + cls + '">' + n + '</div><div class="stock-count-label">本</div></div>';
+      });
+      html += '<div class="stock-count" style="cursor:' + (prep>0?'pointer':'default') + ';border-left:1px solid var(--border);" ';
+      if (prep > 0) html += 'data-pattern="' + p.replace(/"/g,'&quot;') + '" data-mode="準備" onclick="onStockTap(this)"';
+      html += '><div class="stock-count-num ' + (prep>0?'positive':'zero') + '" style="' + (prep>0?'color:var(--yellow);':'') + '">' + prep + '</div><div class="stock-count-label">本</div></div>';
+      html += '<div class="stock-count" style="cursor:' + (ord>0?'pointer':'default') + ';" ';
+      if (ord > 0) html += 'data-pattern="' + p.replace(/"/g,'&quot;') + '" data-mode="発注中" onclick="onStockTap(this)"';
+      html += '><div class="stock-count-num ' + (ord>0?'positive':'zero') + '" style="' + (ord>0?'color:var(--purple);':'') + '">' + ord + '</div><div class="stock-count-label">本</div></div>';
+      html += '</div></div>';
+    });
+  }
+
+  renderStockGroup(hasStockPatterns, '在庫あり', 'rgba(45,138,78,0.08)');
+  renderStockGroup(noStockPatterns, '在庫なし', 'rgba(140,133,121,0.08)');
   html += '</div><div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);">全 ' + records.length + ' 件のレコードから計算 &#183; ' + new Date().toLocaleTimeString('ja-JP') + ' 取得</div>';
   html += '<button class="btn-primary" style="margin-top:16px;" onclick="renderStockHome()">&#128269; 別のサイズを検索</button></div>';
   el.innerHTML = html;

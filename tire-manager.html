@@ -233,10 +233,10 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .memo-input::placeholder { color: var(--muted); }
 .stock-size-search { padding: 16px 20px 0; }
 .stock-cat-title { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; padding: 16px 0 8px; border-bottom: 0.5px solid var(--border); margin-bottom: 8px; }
-.stock-row { display: flex; align-items: center; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+.stock-row { padding: 10px 0; border-bottom: 0.5px solid var(--border); }
 .stock-row:last-child { border-bottom: none; }
-.stock-pattern { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; flex: 0 0 80px; min-width: 0; }
-.stock-counts { display: flex; flex: 1; justify-content: flex-end; gap: 0; }
+.stock-pattern { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.stock-counts { display: flex; gap: 0; }
 .stock-count { text-align: center; flex: 1; min-width: 0; }
 .stock-count-num { font-size: 16px; font-weight: 700; font-family: 'DM Mono', monospace; }
 .stock-count-num.zero { color: var(--muted); }
@@ -1404,7 +1404,7 @@ function renderStockResult(size, catKey, records) {
   html += '<div class="screen-title" style="font-family:\'DM Mono\',monospace;font-size:18px;">' + size + '</div>';
   html += '<div class="screen-sub" style="margin-bottom:0;">' + db.name + '</div>';
   html += '<div style="margin-top:16px;">';
-  html += '<div style="display:flex;padding:0 0 8px;border-bottom:1px solid var(--border);margin-bottom:4px;"><div style="flex:0 0 80px;min-width:0;"></div><div style="display:flex;flex:1;">';
+  html += '<div style="display:flex;padding:0 0 8px;border-bottom:1px solid var(--border);margin-bottom:4px;"><div style="display:flex;flex:1;">';
   WAREHOUSES.map(function(w){ return w.replace('倉庫',''); }).forEach(function(l) { html += '<div style="text-align:center;flex:1;min-width:0;"><div style="font-size:9px;color:var(--muted);">' + l + '</div></div>'; });
   html += '<div style="text-align:center;flex:1;min-width:0;"><div style="font-size:9px;color:var(--accent);">準備中</div></div>';
   html += '<div style="text-align:center;flex:1;min-width:0;"><div style="font-size:9px;color:var(--accent);">発注中</div></div>';
@@ -1418,7 +1418,7 @@ function renderStockResult(size, catKey, records) {
       html += '<div style="margin-top:12px;margin-bottom:2px;padding:3px 6px;background:var(--s2);border-left:3px solid ' + mc + ';border-radius:0 4px 4px 0;"><span style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:' + mc + ';">' + maker + '</span></div>';
     }
     var prep = prepStock[p] || 0; var ord = orderStock[p] || 0;
-    html += '<div class="stock-row"><div class="stock-pattern"><span style="font-weight:600;">' + p + '</span></div><div class="stock-counts">';
+    html += '<div class="stock-row"><div class="stock-pattern">' + p + '</div><div class="stock-counts">';
     WAREHOUSES.forEach(function(w) {
       var n = stock[p]?.[w] || 0; var cls = n > 0 ? 'positive' : (n < 0 ? 'negative' : 'zero');
       html += '<div class="stock-count" style="cursor:' + (n!==0?'pointer':'default') + ';" ';

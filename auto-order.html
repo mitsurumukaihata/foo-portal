@@ -2017,57 +2017,112 @@ function thViewPickSize(size) {
     byPattern[pKey].items[wh] = { key, snap };
   });
 
-  let html = `<div style="font-size:10px;color:var(--muted);margin-bottom:6px;">${size} の設定済みしきい値</div>`;
-  Object.values(byPattern).forEach(g => {
-    const itsuka = g.items['五日市倉庫'];
-    const shiwa  = g.items['志和倉庫'];
-    html += `<div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:9px 10px;margin-bottom:6px;">
-      <div style="background:var(--s3);border-radius:7px;padding:7px 10px;margin-bottom:8px;">
-        <div style="display:flex;align-items:baseline;gap:8px;">
-          <span style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text);">${g.pattern}</span>
-          <span style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text);">${g.size}</span>
-        </div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px;">${g.cat}</div>
-      </div>
-      <div style="display:flex;gap:8px;">
-        ${itsuka ? `<div style="flex:1;">
-          <div style="font-size:10px;font-weight:700;color:var(--green);margin-bottom:4px;">五日市倉庫</div>
-          <div style="display:flex;align-items:center;gap:0;">
-            <button onclick="changeThreshold('${itsuka.key}',-1)" style="width:28px;height:28px;border-radius:6px 0 0 6px;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:15px;cursor:pointer;">−</button>
-            <div id="th-num-${keyToSafeId(itsuka.key)}" style="flex:1;font-size:15px;font-weight:700;color:var(--accent);text-align:center;border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);height:28px;line-height:28px;font-family:'DM Mono',monospace;">${itsuka.snap.threshold||0}</div>
-            <button onclick="changeThreshold('${itsuka.key}',+1)" style="width:28px;height:28px;border-radius:0 6px 6px 0;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:15px;cursor:pointer;">＋</button>
-          </div>
-        </div>` : `<div style="flex:1;opacity:0.3;"><div style="font-size:10px;color:var(--muted);">五日市倉庫</div><div style="height:28px;border-radius:6px;border:1px dashed var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);">未設定</div></div>`}
-        ${shiwa ? `<div style="flex:1;">
-          <div style="font-size:10px;font-weight:700;color:var(--blue);margin-bottom:4px;">志和倉庫</div>
-          <div style="display:flex;align-items:center;gap:0;">
-            <button onclick="changeThreshold('${shiwa.key}',-1)" style="width:28px;height:28px;border-radius:6px 0 0 6px;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:15px;cursor:pointer;">−</button>
-            <div id="th-num-${keyToSafeId(shiwa.key)}" style="flex:1;font-size:15px;font-weight:700;color:var(--accent);text-align:center;border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);height:28px;line-height:28px;font-family:'DM Mono',monospace;">${shiwa.snap.threshold||0}</div>
-            <button onclick="changeThreshold('${shiwa.key}',+1)" style="width:28px;height:28px;border-radius:0 6px 6px 0;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:15px;cursor:pointer;">＋</button>
-          </div>
-        </div>` : `<div style="flex:1;opacity:0.3;"><div style="font-size:10px;color:var(--muted);">志和倉庫</div><div style="height:28px;border-radius:6px;border:1px dashed var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);">未設定</div></div>`}
-      </div>
-    </div>`;
+  thPendingChanges = {}; // リセット
+  var html = '<div style="font-size:10px;color:var(--muted);margin-bottom:6px;">' + size + ' のしきい値</div>';
+
+  function whEditor(whName, whColor, key, val) {
+    var safeId = keyToSafeId(key);
+    return '<div style="flex:1;">'
+      + '<div style="font-size:10px;font-weight:700;color:' + whColor + ';margin-bottom:4px;">' + whName + '</div>'
+      + '<div style="display:flex;align-items:center;gap:0;">'
+      + '<button onclick="changeThreshold(\'' + key + '\',-1)" style="width:28px;height:28px;border-radius:6px 0 0 6px;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:15px;cursor:pointer;">−</button>'
+      + '<div id="th-num-' + safeId + '" style="flex:1;font-size:15px;font-weight:700;color:var(--accent);text-align:center;border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);height:28px;line-height:28px;font-family:\'DM Mono\',monospace;">' + val + '</div>'
+      + '<button onclick="changeThreshold(\'' + key + '\',+1)" style="width:28px;height:28px;border-radius:0 6px 6px 0;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-size:15px;cursor:pointer;">＋</button>'
+      + '</div></div>';
+  }
+
+  Object.values(byPattern).forEach(function(g) {
+    var itsuka = g.items['五日市倉庫'];
+    var shiwa  = g.items['志和倉庫'];
+    // 未設定でも編集可能にする（キーを生成）
+    var itsukaKey = itsuka ? itsuka.key : (g.cat + '|' + g.pattern + '|' + g.size + '|五日市倉庫');
+    var shiwaKey  = shiwa ? shiwa.key : (g.cat + '|' + g.pattern + '|' + g.size + '|志和倉庫');
+    var itsukaVal = itsuka ? (itsuka.snap.threshold || 0) : 0;
+    var shiwaVal  = shiwa ? (shiwa.snap.threshold || 0) : 0;
+    // 未設定キーのスナップショットキャッシュにダミーを入れておく（changeThresholdで参照するため）
+    if (!snapshotCache[itsukaKey]) snapshotCache[itsukaKey] = { pageId: null, threshold: 0, baseline: 0 };
+    if (!snapshotCache[shiwaKey]) snapshotCache[shiwaKey] = { pageId: null, threshold: 0, baseline: 0 };
+
+    html += '<div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:9px 10px;margin-bottom:6px;">';
+    html += '<div style="background:var(--s3);border-radius:7px;padding:7px 10px;margin-bottom:8px;">';
+    html += '<div style="display:flex;align-items:baseline;gap:8px;">';
+    html += '<span style="font-size:13px;font-weight:700;font-family:\'DM Mono\',monospace;color:var(--text);">' + g.pattern + '</span>';
+    html += '<span style="font-size:13px;font-weight:700;font-family:\'DM Mono\',monospace;color:var(--text);">' + g.size + '</span>';
+    html += '</div>';
+    html += '<div style="font-size:10px;color:var(--muted);margin-top:2px;">' + g.cat + '</div>';
+    html += '</div>';
+    html += '<div style="display:flex;gap:8px;">';
+    html += whEditor('五日市倉庫', 'var(--green)', itsukaKey, itsukaVal);
+    html += whEditor('志和倉庫', 'var(--blue)', shiwaKey, shiwaVal);
+    html += '</div></div>';
   });
+  html += '<button id="th-save-changes-btn" onclick="saveThresholdChanges()" style="display:none;width:100%;margin-top:12px;background:var(--accent);border:none;border-radius:10px;padding:13px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">💾 変更を登録する</button>';
   document.getElementById('th-view-results').innerHTML = html;
 }
 
 
-// しきい値変更（±ボタン）→ 即座にNotionに保存
-async function changeThreshold(key, delta) {
-  const snap = snapshotCache[key];
-  if (!snap || !snap.pageId) return;
-  const newVal = Math.max(0, (snap.threshold || 0) + delta);
-  snap.threshold = newVal;
-  const safeId = keyToSafeId(key);
-  const el = document.getElementById(`th-num-${safeId}`);
+// しきい値変更（±ボタン）→ UIのみ更新、保存は登録ボタンで
+var thPendingChanges = {}; // { key: newValue }
+function changeThreshold(key, delta) {
+  var snap = snapshotCache[key];
+  var curVal = (thPendingChanges[key] !== undefined) ? thPendingChanges[key] : (snap ? (snap.threshold || 0) : 0);
+  var newVal = Math.max(0, curVal + delta);
+  thPendingChanges[key] = newVal;
+  var safeId = keyToSafeId(key);
+  var el = document.getElementById('th-num-' + safeId);
   if (el) el.textContent = newVal;
-  try {
-    await notionAPI('PATCH', `/pages/${snap.pageId}`, {
-      properties: { 'しきい値': { number: newVal } }
-    });
-  } catch(e) {
-    console.error('しきい値保存エラー:', e);
+  // 登録ボタン表示
+  var btn = document.getElementById('th-save-changes-btn');
+  if (btn) { btn.style.display = 'block'; btn.disabled = false; btn.textContent = '💾 変更を登録する'; }
+}
+
+// 一括保存
+async function saveThresholdChanges() {
+  var btn = document.getElementById('th-save-changes-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '保存中…'; }
+  var ok = 0, err = 0;
+  for (var key of Object.keys(thPendingChanges)) {
+    var newVal = thPendingChanges[key];
+    var snap = snapshotCache[key];
+    try {
+      if (snap && snap.pageId) {
+        // 既存レコードを更新
+        await notionAPI('PATCH', '/pages/' + snap.pageId, {
+          properties: { 'しきい値': { number: newVal } }
+        });
+        snap.threshold = newVal;
+        ok++;
+      } else {
+        // 新規レコード作成（未設定だった倉庫）
+        var parts = key.split('|');
+        var cat = parts[0], pattern = parts[1], size = parts[2], warehouse = parts[3];
+        var dbInfo = CAT_DB_MAP[cat];
+        if (!dbInfo || !dbInfo.kijunId) { err++; continue; }
+        var title = pattern + ' ' + size + ' ' + warehouse;
+        var props = {
+          'タイトル': { title: [{ text: { content: title } }] },
+          'パターン名': { select: { name: pattern } },
+          'サイズコード': { select: { name: size } },
+          'しきい値': { number: newVal }
+        };
+        if (warehouse) props['倉庫'] = { select: { name: warehouse } };
+        var res = await notionAPI('POST', '/pages', {
+          parent: { database_id: dbInfo.kijunId },
+          properties: props
+        });
+        // キャッシュ更新
+        snapshotCache[key] = { pageId: res.id, threshold: newVal, baseline: 0 };
+        ok++;
+      }
+    } catch(e) {
+      console.error('しきい値保存エラー:', key, e);
+      err++;
+    }
+  }
+  thPendingChanges = {};
+  if (btn) {
+    btn.textContent = err > 0 ? '⚠️ ' + ok + '件保存 / ' + err + '件エラー' : '✅ ' + ok + '件保存しました';
+    setTimeout(function() { btn.style.display = 'none'; }, 3000);
   }
 }
 

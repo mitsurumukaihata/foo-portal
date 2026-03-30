@@ -1361,7 +1361,10 @@ async function fetchAllRecords(dbId, sizeFilter, kurikoshiDate) {
 function calcStock(records, catKey) {
   const db = DB_MAP[catKey]; const wField = db.warehouseField;
   const stock = {}; const prepStock = {}; const orderStock = {};
-  db.patterns.forEach(p => { stock[p] = {}; WAREHOUSES.forEach(w => { stock[p][w] = 0; }); prepStock[p] = 0; orderStock[p] = 0; });
+  db.patterns.forEach(p => {
+    stock[p] = {}; prepStock[p] = {}; orderStock[p] = {};
+    WAREHOUSES.forEach(w => { stock[p][w] = 0; prepStock[p][w] = 0; orderStock[p][w] = 0; });
+  });
   records.forEach(r => {
     const props = r.properties;
     const pattern = props['パターン名']?.select?.name;
@@ -1369,13 +1372,23 @@ function calcStock(records, catKey) {
     const qty = props['数量']?.number || 0;
     const kubun = props['区分']?.select?.name || '';
     if (!pattern) return;
-    if (kubun === '発注中') { if (!orderStock[pattern]) orderStock[pattern] = 0; orderStock[pattern] += qty; return; }
+    if (kubun === '発注中') {
+      var wh = warehouse || '五日市倉庫';
+      if (!orderStock[pattern]) orderStock[pattern] = {};
+      if (!orderStock[pattern][wh]) orderStock[pattern][wh] = 0;
+      orderStock[pattern][wh] += qty;
+      return;
+    }
     if (!warehouse) return;
     const sign = KUBUN_SIGN[kubun] || 0;
     if (!stock[pattern]) stock[pattern] = {};
     if (!stock[pattern][warehouse]) stock[pattern][warehouse] = 0;
     stock[pattern][warehouse] += sign * qty;
-    if (kubun === '準備') { if (!prepStock[pattern]) prepStock[pattern] = 0; prepStock[pattern] += qty; }
+    if (kubun === '準備') {
+      if (!prepStock[pattern]) prepStock[pattern] = {};
+      if (!prepStock[pattern][warehouse]) prepStock[pattern][warehouse] = 0;
+      prepStock[pattern][warehouse] += qty;
+    }
   });
   return { stock, prepStock, orderStock, records, catKey };
 }
@@ -1399,27 +1412,46 @@ function renderStockResult(size, catKey, records) {
     var sB = WAREHOUSES.reduce(function(s,w){ return s+(stock[b]?.[w]||0); },0);
     return sB - sA;
   });
-  // カラムヘッダーHTML（各グループで再利用）
-  var colHeaderHtml = '<div style="display:flex;padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:4px;"><div style="display:flex;flex:1;">';
-  WAREHOUSES.map(function(w){ return w.replace('倉庫',''); }).forEach(function(l) { colHeaderHtml += '<div style="text-align:center;flex:1;min-width:0;"><div style="font-size:9px;color:var(--muted);">' + l + '</div></div>'; });
-  colHeaderHtml += '<div style="text-align:center;flex:1;min-width:0;"><div style="font-size:9px;color:var(--accent);">準備中</div></div>';
-  colHeaderHtml += '<div style="text-align:center;flex:1;min-width:0;"><div style="font-size:9px;color:var(--accent);">発注中</div></div>';
-  colHeaderHtml += '</div></div>';
+  // 倉庫別カラム定義: [倉庫名, 短縮名, 準備あり, 発注中あり]
+  var WH_COLS = [
+    { wh: '五日市倉庫', short: '五日市', hasPrep: true, hasOrd: true },
+    { wh: '志和倉庫',   short: '志和',   hasPrep: true, hasOrd: true },
+    { wh: '海田倉庫',   short: '海田',   hasPrep: true, hasOrd: false }
+  ];
+  // カラムヘッダーHTML
+  var colHeaderHtml = '';
+  // 上段: 倉庫名グループヘッダー
+  colHeaderHtml += '<div style="display:flex;border-bottom:1px solid var(--border);padding-bottom:2px;margin-bottom:2px;">';
+  WH_COLS.forEach(function(wc, i) {
+    var cols = 1 + (wc.hasPrep?1:0) + (wc.hasOrd?1:0);
+    var bl = i > 0 ? 'border-left:1.5px solid var(--border);' : '';
+    colHeaderHtml += '<div style="flex:' + cols + ';text-align:center;' + bl + '"><div style="font-size:9px;font-weight:700;color:var(--text);padding:2px 0;">' + wc.short + '</div></div>';
+  });
+  colHeaderHtml += '</div>';
+  // 下段: 在庫/準/発 ラベル
+  colHeaderHtml += '<div style="display:flex;padding-bottom:4px;border-bottom:0.5px solid var(--border);margin-bottom:4px;">';
+  WH_COLS.forEach(function(wc, i) {
+    var bl = i > 0 ? 'border-left:1.5px solid var(--border);' : '';
+    colHeaderHtml += '<div style="flex:1;text-align:center;' + bl + '"><div style="font-size:8px;color:var(--muted);">在庫</div></div>';
+    if (wc.hasPrep) colHeaderHtml += '<div style="flex:1;text-align:center;"><div style="font-size:8px;color:var(--yellow);">準</div></div>';
+    if (wc.hasOrd) colHeaderHtml += '<div style="flex:1;text-align:center;"><div style="font-size:8px;color:var(--purple);">発</div></div>';
+  });
+  colHeaderHtml += '</div>';
 
   var html = '<div class="content">';
   html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><button onclick="renderStockHome()" style="background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:0;">&#8592;</button><div class="screen-label" style="margin:0;">在庫確認</div></div>';
   html += '<div class="screen-title" style="font-family:\'DM Mono\',monospace;font-size:18px;">' + size + '</div>';
   html += '<div class="screen-sub" style="margin-bottom:0;">' + db.name + '</div>';
   html += '<div style="margin-top:16px;">';
-  // パターンを在庫有無で分類
-  var hasStockPatterns = sortedPatterns.filter(function(p) {
+  // パターンを在庫有無で分類（倉庫別の準備・発注中も含めて判定）
+  function patternHasAny(p) {
     var total = WAREHOUSES.reduce(function(s,w){ return s+(stock[p]?.[w]||0); },0);
-    return total > 0 || (prepStock[p]||0) > 0 || (orderStock[p]||0) > 0;
-  });
-  var noStockPatterns = sortedPatterns.filter(function(p) {
-    var total = WAREHOUSES.reduce(function(s,w){ return s+(stock[p]?.[w]||0); },0);
-    return total <= 0 && (prepStock[p]||0) <= 0 && (orderStock[p]||0) <= 0;
-  });
+    var totalPrep = WAREHOUSES.reduce(function(s,w){ return s+(prepStock[p]?.[w]||0); },0);
+    var totalOrd = WAREHOUSES.reduce(function(s,w){ return s+(orderStock[p]?.[w]||0); },0);
+    return total > 0 || totalPrep > 0 || totalOrd > 0;
+  }
+  var hasStockPatterns = sortedPatterns.filter(function(p) { return patternHasAny(p); });
+  var noStockPatterns = sortedPatterns.filter(function(p) { return !patternHasAny(p); });
 
   function renderStockGroup(patterns, groupLabel, groupColor) {
     if (!patterns.length) return;
@@ -1436,20 +1468,32 @@ function renderStockResult(size, catKey, records) {
         var mc = MAKER_COLOR[maker] || 'var(--muted)';
         html += '<div style="margin-top:8px;margin-bottom:2px;padding:3px 6px;background:var(--s2);border-left:3px solid ' + mc + ';border-radius:0 4px 4px 0;"><span style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:' + mc + ';">' + maker + '</span></div>';
       }
-      var prep = prepStock[p] || 0; var ord = orderStock[p] || 0;
+      var pe = p.replace(/"/g,'&quot;');
       html += '<div class="stock-row"><div class="stock-pattern">' + p + '</div><div class="stock-counts">';
-      WAREHOUSES.forEach(function(w) {
-        var n = stock[p]?.[w] || 0; var cls = n > 0 ? 'positive' : (n < 0 ? 'negative' : 'zero');
-        html += '<div class="stock-count" style="cursor:' + (n!==0?'pointer':'default') + ';" ';
-        if (n !== 0) html += 'data-pattern="' + p.replace(/"/g,'&quot;') + '" data-mode="' + w + '" onclick="onStockTap(this)"';
-        html += '><div class="stock-count-num ' + cls + '">' + n + '</div><div class="stock-count-label">本</div></div>';
+      WH_COLS.forEach(function(wc, i) {
+        var w = wc.wh;
+        var n = stock[p]?.[w] || 0;
+        var prep = prepStock[p]?.[w] || 0;
+        var ord = orderStock[p]?.[w] || 0;
+        var cls = n > 0 ? 'positive' : (n < 0 ? 'negative' : 'zero');
+        var bl = i > 0 ? 'border-left:1.5px solid var(--border);' : '';
+        // 在庫数
+        html += '<div class="stock-count" style="cursor:' + (n!==0?'pointer':'default') + ';' + bl + '" ';
+        if (n !== 0) html += 'data-pattern="' + pe + '" data-mode="' + w + '" onclick="onStockTap(this)"';
+        html += '><div class="stock-count-num ' + cls + '" style="font-size:14px;">' + n + '</div></div>';
+        // 準備
+        if (wc.hasPrep) {
+          html += '<div class="stock-count" style="cursor:' + (prep>0?'pointer':'default') + ';" ';
+          if (prep > 0) html += 'data-pattern="' + pe + '" data-mode="準備_' + w + '" onclick="onStockTap(this)"';
+          html += '><div class="stock-count-num ' + (prep>0?'positive':'zero') + '" style="font-size:11px;' + (prep>0?'color:var(--yellow);':'') + '">' + prep + '</div></div>';
+        }
+        // 発注中
+        if (wc.hasOrd) {
+          html += '<div class="stock-count" style="cursor:' + (ord>0?'pointer':'default') + ';" ';
+          if (ord > 0) html += 'data-pattern="' + pe + '" data-mode="発注中_' + w + '" onclick="onStockTap(this)"';
+          html += '><div class="stock-count-num ' + (ord>0?'positive':'zero') + '" style="font-size:11px;' + (ord>0?'color:var(--purple);':'') + '">' + ord + '</div></div>';
+        }
       });
-      html += '<div class="stock-count" style="cursor:' + (prep>0?'pointer':'default') + ';border-left:1px solid var(--border);" ';
-      if (prep > 0) html += 'data-pattern="' + p.replace(/"/g,'&quot;') + '" data-mode="準備" onclick="onStockTap(this)"';
-      html += '><div class="stock-count-num ' + (prep>0?'positive':'zero') + '" style="' + (prep>0?'color:var(--yellow);':'') + '">' + prep + '</div><div class="stock-count-label">本</div></div>';
-      html += '<div class="stock-count" style="cursor:' + (ord>0?'pointer':'default') + ';" ';
-      if (ord > 0) html += 'data-pattern="' + p.replace(/"/g,'&quot;') + '" data-mode="発注中" onclick="onStockTap(this)"';
-      html += '><div class="stock-count-num ' + (ord>0?'positive':'zero') + '" style="' + (ord>0?'color:var(--purple);':'') + '">' + ord + '</div><div class="stock-count-label">本</div></div>';
       html += '</div></div>';
     });
   }
@@ -1466,15 +1510,35 @@ function stockHistory(mode) {
   var el = document.getElementById('stock-content');
   var db = DB_MAP[catKey], wField = db.warehouseField;
   var filtered;
-  if (mode === '準備') { filtered = records.filter(function(r) { return r.properties['区分']?.select?.name === '準備' && r.properties['パターン名']?.select?.name === pattern && r.properties['サイズコード']?.select?.name === size; }); }
-  else if (mode === '発注中') { filtered = records.filter(function(r) { return r.properties['区分']?.select?.name === '発注中' && r.properties['パターン名']?.select?.name === pattern && r.properties['サイズコード']?.select?.name === size; }); }
-  else {
+  // モード解析: "準備_五日市倉庫" → kubun="準備", whFilter="五日市倉庫"
+  var kubunMode = mode;
+  var whFilter = null;
+  if (mode.indexOf('_') > 0) {
+    var parts = mode.split('_');
+    kubunMode = parts[0];
+    whFilter = parts[1];
+  }
+  if (kubunMode === '準備') {
+    filtered = records.filter(function(r) {
+      var match = r.properties['区分']?.select?.name === '準備' && r.properties['パターン名']?.select?.name === pattern && r.properties['サイズコード']?.select?.name === size;
+      if (whFilter) match = match && r.properties[wField]?.select?.name === whFilter;
+      return match;
+    });
+  } else if (kubunMode === '発注中') {
+    filtered = records.filter(function(r) {
+      var match = r.properties['区分']?.select?.name === '発注中' && r.properties['パターン名']?.select?.name === pattern && r.properties['サイズコード']?.select?.name === size;
+      if (whFilter) match = match && (r.properties[wField]?.select?.name || '五日市倉庫') === whFilter;
+      return match;
+    });
+  } else {
+    // 倉庫名がそのまま渡される（在庫タップ）
     filtered = records.filter(function(r) { return r.properties['パターン名']?.select?.name === pattern && r.properties['サイズコード']?.select?.name === size && r.properties[wField]?.select?.name === mode && r.properties['区分']?.select?.name !== '発注中'; });
     filtered.sort(function(a,b){ return new Date(b.created_time)-new Date(a.created_time); });
     filtered = filtered.slice(0,10);
   }
-  var modeLabel = mode === '準備' ? '準備中' : mode === '発注中' ? '発注中' : mode;
-  var modeColor = mode === '準備' ? 'var(--yellow)' : mode === '発注中' ? 'var(--purple)' : 'var(--accent)';
+  var whShort = whFilter ? whFilter.replace('倉庫','') : '';
+  var modeLabel = kubunMode === '準備' ? '準備中' + (whShort ? '（' + whShort + '）' : '') : kubunMode === '発注中' ? '発注中' + (whShort ? '（' + whShort + '）' : '') : mode.replace('倉庫','');
+  var modeColor = kubunMode === '準備' ? 'var(--yellow)' : kubunMode === '発注中' ? 'var(--purple)' : 'var(--accent)';
   var KCOLORS = {'入庫':'var(--green)','出庫':'var(--red)','準備':'var(--yellow)','発注中':'var(--purple)','移動入庫':'var(--blue)','移動出庫':'var(--muted)','返品':'var(--blue)','返品（倉庫へ）':'var(--blue)','返品（メーカーへ）':'var(--muted)'};
   var rows = filtered.length === 0 ? '<div style="text-align:center;padding:24px;color:var(--muted);font-size:14px;">データがありません</div>' : filtered.map(function(r) {
     var props = r.properties;

@@ -259,13 +259,46 @@ textarea.form-input { min-height:70px; resize:vertical; line-height:1.6; }
 // bihin-order.html — 備品発注管理
 // ═══════════════════════════════════════════════════════════════════════
 
-const BIHIN_DB = '332a695f8e888054bd78cfd959bd1734';
+const MASTER_DB = '332a695f8e888054bd78cfd959bd1734';
+const ORDER_DB = '85d253d249cb4b6abf9e8008cdebfe16';
 const THEME_KEY = 'foo_portal_theme';
 const SESSION_KEY = 'foo_portal_session';
 
 let loginUser = '';
 let allOrders = [];
 let curTab = 'pending';
+
+// ─── マスタ解決キャッシュ ─────────────────────────────────────────────
+var masterCache = {};       // { masterPageId: { shurui, shohin } }
+var masterPageMap = {};     // { '商品名': 'master-page-id' }
+
+async function resolveMasterPages(orderItems) {
+  var idsToFetch = [];
+  orderItems.forEach(function(item) {
+    var rel = (item.properties['備品'] && item.properties['備品'].relation) || [];
+    rel.forEach(function(r) {
+      if (r.id && !masterCache[r.id]) idsToFetch.push(r.id);
+    });
+  });
+  // 重複排除
+  idsToFetch = idsToFetch.filter(function(id, i, arr) { return arr.indexOf(id) === i; });
+
+  for (var i = 0; i < idsToFetch.length; i++) {
+    try {
+      var res = await fetch(FOO_WORKER + '/pages/' + idsToFetch[i]);
+      var page = await res.json();
+      var shurui = (page.properties['種類'] && page.properties['種類'].select && page.properties['種類'].select.name) || '';
+      var shohin = (page.properties['商品名'] && page.properties['商品名'].select && page.properties['商品名'].select.name) || '';
+      masterCache[idsToFetch[i]] = { shurui: shurui, shohin: shohin };
+    } catch(e) { console.warn('Master fetch error:', e); }
+  }
+}
+
+function getMasterInfo(orderItem) {
+  var rel = (orderItem.properties['備品'] && orderItem.properties['備品'].relation) || [];
+  if (rel.length && masterCache[rel[0].id]) return masterCache[rel[0].id];
+  return { shurui: '—', shohin: '—' };
+}
 
 // ─── テーマ ────────────────────────────────────────────────────────────
 function applyTheme(t) {
@@ -364,7 +397,7 @@ function detectShurui(name) {
 async function loadSchema() {
   if (schemaLoaded) return;
   try {
-    var res = await fetch(FOO_WORKER + '/databases/' + BIHIN_DB);
+    var res = await fetch(FOO_WORKER + '/databases/' + MASTER_DB);
     var db = await res.json();
     var props = db.properties || {};
 
@@ -394,6 +427,23 @@ async function loadSchema() {
       o.textContent = opt.name;
       sel.appendChild(o);
     });
+
+    // マスタ全ページ取得 → 商品名→pageId マップ構築
+    masterPageMap = {};
+    try {
+      var masterRes = await fooNotionQuery(MASTER_DB, { page_size: 100 });
+      (masterRes.results || []).forEach(function(page) {
+        var shohin = (page.properties['商品名'] && page.properties['商品名'].select && page.properties['商品名'].select.name) || '';
+        var shurui = (page.properties['種類'] && page.properties['種類'].select && page.properties['種類'].select.name) || '';
+        if (shohin) {
+          masterPageMap[shohin] = page.id;
+          // キャッシュにも入れておく
+          masterCache[page.id] = { shurui: shurui, shohin: shohin };
+        }
+      });
+    } catch(e) {
+      console.warn('マスタページ読み込みエラー:', e);
+    }
 
     schemaLoaded = true;
   } catch(e) {
@@ -445,11 +495,15 @@ async function loadPending() {
   empty.style.display = 'none';
 
   try {
-    var data = await fooNotionQuery(BIHIN_DB, {
+    var data = await fooNotionQuery(ORDER_DB, {
       filter: { property: 'ステータス', select: { equals: '発注済' } },
       sorts: [{ property: '日付', direction: 'descending' }]
     });
     var items = data.results || [];
+
+    // マスタ情報を解決
+    await resolveMasterPages(items);
+
     loading.style.display = 'none';
     document.getElementById('badge-pending').textContent = items.length;
 
@@ -488,8 +542,9 @@ async function loadPending() {
     // カード生成用の内部関数
     function renderPendingCard(item) {
       var id = item.id;
-      var shurui = propStr(item, '種類');
-      var shohin = propStr(item, '商品名');
+      var master = getMasterInfo(item);
+      var shurui = master.shurui;
+      var shohin = master.shohin;
       var qty = propStr(item, '数量');
       var dt = fmtDate(propStr(item, '日付'));
       var tanto = propStr(item, '発注担当');
@@ -559,19 +614,22 @@ async function submitOrder() {
     var titleText = shurui + '　' + shohin + ' x' + qty;
     var props = {
       '名前': { title: [{ text: { content: titleText } }] },
-      '商品名': { select: { name: shohin } },
       '数量': { number: qty },
       '日付': { date: { start: todayISO() } },
-      '種類': { select: { name: shurui } },
       'ステータス': { select: { name: '新規発注' } },
       '発注担当': { select: { name: tanto } },
       '送り先': { select: { name: dest } }
     };
+    // マスタへのリレーション
+    var masterPageId = masterPageMap[shohin];
+    if (masterPageId) {
+      props['備品'] = { relation: [{ id: masterPageId }] };
+    }
     if (biko) {
       props['備考'] = { rich_text: [{ text: { content: biko } }] };
     }
 
-    await fooNotionCreate(BIHIN_DB, props);
+    await fooNotionCreate(ORDER_DB, props);
     showToast('発注を登録しました');
 
     // （スキーマベースのため追加キャッシュ不要）
@@ -604,16 +662,20 @@ async function loadPdf() {
   empty.style.display = 'none';
 
   try {
-    var data = await fooNotionQuery(BIHIN_DB, {
+    var data = await fooNotionQuery(ORDER_DB, {
       filter: {
         or: [
           { property: 'ステータス', select: { equals: '新規発注' } },
           { property: 'ステータス', select: { equals: '発注済' } }
         ]
       },
-      sorts: [{ property: '種類', direction: 'ascending' }, { property: '日付', direction: 'descending' }]
+      sorts: [{ property: '日付', direction: 'descending' }]
     });
     var items = data.results || [];
+
+    // マスタ情報を解決
+    await resolveMasterPages(items);
+
     allOrders = items;
 
     if (!items.length) {
@@ -634,8 +696,9 @@ async function loadPdf() {
       html += '<div class="pdf-group">';
       html += '<div class="pdf-group-title">■ 今回発注分（' + newItems.length + '件）</div>';
       newItems.forEach(function(o) {
-        var shurui = propStr(o, '種類');
-        var shohin = propStr(o, '商品名');
+        var master = getMasterInfo(o);
+        var shurui = master.shurui;
+        var shohin = master.shohin;
         var qty = propStr(o, '数量');
         var biko = propStr(o, '備考');
         html += '<div class="pdf-item">';
@@ -652,8 +715,9 @@ async function loadPdf() {
       html += '<div class="pdf-group">';
       html += '<div class="pdf-group-title" style="color:var(--blue);">■ 未入荷（既発注分）（' + sentItems.length + '件）</div>';
       sentItems.forEach(function(o) {
-        var shurui = propStr(o, '種類');
-        var shohin = propStr(o, '商品名');
+        var master = getMasterInfo(o);
+        var shurui = master.shurui;
+        var shohin = master.shohin;
         var qty = propStr(o, '数量');
         var biko = propStr(o, '備考');
         html += '<div class="pdf-item">';
@@ -711,8 +775,9 @@ function buildPdfHtml() {
   };
 
   var mkRow = function(o, i) {
-    var shurui = propStr(o, '種類');
-    var shohin = propStr(o, '商品名');
+    var master = getMasterInfo(o);
+    var shurui = master.shurui;
+    var shohin = master.shohin;
     var qty = propStr(o, '数量');
     var dest = propStr(o, '送り先') || '—';
     var dt = fmtDatePdf(propStr(o, '日付'));
@@ -921,7 +986,7 @@ async function markAllAsSent() {
 
 async function loadPendingCount() {
   try {
-    var data = await fooNotionQuery(BIHIN_DB, {
+    var data = await fooNotionQuery(ORDER_DB, {
       filter: { property: 'ステータス', select: { equals: '発注済' } },
       page_size: 100
     });
@@ -939,7 +1004,7 @@ async function loadHistory() {
   empty.style.display = 'none';
 
   try {
-    var data = await fooNotionQuery(BIHIN_DB, {
+    var data = await fooNotionQuery(ORDER_DB, {
       filter: {
         or: [
           { property: 'ステータス', select: { equals: '納入済' } },
@@ -950,6 +1015,10 @@ async function loadHistory() {
       page_size: 50
     });
     var items = data.results || [];
+
+    // マスタ情報を解決
+    await resolveMasterPages(items);
+
     loading.style.display = 'none';
 
     if (!items.length) {
@@ -959,8 +1028,9 @@ async function loadHistory() {
 
     var html = '';
     items.forEach(function(item) {
-      var shurui = propStr(item, '種類');
-      var shohin = propStr(item, '商品名');
+      var master = getMasterInfo(item);
+      var shurui = master.shurui;
+      var shohin = master.shohin;
       var qty = propStr(item, '数量');
       var status = propStr(item, 'ステータス');
       var dt = fmtDate(propStr(item, '日付'));

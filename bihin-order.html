@@ -188,8 +188,9 @@ textarea.form-input { min-height:70px; resize:vertical; line-height:1.6; }
     </div>
     <div class="form-group">
       <label class="form-label">商品名<span class="req">*</span></label>
-      <input class="form-input" id="f-shohin" type="text" placeholder="↑ 種類を選ぶと候補が表示されます" readonly>
-      <div id="shohin-candidates" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
+      <select class="form-input" id="f-shohin">
+        <option value="">↑ 種類を選んでください</option>
+      </select>
     </div>
     <div class="form-row">
       <div class="form-group">
@@ -335,10 +336,22 @@ function getStatusBadge(status) {
   return '';
 }
 
-// ─── DBスキーマからマスター取得（種類・商品名を色でマッピング） ────────────
+// ─── DBスキーマからマスター取得 ──────────────────────────────────────────
 var schemaLoaded = false;
 var shuruiOptions = [];    // [{ name, color }]
 var shohinByShurui = {};   // { '種類名': ['商品A', '商品B', ...] }
+
+// 商品名→種類の自動判定ルール
+function detectShurui(name) {
+  if (/25\.4角/.test(name)) return 'BOX（TB）';
+  if (/19角/.test(name)) return 'BOX（LT）';
+  if (/12\.7角/.test(name)) return 'BOX（PC）';
+  if (/^(PVR|V3-|TR[0-9]|TR-|70MS)/.test(name)) return 'バルブ';
+  if (/スチール|アルミ|BON|ﾊﾌﾞﾅｯﾄ|ハブナット|IN\d{4}|ON\d{4}|FN\d{4}/.test(name)) return 'ナット';
+  if (/止めピン|インパクト/.test(name)) return 'インパクト部品';
+  if (/パンク|修理/.test(name)) return 'パンク修理';
+  return '';
+}
 
 async function loadSchema() {
   if (schemaLoaded) return;
@@ -353,19 +366,13 @@ async function loadSchema() {
     // 商品名オプション
     var shohinOpts = (props['商品名'] && props['商品名'].select && props['商品名'].select.options) || [];
 
-    // 色→種類名マップ（同じ色の商品名をその種類に紐付け）
-    var colorToShurui = {};
-    shuruiOptions.forEach(function(opt) {
-      colorToShurui[opt.color] = opt.name;
-    });
-
-    // 商品名を種類ごとに振り分け（色マッチング）
+    // 商品名を種類ごとに振り分け（名前パターンで自動判定）
     shohinByShurui = {};
     shuruiOptions.forEach(function(opt) {
       shohinByShurui[opt.name] = [];
     });
     shohinOpts.forEach(function(opt) {
-      var shurui = colorToShurui[opt.color];
+      var shurui = detectShurui(opt.name);
       if (shurui && shohinByShurui[shurui]) {
         shohinByShurui[shurui].push(opt.name);
       }
@@ -388,36 +395,23 @@ async function loadSchema() {
 
 function onShuruiChange() {
   var shurui = document.getElementById('f-shurui').value;
-  var container = document.getElementById('shohin-candidates');
-  document.getElementById('f-shohin').value = '';
-  container.innerHTML = '';
+  var selShohin = document.getElementById('f-shohin');
+
+  // ドロップダウンをリセット
+  while (selShohin.options.length > 1) selShohin.options.remove(1);
+  selShohin.value = '';
 
   if (!shurui) return;
 
   loadSchema().then(function() {
     var items = shohinByShurui[shurui] || [];
-    if (!items.length) {
-      container.innerHTML = '<div style="font-size:11px;color:var(--muted);">この種類の商品が登録されていません</div>';
-      return;
-    }
-    var html = '';
     items.forEach(function(name) {
-      html += '<button type="button" onclick="pickShohin(this)" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;font-family:inherit;cursor:pointer;border:1.5px solid var(--accent);background:transparent;color:var(--accent);transition:all 0.15s;">' + name + '</button>';
+      var o = document.createElement('option');
+      o.value = name;
+      o.textContent = name;
+      selShohin.appendChild(o);
     });
-    container.innerHTML = html;
   });
-}
-
-function pickShohin(btn) {
-  document.getElementById('f-shohin').value = btn.textContent;
-  var container = document.getElementById('shohin-candidates');
-  var buttons = container.querySelectorAll('button');
-  buttons.forEach(function(b) {
-    b.style.background = 'transparent';
-    b.style.color = 'var(--accent)';
-  });
-  btn.style.background = 'var(--accent)';
-  btn.style.color = '#fff';
 }
 
 // ─── タブ切り替え ──────────────────────────────────────────────────────
@@ -551,10 +545,12 @@ async function submitOrder() {
 
     // フォームリセット
     document.getElementById('f-shurui').value = '';
-    document.getElementById('f-shohin').value = '';
+    // 商品名ドロップダウンをリセット
+    var selShohin = document.getElementById('f-shohin');
+    while (selShohin.options.length > 1) selShohin.options.remove(1);
+    selShohin.value = '';
     document.getElementById('f-qty').value = '';
     document.getElementById('f-biko').value = '';
-    document.getElementById('shohin-candidates').innerHTML = '';
 
   } catch(e) {
     alert('エラー: ' + e.message);

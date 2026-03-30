@@ -11,30 +11,27 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
 
 :root {
-  --bg: #18181f; --s1: #1e1e26; --s2: #26262e; --s3: #30303a;
-  --border: rgba(255,255,255,.08); --text: #f0f0f2; --muted: #68687a;
-  --accent: #f0a500; --green: #22c55e; --red: #ef4444; --blue: #3b82f6;
-  --purple: #a855f7; --yellow: #eab308; --pink: #ec4899;
+  --bg: #1a1a18; --s1: #242420; --s2: #2e2e28; --s3: #3a3a32;
+  --border: rgba(255,255,255,.07); --text: #f0ece4; --muted: #8c8579;
+  --accent: #e8913a; --green: #5dba5d; --red: #d94a4a; --blue: #5b8fd9;
+  --radius: 10px;
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
-    --bg: #fdf6ee; --s1: #fff8f0; --s2: #f0e8d8; --s3: #e8dcc8;
-    --border: rgba(0,0,0,.08); --text: #1a1208; --muted: #a08060;
-    --accent: #e07000; --green: #1a9e4a; --red: #dc2626; --blue: #2563eb;
-    --purple: #a855f7; --yellow: #eab308; --pink: #ec4899;
+    --bg: #faf8f5; --s1: #fff; --s2: #f5f2ed; --s3: #ebe7e0;
+    --border: rgba(0,0,0,.07); --text: #1a1a18; --muted: #8c8579;
+    --accent: #c8602a; --green: #3a9a3a; --red: #c03030; --blue: #3b6fbe;
   }
 }
 [data-theme="dark"] {
-  --bg: #18181f; --s1: #1e1e26; --s2: #26262e; --s3: #30303a;
-  --border: rgba(255,255,255,.08); --text: #f0f0f2; --muted: #68687a;
-  --accent: #f0a500; --green: #22c55e; --red: #ef4444; --blue: #3b82f6;
-  --purple: #a855f7; --yellow: #eab308; --pink: #ec4899;
+  --bg: #1a1a18; --s1: #242420; --s2: #2e2e28; --s3: #3a3a32;
+  --border: rgba(255,255,255,.07); --text: #f0ece4; --muted: #8c8579;
+  --accent: #e8913a; --green: #5dba5d; --red: #d94a4a; --blue: #5b8fd9;
 }
 [data-theme="light"] {
-  --bg: #fdf6ee; --s1: #fff8f0; --s2: #f0e8d8; --s3: #e8dcc8;
-  --border: rgba(0,0,0,.08); --text: #1a1208; --muted: #a08060;
-  --accent: #e07000; --green: #1a9e4a; --red: #dc2626; --blue: #2563eb;
-  --purple: #a855f7; --yellow: #eab308; --pink: #ec4899;
+  --bg: #faf8f5; --s1: #fff; --s2: #f5f2ed; --s3: #ebe7e0;
+  --border: rgba(0,0,0,.07); --text: #1a1a18; --muted: #8c8579;
+  --accent: #c8602a; --green: #3a9a3a; --red: #c03030; --blue: #3b6fbe;
 }
 
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -45,14 +42,16 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 .header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
 .header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
 .header-back { font-size:11px; color:var(--muted); text-decoration:none; border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; }
+.header-back:active { opacity:0.6; }
+.header-row { display:flex; align-items:center; justify-content:space-between; }
 .header-title { font-size:17px; font-weight:900; letter-spacing:-0.02em; }
 .header-title span { color:var(--accent); }
-.back-btn { color:var(--muted); font-size:12px; font-weight:600; text-decoration:none; display:flex; align-items:center; gap:2px; letter-spacing:0.02em; }
-.back-btn:active { opacity:0.7; }
+.theme-toggle { width:28px; height:28px; border-radius:50%; border:0.5px solid var(--border); background:var(--s2); color:var(--muted); font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s; line-height:1; }
+.theme-toggle:active { opacity:0.6; transform:scale(0.9); }
 
 /* ── Tabs ── */
 .nav { display:flex; background:var(--s1); border-bottom:1px solid var(--border); position:sticky; top:53px; z-index:99; }
-.nav-btn { flex:1; padding:12px 6px 10px; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--muted); font-size:12px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; text-align:center; letter-spacing:0.06em; text-transform:uppercase; }
+.nav-btn { flex:1; padding:12px 6px 10px; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--muted); font-size:12px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; text-align:center; letter-spacing:0.06em; }
 .nav-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
 .nav-btn:active { opacity:0.7; }
 .nav-badge { display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 4px; background:var(--s3); border-radius:3px; font-size:9px; font-weight:700; margin-left:4px; color:var(--muted); font-family:'DM Mono',monospace; }
@@ -65,49 +64,45 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 
 /* ── Loading / Empty ── */
 .loading { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 20px; gap:12px; }
-.spinner { width:28px; height:28px; border:3px solid var(--s3); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; }
+.spinner { width:24px; height:24px; border:2.5px solid var(--s3); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; }
 @keyframes spin { to { transform:rotate(360deg); } }
 .loading-text { font-size:12px; color:var(--muted); }
 .empty-state { text-align:center; padding:60px 20px; }
-.empty-icon { font-size:40px; margin-bottom:12px; }
-.empty-text { font-size:13px; color:var(--muted); line-height:1.6; }
+.empty-title { font-size:14px; font-weight:700; color:var(--text); margin-bottom:4px; opacity:0.6; }
+.empty-text { font-size:12px; color:var(--muted); line-height:1.6; }
 
 /* ── Post Card ── */
-.post-card { background:var(--s2); border:1px solid var(--border); border-radius:6px; padding:14px 16px; margin-bottom:8px; transition:all 0.15s; border-left:3px solid var(--accent); }
+.post-card { background:var(--s1); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; margin-bottom:8px; transition:all 0.15s; border-left:3px solid var(--muted); }
 .post-card:active { transform:scale(0.985); }
+.post-card.priority-high { border-left-color:var(--accent); }
+.post-card.priority-mid { border-left-color:var(--muted); }
+.post-card.priority-low { border-left-color:var(--s3); }
+
 .post-header { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:10px; }
 .post-title-row { flex:1; min-width:0; }
-.post-title { font-size:13px; font-weight:700; line-height:1.4; display:flex; align-items:center; gap:6px; letter-spacing:-0.01em; }
-.post-title .emoji { flex:none; font-size:14px; }
-.post-title .text { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.post-title { font-size:13px; font-weight:700; line-height:1.4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing:-0.01em; }
 .post-meta { display:flex; align-items:center; gap:5px; margin-top:6px; flex-wrap:wrap; }
-.meta-tag { padding:2px 7px; border-radius:3px; font-size:9px; font-weight:700; letter-spacing:0.03em; text-transform:uppercase; }
-.tag-assignee { background:var(--s3); color:var(--muted); }
-.tag-date { background:var(--s3); color:var(--muted); font-family:'DM Mono',monospace; font-size:9px; }
-.tag-priority-high { background:rgba(239,68,68,0.15); color:var(--red); }
-.tag-priority-mid { background:rgba(240,165,0,0.15); color:var(--accent); }
-.tag-priority-low { background:var(--s3); color:var(--muted); }
-.tag-category { background:rgba(59,130,246,0.1); color:var(--blue); }
+.meta-tag { padding:2px 7px; border-radius:4px; font-size:9px; font-weight:600; letter-spacing:0.02em; }
+.tag-assignee { background:var(--s2); color:var(--muted); }
+.tag-date { background:var(--s2); color:var(--muted); font-family:'DM Mono',monospace; font-size:9px; }
+.tag-date.overdue { color:var(--red); }
+.tag-priority { background:var(--s2); color:var(--muted); }
+.tag-priority.high { background:rgba(200,96,42,0.12); color:var(--accent); }
+.tag-category { background:var(--s2); color:var(--muted); }
 
 /* ── Progress ── */
 .progress-row { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
-.progress-bar-bg { flex:1; height:3px; background:var(--s3); border-radius:1px; overflow:hidden; }
-.progress-bar-fill { height:100%; border-radius:1px; transition:width 0.3s ease; background:linear-gradient(90deg, var(--accent), var(--green)); }
+.progress-bar-bg { flex:1; height:3px; background:var(--s3); border-radius:2px; overflow:hidden; }
+.progress-bar-fill { height:100%; border-radius:2px; transition:width 0.3s ease; background:var(--accent); }
+.progress-bar-fill.complete { background:var(--green); }
 .progress-label { font-size:9px; font-weight:500; color:var(--muted); font-family:'DM Mono',monospace; flex:none; }
 
 /* ── Step Buttons ── */
 .steps-row { display:flex; gap:3px; }
-.step-btn { flex:1; padding:6px 2px; border-radius:4px; border:1px solid var(--border); background:var(--s3); color:var(--muted); font-size:8px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; text-align:center; transition:all 0.12s; line-height:1.3; display:flex; flex-direction:column; align-items:center; gap:1px; letter-spacing:0.02em; }
+.step-btn { flex:1; padding:6px 2px; border-radius:6px; border:1px solid var(--border); background:var(--s2); color:var(--muted); font-size:8px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; text-align:center; transition:all 0.12s; line-height:1.3; letter-spacing:0.02em; }
 .step-btn:active { transform:scale(0.9); }
-.step-btn .step-icon { font-size:10px; }
 .step-btn.completed { border-color:transparent; background:var(--green); color:#fff; }
-.step-btn.current { border-color:var(--accent); background:rgba(240,165,0,0.15); color:var(--accent); box-shadow:0 0 8px rgba(240,165,0,0.2); }
-.step-btn[data-step="企画"].current { border-color:var(--blue); background:rgba(59,130,246,0.15); color:var(--blue); box-shadow:0 0 8px rgba(59,130,246,0.2); }
-.step-btn[data-step="撮影"].current { border-color:var(--purple); background:rgba(168,85,247,0.15); color:var(--purple); box-shadow:0 0 8px rgba(168,85,247,0.2); }
-.step-btn[data-step="編集"].current { border-color:var(--yellow); background:rgba(234,179,8,0.15); color:var(--yellow); box-shadow:0 0 8px rgba(234,179,8,0.2); }
-.step-btn[data-step="校正"].current { border-color:var(--accent); background:rgba(240,165,0,0.15); color:var(--accent); box-shadow:0 0 8px rgba(240,165,0,0.2); }
-.step-btn[data-step="投稿"].current { border-color:var(--pink); background:rgba(236,72,153,0.15); color:var(--pink); box-shadow:0 0 8px rgba(236,72,153,0.2); }
-.step-btn[data-step="完了"].current { border-color:var(--green); background:rgba(34,197,94,0.15); color:var(--green); box-shadow:0 0 8px rgba(34,197,94,0.2); }
+.step-btn.current { border-color:var(--accent); background:transparent; color:var(--accent); }
 
 /* ── Expanded area ── */
 .post-expand { max-height:0; overflow:hidden; transition:max-height 0.3s ease; }
@@ -117,16 +112,16 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 .memo-text { font-size:12px; color:var(--text); line-height:1.6; opacity:0.8; white-space:pre-wrap; word-break:break-word; }
 .memo-empty { font-size:11px; color:var(--muted); font-style:italic; }
 .card-actions { display:flex; justify-content:space-between; align-items:center; margin-top:12px; }
-.btn-close-detail { padding:8px 16px; border-radius:8px; border:1px solid var(--border2); background:var(--s2); color:var(--muted); font-size:12px; font-weight:600; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; }
+.btn-close-detail { padding:8px 16px; border-radius:var(--radius); border:1px solid var(--border); background:var(--s2); color:var(--muted); font-size:12px; font-weight:600; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; }
 .btn-close-detail:active { transform:scale(0.95); opacity:0.7; }
-.btn-delete { padding:8px 16px; border-radius:8px; border:1px solid rgba(239,68,68,0.3); background:rgba(239,68,68,0.06); color:var(--red); font-size:12px; font-weight:600; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; }
+.btn-delete { padding:8px 16px; border-radius:var(--radius); border:1px solid rgba(200,48,48,0.25); background:transparent; color:var(--red); font-size:12px; font-weight:600; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; }
 .btn-delete:active { transform:scale(0.95); opacity:0.7; }
 
 /* ── Expand toggle ── */
 .expand-toggle { width:100%; padding:4px 0 0; border:none; background:transparent; color:var(--muted); font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; transition:all 0.15s; margin-top:8px; font-family:'Noto Sans JP',sans-serif; }
 .expand-toggle:active { opacity:0.6; }
-.post-card.expanded .expand-toggle .arrow { transform:rotate(180deg); }
-.arrow { transition:transform 0.2s; display:inline-block; }
+.expand-toggle-arrow { display:inline-block; transition:transform 0.2s; font-size:8px; }
+.post-card.expanded .expand-toggle-arrow { transform:rotate(180deg); }
 
 /* ── New Post Form ── */
 .form-wrap { padding:16px 16px 40px; }
@@ -135,32 +130,32 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 .form-label .required { color:var(--red); margin-left:2px; }
 .form-input, .form-select, .form-textarea {
   width:100%; padding:11px 14px; background:var(--s2); border:1px solid var(--border);
-  border-radius:6px; color:var(--text); font-size:14px; font-family:'Noto Sans JP',sans-serif;
+  border-radius:var(--radius); color:var(--text); font-size:14px; font-family:'Noto Sans JP',sans-serif;
   outline:none; transition:border-color 0.15s;
 }
 .form-input:focus, .form-select:focus, .form-textarea:focus { border-color:var(--accent); }
 .form-input::placeholder, .form-textarea::placeholder { color:var(--muted); }
-.form-select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2368687a' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; padding-right:36px; }
-.form-select option { background:var(--s2); color:var(--text); }
+.form-select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238c8579' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; padding-right:36px; }
+.form-select option { background:var(--s1); color:var(--text); }
 .form-textarea { min-height:80px; resize:vertical; line-height:1.6; }
-.form-submit { width:100%; padding:14px; background:linear-gradient(135deg, var(--accent), #e07000); border:none; border-radius:6px; color:#fff; font-size:14px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; letter-spacing:0.06em; text-transform:uppercase; }
+.form-submit { width:100%; padding:14px; background:var(--accent); border:none; border-radius:var(--radius); color:#fff; font-size:14px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; letter-spacing:0.06em; }
 .form-submit:active { transform:scale(0.97); opacity:0.85; }
 .form-submit:disabled { opacity:0.4; cursor:not-allowed; }
 
 /* ── Toast ── */
-.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px); background:var(--s1); border:1px solid var(--border); border-radius:4px; padding:10px 20px; font-size:11px; font-weight:600; color:var(--text); z-index:1000; transition:transform 0.3s ease; white-space:nowrap; box-shadow:0 4px 24px rgba(0,0,0,0.4); display:flex; align-items:center; gap:8px; letter-spacing:0.02em; }
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px); background:var(--s1); border:1px solid var(--border); border-radius:var(--radius); padding:10px 20px; font-size:11px; font-weight:600; color:var(--text); z-index:1000; transition:transform 0.3s ease; white-space:nowrap; box-shadow:0 4px 24px rgba(0,0,0,0.2); letter-spacing:0.02em; }
 .toast.show { transform:translateX(-50%) translateY(0); }
-.toast.success { border-color:rgba(34,197,94,0.4); }
-.toast.error { border-color:rgba(239,68,68,0.4); }
+.toast.success { border-color:rgba(93,186,93,0.4); }
+.toast.error { border-color:rgba(217,74,74,0.4); }
 
 /* ── Confirm Dialog ── */
-.overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; align-items:center; justify-content:center; padding:20px; }
+.overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:200; align-items:center; justify-content:center; padding:20px; }
 .overlay.show { display:flex; }
-.dialog { background:var(--s1); border:1px solid var(--border); border-radius:6px; padding:24px; max-width:320px; width:100%; }
+.dialog { background:var(--s1); border:1px solid var(--border); border-radius:var(--radius); padding:24px; max-width:320px; width:100%; }
 .dialog-title { font-size:14px; font-weight:900; margin-bottom:8px; letter-spacing:0.02em; }
 .dialog-text { font-size:11px; color:var(--muted); line-height:1.6; margin-bottom:20px; }
 .dialog-actions { display:flex; gap:8px; }
-.dialog-btn { flex:1; padding:10px; border-radius:4px; font-size:12px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; border:none; letter-spacing:0.04em; }
+.dialog-btn { flex:1; padding:10px; border-radius:var(--radius); font-size:12px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; border:none; letter-spacing:0.04em; }
 .dialog-btn:active { transform:scale(0.95); }
 .dialog-btn.cancel { background:var(--s3); color:var(--text); }
 .dialog-btn.danger { background:var(--red); color:#fff; }
@@ -177,7 +172,10 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
     <div class="header-brand">F.o.o · EC/マーケ</div>
     <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
   </div>
-  <div class="header-title">EC/マーケ<span>管理</span></div>
+  <div class="header-row">
+    <div class="header-title">EC/マーケ<span>管理</span></div>
+    <button class="theme-toggle" id="theme-toggle-btn" onclick="cycleTheme()" title="テーマ切り替え">🌙</button>
+  </div>
 </div>
 
 <div class="nav">
@@ -189,14 +187,14 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 <!-- Active posts -->
 <div class="tab-content active" id="tab-active">
   <div id="active-loading" class="loading"><div class="spinner"></div><div class="loading-text">読み込み中...</div></div>
-  <div id="active-empty" class="empty-state" style="display:none"><div class="empty-icon">🎉</div><div class="empty-text">進行中の投稿はありません<br>新規タブから作成しましょう</div></div>
+  <div id="active-empty" class="empty-state" style="display:none"><div class="empty-title">進行中の投稿はありません</div><div class="empty-text">新規タブから作成しましょう</div></div>
   <div class="card-list" id="active-list"></div>
 </div>
 
 <!-- Completed posts -->
 <div class="tab-content" id="tab-done">
   <div id="done-loading" class="loading"><div class="spinner"></div><div class="loading-text">読み込み中...</div></div>
-  <div id="done-empty" class="empty-state" style="display:none"><div class="empty-icon">📭</div><div class="empty-text">完了した投稿はまだありません</div></div>
+  <div id="done-empty" class="empty-state" style="display:none"><div class="empty-title">完了した投稿はまだありません</div><div class="empty-text">投稿が完了するとここに表示されます</div></div>
   <div class="card-list" id="done-list"></div>
 </div>
 
@@ -211,9 +209,9 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
       <div class="form-group">
         <label class="form-label">カテゴリ</label>
         <select class="form-select" id="f-category">
-          <option value="インスタ">📸 インスタ</option>
-          <option value="オークション">🏷️ オークション</option>
-          <option value="その他">📌 その他</option>
+          <option value="インスタ">インスタ</option>
+          <option value="オークション">オークション</option>
+          <option value="その他">その他</option>
         </select>
       </div>
       <div class="form-group">
@@ -253,12 +251,29 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 <div class="toast" id="toast"></div>
 
 <script>
+// ── Theme ──
+var THEME_KEY = 'foo_portal_theme';
+function applyTheme(t) {
+  var root = document.documentElement;
+  if (t === 'auto') root.removeAttribute('data-theme');
+  else root.setAttribute('data-theme', t);
+}
+function cycleTheme() {
+  var cur = localStorage.getItem(THEME_KEY) || 'auto';
+  var next = cur === 'auto' ? 'dark' : cur === 'dark' ? 'light' : 'auto';
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+}
+(function() {
+  var saved = localStorage.getItem(THEME_KEY) || 'auto';
+  applyTheme(saved);
+})();
+
 // ── Config ──
 const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
 const DB_ID = '374425dd246a4ced981e68794e614de1';
 
 const STEPS = ['企画','撮影','編集','校正','投稿','完了'];
-const CATEGORY_EMOJI = { 'インスタ':'📸', 'オークション':'🏷️', 'その他':'📌' };
 const PRIORITY_ORDER = { '高':0, '中':1, '低':2 };
 
 let allPosts = [];
@@ -363,13 +378,11 @@ function renderAll() {
   const active = allPosts.filter(p => !isCompleted(p));
   const done = allPosts.filter(p => isCompleted(p));
 
-  // Sort active: due date asc (null last), then priority
+  // Sort active: priority first, then date
   active.sort((a, b) => {
-    // Priority first
     const pa = PRIORITY_ORDER[a.priority] ?? 1;
     const pb = PRIORITY_ORDER[b.priority] ?? 1;
     if (pa !== pb) return pa - pb;
-    // Then date
     if (a.date && b.date) return a.date.localeCompare(b.date);
     if (a.date) return -1;
     if (b.date) return 1;
@@ -414,7 +427,6 @@ function getLoginUser() {
 const canDelete = getLoginUser() === '藤井 真理亜';
 
 function renderCard(post) {
-  const emoji = CATEGORY_EMOJI[post.category] || '📌';
   const stepIdx = getStepIndex(post.status);
   const completed = getCompletedSteps(post.status);
   const total = STEPS.length;
@@ -422,41 +434,39 @@ function renderCard(post) {
   const expanded = expandedCards.has(post.id);
   const overdue = !isCompleted(post) && isOverdue(post.date);
 
-  let priorityClass = 'tag-priority-mid';
-  let priorityLabel = '中';
-  if (post.priority === '高') { priorityClass = 'tag-priority-high'; priorityLabel = '高'; }
-  else if (post.priority === '低') { priorityClass = 'tag-priority-low'; priorityLabel = '低'; }
+  let priorityClass = 'priority-mid';
+  let priorityLabel = '';
+  if (post.priority === '高') { priorityClass = 'priority-high'; priorityLabel = '高'; }
+  else if (post.priority === '低') { priorityClass = 'priority-low'; priorityLabel = ''; }
 
   const stepsHtml = STEPS.map((step, i) => {
     let cls = 'step-btn';
-    let icon = '';
     if (isCompleted(post) || i < stepIdx) {
       cls += ' completed';
-      icon = '✓';
     } else if (i === stepIdx && !isCompleted(post)) {
       cls += ' current';
-      icon = '●';
     }
-    return `<button class="${cls}" data-step="${step}" onclick="handleStep('${post.id}','${step}',event)">`
-      + `<span class="step-icon">${icon}</span>${step}</button>`;
+    return `<button class="${cls}" data-step="${step}" onclick="handleStep('${post.id}','${step}',event)">${step}</button>`;
   }).join('');
 
   const dateDisplay = post.date ? formatDate(post.date) : '未定';
-  const dateStyle = overdue ? 'color:var(--red)' : '';
+  const overdueClass = overdue ? ' overdue' : '';
 
-  return `<div class="post-card${expanded ? ' expanded' : ''}" id="card-${post.id}">
+  const barClass = pct >= 100 ? ' complete' : '';
+
+  return `<div class="post-card ${priorityClass}${expanded ? ' expanded' : ''}" id="card-${post.id}">
     <div class="post-header">
       <div class="post-title-row">
-        <div class="post-title"><span class="emoji">${emoji}</span><span class="text">${escHtml(post.title || '無題')}</span></div>
+        <div class="post-title">${escHtml(post.title || '無題')}</div>
         <div class="post-meta">
-          <span class="meta-tag tag-date" style="${dateStyle}">📅 ${dateDisplay}</span>
-          <span class="meta-tag ${priorityClass}">${priorityLabel}</span>
+          <span class="meta-tag tag-date${overdueClass}">${dateDisplay}</span>
+          ${priorityLabel ? `<span class="meta-tag tag-priority high">${priorityLabel}</span>` : ''}
           ${post.category ? `<span class="meta-tag tag-category">${escHtml(post.category)}</span>` : ''}
         </div>
       </div>
     </div>
     <div class="progress-row">
-      <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+      <div class="progress-bar-bg"><div class="progress-bar-fill${barClass}" style="width:${pct}%"></div></div>
       <span class="progress-label">${completed}/${total}</span>
     </div>
     <div class="steps-row">${stepsHtml}</div>
@@ -465,13 +475,13 @@ function renderCard(post) {
         <div class="memo-label">メモ</div>
         ${post.memo ? `<div class="memo-text">${escHtml(post.memo)}</div>` : `<div class="memo-empty">メモなし</div>`}
         <div class="card-actions">
-          <button class="btn-close-detail" onclick="toggleExpand('${post.id}')">▲ 閉じる</button>
-          ${canDelete ? `<button class="btn-delete" onclick="confirmDelete('${post.id}','${escAttr(post.title)}')">🗑 削除</button>` : ''}
+          <button class="btn-close-detail" onclick="toggleExpand('${post.id}')">閉じる</button>
+          ${canDelete ? `<button class="btn-delete" onclick="confirmDelete('${post.id}','${escAttr(post.title)}')">削除</button>` : ''}
         </div>
       </div>
     </div>
     <button class="expand-toggle" onclick="toggleExpand('${post.id}')">
-      <span class="arrow">▼</span> ${expanded ? '閉じる' : '詳細'}
+      <span class="expand-toggle-arrow">${expanded ? '&#9650;' : '&#9660;'}</span> ${expanded ? '閉じる' : '詳細'}
     </button>
   </div>`;
 }
@@ -505,7 +515,8 @@ function toggleExpand(id) {
     card.classList.toggle('expanded', expandedCards.has(id));
     const toggleBtn = card.querySelector('.expand-toggle');
     if (toggleBtn) {
-      toggleBtn.innerHTML = `<span class="arrow">▼</span> ${expandedCards.has(id) ? '閉じる' : '詳細'}`;
+      const isExp = expandedCards.has(id);
+      toggleBtn.innerHTML = `<span class="expand-toggle-arrow">${isExp ? '&#9650;' : '&#9660;'}</span> ${isExp ? '閉じる' : '詳細'}`;
     }
   }
 }
@@ -526,7 +537,7 @@ async function handleStep(postId, step, event) {
         'ステータス': { select: { name: step } }
       }
     });
-    showToast('✓ ' + step + ' に更新', 'success');
+    showToast(step + ' に更新しました', 'success');
   } catch (e) {
     post.status = oldStatus;
     renderAll();
@@ -569,7 +580,7 @@ async function handleSubmit(event) {
 
   try {
     await notionAPI('/pages', 'POST', { parent: { database_id: DB_ID }, properties });
-    showToast('✓ 投稿を作成しました', 'success');
+    showToast('投稿を作成しました', 'success');
     document.getElementById('new-form').reset();
     document.getElementById('f-priority').value = '中';
     switchTab('active');
@@ -607,7 +618,7 @@ document.getElementById('dialog-confirm').addEventListener('click', async () => 
     allPosts = allPosts.filter(p => p.id !== id);
     expandedCards.delete(id);
     renderAll();
-    showToast('✓ 削除しました', 'success');
+    showToast('削除しました', 'success');
   } catch (e) {
     showToast('削除エラー: ' + e.message, 'error');
   }
@@ -631,7 +642,6 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchPosts();
 });
 </script>
-<script src="foo-mobile.js"></script>
 <script src="foo-swipe.js"></script>
 </body>
 </html>

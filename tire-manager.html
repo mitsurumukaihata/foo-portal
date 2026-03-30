@@ -1453,13 +1453,15 @@ function renderStockResult(size, catKey, records) {
   var hasStockPatterns = sortedPatterns.filter(function(p) { return patternHasAny(p); });
   var noStockPatterns = sortedPatterns.filter(function(p) { return !patternHasAny(p); });
 
+  // ヘッダーを1回だけ表示（sticky固定）
+  html += '<div id="stock-col-header" style="position:sticky;top:0;z-index:10;background:var(--bg);padding-top:4px;">' + colHeaderHtml + '</div>';
+
   function renderStockGroup(patterns, groupLabel, groupColor) {
     if (!patterns.length) return;
     html += '<div style="margin-top:14px;margin-bottom:6px;padding:6px 10px;background:' + groupColor + ';border-radius:8px;display:flex;align-items:center;justify-content:space-between;">';
     html += '<span style="font-size:12px;font-weight:800;color:' + (groupLabel === '在庫あり' ? 'var(--green)' : 'var(--muted)') + ';">' + groupLabel + '</span>';
     html += '<span style="font-size:11px;color:var(--muted);">' + patterns.length + '件</span>';
     html += '</div>';
-    html += colHeaderHtml;
     var _lastMaker = null;
     patterns.forEach(function(p) {
       var maker = getMaker(p);

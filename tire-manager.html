@@ -1945,6 +1945,7 @@ let historyYear = new Date().getFullYear();
 let historyMonth = new Date().getMonth() + 1; // 1-12, 0=全月
 let historyKubunFilter = '全部'; // 区分フィルター
 let historyPatternFilter = '全部'; // パターンフィルター
+let historyWhFilter = '全部'; // 倉庫フィルター
 
 async function loadHistory(forceReload) {
   const el = document.getElementById('history-content');
@@ -2079,6 +2080,19 @@ function renderHistory() {
         historyPatterns.forEach(p => {
           const s = p === historyPatternFilter;
           tags += `<button onclick="filterPattern('${p}')" style="flex-shrink:0;padding:4px 10px;border-radius:16px;font-size:10px;font-weight:600;font-family:inherit;cursor:pointer;border:1.5px solid var(--blue);background:${s ? 'var(--blue)' : 'transparent'};color:${s ? '#fff' : 'var(--blue)'};transition:all 0.15s;">${p}</button>`;
+        });
+        return tags;
+      })()}
+    </div>
+    <div id="wh-tags" style="display:flex;gap:5px;overflow-x:auto;margin-bottom:8px;padding-bottom:4px;-webkit-overflow-scrolling:touch;">
+      ${(() => {
+        const whAll = (typeof historyWhFilter === 'undefined' ? '全部' : historyWhFilter) === '全部';
+        const whColors = {'五日市':'#d97706','志和':'#2563eb'};
+        let tags = `<button onclick="filterWh('全部')" style="flex-shrink:0;padding:4px 10px;border-radius:16px;font-size:10px;font-weight:600;font-family:inherit;cursor:pointer;border:1.5px solid var(--accent);background:${whAll ? 'var(--accent)' : 'transparent'};color:${whAll ? '#fff' : 'var(--accent)'};transition:all 0.15s;">全倉庫</button>`;
+        ['五日市','志和'].forEach(w => {
+          const sel = (typeof historyWhFilter !== 'undefined') && w === historyWhFilter;
+          const col = whColors[w] || 'var(--muted)';
+          tags += `<button onclick="filterWh('${w}')" style="flex-shrink:0;padding:4px 10px;border-radius:16px;font-size:10px;font-weight:600;font-family:inherit;cursor:pointer;border:1.5px solid ${col};background:${sel ? col : 'transparent'};color:${sel ? '#fff' : col};transition:all 0.15s;">📍${w}</button>`;
         });
         return tags;
       })()}
@@ -2387,23 +2401,27 @@ function applyHistoryFilter(query) {
   rebuildKubunTags(sizePtnMatchedRecords);
 
   // ③ カードの表示/非表示
+  const wf = historyWhFilter;
   const cards = document.querySelectorAll('[id^="hist-"]');
   let shown = 0;
   cards.forEach(card => {
     const size = card.getAttribute('data-size') || '';
     const kubun = card.getAttribute('data-kubun') || '';
     const pattern = card.getAttribute('data-pattern') || '';
+    const cardWh = (card.closest('.wh-group')?.getAttribute('data-wh') || '');
     const sizeMatch = !q || size.includes(q);
     const patternMatch = pf === '全部' || pattern === pf;
     const kubunDisplay = (kubun === '移動入庫' || kubun === '移動出庫') ? '移動入出庫' : kubun;
     const kubunMatch = kf === '全部' || kubunDisplay === kf;
-    const match = sizeMatch && patternMatch && kubunMatch;
+    const whMatch = wf === '全部' || cardWh === wf;
+    const match = sizeMatch && patternMatch && kubunMatch && whMatch;
     card.style.display = match ? '' : 'none';
     if (match) shown++;
   });
   const countEl = document.getElementById('history-count');
   if (countEl) {
     const labels = [];
+    if (wf !== '全部') labels.push(wf);
     if (pf !== '全部') labels.push(pf);
     if (kf !== '全部') labels.push(kf);
     const prefix = labels.length ? `[${labels.join('/')}] ` : '';
@@ -2465,6 +2483,12 @@ function rebuildKubunTags(records) {
     html += `<button onclick="filterKubun('${k}')" style="flex-shrink:0;padding:4px 10px;border-radius:16px;font-size:10px;font-weight:600;font-family:inherit;cursor:pointer;border:1.5px solid ${col};background:${sel ? col : 'transparent'};color:${sel ? '#fff' : col};transition:all 0.15s;">${k}</button>`;
   });
   el.innerHTML = html;
+}
+
+function filterWh(wh) {
+  historyWhFilter = wh;
+  const searchInput = document.getElementById('history-search');
+  applyHistoryFilter(searchInput ? searchInput.value : '');
 }
 
 function filterKubun(kubun) {

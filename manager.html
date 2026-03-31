@@ -444,6 +444,9 @@ async function updateNavBadge() {
       const poster = p.properties['投稿者']?.select?.name || p.created_by?.name || '';
       if (poster !== currentUserName) count++;
     }
+    // 返信の未読分も加算
+    const unseenReplies = Object.values(_replyCountCache).reduce((s, rc) => s + rc.unseen, 0);
+    count += unseenReplies;
     if (count > 0) {
       el.textContent = count > 9 ? '9+' : count;
       el.style.display = 'flex';
@@ -560,7 +563,8 @@ async function loadComm() {
         statusBadge = '<span class="status-badge ' + scs + '">' + escapeHtml(status) + '</span>';
       }
       const authorHtml = author ? '<span style="font-size:10px;color:var(--accent);font-weight:600;">' + escapeHtml(author) + '</span>' : '';
-      const unreadDot = needConfirm ? '<span style="position:absolute;top:8px;right:8px;width:10px;height:10px;background:var(--red);border-radius:50%;"></span>' : '';
+      const hasUnread = needConfirm || rc.unseen > 0;
+      const unreadDot = hasUnread ? '<span style="position:absolute;top:8px;right:8px;width:10px;height:10px;background:var(--red);border-radius:50%;"></span>' : '';
       let confirmedHtml = '';
       if (confirmed.length > 0) {
         confirmedHtml = '<div style="margin-top:6px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;"><span style="font-size:10px;color:var(--green);">✓</span>';
@@ -592,7 +596,6 @@ function showCommDetail(page) {
   const content = getPropValue(page, '内容');
   const judgment = getPropValue(page, '現時点の判断');
   const rel = getPropValue(page, '関係者');
-  const phase = getPropValue(page, 'フェーズ');
   const confirmed = getPropValue(page, '確認者') || [];
   const author = getPropValue(page, '投稿者') || page.created_by?.name || '';
   const isAuthor = currentUserName && author && currentUserName === author;
@@ -620,7 +623,6 @@ function showCommDetail(page) {
     '<div class="detail-section"><div class="detail-section-title">内容</div><div class="detail-section-content">' + escapeHtml(content || '') + '</div></div>' +
     '<div class="detail-section"><div class="detail-section-title">現時点の判断</div><div class="detail-section-content">' + escapeHtml(judgment || '') + '</div></div>' +
     '<div class="detail-section"><div class="detail-section-title">関係者</div><div class="detail-tag-group">' + relHtml + '</div></div>' +
-    '<div class="detail-section"><div class="detail-section-title">フェーズ</div><div class="detail-section-content">' + escapeHtml(phase || '') + '</div></div>' +
     confirmedHtml +
     // 返信セクション（確認済みの直下）
     '<div class="reply-section">' +
@@ -1072,7 +1074,6 @@ function showAddForm() {
       '<div class="form-group"><label class="form-label">重要度</label><select class="form-select" id="form-comm-importance"><option value="">選択</option><option>高</option><option>中</option><option>低</option></select></div>' +
       '<div class="form-group"><label class="form-label">内容</label><textarea class="form-textarea" id="form-comm-content" placeholder=""></textarea></div>' +
       '<div class="form-group"><label class="form-label">関係者</label><input class="form-input" id="form-comm-rel" placeholder="カンマ区切り"></div>' +
-      '<div class="form-group"><label class="form-label">フェーズ</label><select class="form-select" id="form-comm-phase"><option value="">選択</option><option>フェーズ1</option><option>フェーズ2</option><option>将来検討</option></select></div>' +
       '<button class="form-btn" onclick="submitCommForm()">追加</button>' +
       '<button class="form-btn-cancel" onclick="closeForm()">キャンセル</button>';
   } else if (currentTab === 'meeting') {
@@ -1129,7 +1130,6 @@ async function submitCommForm() {
   const importance = document.getElementById('form-comm-importance').value;
   const content = document.getElementById('form-comm-content').value.trim();
   const relStr = document.getElementById('form-comm-rel').value.trim();
-  const phase = document.getElementById('form-comm-phase').value.trim();
   if (!title) { showToast('タイトルを入力してください', 'error'); _submitting = false; if (btn) { btn.disabled = false; btn.textContent = '追加'; } return; }
   try {
     const rel = relStr ? relStr.split(',').map(s => ({ name: s.trim() })) : [];
@@ -1141,7 +1141,6 @@ async function submitCommForm() {
         '重要度': { select: { name: importance || '中' } },
         '内容': { rich_text: [{ text: { content: content } }] },
         '関係者': { multi_select: rel },
-        'フェーズ': phase ? { select: { name: phase } } : undefined,
         '状態': { status: { name: '対応中' } },
         '投稿者': currentUserName ? { select: { name: currentUserName } } : undefined
       }

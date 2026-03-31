@@ -326,14 +326,20 @@ async function fooCreateStockOrder(params) {
  */
 async function fooCreateStockOrdersBatch(items) {
   const errors = [];
-  const tasks = items.map(item =>
-    fooCreateStockOrder(item)
-      .then(res => res)
-      .catch(e => {
-        errors.push(`${item.pattern} ${item.size}: ${e.message}`);
+  const tasks = items.map(async item => {
+    try {
+      return await fooCreateStockOrder(item);
+    } catch (e1) {
+      // 1回リトライ（1秒待機）
+      try {
+        await new Promise(r => setTimeout(r, 1000));
+        return await fooCreateStockOrder(item);
+      } catch (e2) {
+        errors.push(`${item.pattern} ${item.size}: ${e2.message}`);
         return null;
-      })
-  );
+      }
+    }
+  });
   await Promise.all(tasks);
   return { ok: items.length - errors.length, errors };
 }

@@ -1254,6 +1254,7 @@ async function submitNyuko() {
       }
     } catch (stockErr) {
       console.warn('発注中レコード処理エラー:', stockErr);
+      stockCleanMsg += '\n⚠️ 在庫DBの「発注中」レコード処理に失敗しました。在庫確認の「発注」列が正しくない可能性があります。';
     }
 
     // ③ 完了
@@ -1920,6 +1921,9 @@ function renderPending() {
       // 検索クエリがあればフィルタ適用
       reRenderPending();
 
+      // ── 整合性チェック（バックグラウンド）──
+      checkSyncIntegrity().catch(e => console.warn('整合性チェックエラー:', e));
+
       // ── 本伝待ちボタン ──
       try {
         const honMachi = orders.filter(o => {
@@ -2245,6 +2249,167 @@ function clearPendingSearch() {
   input.focus();
 }
 
+// ── 整合性チェック：発注管理の未入荷 vs 在庫DBの発注中 ──
+async function checkSyncIntegrity() {
+  const pending = orders.filter(o => {
+    const s = propStr(o, 'ステータス');
+    return s === '新規発注' || s === '発注済';
+  });
+  if (!pending.length) { removeSyncBanner(); return; }
+
+  // 発注管理の未入荷から期待される発注中レコードを集計
+  const expected = {}; // key: "dbKey|size|pattern|warehouse" → qty
+  for (const o of pending) {
+    const size = propStr(o, 'サイズコード') || propStr(o, 'サイズ') || propStr(o, 'タイヤサイズ');
+    const pattern = propStr(o, 'パターン');
+    const location = propStr(o, '納入予定場所');
+    const qty = parseInt(propStr(o, '数量')) || 0;
+    if (!size || !pattern || !qty) continue;
+    const dbKeys = detectDbKeys(size, pattern);
+    if (!dbKeys.length) continue;
+    const wh = fooWarehouseFull(location);
+    for (const key of dbKeys) {
+      const k = `${key}|${size}|${pattern}|${wh}`;
+      expected[k] = (expected[k] || 0) + qty;
+    }
+  }
+
+  // 在庫DBの発注中レコードを取得（対象DBだけ）
+  const dbKeysToCheck = [...new Set(Object.keys(expected).map(k => k.split('|')[0]))];
+  const actual = {};
+  for (const key of dbKeysToCheck) {
+    const dbInfo = DB_MAP[key];
+    if (!dbInfo) continue;
+    try {
+      const res = await notionQuery(dbInfo.id, { property: '区分', select: { equals: '発注中' } }, null, 100);
+      (res.results || []).forEach(r => {
+        if (r.archived) return;
+        const sz = r.properties['サイズコード']?.select?.name || '';
+        const pt = r.properties['パターン名']?.select?.name || '';
+        const wh = r.properties[dbInfo.warehouseField]?.select?.name || '';
+        const q = r.properties['数量']?.number || 0;
+        const ak = `${key}|${sz}|${pt}|${wh}`;
+        actual[ak] = (actual[ak] || 0) + q;
+      });
+    } catch (e) { console.warn('整合性チェック クエリ失敗:', key, e); }
+  }
+
+  // 差分チェック
+  const mismatches = [];
+  for (const [k, expQty] of Object.entries(expected)) {
+    const actQty = actual[k] || 0;
+    if (actQty < expQty) {
+      const [dbKey, size, pattern, wh] = k.split('|');
+      mismatches.push({ dbKey, size, pattern, wh, expected: expQty, actual: actQty, diff: expQty - actQty });
+    }
+  }
+
+  if (mismatches.length > 0) {
+    showSyncBanner(mismatches);
+  } else {
+    removeSyncBanner();
+  }
+}
+
+function showSyncBanner(mismatches) {
+  let banner = document.getElementById('sync-mismatch-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'sync-mismatch-banner';
+    banner.style.cssText = 'background:rgba(239,68,68,.08);border:1.5px solid rgba(239,68,68,.3);border-radius:10px;padding:12px 14px;margin-bottom:12px;';
+    const container = document.getElementById('pending-container');
+    container.parentNode.insertBefore(banner, container);
+  }
+  const details = mismatches.map(m =>
+    `${m.pattern} ${m.size}（${fooWarehouseShort(m.wh)}）: 発注${m.expected}本 → 在庫DB ${m.actual}本（${m.diff}本不足）`
+  ).join('<br>');
+  banner.innerHTML = `
+    <div style="font-size:13px;font-weight:700;color:#ef4444;margin-bottom:6px;">⚠️ 在庫DBとの不一致（${mismatches.length}件）</div>
+    <div style="font-size:11px;color:var(--text);line-height:1.6;margin-bottom:10px;">${details}</div>
+    <button onclick="repairSync()" style="width:100%;padding:10px;border-radius:8px;border:1.5px solid rgba(239,68,68,.4);background:rgba(239,68,68,.1);color:#ef4444;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">🔧 不足分を自動修復</button>
+  `;
+}
+
+function removeSyncBanner() {
+  const banner = document.getElementById('sync-mismatch-banner');
+  if (banner) banner.remove();
+}
+
+async function repairSync() {
+  const btn = document.querySelector('#sync-mismatch-banner button');
+  if (btn) { btn.disabled = true; btn.textContent = '修復中...'; }
+
+  try {
+    const pending = orders.filter(o => {
+      const s = propStr(o, 'ステータス');
+      return s === '新規発注' || s === '発注済';
+    });
+
+    // 期待値を再集計
+    const expected = {};
+    for (const o of pending) {
+      const size = propStr(o, 'サイズコード') || propStr(o, 'サイズ') || propStr(o, 'タイヤサイズ');
+      const pattern = propStr(o, 'パターン');
+      const location = propStr(o, '納入予定場所');
+      const qty = parseInt(propStr(o, '数量')) || 0;
+      if (!size || !pattern || !qty) continue;
+      const dbKeys = detectDbKeys(size, pattern);
+      if (!dbKeys.length) continue;
+      const wh = fooWarehouseFull(location);
+      for (const key of dbKeys) {
+        const k = `${key}|${size}|${pattern}|${wh}`;
+        expected[k] = (expected[k] || 0) + qty;
+      }
+    }
+
+    // 在庫DBの実績を取得
+    const dbKeysToCheck = [...new Set(Object.keys(expected).map(k => k.split('|')[0]))];
+    const actual = {};
+    for (const key of dbKeysToCheck) {
+      const dbInfo = DB_MAP[key];
+      if (!dbInfo) continue;
+      try {
+        const res = await notionQuery(dbInfo.id, { property: '区分', select: { equals: '発注中' } }, null, 100);
+        (res.results || []).forEach(r => {
+          if (r.archived) return;
+          const sz = r.properties['サイズコード']?.select?.name || '';
+          const pt = r.properties['パターン名']?.select?.name || '';
+          const wh = r.properties[dbInfo.warehouseField]?.select?.name || '';
+          const q = r.properties['数量']?.number || 0;
+          const ak = `${key}|${sz}|${pt}|${wh}`;
+          actual[ak] = (actual[ak] || 0) + q;
+        });
+      } catch (e) { /* skip */ }
+    }
+
+    // 不足分を作成
+    const toCreate = [];
+    for (const [k, expQty] of Object.entries(expected)) {
+      const actQty = actual[k] || 0;
+      if (actQty < expQty) {
+        const [dbKey, size, pattern, wh] = k.split('|');
+        toCreate.push({ dbKey, size, pattern, warehouse: wh, qty: expQty - actQty, creator: loginUser || '自動修復' });
+      }
+    }
+
+    if (toCreate.length) {
+      const result = await fooCreateStockOrdersBatch(toCreate);
+      if (result.errors.length) {
+        showFeedback('error', '一部修復に失敗: ' + result.errors.join(', '));
+      } else {
+        showFeedback('success', `✅ ${toCreate.length}件の「発注中」レコードを修復しました`);
+        removeSyncBanner();
+      }
+    } else {
+      showFeedback('success', '不一致はありませんでした');
+      removeSyncBanner();
+    }
+  } catch (e) {
+    showFeedback('error', '修復に失敗: ' + e.message);
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '🔧 不足分を自動修復'; }
+}
+
 function reRenderPending() {
   const el = document.getElementById('pending-container');
   if (!orders || !orders.length) return;
@@ -2465,7 +2630,7 @@ function confirmCancel(id) {
           stockMsg += '\n⚠️ 一部エラー: ' + delResult.errors.join(', ');
         }
       } catch (stockErr) {
-        stockMsg = '\n⚠️ 入出庫DBの削除に失敗: ' + stockErr.message;
+        stockMsg = '\n⚠️ 入出庫DBの「発注中」削除に失敗しました。在庫確認の「発注」列が残ったままになる可能性があります。';
       }
 
       // ローカル更新
@@ -2473,7 +2638,7 @@ function confirmCancel(id) {
       if (idx >= 0) orders[idx].properties['ステータス'].select = { name: 'キャンセル' };
       overlay.remove();
       renderPending();
-      showFeedback('success', '取り消しました' + stockMsg);
+      showFeedback(stockMsg.includes('⚠️') ? 'error' : 'success', '取り消しました' + stockMsg);
     } catch(e) {
       yesBtn.textContent = 'エラー';
       showFeedback('error', '取り消しに失敗: ' + e.message);
@@ -2826,13 +2991,13 @@ async function submitOrder() {
     }).filter(Boolean);
 
     if (!stockItems.length) {
-      showFeedback('success', `発注管理表に登録しました ✓\n⚠️ 対応する入出庫DBが見つからなかったため「発注中」は未登録です`);
+      showFeedback('error', `⚠️ 発注管理表には登録しましたが、対応する入出庫DBが見つかりませんでした。\n在庫確認の「発注」に反映されません。`);
     } else {
       const stockResult = await fooCreateStockOrdersBatch(stockItems);
       const failed = stockResult.errors;
 
       if(failed.length) {
-        showFeedback('success', `発注管理表に登録しました ✓\n入出庫DBへの書き込みに一部失敗:\n${failed.join('\n')}`);
+        showFeedback('error', `⚠️ 発注管理表には登録しましたが、在庫DBへの「発注中」登録に失敗しました。\n${failed.join('\n')}\n\n未入荷タブの「修復」ボタンで再登録できます。`);
       } else {
         const dbNames = targetKeys.map(k => DB_MAP[k]?.name).filter(Boolean).join('、');
         showFeedback('success', `登録完了 ✓\n発注管理表 ＋ 入出庫DB（${dbNames}）に「発注中」を記録しました`);

@@ -775,13 +775,12 @@ async function fetchStockForCat(cat, dbInfo, stockMap, kurikoshiDate) {
       { property: '区分', select: { equals: '発注中' } },
     ]
   };
-  // 繰越ベースラインには準備・発注中は含まれない（二重計上防止のため）。
-  // そのため準備・発注中レコードは日付に関係なく常に取得する必要がある。
+  // 繰越ベースラインには準備が含まれている（繰越時点の実在庫）。
+  // 発注中は実物がないため繰越に含まれず、日付に関係なく常に取得する。
   const filter = kurikoshiDate
     ? { and: [ whFilter, { or: [
         { timestamp: 'created_time', created_time: { on_or_after: kurikoshiDate } },
-        { property: '区分', select: { equals: '発注中' } },
-        { property: '区分', select: { equals: '準備' } }
+        { property: '区分', select: { equals: '発注中' } }
       ]}]}
     : whFilter;
 

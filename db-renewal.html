@@ -75,7 +75,8 @@ h1 span{font-weight:400;font-size:16px;color:#888}
   <div class="info-box">
     <b>スナップショットDBの在庫値</b>をベースに「繰越」レコードを作成します。<br>
     過去データは<b>削除されません</b>。過去の繰越レコードのみアーカイブされます。<br>
-    繰越後、在庫計算は繰越＋準備＋発注中＋新規レコードだけで行われ<b>表示速度が向上</b>します。
+    繰越後、在庫計算は繰越＋発注中＋新規レコードだけで行われ<b>表示速度が向上</b>します。<br>
+    ※ 繰越値には準備中の在庫も含まれます。繰越後の準備は新規レコードとして別途記録されます。
   </div>
 
   <div id="last-run-info"></div>
@@ -217,10 +218,10 @@ function confirmAndRun() {
 // ── 在庫DBのレコードからリアルタイム在庫を計算 ──
 function calcStockFromRecords(records, wField) {
   const stockMap = {}; // key: "pattern|size|warehouse" → stock number
-  // 繰越に含めない区分: 繰越（旧データ）、準備、発注中
-  // 準備・発注中は繰越後も日付を問わず取得して表示時に適用するため、
-  // 繰越ベースラインには含めない（二重計上防止）
-  const SKIP_IN_KURIKOSHI = new Set(['繰越', '準備', '発注中']);
+  // 繰越に含めない区分: 繰越（旧データ）、発注中
+  // 準備は「まだ倉庫にある在庫」なので繰越ベースラインに含める（在庫として計上）
+  // 発注中は実物がないので除外
+  const SKIP_IN_KURIKOSHI = new Set(['繰越', '発注中']);
   for (const r of records) {
     const p = r.properties;
     const kubun = p['区分']?.select?.name || '';

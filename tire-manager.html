@@ -1338,13 +1338,13 @@ async function loadStockData(size, catKey) {
 async function fetchAllRecords(dbId, sizeFilter, kurikoshiDate) {
   let all = [], cursor;
   const sizeF = { property: 'サイズコード', select: { equals: sizeFilter } };
-  // 繰越ベースラインには準備・発注中は含まれない（二重計上防止のため）。
-  // そのため準備・発注中レコードは日付に関係なく常に取得する必要がある。
+  // 繰越ベースラインには準備が含まれている（繰越時点の実在庫）。
+  // 発注中は実物がないため繰越に含まれず、日付に関係なく常に取得する。
+  // 準備は繰越後の新規準備のみ取得（繰越以降のレコードに含まれる）。
   const filter = kurikoshiDate
     ? { and: [ sizeF, { or: [
         { timestamp: 'created_time', created_time: { on_or_after: kurikoshiDate } },
-        { property: '区分', select: { equals: '発注中' } },
-        { property: '区分', select: { equals: '準備' } }
+        { property: '区分', select: { equals: '発注中' } }
       ]}]}
     : sizeF;
   while (true) {

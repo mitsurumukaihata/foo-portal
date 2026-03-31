@@ -218,10 +218,10 @@ function confirmAndRun() {
 // ── 在庫DBのレコードからリアルタイム在庫を計算 ──
 function calcStockFromRecords(records, wField) {
   const stockMap = {}; // key: "pattern|size|warehouse" → stock number
-  // 繰越に含めない区分: 繰越（旧データ）、発注中
-  // 準備は「まだ倉庫にある在庫」なので繰越ベースラインに含める（在庫として計上）
-  // 発注中は実物がないので除外
-  const SKIP_IN_KURIKOSHI = new Set(['繰越', '発注中']);
+  // 全レコード（旧繰越含む）で在庫を計算する。
+  // 旧繰越を除外すると、入出庫が全て繰越前の場合に在庫が0になり繰越が作られない。
+  // 発注中のみ除外（実物がないため）。
+  const SKIP_IN_KURIKOSHI = new Set(['発注中']);
   for (const r of records) {
     const p = r.properties;
     const kubun = p['区分']?.select?.name || '';

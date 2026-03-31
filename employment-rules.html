@@ -445,10 +445,39 @@ function filterSections(query) {
   });
 
   if (q) {
+    // ヒット箇所の詳細を表示
+    var details = '';
+    SECTIONS.forEach(function(sec, si) {
+      var hits = [];
+      allArticles.forEach(function(art) {
+        if (art.sectionIdx !== si) return;
+        var idx = art.text.indexOf(q);
+        if (idx !== -1) {
+          // ヒット前後の文脈を抜き出し
+          var start = Math.max(0, idx - 15);
+          var end = Math.min(art.text.length, idx + q.length + 15);
+          var snippet = (start > 0 ? '…' : '') + art.text.slice(start, idx) + '<strong style="color:var(--accent);">' + art.text.slice(idx, idx + q.length) + '</strong>' + art.text.slice(idx + q.length, end) + (end < art.text.length ? '…' : '');
+          hits.push(snippet);
+        }
+      });
+      if (sec.title.toLowerCase().indexOf(q) !== -1) {
+        hits.unshift('<strong style="color:var(--accent);">セクション名にヒット</strong>');
+      }
+      if (hits.length > 0) {
+        details += '<div style="margin-top:8px;padding:8px 10px;background:var(--s2);border:1px solid var(--border);border-radius:8px;">';
+        details += '<div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:4px;">' + sec.title + '（' + hits.length + '件）</div>';
+        hits.slice(0, 5).forEach(function(h) {
+          details += '<div style="font-size:11px;color:var(--muted);line-height:1.6;border-left:2px solid var(--accent);padding-left:8px;margin-bottom:3px;">' + h + '</div>';
+        });
+        if (hits.length > 5) details += '<div style="font-size:10px;color:var(--muted);">… 他 ' + (hits.length - 5) + '件</div>';
+        details += '</div>';
+      }
+    });
     countEl.style.display = 'block';
-    countEl.textContent = '「' + query + '」の検索結果: ' + totalMatch + '件';
+    countEl.innerHTML = '<div style="font-size:12px;font-weight:600;color:var(--text);">「' + query + '」の検索結果: ' + totalMatch + '件</div>' + details;
   } else {
     countEl.style.display = 'none';
+    countEl.innerHTML = '';
   }
 }
 

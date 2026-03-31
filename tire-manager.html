@@ -1277,7 +1277,7 @@ async function submitPrepToShukko(pageId, catKey) {
     updateSnapshot(catKey, _spp['パターン名']?.select?.name||'', _spp['サイズコード']?.select?.name||'', '出庫', qty, warehouse, null);
 
     const el = document.getElementById('entry-content');
-    el.innerHTML = `<div class="content" style="text-align:center;padding:40px 20px;"><div style="font-size:48px;margin-bottom:16px;">✅</div><div class="screen-title">出庫に変更しました</div><div style="font-size:14px;color:var(--muted);margin-bottom:32px;">Notionのレコードを更新しました</div><button class="btn-primary" onclick="renderEntry()">新しい入出庫を記録する</button><button class="btn-prep" style="margin-top:8px;" onclick="renderPrepCatSelect()">📋 準備リストに戻る</button></div>`;
+    el.innerHTML = `<div class="content" style="text-align:center;padding:40px 20px;"><div style="font-size:48px;margin-bottom:16px;">✅</div><div class="screen-title">出庫に変更しました</div><div style="font-size:14px;color:var(--muted);margin-bottom:32px;">Notionのレコードを更新しました</div><button class="btn-primary" onclick="renderEntry()">新しい入出庫を記録する</button><button class="btn-prep" style="margin-top:8px;" onclick="loadAllPrepList()">📋 準備リストに戻る</button></div>`;
   } catch(e) {
     const errEl = document.getElementById('prep-error');
     if (errEl) errEl.innerHTML = `<div class="error-box">更新に失敗しました。<br><small>${e.message}</small></div>`;

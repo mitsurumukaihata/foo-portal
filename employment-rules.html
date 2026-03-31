@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>就業規則 | f.o.o</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#faf8f5; --s1:#fff; --s2:#f5f2ed; --s3:#ebe7e0;
+  --text:#1a1a1a; --muted:#71717a; --border:#e8e4dd; --border2:#d8d4cc;
+  --accent:#c8602a; --green:#22c55e; --red:#ef4444; --blue:#3b82f6; --purple:#a78bfa;
+}
+[data-theme="dark"] {
+  --bg:#0e0e10; --s1:#18181b; --s2:#1e1e22; --s3:#27272a;
+  --text:#f0f0f0; --muted:#71717a; --border:#27272a; --border2:#3f3f46;
+  --accent:#e0873a;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);-webkit-text-size-adjust:100%;min-height:100vh;padding-bottom:80px;}
+.header{position:sticky;top:0;z-index:100;background:var(--bg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:14px 20px 10px;border-bottom:1px solid var(--border);}
+.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;}
+.header-brand{font-size:10px;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;}
+.header-back{font-size:11px;color:var(--muted);text-decoration:none;border:0.5px solid var(--border);border-radius:20px;padding:3px 10px;}
+.header-title{font-size:17px;font-weight:900;letter-spacing:-0.02em;}
+.header-title span{color:var(--accent);}
+
+.search-wrap{padding:12px 20px 4px;}
+.search-box{position:relative;}
+.search-box input{width:100%;padding:10px 14px 10px 36px;border-radius:10px;border:1px solid var(--border2);background:var(--s2);color:var(--text);font-size:14px;font-family:inherit;outline:none;}
+.search-box input:focus{border-color:var(--accent);}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;}
+.search-clear{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--s3);border:none;border-radius:6px;padding:4px 10px;font-size:11px;color:var(--muted);cursor:pointer;display:none;}
+
+.content{padding:8px 16px;}
+.search-result-count{font-size:11px;color:var(--muted);padding:0 20px 8px;}
+
+/* Section */
+.section{margin-bottom:6px;}
+.section-header{display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--s1);border:1px solid var(--border);border-radius:12px;cursor:pointer;transition:all 0.2s;user-select:none;-webkit-user-select:none;}
+.section-header:active{background:var(--s3);}
+.section-header.open{border-radius:12px 12px 0 0;border-bottom:none;background:var(--s2);}
+.section-num{font-size:11px;font-weight:900;color:var(--accent);background:color-mix(in srgb,var(--accent) 15%,transparent);width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.section-title{flex:1;font-size:14px;font-weight:700;}
+.section-arrow{color:var(--muted);font-size:12px;transition:transform 0.3s;}
+.section-header.open .section-arrow{transform:rotate(90deg);}
+
+.section-body{display:none;background:var(--s1);border:1px solid var(--border);border-top:none;border-radius:0 0 12px 12px;overflow:hidden;}
+.section-body.open{display:block;}
+
+/* Article list item */
+.article-item{display:flex;align-items:center;gap:10px;padding:13px 16px;border-top:0.5px solid var(--border);cursor:pointer;transition:background 0.15s;}
+.article-item:first-child{border-top:none;}
+.article-item:active{background:var(--s3);}
+.article-item-title{flex:1;font-size:13px;font-weight:500;line-height:1.5;}
+.article-item-arrow{color:var(--muted);font-size:11px;}
+
+/* Viewer overlay */
+.viewer{position:fixed;inset:0;z-index:200;background:var(--bg);display:none;flex-direction:column;}
+.viewer.open{display:flex;}
+.viewer-header{position:sticky;top:0;z-index:10;background:var(--bg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.viewer-back{background:none;border:none;color:var(--accent);font-size:14px;cursor:pointer;padding:4px 8px;font-weight:700;font-family:inherit;}
+.viewer-title{flex:1;font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.viewer-body{flex:1;overflow-y:auto;padding:20px;-webkit-overflow-scrolling:touch;}
+
+/* Article content styling — legal text optimised */
+.article-content{line-height:1.85;font-size:14px;color:var(--text);}
+.article-content h1{font-size:19px;font-weight:900;margin:28px 0 14px;padding-bottom:8px;border-bottom:2px solid var(--accent);color:var(--text);}
+.article-content h1:first-child{margin-top:0;}
+.article-content h2{font-size:17px;font-weight:900;margin:24px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--accent);color:var(--text);}
+.article-content h2:first-child{margin-top:0;}
+.article-content h3{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--accent);}
+.article-content p{margin:8px 0;line-height:1.8;}
+.article-content ul,.article-content ol{margin:8px 0 8px 20px;}
+.article-content li{margin:4px 0;line-height:1.8;}
+.article-content li ul{margin:2px 0 2px 16px;}
+.article-content strong{color:var(--accent);font-weight:700;}
+.article-content hr{border:none;border-top:1px solid var(--border2);margin:20px 0;}
+.article-content blockquote{border-left:3px solid var(--accent);padding:8px 14px;margin:12px 0;background:color-mix(in srgb,var(--accent) 8%,transparent);border-radius:0 8px 8px 0;font-size:13px;color:var(--muted);line-height:1.7;}
+.article-content table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;}
+.article-content th,.article-content td{border:1px solid var(--border2);padding:8px 10px;text-align:left;line-height:1.6;}
+.article-content th{background:var(--s2);font-weight:700;font-size:12px;color:var(--muted);}
+.article-content td{background:var(--s1);}
+
+/* Indent for legal articles (e.g. 第1条) */
+.article-content .indent{padding-left:1.2em;}
+
+/* Loading */
+.loading{text-align:center;padding:48px 20px;color:var(--muted);font-size:13px;}
+.spinner{display:inline-block;width:24px;height:24px;border:2.5px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:8px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Search highlight */
+.highlight{background:color-mix(in srgb,var(--accent) 30%,transparent);border-radius:2px;padding:0 2px;}
+
+/* No-result */
+.no-result{text-align:center;padding:40px 20px;color:var(--muted);font-size:13px;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="header-brand">F.o.o &middot; 経理</div>
+    <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">&larr; ポータル</a>
+  </div>
+  <div class="header-title">就業<span>規則</span></div>
+</div>
+
+<div class="search-wrap">
+  <div class="search-box">
+    <span class="search-icon">&#128269;</span>
+    <input id="search" type="text" placeholder="キーワードで検索..." autocomplete="off">
+    <button class="search-clear" id="search-clear" onclick="clearSearch()">&#10005;</button>
+  </div>
+</div>
+<div id="search-result-count" class="search-result-count" style="display:none;"></div>
+
+<div class="content" id="sections-container">
+  <div class="loading"><div class="spinner"></div><br>読み込み中...</div>
+</div>
+
+<!-- Article viewer -->
+<div class="viewer" id="viewer">
+  <div class="viewer-header">
+    <button class="viewer-back" onclick="closeViewer()">&lsaquo; 戻る</button>
+    <div class="viewer-title" id="viewer-title"></div>
+  </div>
+  <div class="viewer-body">
+    <div class="article-content" id="viewer-content"></div>
+  </div>
+</div>
+
+<script>
+/* ── Theme ─────────────────────────────────────── */
+(function(){
+  var t = localStorage.getItem('foo_portal_theme') || 'auto';
+  if (t === 'dark') document.documentElement.setAttribute('data-theme','dark');
+  else if (t === 'light') { /* light is default, no attr needed */ }
+  else {
+    // auto: follow OS
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.setAttribute('data-theme','dark');
+    }
+  }
+})();
+
+/* ── Constants ─────────────────────────────────── */
+const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
+const SESSION_KEY = 'foo_portal_session';
+
+const SECTIONS = [
+  { id: 'shugyou',  title: '就業規則',             pageId: '2eea695f8e888078aa3dd6607a5cec7d' },
+  { id: 'kyuyo',    title: '給与規程',             pageId: '2eea695f8e88808796c2f8d4b95d7ae7' },
+  { id: 'keicho',   title: '慶弔見舞金規程',       pageId: '2eea695f8e88800ab5b0da8480fe1d97' },
+  { id: 'hiseiki',  title: '非正規社員就業規則',   pageId: '2eea695f8e8880c8bdf2c45c46e6ed8e' },
+  { id: 'ikuji',    title: '育児・介護休業規程',   pageId: '2eea695f8e888073b167d750a8c7ef0f' },
+];
+
+/* ── Auth (portal handles login) ───────────────── */
+function checkAuth() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SESSION_KEY));
+    if (s && s.name) {
+      if (new Date(s.expires) < new Date()) { localStorage.removeItem(SESSION_KEY); }
+      else return s;
+    }
+  } catch(e) {}
+  location.href = 'index.html';
+}
+const currentUser = checkAuth();
+
+/* ── Notion API helper ─────────────────────────── */
+async function notionAPI(path) {
+  const res = await fetch(WORKER + path);
+  if (!res.ok) {
+    let msg = 'HTTP ' + res.status;
+    try { const d = await res.json(); if (d.message) msg = d.message; } catch(_){}
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
+/* ── Content cache & heading index ─────────────── */
+const contentCache = {};   // pageId -> html
+const headingsCache = {};  // pageId -> [{text, html}]
+let allArticles = [];      // flat list for search: {sectionIdx, text, pageId}
+
+/* ── Fetch all children blocks (handles pagination) */
+async function fetchAllBlocks(pageId) {
+  let allBlocks = [];
+  let cursor = undefined;
+  do {
+    const url = `/blocks/${pageId}/children?page_size=100` + (cursor ? `&start_cursor=${cursor}` : '');
+    const data = await notionAPI(url);
+    allBlocks = allBlocks.concat(data.results || []);
+    cursor = data.has_more ? data.next_cursor : undefined;
+  } while (cursor);
+  return allBlocks;
+}
+
+/* ── Load a section's page content ─────────────── */
+async function loadSectionContent(sectionIdx) {
+  const sec = SECTIONS[sectionIdx];
+  if (contentCache[sec.pageId]) return;
+
+  const blocks = await fetchAllBlocks(sec.pageId);
+  const html = blocksToHTML(blocks);
+  contentCache[sec.pageId] = html;
+
+  // Extract headings for article list & search
+  const headings = [];
+  for (const block of blocks) {
+    let rt = null;
+    if (block.type === 'heading_1') rt = block.heading_1.rich_text;
+    else if (block.type === 'heading_2') rt = block.heading_2.rich_text;
+    else if (block.type === 'heading_3') rt = block.heading_3.rich_text;
+    if (rt && rt.length) {
+      const plain = rt.map(r => r.plain_text || '').join('');
+      if (plain.trim()) headings.push({ text: plain.trim(), html: richTextToHTML(rt) });
+    }
+  }
+  headingsCache[sec.pageId] = headings;
+
+  // Build flat article list for search
+  const plainAll = blocks.map(b => {
+    const key = b.type;
+    const data = b[key];
+    if (data && data.rich_text) return data.rich_text.map(r => r.plain_text || '').join('');
+    return '';
+  }).join(' ');
+  allArticles.push({ sectionIdx, text: plainAll.toLowerCase(), pageId: sec.pageId });
+}
+
+/* ── Render section list ───────────────────────── */
+function renderSections(loadingDone) {
+  const el = document.getElementById('sections-container');
+  let html = '';
+  SECTIONS.forEach((sec, si) => {
+    const headings = headingsCache[sec.pageId] || [];
+    html += '<div class="section" id="sec-' + si + '">' +
+      '<div class="section-header" onclick="toggleSection(' + si + ')">' +
+        '<div class="section-num">' + (si + 1) + '</div>' +
+        '<span class="section-title">' + sec.title + '</span>' +
+        '<span class="section-arrow">&rsaquo;</span>' +
+      '</div>' +
+      '<div class="section-body" id="sec-body-' + si + '">';
+
+    if (headings.length) {
+      headings.forEach(function(h) {
+        html += '<div class="article-item" onclick="openSection(' + si + ')" data-title="' + escAttr(h.text.toLowerCase()) + '">' +
+          '<span class="article-item-title">' + h.text + '</span>' +
+          '<span class="article-item-arrow">&rsaquo;</span>' +
+        '</div>';
+      });
+    } else {
+      // Single tap opens entire section
+      html += '<div class="article-item" onclick="openSection(' + si + ')" data-title="' + escAttr(sec.title.toLowerCase()) + '">' +
+        '<span class="article-item-title">' + sec.title + ' を表示</span>' +
+        '<span class="article-item-arrow">&rsaquo;</span>' +
+      '</div>';
+    }
+
+    html += '</div></div>';
+  });
+  if (!loadingDone) {
+    html += '<div class="loading" id="global-loading"><div class="spinner"></div><br>規程を読み込み中...</div>';
+  }
+  el.innerHTML = html;
+}
+
+/* ── Helpers ───────────────────────────────────── */
+function escAttr(s) { return s.replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function toggleSection(idx) {
+  const header = document.querySelector('#sec-' + idx + ' .section-header');
+  const body = document.getElementById('sec-body-' + idx);
+  const isOpen = header.classList.contains('open');
+  header.classList.toggle('open', !isOpen);
+  body.classList.toggle('open', !isOpen);
+}
+
+/* ── Open section in viewer ────────────────────── */
+function openSection(sectionIdx) {
+  const sec = SECTIONS[sectionIdx];
+  const viewer = document.getElementById('viewer');
+  const vTitle = document.getElementById('viewer-title');
+  const vContent = document.getElementById('viewer-content');
+
+  vTitle.textContent = sec.title;
+
+  if (contentCache[sec.pageId]) {
+    vContent.innerHTML = contentCache[sec.pageId];
+  } else {
+    vContent.innerHTML = '<div class="loading"><div class="spinner"></div><br>読み込み中...</div>';
+    loadSectionContent(sectionIdx).then(function() {
+      vContent.innerHTML = contentCache[sec.pageId] || '<p style="color:var(--muted);">内容を取得できませんでした</p>';
+      renderSections(true);
+    }).catch(function(e) {
+      vContent.innerHTML = '<div style="color:var(--red);padding:20px;">読み込みエラー: ' + e.message + '</div>';
+    });
+  }
+
+  viewer.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  if (typeof fooNavPush === 'function') fooNavPush(closeViewer);
+}
+
+function closeViewer() {
+  document.getElementById('viewer').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+/* ── Convert Notion blocks to HTML ─────────────── */
+function blocksToHTML(blocks) {
+  var html = '';
+  var inList = null;
+
+  for (var i = 0; i < blocks.length; i++) {
+    var block = blocks[i];
+    var type = block.type;
+
+    // Close list if type changes
+    if (inList && type !== inList + '_list_item') {
+      html += inList === 'bulleted' ? '</ul>' : '</ol>';
+      inList = null;
+    }
+
+    if (type === 'heading_1') {
+      html += '<h1>' + richTextToHTML(block.heading_1.rich_text) + '</h1>';
+    } else if (type === 'heading_2') {
+      html += '<h2>' + richTextToHTML(block.heading_2.rich_text) + '</h2>';
+    } else if (type === 'heading_3') {
+      html += '<h3>' + richTextToHTML(block.heading_3.rich_text) + '</h3>';
+    } else if (type === 'paragraph') {
+      var text = richTextToHTML(block.paragraph.rich_text);
+      if (text.trim()) html += '<p>' + text + '</p>';
+    } else if (type === 'bulleted_list_item') {
+      if (inList !== 'bulleted') { html += '<ul>'; inList = 'bulleted'; }
+      html += '<li>' + richTextToHTML(block.bulleted_list_item.rich_text) + '</li>';
+    } else if (type === 'numbered_list_item') {
+      if (inList !== 'numbered') { html += '<ol>'; inList = 'numbered'; }
+      html += '<li>' + richTextToHTML(block.numbered_list_item.rich_text) + '</li>';
+    } else if (type === 'divider') {
+      html += '<hr>';
+    } else if (type === 'quote') {
+      html += '<blockquote>' + richTextToHTML(block.quote.rich_text) + '</blockquote>';
+    } else if (type === 'callout') {
+      var icon = (block.callout.icon && block.callout.icon.emoji) || '';
+      html += '<blockquote>' + icon + ' ' + richTextToHTML(block.callout.rich_text) + '</blockquote>';
+    } else if (type === 'toggle') {
+      html += '<details style="margin:8px 0;"><summary style="cursor:pointer;font-weight:700;color:var(--accent);">' + richTextToHTML(block.toggle.rich_text) + '</summary><div style="padding:8px 0 8px 16px;font-size:13px;color:var(--muted);">(折りたたみ内容はNotion上で確認してください)</div></details>';
+    } else if (type === 'table') {
+      // Table block: children will be fetched separately if needed
+      html += '<p style="color:var(--muted);font-size:12px;">(表はNotion上で確認してください)</p>';
+    }
+  }
+
+  if (inList) {
+    html += inList === 'bulleted' ? '</ul>' : '</ol>';
+  }
+
+  return html || '<p style="color:var(--muted);">(内容はNotionで確認してください)</p>';
+}
+
+function richTextToHTML(richTexts) {
+  if (!richTexts || !richTexts.length) return '';
+  return richTexts.map(function(rt) {
+    var text = escHtml(rt.plain_text || '');
+    if (rt.annotations) {
+      if (rt.annotations.bold) text = '<strong>' + text + '</strong>';
+      if (rt.annotations.italic) text = '<em>' + text + '</em>';
+      if (rt.annotations.strikethrough) text = '<s>' + text + '</s>';
+      if (rt.annotations.underline) text = '<u>' + text + '</u>';
+      if (rt.annotations.code) text = '<code style="background:var(--s3);padding:1px 5px;border-radius:3px;font-size:12px;">' + text + '</code>';
+    }
+    if (rt.href) text = '<a href="' + rt.href + '" target="_blank" style="color:var(--accent);text-decoration:underline;">' + text + '</a>';
+    return text;
+  }).join('');
+}
+
+/* ── Search ────────────────────────────────────── */
+var searchInput = document.getElementById('search');
+var searchClearBtn = document.getElementById('search-clear');
+var searchTimeout;
+
+searchInput.addEventListener('input', function() {
+  clearTimeout(searchTimeout);
+  var q = searchInput.value.trim();
+  searchClearBtn.style.display = q ? 'block' : 'none';
+  searchTimeout = setTimeout(function() { filterSections(q); }, 200);
+});
+
+function clearSearch() {
+  searchInput.value = '';
+  searchClearBtn.style.display = 'none';
+  filterSections('');
+}
+
+function filterSections(query) {
+  var q = query.toLowerCase();
+  var countEl = document.getElementById('search-result-count');
+  var totalMatch = 0;
+
+  SECTIONS.forEach(function(sec, si) {
+    var header = document.querySelector('#sec-' + si + ' .section-header');
+    var body = document.getElementById('sec-body-' + si);
+    var items = body.querySelectorAll('.article-item');
+    var sectionMatch = 0;
+
+    // Check section title match
+    var secTitleMatch = !q || sec.title.toLowerCase().indexOf(q) !== -1;
+
+    // Check content match
+    var contentMatch = false;
+    for (var a = 0; a < allArticles.length; a++) {
+      if (allArticles[a].sectionIdx === si && allArticles[a].text.indexOf(q) !== -1) {
+        contentMatch = true;
+        break;
+      }
+    }
+
+    items.forEach(function(art) {
+      var title = art.getAttribute('data-title');
+      var match = !q || title.indexOf(q) !== -1 || secTitleMatch || contentMatch;
+      art.style.display = match ? '' : 'none';
+      if (match) sectionMatch++;
+    });
+
+    var sectionEl = document.getElementById('sec-' + si);
+    sectionEl.style.display = (sectionMatch > 0 || !q) ? '' : 'none';
+
+    // Auto-open matching sections
+    if (q && sectionMatch > 0) {
+      header.classList.add('open');
+      body.classList.add('open');
+    } else if (!q) {
+      header.classList.remove('open');
+      body.classList.remove('open');
+    }
+
+    totalMatch += sectionMatch;
+  });
+
+  if (q) {
+    countEl.style.display = 'block';
+    countEl.textContent = '「' + query + '」の検索結果: ' + totalMatch + '件';
+  } else {
+    countEl.style.display = 'none';
+  }
+}
+
+/* ── Back button in viewer ─────────────────────── */
+window.addEventListener('popstate', function() {
+  if (document.getElementById('viewer').classList.contains('open')) {
+    closeViewer();
+  }
+});
+
+/* ── Init: load all sections in parallel ───────── */
+(async function init() {
+  // Show skeleton immediately
+  renderSections(false);
+
+  // Load all section content
+  var promises = SECTIONS.map(function(_, i) { return loadSectionContent(i); });
+  try {
+    await Promise.all(promises);
+  } catch(e) {
+    console.error('Section load error:', e);
+  }
+
+  // Re-render with headings
+  renderSections(true);
+})();
+</script>
+<script src="foo-common.js"></script>
+<script src="foo-swipe.js"></script>
+</body>
+</html>

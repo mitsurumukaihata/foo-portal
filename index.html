@@ -1443,7 +1443,7 @@ async function notionAPI(method, path, body) {
 //   コミュニティ: 会議内容 → 部長コミュニティ → リーダーコミュニティ → マーケ/EC
 //   マニュアル: タイヤ交換マニュアル → 作業報告書 → 社内制度ルール
 //   管理: DB繰越管理
-//   経理: 資金繰り → 月次KPI → 借入一覧 → 設備投資予定表 → サブスク管理 → サンフレチケット
+//   経理: 資金繰り → 月次KPI → 借入一覧 → 設備投資予定表 → サブスク管理 → サンフレチケット → 就業規則
 //   給与: 給与明細
 const APP_DEFS = [
   // ── 現場・業務 ──
@@ -1505,6 +1505,8 @@ const APP_DEFS = [
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>` },
   { key: '🧞 サンフレチケット',      id: 'sanfre', label: 'サンフレチケット',    sub: '観戦者名簿 · チケット管理',  section: '経理',   url: 'https://mitsurumukaihata.github.io/foo-portal/sanfre-ticket.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#6B2D8B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>` },
+  { key: '📜 就業規則',              id: 'employment', label: '就業規則',         sub: '規則 · 給与規程 · 休業規程',  section: '経理',   url: 'https://mitsurumukaihata.github.io/foo-portal/employment-rules.html',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>` },
   // ── 給与 ──
   { key: '💴 給与明細',          id: 'payslip', label: '給与明細',           sub: '自分の明細を確認',          section: '給与',         action: 'openPayslip()',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>` },

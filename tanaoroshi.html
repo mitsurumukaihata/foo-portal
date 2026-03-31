@@ -229,15 +229,16 @@ async function collectData() {
         return '';
       }
 
-      // ── STEP 1: 繰越の最新日時を探す ──
+      // ── STEP 1: 繰越の最古日時を探す ──
       // 繰越レコードがある場合、それ以前の入出庫は繰越に含まれているので無視する
+      // ※最古を使うことで、異なる時刻に作成された繰越間の入出庫が漏れないようにする
       let kurikoshiDate = null;
       records.forEach(r => {
         if (r.archived) return;
         const kubun = fooPropStr(r, '区分');
         if (kubun === '繰越') {
           const created = getCreatedTime(r);
-          if (created && (!kurikoshiDate || created > kurikoshiDate)) {
+          if (created && (!kurikoshiDate || created < kurikoshiDate)) {
             kurikoshiDate = created;
           }
         }

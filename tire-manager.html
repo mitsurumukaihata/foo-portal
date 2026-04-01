@@ -966,7 +966,6 @@ function renderConfirm(el) {
         <div class="conf-row"><span class="conf-label">区分</span><span class="conf-val"><span class="type-tag ${tc}">${kubunDisplay}</span></span></div>
         ${state.isMove ? `<div class="conf-row"><span class="conf-label">移動方向</span><span class="conf-val">${state.moveDir.from.replace('倉庫','')} → ${state.moveDir.to.replace('倉庫','')}</span></div><div class="record-preview"><div class="rp-title">自動生成される 2件 のレコード</div><div class="rp-row"><span class="rp-badge tag-out" style="background:rgba(239,68,68,0.15);color:var(--red);">移動出庫</span><span class="rp-text">${state.moveDir.from} −${state.qty}本</span></div><div class="rp-row"><span class="rp-badge tag-in" style="background:rgba(34,197,94,0.15);color:var(--green);">移動入庫</span><span class="rp-text">${state.moveDir.to} ＋${state.qty}本</span></div></div>` : `<div class="conf-row"><span class="conf-label">倉庫</span><span class="conf-val">${state.warehouse}</span></div>${state.dest ? `<div class="conf-row"><span class="conf-label">出庫先</span><span class="conf-val">${state.dest}</span></div>` : ''}`}
         ${state.memo ? `<div class="conf-row"><span class="conf-label">メモ</span><span class="conf-val">${state.memo}</span></div>` : ''}
-        <div class="conf-row"><span class="conf-label">入力日</span><span class="conf-val"><input type="date" id="entry-date" value="${new Date().toISOString().slice(0,10)}" style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--accent);font-size:14px;font-weight:700;font-family:'DM Mono',monospace;"></span></div>
       </div>
       <div id="confirm-error"></div>
       <button class="btn-primary" id="send-btn" onclick="submitEntry()">この内容で送信する</button>
@@ -1889,17 +1888,7 @@ async function createRecord(kubun, warehouse) {
   if (state.dest && (state.kubun === '出庫' || state.kubun === '準備')) {
     props['出庫先'] = { rich_text: [{ text: { content: state.dest } }] };
   }
-  if (state.cat === 'ltl_normal') {
-    if (state.memo) props['メモ'] = { select: { name: state.memo } };
-    else delete props['メモ'];
-  } else {
-    props['メモ'] = { rich_text: state.memo ? [{ text: { content: state.memo } }] : [] };
-  }
-  // 入力日（確認画面で変更可能）
-  var entryDate = document.getElementById('entry-date');
-  if (entryDate && entryDate.value) {
-    props['日付'] = { date: { start: entryDate.value } };
-  }
+  props['メモ'] = { rich_text: state.memo ? [{ text: { content: state.memo } }] : [] };
   return await notionAPI('POST', '/pages', { parent: { database_id: db.id }, properties: props });
 }
 

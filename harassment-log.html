@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>ハラスメント記録 | f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --red: #ef4444;
+  --blue: #3b82f6; --purple: #a855f7; --yellow: #eab308;
+  --pink: #ec4899; --orange: #f97316; --gray: #6b7280;
+  --header-bg: rgba(16,16,21,0.92);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+    --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208; --muted: #a08060;
+    --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --red: #dc2626;
+    --blue: #2563eb; --purple: #9333ea; --yellow: #d97706;
+    --pink: #db2777; --orange: #ea580c; --gray: #6b7280;
+    --header-bg: rgba(255,255,255,0.92);
+  }
+}
+[data-theme="dark"] {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --red: #ef4444;
+  --blue: #3b82f6; --purple: #a855f7; --yellow: #eab308;
+  --pink: #ec4899; --orange: #f97316; --gray: #6b7280;
+  --header-bg: rgba(16,16,21,0.92);
+}
+[data-theme="light"] {
+  --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+  --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208; --muted: #a08060;
+  --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --red: #dc2626;
+  --blue: #2563eb; --purple: #9333ea; --yellow: #d97706;
+  --pink: #db2777; --orange: #ea580c; --gray: #6b7280;
+  --header-bg: rgba(255,255,255,0.92);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; max-width:480px; margin:0 auto; overflow-x:hidden; scrollbar-width:none; }
+body::-webkit-scrollbar { display:none; }
+
+/* ── Header ── */
+.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:100; }
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+.header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+.header-back { font-size:11px; color:var(--muted); text-decoration:none; border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; }
+.header-back:active { opacity:0.6; }
+.header-title { font-size:17px; font-weight:900; letter-spacing:-0.02em; }
+.header-title span { color:var(--accent); }
+
+/* ── Tabs ── */
+.tabs { display:flex; background:var(--s1); border-bottom:0.5px solid var(--border); position:sticky; top:52px; z-index:99; }
+.tab-btn { flex:1; padding:10px 6px 8px; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--muted); font-size:12px; font-weight:500; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; text-align:center; }
+.tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+.tab-badge { display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 4px; background:var(--s3); border-radius:8px; font-size:10px; font-weight:700; margin-left:3px; color:var(--muted); }
+.tab-btn.active .tab-badge { background:rgba(240,165,0,0.2); color:var(--accent); }
+
+/* ── Pages ── */
+.page { display:none; padding:0 0 100px; }
+.page.show { display:block; }
+
+/* ── Cards ── */
+.card { background:var(--s2); border:1.5px solid var(--border); border-radius:12px; padding:14px 16px; margin:0 12px 8px; transition:all 0.2s; cursor:pointer; }
+.card:active { transform:scale(0.98); }
+.card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:6px; }
+.card-name { font-size:14px; font-weight:700; line-height:1.4; flex:1; }
+.card-date { font-size:10px; color:var(--muted); font-family:'DM Mono',monospace; white-space:nowrap; }
+.card-meta { display:flex; flex-wrap:wrap; gap:4px 8px; font-size:11px; color:var(--muted); }
+.card-meta strong { color:var(--text); font-weight:600; }
+.card-tags { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+
+/* ── Badges ── */
+.badge { display:inline-block; font-size:9px; font-weight:700; padding:2px 8px; border-radius:20px; white-space:nowrap; }
+.badge-power { background:rgba(239,68,68,0.15); color:var(--red); }
+.badge-reverse { background:rgba(249,115,22,0.15); color:var(--orange); }
+.badge-moral { background:rgba(168,85,247,0.15); color:var(--purple); }
+.badge-deny { background:rgba(236,72,153,0.15); color:var(--pink); }
+.badge-quit { background:rgba(180,130,80,0.15); color:#b4824f; }
+.badge-rumor { background:rgba(107,114,128,0.15); color:var(--gray); }
+.badge-other { background:var(--s3); color:var(--muted); }
+
+.badge-open { background:rgba(239,68,68,0.15); color:var(--red); }
+.badge-watch { background:rgba(234,179,8,0.15); color:var(--yellow); }
+.badge-wip { background:rgba(59,130,246,0.15); color:var(--blue); }
+.badge-done { background:rgba(34,197,94,0.15); color:var(--green); }
+
+/* ── Buttons ── */
+.btn { padding:8px 14px; border-radius:8px; border:none; font-size:12px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; text-align:center; }
+.btn:active { opacity:0.8; transform:scale(0.97); }
+.btn-accent { background:var(--accent); color:#fff; }
+.btn-red { background:var(--red); color:#fff; }
+.btn-outline { background:var(--s3); border:1px solid var(--border); color:var(--text); }
+.btn-submit { width:100%; padding:14px; border-radius:12px; background:var(--accent); border:none; color:#fff; font-size:15px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; margin-top:8px; }
+.btn-submit:active { opacity:0.8; transform:scale(0.98); }
+.btn-submit:disabled { opacity:0.4; cursor:default; transform:none; }
+
+/* ── Form ── */
+.form-page { padding:14px 16px 100px; }
+.form-group { margin-bottom:14px; }
+.form-label { font-size:11px; color:var(--muted); font-weight:600; margin-bottom:5px; display:block; }
+.form-label .req { color:var(--red); margin-left:2px; }
+.form-input { width:100%; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:12px 14px; font-size:14px; color:var(--text); outline:none; font-family:'Noto Sans JP',sans-serif; transition:border-color 0.15s; -webkit-appearance:none; appearance:none; }
+.form-input:focus { border-color:var(--accent); }
+.form-input::placeholder { color:var(--muted); opacity:0.6; }
+select.form-input { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2368687a' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; padding-right:32px; }
+textarea.form-input { min-height:80px; resize:vertical; line-height:1.6; }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.form-checks { display:flex; flex-wrap:wrap; gap:6px; }
+.form-check { display:flex; align-items:center; gap:4px; font-size:12px; cursor:pointer; }
+.form-check input[type="checkbox"] { width:16px; height:16px; accent-color:var(--accent); }
+
+/* ── Detail overlay ── */
+.detail-overlay { position:fixed; inset:0; background:var(--bg); z-index:200; overflow-y:auto; display:none; }
+.detail-overlay.show { display:block; }
+.detail-header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:201; display:flex; align-items:center; justify-content:space-between; }
+.detail-close { font-size:11px; color:var(--muted); border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; cursor:pointer; background:none; font-family:'Noto Sans JP',sans-serif; }
+.detail-title { font-size:15px; font-weight:900; flex:1; }
+.detail-body { padding:16px; }
+.detail-section { margin-bottom:16px; }
+.detail-label { font-size:10px; color:var(--muted); font-weight:600; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.08em; }
+.detail-value { font-size:13px; line-height:1.7; }
+.detail-value.quote { background:var(--s2); border-left:3px solid var(--accent); padding:8px 12px; border-radius:0 8px 8px 0; font-style:italic; }
+.detail-actions { display:flex; gap:8px; padding:16px; }
+
+/* ── Toast ── */
+.toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:var(--green); color:#fff; padding:10px 24px; border-radius:10px; font-size:13px; font-weight:700; z-index:500; opacity:0; transition:opacity 0.3s; pointer-events:none; max-width:90%; text-align:center; }
+.toast.show { opacity:1; }
+
+/* ── Loading ── */
+.loading { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; }
+.spinner { display:inline-block; width:20px; height:20px; border:2px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; margin-bottom:8px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── Empty state ── */
+.empty { text-align:center; padding:40px 20px; color:var(--muted); }
+.empty-icon { font-size:32px; margin-bottom:8px; }
+.empty-text { font-size:13px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="header-brand">F.o.o · 人事</div>
+    <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
+  </div>
+  <div class="header-title">ハラスメント<span>記録</span></div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" id="tab-list" onclick="switchTab('list')">記録一覧<span class="tab-badge" id="badge-list">0</span></button>
+  <button class="tab-btn" id="tab-new" onclick="switchTab('new')">＋ 新規記録</button>
+</div>
+
+<!-- ══ 一覧タブ ══ -->
+<div class="page show" id="pane-list">
+  <div class="loading" id="list-loading"><div class="spinner"></div><br>読み込み中...</div>
+  <div id="record-list"></div>
+  <div class="empty" id="list-empty" style="display:none;">
+    <div class="empty-icon">📋</div>
+    <div class="empty-text">記録はまだありません</div>
+  </div>
+</div>
+
+<!-- ══ 新規記録タブ ══ -->
+<div class="page" id="pane-new">
+  <div class="form-page">
+    <div class="form-group">
+      <label class="form-label">件名<span class="req">*</span></label>
+      <input class="form-input" id="f-title" type="text" placeholder="例: 〇〇から△△への暴言">
+    </div>
+    <div class="form-group">
+      <label class="form-label">発生日時<span class="req">*</span></label>
+      <input class="form-input" id="f-date" type="datetime-local">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">加害者<span class="req">*</span></label>
+        <select class="form-input" id="f-kagaisha"><option value="">選択</option></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">被害者<span class="req">*</span></label>
+        <select class="form-input" id="f-higaisha"><option value="">選択</option></select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">同席者・立会人</label>
+      <div class="form-checks" id="f-witnesses"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">内容<span class="req">*</span></label>
+      <textarea class="form-input" id="f-content" placeholder="何が起きたかを詳しく記述"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">発言の正確な引用</label>
+      <textarea class="form-input" id="f-quote" placeholder="一字一句そのまま記録（重要）"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">ハラスメント種類<span class="req">*</span></label>
+      <div class="form-checks">
+        <label class="form-check"><input type="checkbox" value="パワハラ"> パワハラ</label>
+        <label class="form-check"><input type="checkbox" value="逆パワハラ"> 逆パワハラ</label>
+        <label class="form-check"><input type="checkbox" value="モラハラ"> モラハラ</label>
+        <label class="form-check"><input type="checkbox" value="人格否定"> 人格否定</label>
+        <label class="form-check"><input type="checkbox" value="退職強要的言動"> 退職強要的言動</label>
+        <label class="form-check"><input type="checkbox" value="悪口・風評"> 悪口・風評</label>
+        <label class="form-check"><input type="checkbox" value="その他"> その他</label>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">場所</label>
+      <select class="form-input" id="f-place">
+        <option value="">選択</option>
+        <option value="事務所">事務所</option>
+        <option value="現場">現場</option>
+        <option value="休憩室">休憩室</option>
+        <option value="LINE・SNS">LINE・SNS</option>
+        <option value="電話">電話</option>
+        <option value="その他">その他</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">被害者の反応・影響</label>
+      <textarea class="form-input" id="f-impact" placeholder="精神的影響、業務への支障など"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">記録者の対応</label>
+      <textarea class="form-input" id="f-response" placeholder="その場でどう対応したか"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">対応ステータス</label>
+      <select class="form-input" id="f-status">
+        <option value="未対応">未対応</option>
+        <option value="経過観察中">経過観察中</option>
+        <option value="対応中">対応中</option>
+        <option value="対応済み">対応済み</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">メモ</label>
+      <textarea class="form-input" id="f-memo" placeholder="補足事項"></textarea>
+    </div>
+    <button class="btn-submit" id="btn-save" onclick="submitRecord()">記録を保存</button>
+  </div>
+</div>
+
+<!-- ══ 詳細オーバーレイ ══ -->
+<div class="detail-overlay" id="detail-overlay">
+  <div class="detail-header">
+    <div class="detail-title" id="detail-title"></div>
+    <button class="detail-close" onclick="closeDetail()">✕ 閉じる</button>
+  </div>
+  <div class="detail-body" id="detail-body"></div>
+  <div class="detail-actions">
+    <button class="btn btn-outline" style="flex:1;" onclick="editRecord()">編集</button>
+    <button class="btn btn-red" onclick="deleteRecord()">削除</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="foo-common.js"></script>
+<script src="foo-swipe.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// harassment-log.html — ハラスメント記録
+// ═══════════════════════════════════════════════════════════════════════
+
+const LOG_DB     = '9da9427f644a43c8b2e533350b38955f';
+const STAFF_DB   = 'f3dbe51e21604e2fa1de7b6baccab44e';
+const THEME_KEY  = 'foo_portal_theme';
+const SESSION_KEY = 'foo_portal_session';
+
+let loginUser = '';
+let allRecords = [];
+let staffList = [];   // { id, name }
+let curTab = 'list';
+let currentRecordId = null;
+
+// ─── 初期化 ──────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+
+  const sess = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+  if (!sess || !sess.name) { location.href = 'https://mitsurumukaihata.github.io/foo-portal/'; return; }
+  loginUser = sess.name;
+  init();
+});
+
+async function init() {
+  await loadStaff();
+  await loadRecords();
+}
+
+// ─── 社員マスタ読み込み ──────────────────────────────────────────────
+async function loadStaff() {
+  try {
+    const res = await fooNotionQuery(STAFF_DB, {
+      filter: { property: '有効', checkbox: { equals: true } },
+      sorts: [{ property: '社員名', direction: 'ascending' }],
+      page_size: 100,
+    });
+    staffList = (res.results || []).map(p => ({
+      id: p.id,
+      name: p.properties['社員名']?.title?.[0]?.plain_text || '',
+    }));
+    populateStaffSelects();
+  } catch (e) {
+    console.error('社員マスタ読み込みエラー:', e);
+  }
+}
+
+function populateStaffSelects() {
+  const kagSel = document.getElementById('f-kagaisha');
+  const higSel = document.getElementById('f-higaisha');
+  const witBox = document.getElementById('f-witnesses');
+
+  staffList.forEach(s => {
+    kagSel.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+    higSel.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+    witBox.innerHTML += `<label class="form-check"><input type="checkbox" value="${s.id}"> ${s.name}</label>`;
+  });
+}
+
+// ─── 記録読み込み ────────────────────────────────────────────────────
+async function loadRecords() {
+  document.getElementById('list-loading').style.display = '';
+  document.getElementById('record-list').innerHTML = '';
+  document.getElementById('list-empty').style.display = 'none';
+
+  try {
+    const res = await fooNotionQuery(LOG_DB, {
+      sorts: [{ property: '発生日時', direction: 'descending' }],
+      page_size: 100,
+    });
+    allRecords = res.results || [];
+    renderList();
+  } catch (e) {
+    console.error('読み込みエラー:', e);
+  } finally {
+    document.getElementById('list-loading').style.display = 'none';
+  }
+}
+
+function renderList() {
+  const list = document.getElementById('record-list');
+  const empty = document.getElementById('list-empty');
+
+  if (!allRecords.length) {
+    list.innerHTML = '';
+    empty.style.display = '';
+    document.getElementById('badge-list').textContent = '0';
+    return;
+  }
+
+  empty.style.display = 'none';
+  document.getElementById('badge-list').textContent = allRecords.length;
+
+  list.innerHTML = allRecords.map(rec => {
+    const p = rec.properties;
+    const title = p['件名']?.title?.[0]?.plain_text || '（無題）';
+    const dateObj = p['発生日時']?.date?.start || '';
+    const dateStr = dateObj ? formatDate(dateObj) : '';
+    const status = p['対応ステータス']?.select?.name || '';
+    const types = (p['ハラスメント種類']?.multi_select || []).map(s => s.name);
+    const kagaisha = resolveNames(p['加害者']?.relation || []);
+    const higaisha = resolveNames(p['被害者']?.relation || []);
+
+    const typeBadges = types.map(t => `<span class="badge ${typeClass(t)}">${t}</span>`).join('');
+    const statusBadge = status ? `<span class="badge ${statusClass(status)}">${status}</span>` : '';
+
+    return `<div class="card" onclick="openDetail('${rec.id}')">
+      <div class="card-top">
+        <div class="card-name">${esc(title)}</div>
+        <div class="card-date">${dateStr}</div>
+      </div>
+      <div class="card-meta">
+        ${kagaisha ? `<span>加害: <strong>${esc(kagaisha)}</strong></span>` : ''}
+        ${higaisha ? `<span>被害: <strong>${esc(higaisha)}</strong></span>` : ''}
+      </div>
+      <div class="card-tags">${typeBadges} ${statusBadge}</div>
+    </div>`;
+  }).join('');
+}
+
+// ─── 名前解決 ────────────────────────────────────────────────────────
+function resolveNames(relations) {
+  return relations.map(r => {
+    const s = staffList.find(st => st.id === r.id);
+    return s ? s.name : '?';
+  }).join(', ');
+}
+
+// ─── 新規記録 ────────────────────────────────────────────────────────
+async function submitRecord() {
+  const title = document.getElementById('f-title').value.trim();
+  const dateVal = document.getElementById('f-date').value;
+  const kagId = document.getElementById('f-kagaisha').value;
+  const higId = document.getElementById('f-higaisha').value;
+  const content = document.getElementById('f-content').value.trim();
+  const quote = document.getElementById('f-quote').value.trim();
+  const place = document.getElementById('f-place').value;
+  const impact = document.getElementById('f-impact').value.trim();
+  const response = document.getElementById('f-response').value.trim();
+  const status = document.getElementById('f-status').value;
+  const memo = document.getElementById('f-memo').value.trim();
+
+  const types = [];
+  document.querySelectorAll('#pane-new .form-checks:not(#f-witnesses) input:checked').forEach(cb => types.push(cb.value));
+
+  const witnesses = [];
+  document.querySelectorAll('#f-witnesses input:checked').forEach(cb => witnesses.push(cb.value));
+
+  if (!title || !dateVal || !kagId || !higId || !content || !types.length) {
+    toast('件名・日時・加害者・被害者・内容・種類は必須です', true);
+    return;
+  }
+
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true;
+  btn.textContent = '保存中...';
+
+  try {
+    const props = {
+      '件名': { title: [{ text: { content: title } }] },
+      '発生日時': { date: { start: new Date(dateVal).toISOString() } },
+      '加害者': { relation: [{ id: kagId }] },
+      '被害者': { relation: [{ id: higId }] },
+      '内容': { rich_text: [{ text: { content: content } }] },
+      'ハラスメント種類': { multi_select: types.map(t => ({ name: t })) },
+      '対応ステータス': { select: { name: status } },
+    };
+
+    if (quote) props['発言の正確な引用'] = { rich_text: [{ text: { content: quote } }] };
+    if (place) props['場所'] = { select: { name: place } };
+    if (impact) props['被害者の反応・影響'] = { rich_text: [{ text: { content: impact } }] };
+    if (response) props['記録者の対応'] = { rich_text: [{ text: { content: response } }] };
+    if (memo) props['メモ'] = { rich_text: [{ text: { content: memo } }] };
+    if (witnesses.length) props['同席者・立会人'] = { relation: witnesses.map(id => ({ id })) };
+
+    await fooNotionCreate(LOG_DB, props);
+    toast('記録を保存しました');
+    resetForm();
+    switchTab('list');
+    await loadRecords();
+  } catch (e) {
+    console.error('保存エラー:', e);
+    toast('保存に失敗しました', true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '記録を保存';
+  }
+}
+
+function resetForm() {
+  document.getElementById('f-title').value = '';
+  document.getElementById('f-date').value = '';
+  document.getElementById('f-kagaisha').value = '';
+  document.getElementById('f-higaisha').value = '';
+  document.getElementById('f-content').value = '';
+  document.getElementById('f-quote').value = '';
+  document.getElementById('f-place').value = '';
+  document.getElementById('f-impact').value = '';
+  document.getElementById('f-response').value = '';
+  document.getElementById('f-status').value = '未対応';
+  document.getElementById('f-memo').value = '';
+  document.querySelectorAll('#pane-new input[type="checkbox"]').forEach(cb => cb.checked = false);
+}
+
+// ─── 詳細表示 ────────────────────────────────────────────────────────
+function openDetail(id) {
+  currentRecordId = id;
+  const rec = allRecords.find(r => r.id === id);
+  if (!rec) return;
+
+  const p = rec.properties;
+  const title = p['件名']?.title?.[0]?.plain_text || '（無題）';
+  const dateStr = p['発生日時']?.date?.start ? formatDate(p['発生日時'].date.start) : '未設定';
+  const kagaisha = resolveNames(p['加害者']?.relation || []);
+  const higaisha = resolveNames(p['被害者']?.relation || []);
+  const witnesses = resolveNames(p['同席者・立会人']?.relation || []);
+  const content = p['内容']?.rich_text?.[0]?.plain_text || '';
+  const quote = p['発言の正確な引用']?.rich_text?.[0]?.plain_text || '';
+  const types = (p['ハラスメント種類']?.multi_select || []).map(s => s.name);
+  const place = p['場所']?.select?.name || '';
+  const impact = p['被害者の反応・影響']?.rich_text?.[0]?.plain_text || '';
+  const response = p['記録者の対応']?.rich_text?.[0]?.plain_text || '';
+  const status = p['対応ステータス']?.select?.name || '';
+  const memo = p['メモ']?.rich_text?.[0]?.plain_text || '';
+
+  document.getElementById('detail-title').textContent = title;
+
+  let html = '';
+  html += section('発生日時', dateStr);
+  html += section('加害者', kagaisha || '—');
+  html += section('被害者', higaisha || '—');
+  if (witnesses) html += section('同席者・立会人', witnesses);
+  html += section('内容', content || '—');
+  if (quote) html += `<div class="detail-section"><div class="detail-label">発言の正確な引用</div><div class="detail-value quote">${esc(quote)}</div></div>`;
+  if (types.length) html += section('ハラスメント種類', types.map(t => `<span class="badge ${typeClass(t)}">${t}</span>`).join(' '));
+  if (place) html += section('場所', place);
+  if (impact) html += section('被害者の反応・影響', impact);
+  if (response) html += section('記録者の対応', response);
+  if (status) html += section('対応ステータス', `<span class="badge ${statusClass(status)}">${status}</span>`);
+  if (memo) html += section('メモ', memo);
+
+  document.getElementById('detail-body').innerHTML = html;
+  document.getElementById('detail-overlay').classList.add('show');
+  if (typeof fooNavPush === 'function') fooNavPush(closeDetail);
+}
+
+function section(label, value) {
+  return `<div class="detail-section"><div class="detail-label">${label}</div><div class="detail-value">${value}</div></div>`;
+}
+
+function closeDetail() {
+  document.getElementById('detail-overlay').classList.remove('show');
+  currentRecordId = null;
+}
+
+// ─── 編集 ────────────────────────────────────────────────────────────
+function editRecord() {
+  if (!currentRecordId) return;
+  const rec = allRecords.find(r => r.id === currentRecordId);
+  if (!rec) return;
+
+  const p = rec.properties;
+  document.getElementById('f-title').value = p['件名']?.title?.[0]?.plain_text || '';
+  const dateStart = p['発生日時']?.date?.start || '';
+  if (dateStart) {
+    const d = new Date(dateStart);
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    document.getElementById('f-date').value = local;
+  }
+  document.getElementById('f-kagaisha').value = p['加害者']?.relation?.[0]?.id || '';
+  document.getElementById('f-higaisha').value = p['被害者']?.relation?.[0]?.id || '';
+  document.getElementById('f-content').value = p['内容']?.rich_text?.[0]?.plain_text || '';
+  document.getElementById('f-quote').value = p['発言の正確な引用']?.rich_text?.[0]?.plain_text || '';
+  document.getElementById('f-place').value = p['場所']?.select?.name || '';
+  document.getElementById('f-impact').value = p['被害者の反応・影響']?.rich_text?.[0]?.plain_text || '';
+  document.getElementById('f-response').value = p['記録者の対応']?.rich_text?.[0]?.plain_text || '';
+  document.getElementById('f-status').value = p['対応ステータス']?.select?.name || '未対応';
+  document.getElementById('f-memo').value = p['メモ']?.rich_text?.[0]?.plain_text || '';
+
+  // チェックボックス復元
+  const types = (p['ハラスメント種類']?.multi_select || []).map(s => s.name);
+  document.querySelectorAll('#pane-new .form-checks:not(#f-witnesses) input').forEach(cb => {
+    cb.checked = types.includes(cb.value);
+  });
+  const witIds = (p['同席者・立会人']?.relation || []).map(r => r.id);
+  document.querySelectorAll('#f-witnesses input').forEach(cb => {
+    cb.checked = witIds.includes(cb.value);
+  });
+
+  // 保存ボタンを更新モードに切替
+  const btn = document.getElementById('btn-save');
+  btn.textContent = '更新する';
+  btn.onclick = () => updateRecord(currentRecordId);
+
+  closeDetail();
+  switchTab('new');
+}
+
+async function updateRecord(pageId) {
+  const title = document.getElementById('f-title').value.trim();
+  const dateVal = document.getElementById('f-date').value;
+  const kagId = document.getElementById('f-kagaisha').value;
+  const higId = document.getElementById('f-higaisha').value;
+  const content = document.getElementById('f-content').value.trim();
+  const quote = document.getElementById('f-quote').value.trim();
+  const place = document.getElementById('f-place').value;
+  const impact = document.getElementById('f-impact').value.trim();
+  const response = document.getElementById('f-response').value.trim();
+  const status = document.getElementById('f-status').value;
+  const memo = document.getElementById('f-memo').value.trim();
+
+  const types = [];
+  document.querySelectorAll('#pane-new .form-checks:not(#f-witnesses) input:checked').forEach(cb => types.push(cb.value));
+  const witnesses = [];
+  document.querySelectorAll('#f-witnesses input:checked').forEach(cb => witnesses.push(cb.value));
+
+  if (!title || !dateVal || !kagId || !higId || !content || !types.length) {
+    toast('件名・日時・加害者・被害者・内容・種類は必須です', true);
+    return;
+  }
+
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true;
+  btn.textContent = '更新中...';
+
+  try {
+    const props = {
+      '件名': { title: [{ text: { content: title } }] },
+      '発生日時': { date: { start: new Date(dateVal).toISOString() } },
+      '加害者': { relation: [{ id: kagId }] },
+      '被害者': { relation: [{ id: higId }] },
+      '内容': { rich_text: [{ text: { content: content } }] },
+      'ハラスメント種類': { multi_select: types.map(t => ({ name: t })) },
+      '対応ステータス': { select: { name: status } },
+      '発言の正確な引用': { rich_text: quote ? [{ text: { content: quote } }] : [] },
+      '場所': place ? { select: { name: place } } : { select: null },
+      '被害者の反応・影響': { rich_text: impact ? [{ text: { content: impact } }] : [] },
+      '記録者の対応': { rich_text: response ? [{ text: { content: response } }] : [] },
+      'メモ': { rich_text: memo ? [{ text: { content: memo } }] : [] },
+      '同席者・立会人': { relation: witnesses.map(id => ({ id })) },
+    };
+
+    await fooNotionPatch(pageId, props);
+    toast('記録を更新しました');
+    resetForm();
+    // ボタンを新規モードに戻す
+    btn.textContent = '記録を保存';
+    btn.onclick = submitRecord;
+    switchTab('list');
+    await loadRecords();
+  } catch (e) {
+    console.error('更新エラー:', e);
+    toast('更新に失敗しました', true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ─── 削除 ────────────────────────────────────────────────────────────
+async function deleteRecord() {
+  if (!currentRecordId) return;
+  if (!confirm('この記録を削除しますか？')) return;
+
+  try {
+    await fooNotionPatch(currentRecordId, {}, true);
+    toast('削除しました');
+    closeDetail();
+    await loadRecords();
+  } catch (e) {
+    console.error('削除エラー:', e);
+    toast('削除に失敗しました', true);
+  }
+}
+
+// ─── タブ切替 ────────────────────────────────────────────────────────
+function switchTab(tab) {
+  curTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('show'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('pane-' + tab).classList.add('show');
+
+  if (tab === 'new') {
+    // 新規モードに戻す
+    const btn = document.getElementById('btn-save');
+    if (btn.textContent === '更新する') {
+      resetForm();
+      btn.textContent = '記録を保存';
+      btn.onclick = submitRecord;
+    }
+  }
+}
+
+// ─── ユーティリティ ──────────────────────────────────────────────────
+function formatDate(iso) {
+  const d = new Date(iso);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  return `${mm}/${dd} ${hh}:${mi}`;
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function typeClass(t) {
+  const map = { 'パワハラ': 'badge-power', '逆パワハラ': 'badge-reverse', 'モラハラ': 'badge-moral', '人格否定': 'badge-deny', '退職強要的言動': 'badge-quit', '悪口・風評': 'badge-rumor' };
+  return map[t] || 'badge-other';
+}
+
+function statusClass(s) {
+  const map = { '未対応': 'badge-open', '経過観察中': 'badge-watch', '対応中': 'badge-wip', '対応済み': 'badge-done' };
+  return map[s] || 'badge-other';
+}
+
+function toast(msg, isErr) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = isErr ? 'var(--red)' : 'var(--green)';
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>

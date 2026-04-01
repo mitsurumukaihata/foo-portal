@@ -1441,6 +1441,7 @@ async function notionAPI(method, path, body) {
 //   事務: 発注管理 → 自動発注 → 棚卸表 → 福利厚生
 //   EC/マーケ: オークション → EC/マーケ管理 → SNS用素材アップロード
 //   コミュニティ: 会議内容 → 部長コミュニティ → リーダーコミュニティ → マーケ/EC
+//   人事: ハラスメント記録
 //   マニュアル: タイヤ交換マニュアル → 作業報告書 → 社内制度ルール
 //   管理: DB繰越管理
 //   経理: 資金繰り → 月次KPI → 借入一覧 → 設備投資予定表 → サブスク管理 → サンフレチケット → 就業規則
@@ -1482,6 +1483,9 @@ const APP_DEFS = [
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>` },
   { key: '📢 マーケ・EC', id: 'marketing', label: 'マーケ・EC', sub: 'コミュ · オークション · SNS', section: 'コミュニティ', url: 'https://mitsurumukaihata.github.io/foo-portal/marketing.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="12" y1="7" x2="12" y2="13"/></svg>` },
+  // ── 人事 ──
+  { key: '🛡️ ハラスメント記録', id: 'harassment', label: 'ハラスメント記録', sub: '事案記録 · 証拠管理', section: '人事', url: 'https://mitsurumukaihata.github.io/foo-portal/harassment-log.html',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>` },
   // ── マニュアル ──
   { key: '📖 タイヤ交換マニュアル', id: 'manual', label: 'タイヤ交換マニュアル', sub: '準備中',                section: 'マニュアル',   coming: true,
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>` },
@@ -1678,7 +1682,7 @@ function renderPortalApps(user) {
 
   let html = '';
 
-  const sectionOrder = ['現場・業務', '事務', 'EC/マーケ', 'コミュニティ', 'マニュアル', '管理', '経理', '給与'];
+  const sectionOrder = ['現場・業務', '事務', 'EC/マーケ', 'コミュニティ', '人事', 'マニュアル', '管理', '経理', '給与'];
 
   sectionOrder.forEach(secName => {
     const items = sections[secName];
@@ -1689,7 +1693,7 @@ function renderPortalApps(user) {
 
     html += `<div class="sec"><div class="sec-label">${secName}</div>`;
 
-    const useGrid = (secName === 'コミュニティ' || secName === 'マニュアル' || secName === 'EC/マーケ' || secName === '管理');
+    const useGrid = (secName === 'コミュニティ' || secName === 'マニュアル' || secName === '人事' || secName === 'EC/マーケ' || secName === '管理');
 
     if (useGrid) {
       html += `<div class="grid2">`;

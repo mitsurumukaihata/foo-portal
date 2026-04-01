@@ -227,6 +227,21 @@ async function collectData() {
   stockData = {};
   const total = DB_CATEGORIES.length;
 
+  // 年月フィルタ
+  const selYear = parseInt(document.getElementById('tana-year').value);
+  const selMonth = parseInt(document.getElementById('tana-month').value);
+  let periodStart = null, periodEnd = null;
+  if (selMonth > 0) {
+    periodStart = selYear + '-' + String(selMonth).padStart(2, '0') + '-01T00:00:00.000Z';
+    periodEnd = selMonth < 12
+      ? selYear + '-' + String(selMonth + 1).padStart(2, '0') + '-01T00:00:00.000Z'
+      : (selYear + 1) + '-01-01T00:00:00.000Z';
+  } else {
+    periodStart = selYear + '-01-01T00:00:00.000Z';
+    periodEnd = (selYear + 1) + '-01-01T00:00:00.000Z';
+  }
+  console.log('期間フィルタ:', periodStart, '→', periodEnd);
+
   try {
     for (let i = 0; i < total; i++) {
       const cat = DB_CATEGORIES[i];
@@ -294,6 +309,15 @@ async function collectData() {
           if (!created || created < kurikoshiDate) {
             skipCount++;
             return; // 繰越より前 or 日時不明 → スキップ
+          }
+        }
+
+        // 年月フィルタ: 指定期間外のレコードをスキップ（繰越は期間に関係なく含める）
+        if (periodStart && kubun !== '繰越') {
+          const created = getCreatedTime(r);
+          if (created && (created >= periodEnd)) {
+            skipCount++;
+            return; // 期間後 → スキップ
           }
         }
         useCount++;

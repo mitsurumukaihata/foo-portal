@@ -2011,7 +2011,22 @@ function changeHistoryPeriod(year, month) {
 function renderHistory() {
   const el = document.getElementById('history-content');
   if (!historyRecords.length) {
-    el.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--muted);font-size:14px;">履歴がありません</div>';
+    // 年月セレクターは常に表示（月を変更できるように）
+    const now = new Date();
+    const curYear = now.getFullYear();
+    let yOpts = '';
+    for (let y = curYear; y >= 2024; y--) {
+      yOpts += '<option value="' + y + '"' + (y === historyYear ? ' selected' : '') + '>' + y + '年</option>';
+    }
+    let mOpts = '<option value="0"' + (historyMonth === 0 ? ' selected' : '') + '>全月</option>';
+    for (let mm = 1; mm <= 12; mm++) {
+      mOpts += '<option value="' + mm + '"' + (mm === historyMonth ? ' selected' : '') + '>' + mm + '月</option>';
+    }
+    el.innerHTML = '<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">' +
+      '<select id="hist-year" onchange="changeHistoryPeriod(+this.value, +document.getElementById(\'hist-month\').value)" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);font-size:13px;font-family:inherit;color:var(--text);">' + yOpts + '</select>' +
+      '<select id="hist-month" onchange="changeHistoryPeriod(+document.getElementById(\'hist-year\').value, +this.value)" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);font-size:13px;font-family:inherit;color:var(--text);">' + mOpts + '</select>' +
+      '</div>' +
+      '<div style="text-align:center;padding:40px 0;color:var(--muted);font-size:14px;">この期間の履歴はありません</div>';
     return;
   }
 

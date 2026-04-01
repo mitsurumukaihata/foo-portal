@@ -221,7 +221,10 @@ function calcStockFromRecords(records, wField) {
   // 全レコード（旧繰越含む）で在庫を計算する。
   // 旧繰越を除外すると、入出庫が全て繰越前の場合に在庫が0になり繰越が作られない。
   // 発注中のみ除外（実物がないため）。
-  const SKIP_IN_KURIKOSHI = new Set(['発注中']);
+  // 準備は「まだ倉庫にある在庫」なので繰越計算には含めない（sign=0扱い）。
+  // 繰越値 = 準備を引かない実在庫（=stock + junbi）にする。
+  // tire-managerは繰越後の準備のみ取得するため、繰越前の準備は無視される。
+  const SKIP_IN_KURIKOSHI = new Set(['発注中', '準備']);
   for (const r of records) {
     const p = r.properties;
     const kubun = p['区分']?.select?.name || '';

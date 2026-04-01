@@ -2502,7 +2502,20 @@ function rebuildKubunTags(records) {
 
 function filterWh(wh) {
   historyWhFilter = wh;
-  const searchInput = document.getElementById('history-search');
+  // タグの色を更新
+  var whTags = document.getElementById('wh-tags');
+  if (whTags) {
+    var whColors = {'五日市':'#d97706','志和':'#2563eb'};
+    whTags.querySelectorAll('button').forEach(function(btn) {
+      var t = btn.textContent.replace('📍','').trim();
+      if (t === '全倉庫') t = '全部';
+      var sel = t === wh;
+      var col = t === '全部' ? 'var(--accent)' : (whColors[t] || 'var(--muted)');
+      btn.style.background = sel ? col : 'transparent';
+      btn.style.color = sel ? '#fff' : col;
+    });
+  }
+  var searchInput = document.getElementById('history-search');
   applyHistoryFilter(searchInput ? searchInput.value : '');
 }
 

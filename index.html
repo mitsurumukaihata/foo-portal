@@ -1949,9 +1949,17 @@ async function loadAllPayslips() {
 
 function openPayslip() {
   const session = JSON.parse(localStorage.getItem(SESSION_KEY) || '{}');
+  const role = session.role || '';
+  // 管理者・経理は全員分を見れるモードで開く
+  if (role === '管理者') {
+    location.href = 'https://mitsurumukaihata.github.io/foo-portal/payslip.html?mode=all';
+    return;
+  }
   if (session.meisaiDbId) {
     const params = new URLSearchParams({ name: session.name, db: session.meisaiDbId });
     location.href = 'https://mitsurumukaihata.github.io/foo-portal/payslip.html?' + params;
+  } else if (session.payslipUrl) {
+    window.open(session.payslipUrl, '_blank');
   } else {
     alert('明細DB IDが未設定です。管理者に確認してください。');
   }

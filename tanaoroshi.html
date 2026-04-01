@@ -92,8 +92,12 @@ body { min-height: 100vh; display: flex; flex-direction: column; padding-bottom:
   </div>
   <div class="app-content">
     <div class="status-section">
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <select id="tana-year" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--s1);font-size:13px;font-family:inherit;color:var(--text);"></select>
+        <select id="tana-month" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--s1);font-size:13px;font-family:inherit;color:var(--text);"></select>
+      </div>
       <div class="status-label">集計状態</div>
-      <div class="status-text" id="status-text">クリックして集計開始</div>
+      <div class="status-text" id="status-text">年月を選択して集計開始</div>
     </div>
     <div id="summary-container" style="display:none; flex:1; overflow-y:auto;">
       <div class="summary-cards" id="summary-cards"></div>
@@ -172,6 +176,30 @@ function init() {
   const today = new Date();
   document.getElementById('app-date').textContent =
     today.getFullYear() + '年' + (today.getMonth()+1) + '月' + today.getDate() + '日';
+
+  // 年月セレクター初期化
+  var yearSel = document.getElementById('tana-year');
+  var monthSel = document.getElementById('tana-month');
+  var curY = today.getFullYear();
+  var curM = today.getMonth() + 1;
+  for (var y = curY; y >= 2024; y--) {
+    var opt = document.createElement('option');
+    opt.value = y;
+    opt.textContent = y + '年';
+    if (y === curY) opt.selected = true;
+    yearSel.appendChild(opt);
+  }
+  var allOpt = document.createElement('option');
+  allOpt.value = '0';
+  allOpt.textContent = '全期間';
+  monthSel.appendChild(allOpt);
+  for (var mm = 1; mm <= 12; mm++) {
+    var mOpt = document.createElement('option');
+    mOpt.value = mm;
+    mOpt.textContent = mm + '月';
+    if (mm === curM) mOpt.selected = true;
+    monthSel.appendChild(mOpt);
+  }
 }
 
 // ════════ QUERY ALL RECORDS ════════
@@ -326,7 +354,7 @@ function showSummary() {
       let catStock = 0, catJunbi = 0;
       Object.values(patterns).forEach(sizes => {
         Object.values(sizes).forEach(v => {
-          catStock += Math.max(0, v.stock);
+          catStock += v.stock;
           catJunbi += v.junbi;
         });
       });
@@ -373,7 +401,10 @@ function sortSizes(sizes) {
 // ════════ GENERATE PDF (新しいウィンドウで印刷) ════════
 function generatePDF() {
   const today = new Date();
-  const dateStr = today.getFullYear() + '年' + (today.getMonth()+1) + '月' + today.getDate() + '日';
+  const selY = document.getElementById('tana-year').value;
+  const selM = document.getElementById('tana-month').value;
+  const periodStr = selM === '0' ? selY + '年 全期間' : selY + '年' + selM + '月';
+  const dateStr = today.getFullYear() + '年' + (today.getMonth()+1) + '月' + today.getDate() + '日 (' + periodStr + ')';
   const warehouses = Object.keys(stockData).sort();
 
   // 倉庫ごとのHTMLを組み立て
@@ -384,7 +415,7 @@ function generatePDF() {
     Object.values(stockData[wh]).forEach(patterns => {
       Object.values(patterns).forEach(sizes => {
         Object.values(sizes).forEach(v => {
-          pageTotal += Math.max(0, v.stock);
+          pageTotal += v.stock;
           pageTotalJunbi += v.junbi;
         });
       });
@@ -400,10 +431,13 @@ function generatePDF() {
       let catTotal = 0;
       Object.values(patterns).forEach(sizes => {
         Object.values(sizes).forEach(v => {
-          catTotal += Math.max(0, v.stock) + v.junbi;
+          catTotal += v.stock + v.junbi;
         });
       });
-      if (catTotal === 0) return;
+      // catTotal===0でもマイナス在庫がある可能性があるのでスキップしない
+      let hasAny = false;
+      Object.values(patterns).forEach(sizes => { Object.values(sizes).forEach(v => { if (v.stock !== 0 || v.junbi !== 0) hasAny = true; }); });
+      if (!hasAny) return;
 
       // メーカー別にグループ化
       const makers = {};
@@ -439,10 +473,10 @@ function generatePDF() {
         Object.entries(makerPatterns).forEach(([pat, sizes]) => {
           let patStock = 0, patJunbi = 0;
           Object.values(sizes).forEach(v => {
-            patStock += Math.max(0, v.stock);
+            patStock += v.stock;
             patJunbi += v.junbi;
           });
-          if (patStock + patJunbi === 0) return;
+          if (patStock === 0 && patJunbi === 0) return;
 
           // パターンヘッダ行
           catHtml += '<tr class="pattern-row">' +
@@ -456,13 +490,14 @@ function generatePDF() {
           // サイズ行
           sortSizes(Object.keys(sizes)).forEach(size => {
             const v = sizes[size];
-            const st = Math.max(0, v.stock);
+            const st = v.stock;
             const jb = v.junbi;
-            if (st + jb === 0) return;
+            if (st === 0 && jb === 0) return;
 
+            const negStyle = st < 0 ? ' style="color:#ef4444;font-weight:700;"' : '';
             catHtml += '<tr class="size-row">' +
               '<td class="col-size">' + size + '</td>' +
-              '<td class="col-num">' + st + '</td>' +
+              '<td class="col-num"' + negStyle + '>' + st + '</td>' +
               '<td class="col-num">' + (jb > 0 ? jb : '') + '</td>' +
               '<td class="col-num">' + (st + jb) + '</td>' +
               '<td class="col-actual"></td>' +

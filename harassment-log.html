@@ -183,15 +183,13 @@ textarea.form-input { min-height:80px; resize:vertical; line-height:1.6; }
       <label class="form-label">発生日時<span class="req">*</span></label>
       <input class="form-input" id="f-date" type="datetime-local">
     </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">加害者<span class="req">*</span></label>
-        <select class="form-input" id="f-kagaisha"><option value="">選択</option></select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">被害者<span class="req">*</span></label>
-        <select class="form-input" id="f-higaisha"><option value="">選択</option></select>
-      </div>
+    <div class="form-group">
+      <label class="form-label">加害者<span class="req">*</span>（複数選択可）</label>
+      <div class="form-checks" id="f-kagaisha"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">被害者<span class="req">*</span>（複数選択可）</label>
+      <div class="form-checks" id="f-higaisha"></div>
     </div>
     <div class="form-group">
       <label class="form-label">同席者・立会人</label>
@@ -247,12 +245,6 @@ textarea.form-input { min-height:80px; resize:vertical; line-height:1.6; }
       </select>
     </div>
     <div class="form-group">
-      <label class="form-label">証拠URL（写真・スクリーンショット等）</label>
-      <input class="form-input" type="url" id="f-evidence-url" placeholder="https://... 画像URL or ギガファイルURL">
-      <div style="font-size:10px;color:var(--muted);margin-top:3px;">複数ある場合は改行区切りで入力</div>
-      <textarea class="form-input" id="f-evidence-urls" placeholder="追加のURL（1行に1つ）" style="margin-top:4px;min-height:60px;"></textarea>
-    </div>
-    <div class="form-group">
       <label class="form-label">メモ</label>
       <textarea class="form-input" id="f-memo" placeholder="補足事項"></textarea>
     </div>
@@ -284,7 +276,7 @@ textarea.form-input { min-height:80px; resize:vertical; line-height:1.6; }
 // ═══════════════════════════════════════════════════════════════════════
 
 const LOG_DB     = '9da9427f644a43c8b2e533350b38955f';
-const STAFF_DB   = 'f3dbe51e21604e2fa1de7b6baccab44e';
+const STAFF_DB   = '277c2e91fe1046febf55f924a9726cbb';
 const THEME_KEY  = 'foo_portal_theme';
 const SESSION_KEY = 'foo_portal_session';
 
@@ -329,13 +321,13 @@ async function loadStaff() {
 }
 
 function populateStaffSelects() {
-  const kagSel = document.getElementById('f-kagaisha');
-  const higSel = document.getElementById('f-higaisha');
+  const kagBox = document.getElementById('f-kagaisha');
+  const higBox = document.getElementById('f-higaisha');
   const witBox = document.getElementById('f-witnesses');
 
   staffList.forEach(s => {
-    kagSel.innerHTML += `<option value="${s.id}">${s.name}</option>`;
-    higSel.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+    kagBox.innerHTML += `<label class="form-check"><input type="checkbox" value="${s.id}"> ${s.name}</label>`;
+    higBox.innerHTML += `<label class="form-check"><input type="checkbox" value="${s.id}"> ${s.name}</label>`;
     witBox.innerHTML += `<label class="form-check"><input type="checkbox" value="${s.id}"> ${s.name}</label>`;
   });
 }
@@ -413,8 +405,10 @@ function resolveNames(relations) {
 async function submitRecord() {
   const title = document.getElementById('f-title').value.trim();
   const dateVal = document.getElementById('f-date').value;
-  const kagId = document.getElementById('f-kagaisha').value;
-  const higId = document.getElementById('f-higaisha').value;
+  const kagIds = [];
+  document.querySelectorAll('#f-kagaisha input:checked').forEach(cb => kagIds.push(cb.value));
+  const higIds = [];
+  document.querySelectorAll('#f-higaisha input:checked').forEach(cb => higIds.push(cb.value));
   const content = document.getElementById('f-content').value.trim();
   const quote = document.getElementById('f-quote').value.trim();
   const place = document.getElementById('f-place').value;
@@ -424,12 +418,12 @@ async function submitRecord() {
   const memo = document.getElementById('f-memo').value.trim();
 
   const types = [];
-  document.querySelectorAll('#pane-new .form-checks:not(#f-witnesses) input:checked').forEach(cb => types.push(cb.value));
+  document.querySelectorAll('#pane-new .form-checks:not(#f-kagaisha):not(#f-higaisha):not(#f-witnesses) input:checked').forEach(cb => types.push(cb.value));
 
   const witnesses = [];
   document.querySelectorAll('#f-witnesses input:checked').forEach(cb => witnesses.push(cb.value));
 
-  if (!title || !dateVal || !kagId || !higId || !content || !types.length) {
+  if (!title || !dateVal || !kagIds.length || !higIds.length || !content || !types.length) {
     toast('件名・日時・加害者・被害者・内容・種類は必須です', true);
     return;
   }
@@ -442,8 +436,8 @@ async function submitRecord() {
     const props = {
       '件名': { title: [{ text: { content: title } }] },
       '発生日時': { date: { start: new Date(dateVal).toISOString() } },
-      '加害者': { relation: [{ id: kagId }] },
-      '被害者': { relation: [{ id: higId }] },
+      '加害者': { relation: kagIds.map(id => ({ id })) },
+      '被害者': { relation: higIds.map(id => ({ id })) },
       '内容': { rich_text: [{ text: { content: content } }] },
       'ハラスメント種類': { multi_select: types.map(t => ({ name: t })) },
       '対応ステータス': { select: { name: status } },
@@ -454,11 +448,6 @@ async function submitRecord() {
     if (impact) props['被害者の反応・影響'] = { rich_text: [{ text: { content: impact } }] };
     if (response) props['記録者の対応'] = { rich_text: [{ text: { content: response } }] };
     if (memo) props['メモ'] = { rich_text: [{ text: { content: memo } }] };
-    // 証拠URL
-    var evidenceUrl = document.getElementById('f-evidence-url').value.trim();
-    var evidenceUrls = document.getElementById('f-evidence-urls').value.trim();
-    var allEvidence = [evidenceUrl, ...evidenceUrls.split('\n').map(function(s){return s.trim();})].filter(Boolean).join('\n');
-    if (allEvidence) props['証拠URL'] = { rich_text: [{ text: { content: allEvidence } }] };
     if (witnesses.length) props['同席者・立会人'] = { relation: witnesses.map(id => ({ id })) };
 
     await fooNotionCreate(LOG_DB, props);
@@ -487,8 +476,6 @@ function resetForm() {
   document.getElementById('f-response').value = '';
   document.getElementById('f-status').value = '未対応';
   document.getElementById('f-memo').value = '';
-  document.getElementById('f-evidence-url').value = '';
-  document.getElementById('f-evidence-urls').value = '';
   document.querySelectorAll('#pane-new input[type="checkbox"]').forEach(cb => cb.checked = false);
 }
 
@@ -629,8 +616,11 @@ function editRecord() {
     const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     document.getElementById('f-date').value = local;
   }
-  document.getElementById('f-kagaisha').value = p['加害者']?.relation?.[0]?.id || '';
-  document.getElementById('f-higaisha').value = p['被害者']?.relation?.[0]?.id || '';
+  // 加害者・被害者チェックボックス復元
+  const kagIds = (p['加害者']?.relation || []).map(r => r.id);
+  document.querySelectorAll('#f-kagaisha input').forEach(cb => { cb.checked = kagIds.includes(cb.value); });
+  const higIds = (p['被害者']?.relation || []).map(r => r.id);
+  document.querySelectorAll('#f-higaisha input').forEach(cb => { cb.checked = higIds.includes(cb.value); });
   document.getElementById('f-content').value = p['内容']?.rich_text?.[0]?.plain_text || '';
   document.getElementById('f-quote').value = p['発言の正確な引用']?.rich_text?.[0]?.plain_text || '';
   document.getElementById('f-place').value = p['場所']?.select?.name || '';
@@ -639,9 +629,9 @@ function editRecord() {
   document.getElementById('f-status').value = p['対応ステータス']?.select?.name || '未対応';
   document.getElementById('f-memo').value = p['メモ']?.rich_text?.[0]?.plain_text || '';
 
-  // チェックボックス復元
+  // ハラスメント種類チェックボックス復元
   const types = (p['ハラスメント種類']?.multi_select || []).map(s => s.name);
-  document.querySelectorAll('#pane-new .form-checks:not(#f-witnesses) input').forEach(cb => {
+  document.querySelectorAll('#pane-new .form-checks:not(#f-kagaisha):not(#f-higaisha):not(#f-witnesses) input').forEach(cb => {
     cb.checked = types.includes(cb.value);
   });
   const witIds = (p['同席者・立会人']?.relation || []).map(r => r.id);

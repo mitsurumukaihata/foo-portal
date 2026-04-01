@@ -247,6 +247,12 @@ textarea.form-input { min-height:80px; resize:vertical; line-height:1.6; }
       </select>
     </div>
     <div class="form-group">
+      <label class="form-label">証拠URL（写真・スクリーンショット等）</label>
+      <input class="form-input" type="url" id="f-evidence-url" placeholder="https://... 画像URL or ギガファイルURL">
+      <div style="font-size:10px;color:var(--muted);margin-top:3px;">複数ある場合は改行区切りで入力</div>
+      <textarea class="form-input" id="f-evidence-urls" placeholder="追加のURL（1行に1つ）" style="margin-top:4px;min-height:60px;"></textarea>
+    </div>
+    <div class="form-group">
       <label class="form-label">メモ</label>
       <textarea class="form-input" id="f-memo" placeholder="補足事項"></textarea>
     </div>
@@ -448,6 +454,11 @@ async function submitRecord() {
     if (impact) props['被害者の反応・影響'] = { rich_text: [{ text: { content: impact } }] };
     if (response) props['記録者の対応'] = { rich_text: [{ text: { content: response } }] };
     if (memo) props['メモ'] = { rich_text: [{ text: { content: memo } }] };
+    // 証拠URL
+    var evidenceUrl = document.getElementById('f-evidence-url').value.trim();
+    var evidenceUrls = document.getElementById('f-evidence-urls').value.trim();
+    var allEvidence = [evidenceUrl, ...evidenceUrls.split('\n').map(function(s){return s.trim();})].filter(Boolean).join('\n');
+    if (allEvidence) props['証拠URL'] = { rich_text: [{ text: { content: allEvidence } }] };
     if (witnesses.length) props['同席者・立会人'] = { relation: witnesses.map(id => ({ id })) };
 
     await fooNotionCreate(LOG_DB, props);
@@ -476,6 +487,8 @@ function resetForm() {
   document.getElementById('f-response').value = '';
   document.getElementById('f-status').value = '未対応';
   document.getElementById('f-memo').value = '';
+  document.getElementById('f-evidence-url').value = '';
+  document.getElementById('f-evidence-urls').value = '';
   document.querySelectorAll('#pane-new input[type="checkbox"]').forEach(cb => cb.checked = false);
 }
 
@@ -514,7 +527,45 @@ function openDetail(id) {
   if (impact) html += section('被害者の反応・影響', impact);
   if (response) html += section('記録者の対応', response);
   if (status) html += section('対応ステータス', `<span class="badge ${statusClass(status)}">${status}</span>`);
+
+  // 証拠URL
+  var evidenceUrls = (p['証拠URL']?.rich_text || []).map(function(t){return t.plain_text;}).join('');
+  if (evidenceUrls) {
+    var urlsHtml = evidenceUrls.split('\n').filter(Boolean).map(function(url) {
+      var isImage = /\.(jpg|jpeg|png|gif|webp)/i.test(url);
+      return `<div style="margin-bottom:6px;">${isImage ? `<img src="${esc(url)}" style="max-width:100%;border-radius:8px;margin-bottom:4px;" onerror="this.style.display='none'"><br>` : ''}<a href="${esc(url)}" target="_blank" style="color:var(--accent);font-size:12px;word-break:break-all;">${esc(url)}</a></div>`;
+    }).join('');
+    html += `<div class="detail-section"><div class="detail-label">証拠</div><div class="detail-value">${urlsHtml}</div></div>`;
+  }
+
   if (memo) html += section('メモ', memo);
+
+  // 対応履歴
+  var historyText = (p['対応履歴']?.rich_text || []).map(function(t){return t.plain_text;}).join('');
+  html += `<div class="detail-section"><div class="detail-label">対応履歴</div>`;
+  if (historyText) {
+    var entries = historyText.split('\n---\n').filter(Boolean);
+    html += `<div class="detail-value" style="max-height:300px;overflow-y:auto;">`;
+    entries.forEach(function(entry) {
+      html += `<div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;font-size:12px;line-height:1.6;white-space:pre-wrap;">${esc(entry)}</div>`;
+    });
+    html += `</div>`;
+  } else {
+    html += `<div class="detail-value" style="color:var(--muted);font-size:12px;">まだ対応履歴はありません</div>`;
+  }
+  // 書き込みフォーム
+  html += `<div style="margin-top:10px;">
+    <textarea id="history-input" class="form-input" placeholder="対応内容を記入..." style="min-height:60px;font-size:12px;"></textarea>
+    <div style="display:flex;gap:8px;margin-top:6px;">
+      <select id="history-status" class="form-input" style="flex:1;">
+        <option value="">ステータス変更なし</option>
+        <option value="経過観察中">経過観察中</option>
+        <option value="対応中">対応中</option>
+        <option value="対応済み">対応済み</option>
+      </select>
+      <button onclick="addHistory('${id}')" style="padding:8px 16px;border-radius:8px;border:none;background:var(--accent);color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;white-space:nowrap;">追記</button>
+    </div>
+  </div></div>`;
 
   document.getElementById('detail-body').innerHTML = html;
   document.getElementById('detail-overlay').classList.add('show');
@@ -528,6 +579,40 @@ function section(label, value) {
 function closeDetail() {
   document.getElementById('detail-overlay').classList.remove('show');
   currentRecordId = null;
+}
+
+async function addHistory(id) {
+  var input = document.getElementById('history-input');
+  var statusSel = document.getElementById('history-status');
+  var text = input.value.trim();
+  var newStatus = statusSel.value;
+  if (!text) { toast('対応内容を入力してください', true); return; }
+
+  var now = new Date();
+  var dateStr = now.getFullYear() + '/' + (now.getMonth()+1) + '/' + now.getDate() + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  var entry = '[' + dateStr + '] ' + (newStatus ? '【' + newStatus + '】 ' : '') + text;
+
+  // 既存の対応履歴を取得
+  var rec = allRecords.find(function(r) { return r.id === id; });
+  var existing = '';
+  if (rec) {
+    existing = (rec.properties['対応履歴']?.rich_text || []).map(function(t){return t.plain_text;}).join('');
+  }
+  var updated = existing ? existing + '\n---\n' + entry : entry;
+
+  try {
+    var props = { '対応履歴': { rich_text: [{ text: { content: updated } }] } };
+    if (newStatus) {
+      props['対応ステータス'] = { select: { name: newStatus } };
+    }
+    await fooNotionPatch(id, props);
+    toast('対応履歴を追記しました');
+    await loadRecords();
+    openDetail(id);
+  } catch(e) {
+    toast('追記に失敗しました', true);
+    console.error(e);
+  }
 }
 
 // ─── 編集 ────────────────────────────────────────────────────────────

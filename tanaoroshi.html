@@ -174,8 +174,8 @@ function init() {
   applyTheme();
   document.getElementById('app').style.display = 'flex';
   const today = new Date();
-  document.getElementById('app-date').textContent =
-    today.getFullYear() + '年' + (today.getMonth()+1) + '月' + today.getDate() + '日';
+  var dateEl = document.getElementById('app-date');
+  if (dateEl) dateEl.textContent = today.getFullYear() + '年' + (today.getMonth()+1) + '月' + today.getDate() + '日';
 
   // 年月セレクター初期化
   var yearSel = document.getElementById('tana-year');

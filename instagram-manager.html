@@ -116,6 +116,14 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 .btn-close-detail:active { transform:scale(0.95); opacity:0.7; }
 .btn-delete { padding:8px 16px; border-radius:var(--radius); border:1px solid rgba(200,48,48,0.25); background:transparent; color:var(--red); font-size:12px; font-weight:600; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; }
 .btn-delete:active { transform:scale(0.95); opacity:0.7; }
+.btn-edit { padding:8px 16px; border-radius:var(--radius); border:1px solid rgba(240,165,0,0.3); background:rgba(240,165,0,0.08); color:var(--accent); font-size:12px; font-weight:600; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; }
+.btn-edit:active { transform:scale(0.95); opacity:0.7; }
+
+/* ── Edit modal ── */
+.edit-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; display:none; align-items:flex-end; justify-content:center; }
+.edit-overlay.show { display:flex; }
+.edit-sheet { width:100%; max-width:480px; max-height:85vh; background:var(--bg); border-radius:16px 16px 0 0; padding:20px; overflow-y:auto; }
+.edit-sheet-title { font-size:16px; font-weight:700; margin-bottom:16px; color:var(--text); }
 
 /* ── Expand toggle ── */
 .expand-toggle { width:100%; padding:4px 0 0; border:none; background:transparent; color:var(--muted); font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; transition:all 0.15s; margin-top:8px; font-family:'Noto Sans JP',sans-serif; }
@@ -244,6 +252,43 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
       <button class="dialog-btn cancel" onclick="closeDialog()">キャンセル</button>
       <button class="dialog-btn danger" id="dialog-confirm">削除</button>
     </div>
+  </div>
+</div>
+
+<!-- Edit modal -->
+<div class="edit-overlay" id="edit-overlay" onclick="if(event.target===this)closeEditModal()">
+  <div class="edit-sheet">
+    <div class="edit-sheet-title">投稿を変更</div>
+    <div class="form-group">
+      <label class="form-label">タイトル</label>
+      <input class="form-input" type="text" id="edit-title">
+    </div>
+    <div class="form-group">
+      <label class="form-label">カテゴリ</label>
+      <select class="form-select" id="edit-category">
+        <option value="インスタ">インスタ</option>
+        <option value="オークション">オークション</option>
+        <option value="その他">その他</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">投稿予定日</label>
+      <input class="form-input" type="date" id="edit-date">
+    </div>
+    <div class="form-group">
+      <label class="form-label">優先度</label>
+      <select class="form-select" id="edit-priority">
+        <option value="高">高</option>
+        <option value="中">中</option>
+        <option value="低">低</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">メモ</label>
+      <textarea class="form-textarea" id="edit-memo"></textarea>
+    </div>
+    <button class="form-submit" id="edit-save-btn" onclick="saveEdit()">保存</button>
+    <button class="btn-close-detail" style="width:100%;margin-top:8px;" onclick="closeEditModal()">キャンセル</button>
   </div>
 </div>
 
@@ -475,6 +520,7 @@ function renderCard(post) {
         <div class="memo-label">メモ</div>
         ${post.memo ? `<div class="memo-text">${escHtml(post.memo)}</div>` : `<div class="memo-empty">メモなし</div>`}
         <div class="card-actions">
+          ${canDelete ? `<button class="btn-edit" onclick="openEditModal('${post.id}')">変更</button>` : ''}
           <button class="btn-close-detail" onclick="toggleExpand('${post.id}')">閉じる</button>
           ${canDelete ? `<button class="btn-delete" onclick="confirmDelete('${post.id}','${escAttr(post.title)}')">削除</button>` : ''}
         </div>
@@ -542,6 +588,61 @@ async function handleStep(postId, step, event) {
     post.status = oldStatus;
     renderAll();
     showToast('更新エラー: ' + e.message, 'error');
+  }
+}
+
+// ── Edit post ──
+var editPostId = null;
+
+function openEditModal(id) {
+  var post = allPosts.find(function(p) { return p.id === id; });
+  if (!post) return;
+  editPostId = id;
+  document.getElementById('edit-title').value = post.title || '';
+  document.getElementById('edit-category').value = post.category || 'インスタ';
+  document.getElementById('edit-date').value = post.date || '';
+  document.getElementById('edit-priority').value = post.priority || '中';
+  document.getElementById('edit-memo').value = post.memo || '';
+  document.getElementById('edit-overlay').classList.add('show');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-overlay').classList.remove('show');
+  editPostId = null;
+}
+
+async function saveEdit() {
+  if (!editPostId) return;
+  var btn = document.getElementById('edit-save-btn');
+  btn.disabled = true;
+  btn.textContent = '保存中...';
+
+  var title = document.getElementById('edit-title').value.trim();
+  var category = document.getElementById('edit-category').value;
+  var date = document.getElementById('edit-date').value;
+  var priority = document.getElementById('edit-priority').value;
+  var memo = document.getElementById('edit-memo').value.trim();
+
+  var properties = {
+    'タイトル': { title: [{ text: { content: title } }] },
+    'カテゴリ': { select: { name: category } },
+    '優先度': { select: { name: priority } },
+    'メモ': { rich_text: memo ? [{ text: { content: memo } }] : [] },
+  };
+  if (date) {
+    properties['投稿予定日'] = { date: { start: date } };
+  }
+
+  try {
+    await notionAPI('/pages/' + editPostId, 'PATCH', { properties: properties });
+    showToast('変更しました', 'success');
+    closeEditModal();
+    await fetchPosts();
+  } catch (e) {
+    showToast('変更エラー: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '保存';
   }
 }
 

@@ -310,10 +310,11 @@ async function loadStaff() {
       sorts: [{ property: '氏名', direction: 'ascending' }],
       page_size: 100,
     });
-    staffList = (res.results || []).map(p => ({
-      id: p.id,
-      name: p.properties['氏名']?.title?.[0]?.plain_text || '',
-    }));
+    staffList = (res.results || []).map(p => {
+      const fullName = p.properties['氏名']?.title?.[0]?.plain_text || '';
+      const lastName = fullName.replace(/[\s　]+/g, ' ').split(' ')[0];
+      return { id: p.id, name: lastName, fullName };
+    });
     populateStaffSelects();
   } catch (e) {
     console.error('社員マスタ読み込みエラー:', e);

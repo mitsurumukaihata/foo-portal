@@ -333,7 +333,7 @@ function populateStaffSelects() {
   const witBox = document.getElementById('f-witnesses');
 
   // 向畑綾花は除外
-  const filtered = staffList.filter(s => s.name !== '向畑 綾花' && s.name !== '向畑　綾花' && s.name !== '向畑綾花');
+  const filtered = staffList.filter(s => !['向畑綾花','向畑 綾花','向畑　綾花','向畑武司','向畑 武司','向畑　武司'].includes(s.fullName));
   filtered.forEach(s => {
     kagBox.innerHTML += `<label class="form-check"><input type="checkbox" value="${s.id}"> ${s.name}</label>`;
     higBox.innerHTML += `<label class="form-check"><input type="checkbox" value="${s.id}"> ${s.name}</label>`;

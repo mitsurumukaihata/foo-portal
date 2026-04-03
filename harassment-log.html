@@ -276,7 +276,7 @@ textarea.form-input { min-height:80px; resize:vertical; line-height:1.6; }
 // ═══════════════════════════════════════════════════════════════════════
 
 const LOG_DB     = '9da9427f644a43c8b2e533350b38955f';
-const STAFF_DB   = '277c2e91fe1046febf55f924a9726cbb';
+const STAFF_DB   = '08c5405729794337886b3565352ef96a'; // ポータル用社員マスタ（全社員）
 const THEME_KEY  = 'foo_portal_theme';
 const SESSION_KEY = 'foo_portal_session';
 
@@ -306,13 +306,13 @@ async function init() {
 async function loadStaff() {
   try {
     const res = await fooNotionQuery(STAFF_DB, {
-      filter: { property: '有効', checkbox: { equals: true } },
-      sorts: [{ property: '社員名', direction: 'ascending' }],
+      filter: { property: '在籍', select: { equals: '在籍中' } },
+      sorts: [{ property: '氏名', direction: 'ascending' }],
       page_size: 100,
     });
     staffList = (res.results || []).map(p => ({
       id: p.id,
-      name: p.properties['社員名']?.title?.[0]?.plain_text || '',
+      name: p.properties['氏名']?.title?.[0]?.plain_text || '',
     }));
     populateStaffSelects();
   } catch (e) {

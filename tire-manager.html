@@ -1208,6 +1208,7 @@ function renderPrepEdit(pageId, catKey) {
     const qty = p['数量']?.number ?? 0;
     const warehouse = p[db.warehouseField]?.select?.name || '';
     const maker = getMaker(pattern);
+    window._prepOrigQty = qty; // オリジナル本数を保持
     el.innerHTML = `
       <div class="content" style="padding:0;">
         <div style="padding:20px 20px 16px;border-bottom:0.5px solid var(--border);">
@@ -1232,12 +1233,18 @@ function renderPrepEdit(pageId, catKey) {
               <input id="prep-dest" type="text" value="${dest}" placeholder="出庫先（任意）" style="background:transparent;border:none;outline:none;color:var(--accent);font-size:16px;font-weight:700;font-family:'Noto Sans JP',sans-serif;width:100%;">
             </div>
             <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;">
-              <div style="font-size:10px;color:var(--muted);letter-spacing:0.06em;">本数</div>
+              <div style="font-size:10px;color:var(--muted);letter-spacing:0.06em;">本数 <span id="prep-ord-label" style="color:var(--muted);font-size:9px;">（準備：${qty}本）</span></div>
               <div style="display:flex;align-items:center;gap:12px;">
-                <button onclick="(()=>{const i=document.getElementById('prep-qty');if(parseInt(i.value)>1)i.value=parseInt(i.value)-1;})()" style="background:var(--s3);border:none;border-radius:8px;width:32px;height:32px;color:var(--text);font-size:18px;cursor:pointer;font-weight:700;">−</button>
-                <input id="prep-qty" type="number" value="${qty}" min="1" style="background:transparent;border:none;outline:none;color:var(--accent);font-size:22px;font-weight:900;font-family:'DM Mono',monospace;width:50px;text-align:center;">
-                <button onclick="(()=>{const i=document.getElementById('prep-qty');i.value=parseInt(i.value)+1;})()" style="background:var(--s3);border:none;border-radius:8px;width:32px;height:32px;color:var(--text);font-size:18px;cursor:pointer;font-weight:700;">＋</button>
+                <button onclick="changePrepQty(-1)" style="background:var(--s3);border:none;border-radius:8px;width:32px;height:32px;color:var(--text);font-size:18px;cursor:pointer;font-weight:700;">−</button>
+                <input id="prep-qty" type="number" value="${qty}" min="1" oninput="updatePrepNokori()" style="background:transparent;border:none;outline:none;color:var(--accent);font-size:22px;font-weight:900;font-family:'DM Mono',monospace;width:50px;text-align:center;">
+                <button onclick="changePrepQty(1)" style="background:var(--s3);border:none;border-radius:8px;width:32px;height:32px;color:var(--text);font-size:18px;cursor:pointer;font-weight:700;">＋</button>
               </div>
+            </div>
+            <div id="prep-nokori-wrap" style="display:none;background:var(--s2);border:1px solid var(--accent);border-radius:10px;padding:12px 14px;">
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                <input type="checkbox" id="prep-nokori-chk" checked style="width:18px;height:18px;accent-color:var(--accent);">
+                <span style="font-size:13px;color:var(--text);">残り <strong id="prep-nokori-num" style="color:var(--accent);">0</strong>本を準備に残す</span>
+              </label>
             </div>
             <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;">
               <div style="font-size:10px;color:var(--muted);letter-spacing:0.06em;">倉庫</div>
@@ -1256,6 +1263,30 @@ function renderPrepEdit(pageId, catKey) {
   });
 }
 
+function changePrepQty(delta) {
+  const inp = document.getElementById('prep-qty');
+  let v = parseInt(inp.value) || 1;
+  v = Math.max(1, v + delta);
+  inp.value = v;
+  updatePrepNokori();
+}
+function updatePrepNokori() {
+  const origQty = window._prepOrigQty || 0;
+  const curQty = parseInt(document.getElementById('prep-qty')?.value) || 0;
+  const nokori = origQty - curQty;
+  const wrap = document.getElementById('prep-nokori-wrap');
+  const numEl = document.getElementById('prep-nokori-num');
+  if (!wrap || !numEl) return;
+  if (nokori > 0) {
+    numEl.textContent = nokori;
+    wrap.style.display = 'block';
+  } else {
+    wrap.style.display = 'none';
+    const chk = document.getElementById('prep-nokori-chk');
+    if (chk) chk.checked = true;
+  }
+}
+
 async function submitPrepToShukko(pageId, catKey) {
   if (!confirm('この準備タイヤを「出庫」に変更しますか？\nNotionDBのデータを更新します。')) return;
   const btn = document.getElementById('prep-send-btn');
@@ -1265,7 +1296,11 @@ async function submitPrepToShukko(pageId, catKey) {
   const db = DB_MAP[catKey];
   const wField = db.warehouseField;
   const warehouse = document.getElementById('prep-warehouse')?.value || '';
+  const nokoriChk = document.getElementById('prep-nokori-chk')?.checked || false;
+  const origQty = window._prepOrigQty || qty;
+  const nokori = origQty - qty;
   try {
+    // ① 元レコードを出庫に変更
     const props = { '区分': { select: { name: '出庫' } }, '数量': { number: qty } };
     props[wField] = { select: { name: warehouse } };
     if (dest) props['出庫先'] = { rich_text: [{ text: { content: dest } }] };
@@ -1276,8 +1311,29 @@ async function submitPrepToShukko(pageId, catKey) {
     const _spp = _sp.properties;
     updateSnapshot(catKey, _spp['パターン名']?.select?.name||'', _spp['サイズコード']?.select?.name||'', '出庫', qty, warehouse, null);
 
+    // ② 残りを準備に残す場合、新しい準備レコードを作成
+    let nokoriMsg = '';
+    if (nokori > 0 && nokoriChk) {
+      const pattern = _spp['パターン名']?.select?.name || '';
+      const sizeCode = _spp['サイズコード']?.select?.name || '';
+      const creator = (loginUser || '').replace(/ /g, '\u3000');
+      const title = `${sizeCode} ${pattern} 準備 ${warehouse}`.trim();
+      const newProps = {
+        'タイトル': { title: [{ text: { content: title } }] },
+        '区分': { select: { name: '準備' } },
+        '数量': { number: nokori },
+      };
+      newProps[wField] = { select: { name: warehouse } };
+      if (sizeCode) newProps['サイズコード'] = { select: { name: sizeCode } };
+      if (pattern) newProps['パターン名'] = { select: { name: pattern } };
+      if (creator) newProps['作成者'] = { select: { name: creator } };
+      if (dest) newProps['出庫先'] = { rich_text: [{ text: { content: dest } }] };
+      await notionAPI('POST', '/pages', { parent: { database_id: db.id }, properties: newProps });
+      nokoriMsg = `（残り${nokori}本を準備に残しました）`;
+    }
+
     const el = document.getElementById('entry-content');
-    el.innerHTML = `<div class="content" style="text-align:center;padding:40px 20px;"><div style="font-size:48px;margin-bottom:16px;">✅</div><div class="screen-title">出庫に変更しました</div><div style="font-size:14px;color:var(--muted);margin-bottom:32px;">Notionのレコードを更新しました</div><button class="btn-primary" onclick="renderEntry()">新しい入出庫を記録する</button><button class="btn-prep" style="margin-top:8px;" onclick="loadAllPrepList()">📋 準備リストに戻る</button></div>`;
+    el.innerHTML = `<div class="content" style="text-align:center;padding:40px 20px;"><div style="font-size:48px;margin-bottom:16px;">✅</div><div class="screen-title">出庫に変更しました</div><div style="font-size:14px;color:var(--muted);margin-bottom:32px;">Notionのレコードを更新しました${nokoriMsg ? '<br>' + nokoriMsg : ''}</div><button class="btn-primary" onclick="renderEntry()">新しい入出庫を記録する</button><button class="btn-prep" style="margin-top:8px;" onclick="loadAllPrepList()">📋 準備リストに戻る</button></div>`;
   } catch(e) {
     const errEl = document.getElementById('prep-error');
     if (errEl) errEl.innerHTML = `<div class="error-box">更新に失敗しました。<br><small>${e.message}</small></div>`;

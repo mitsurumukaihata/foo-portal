@@ -209,9 +209,15 @@ textarea.form-input { min-height:80px; resize:vertical; line-height:1.6; }
         <label class="form-check"><input type="checkbox" value="パワハラ"> パワハラ</label>
         <label class="form-check"><input type="checkbox" value="逆パワハラ"> 逆パワハラ</label>
         <label class="form-check"><input type="checkbox" value="モラハラ"> モラハラ</label>
+        <label class="form-check"><input type="checkbox" value="セクハラ"> セクハラ</label>
         <label class="form-check"><input type="checkbox" value="人格否定"> 人格否定</label>
+        <label class="form-check"><input type="checkbox" value="過度な叱責"> 過度な叱責</label>
+        <label class="form-check"><input type="checkbox" value="業務妨害"> 業務妨害</label>
+        <label class="form-check"><input type="checkbox" value="無視・孤立化"> 無視・孤立化</label>
+        <label class="form-check"><input type="checkbox" value="威圧・脅迫"> 威圧・脅迫</label>
         <label class="form-check"><input type="checkbox" value="退職強要的言動"> 退職強要的言動</label>
         <label class="form-check"><input type="checkbox" value="悪口・風評"> 悪口・風評</label>
+        <label class="form-check"><input type="checkbox" value="プライバシー侵害"> プライバシー侵害</label>
         <label class="form-check"><input type="checkbox" value="その他"> その他</label>
       </div>
     </div>
@@ -759,7 +765,7 @@ function formatDate(iso) {
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 function typeClass(t) {
-  const map = { 'パワハラ': 'badge-power', '逆パワハラ': 'badge-reverse', 'モラハラ': 'badge-moral', '人格否定': 'badge-deny', '退職強要的言動': 'badge-quit', '悪口・風評': 'badge-rumor' };
+  const map = { 'パワハラ': 'badge-power', '逆パワハラ': 'badge-reverse', 'モラハラ': 'badge-moral', '人格否定': 'badge-deny', '退職強要的言動': 'badge-quit', '悪口・風評': 'badge-rumor', 'セクハラ': 'badge-power', '過度な叱責': 'badge-reverse', '業務妨害': 'badge-other', '無視・孤立化': 'badge-moral', 'プライバシー侵害': 'badge-deny', '威圧・脅迫': 'badge-power' };
   return map[t] || 'badge-other';
 }
 

@@ -987,6 +987,135 @@ function renderDone(el) {
     </div>`;
 }
 
+function _updateQtyDisp() {
+  const d = document.getElementById('num-disp');
+  if (d) { d.textContent = state.qty === 0 ? '本数を入力' : state.qty; d.className = state.qty === 0 ? 'num-val empty' : 'num-val'; }
+  const btn = document.getElementById('qty-next');
+  if (btn) btn.disabled = state.qty === 0;
+}
+
+// ═══════ キーボードナビゲーション ═══════
+(function() {
+  // 汎用: コンテナ内の選択可能アイテムを↑↓←→でハイライト移動、Enterで確定
+  let _kbIdx = -1; // 現在のハイライト位置
+
+  function getSelectables() {
+    const step = state.step;
+    // サイズ候補
+    if (step === 0) return Array.from(document.querySelectorAll('#sz-candidates .candidate'));
+    // カテゴリ
+    if (step === 1) return Array.from(document.querySelectorAll('.cat-card'));
+    // パターン
+    if (step === 2) return Array.from(document.querySelectorAll('.pattern-item'));
+    // 区分（横並び）
+    if (step === 4) return Array.from(document.querySelectorAll('.type-btn'));
+    // 移動方向
+    if (step === 5) return Array.from(document.querySelectorAll('.move-card-big, .move-card-sm'));
+    // 倉庫
+    if (step === 6) return Array.from(document.querySelectorAll('.soko-btn'));
+    return [];
+  }
+
+  function clearHighlights(items) {
+    items.forEach(el => el.style.outline = '');
+  }
+
+  function highlightItem(items, idx) {
+    clearHighlights(items);
+    if (idx >= 0 && idx < items.length) {
+      items[idx].style.outline = '2px solid var(--accent)';
+      items[idx].style.outlineOffset = '2px';
+      items[idx].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }
+
+  document.addEventListener('keydown', function(e) {
+    // テキスト入力中はShift+Enter/Escape以外をスキップ
+    const tag = e.target.tagName;
+    const isInput = (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT');
+    const step = state.step;
+
+    // ─── Shift + Enter: 主ボタン実行 ───
+    if (e.shiftKey && e.key === 'Enter') {
+      e.preventDefault();
+      // 各ステップの主ボタンをクリック
+      const btnIds = {
+        0: 'sz-next', 1: 'cat-next', 2: 'pat-next-top', 3: 'qty-next',
+        4: 'kubun-next', 5: 'move-next', 6: 'soko-next', 7: 'send-btn'
+      };
+      const btn = document.getElementById(btnIds[step]);
+      if (btn && !btn.disabled) btn.click();
+      return;
+    }
+
+    // ─── Escape: 戻る ───
+    if (e.key === 'Escape' && !e.shiftKey) {
+      e.preventDefault();
+      if (step === 0) return;
+      if (step === 7) { goStep(state.isMove ? 5 : 6); return; }
+      if (step === 5) { goStep(4); return; }
+      goStep(step - 1);
+      return;
+    }
+
+    // テキスト入力中は矢印キーを横取りしない（サイズ入力のEnterは例外）
+    if (isInput && e.target.type !== 'number') {
+      // サイズ入力(step0)とパターン検索(step2)は↑↓Enterだけ横取り
+      if (step === 0 || step === 2) {
+        if (!['ArrowUp','ArrowDown','Enter'].includes(e.key)) return;
+      } else {
+        return;
+      }
+    }
+
+    const items = getSelectables();
+
+    // ─── 数量ステップ: ↑↓で±1、数字キーで直接入力 ───
+    if (step === 3 && !isInput) {
+      if (e.key === 'ArrowUp') { e.preventDefault(); state.qty = Math.min(999, (state.qty||0)+1); _updateQtyDisp(); return; }
+      if (e.key === 'ArrowDown') { e.preventDefault(); state.qty = Math.max(0, (state.qty||0)-1); _updateQtyDisp(); return; }
+      if (/^[0-9]$/.test(e.key)) { e.preventDefault(); tapNum(e.key); return; }
+      if (e.key === 'Backspace') { e.preventDefault(); tapNum('⌫'); return; }
+      return;
+    }
+
+    if (items.length === 0) return;
+
+    // ─── ↑↓←→: ハイライト移動 ───
+    if (['ArrowDown','ArrowRight'].includes(e.key)) {
+      e.preventDefault();
+      _kbIdx = _kbIdx < items.length - 1 ? _kbIdx + 1 : 0;
+      highlightItem(items, _kbIdx);
+      return;
+    }
+    if (['ArrowUp','ArrowLeft'].includes(e.key)) {
+      e.preventDefault();
+      _kbIdx = _kbIdx > 0 ? _kbIdx - 1 : items.length - 1;
+      highlightItem(items, _kbIdx);
+      return;
+    }
+
+    // ─── Enter: ハイライト中の項目を確定 ───
+    if (e.key === 'Enter' && !e.shiftKey && _kbIdx >= 0 && _kbIdx < items.length) {
+      e.preventDefault();
+      items[_kbIdx].click();
+      return;
+    }
+  });
+
+  // renderEntry後にハイライトリセット
+  const _origRE = renderEntry;
+  renderEntry = function() {
+    _origRE();
+    _kbIdx = -1;
+    setTimeout(() => {
+      const items = getSelectables();
+      const selIdx = items.findIndex(el => el.classList.contains('sel'));
+      if (selIdx >= 0) _kbIdx = selIdx;
+    }, 50);
+  };
+})();
+
 function goStep(n, fromPopstate) {
   state.step = n;
   renderEntry();

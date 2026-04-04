@@ -118,11 +118,20 @@ body::-webkit-scrollbar{display:none;}
 <script src="foo-common.js"></script>
 <script>
 /* ── Theme ── */
+const THEME_KEY = 'foo_portal_theme';
+function applyTheme(t) {
+  if (t === 'auto') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', t);
+}
+function cycleTheme() {
+  var cur = localStorage.getItem(THEME_KEY) || 'auto';
+  var next = cur === 'auto' ? 'dark' : cur === 'dark' ? 'light' : 'auto';
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+}
 (function(){
-  const t = localStorage.getItem('foo_portal_theme') || 'auto';
-  if (t === 'dark') document.documentElement.setAttribute('data-theme','dark');
-  else if (t !== 'light' && window.matchMedia?.('(prefers-color-scheme:dark)').matches)
-    document.documentElement.setAttribute('data-theme','dark');
+  var saved = localStorage.getItem(THEME_KEY) || 'auto';
+  applyTheme(saved);
 })();
 
 /* ── Auth ── */

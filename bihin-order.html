@@ -553,6 +553,8 @@ function getStatusBadge(status) {
 var schemaLoaded = false;
 var shuruiOptions = [];    // [{ name, color }]
 var shohinByShurui = {};   // { '種類名': ['商品A', '商品B', ...] }
+var staffOptions = [];     // ['名前1', '名前2', ...] 出庫者フィルター用
+var STAFF_EXCLUDE = ['向畑綾花', '向畑武司'];  // 除外する社員
 
 // 商品名→種類の自動判定ルール
 function detectShurui(name) {
@@ -575,6 +577,12 @@ async function loadSchema() {
 
     // 種類オプション
     shuruiOptions = (props['種類'] && props['種類'].select && props['種類'].select.options) || [];
+
+    // 発注担当オプション → 出庫者フィルター用
+    var tantoOpts = (props['発注担当'] && props['発注担当'].select && props['発注担当'].select.options) || [];
+    staffOptions = tantoOpts.map(function(o) { return o.name; }).filter(function(n) {
+      return STAFF_EXCLUDE.indexOf(n) < 0;
+    });
 
     // 商品名オプション
     var shohinOpts = (props['商品名'] && props['商品名'].select && props['商品名'].select.options) || [];
@@ -1273,19 +1281,11 @@ function zaikoProp(item, key) {
 }
 
 function buildHistFilters() {
-  var creators = {}, shuruiSet = {}, shohinSet = {};
-
-  histZaikoAll.forEach(function(item) {
-    var c = zaikoProp(item, '作成者'); if (c) creators[c] = true;
-    var s = zaikoProp(item, '種類');   if (s) shuruiSet[s] = true;
-    var n = zaikoProp(item, '商品名'); if (n) shohinSet[n] = true;
-  });
-
-  var fillSelect = function(id, labelPrefix, obj) {
+  var fillSelect = function(id, items) {
     var sel = document.getElementById(id);
     var cur = sel.value;
     while (sel.options.length > 1) sel.options.remove(1);
-    Object.keys(obj).sort(function(a,b){ return a.localeCompare(b,'ja'); }).forEach(function(k) {
+    items.forEach(function(k) {
       var o = document.createElement('option');
       o.value = k; o.textContent = k;
       sel.appendChild(o);
@@ -1293,9 +1293,18 @@ function buildHistFilters() {
     sel.value = cur || '';
   };
 
-  fillSelect('hist-f-creator', '👤', creators);
-  fillSelect('hist-f-shurui',  '📦', shuruiSet);
-  fillSelect('hist-f-shohin',  '🏷', shohinSet);
+  // 出庫者: スキーマの発注担当オプション（除外リスト適用済み）
+  fillSelect('hist-f-creator', staffOptions);
+
+  // 種類: スキーマの種類オプション順
+  fillSelect('hist-f-shurui', shuruiOptions.map(function(o) { return o.name; }));
+
+  // 商品名: 全商品（種類順に並んだまま）
+  var allShohin = [];
+  ['BOX（TB）','BOX（LT）','BOX（PC）','バルブ','ナット','インパクト部品','パンク修理'].forEach(function(s) {
+    (shohinByShurui[s] || []).forEach(function(n) { allShohin.push(n); });
+  });
+  fillSelect('hist-f-shohin', allShohin);
 }
 
 function filterHistory() {

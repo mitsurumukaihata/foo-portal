@@ -279,6 +279,9 @@ async function openArticle(pageId, title) {
     const html = blocksToHTML(allBlocks);
     contentCache[pageId] = html;
     vContent.innerHTML = html;
+
+    // 確認者に自分を追加（既読マーク）
+    markAsRead(pageId);
   } catch (e) {
     vContent.innerHTML = `<div style="color:var(--red);padding:20px;">読み込みエラー: ${e.message}</div>`;
   }
@@ -331,6 +334,32 @@ function rt2html(rts) {
 
 function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function escAttr(s) { return s.replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+
+/* ── 既読マーク ── */
+async function markAsRead(pageId) {
+  try {
+    // まず現在の確認者を取得
+    const page = await notionGet('/pages/' + pageId);
+    const current = (page.properties?.['確認者']?.multi_select || []).map(s => s.name);
+    if (current.includes(loginUser)) return; // 既に確認済み
+    current.push(loginUser);
+    await notionPatch('/pages/' + pageId, {
+      properties: {
+        '確認者': { multi_select: current.map(n => ({ name: n })) }
+      }
+    });
+  } catch(e) { /* silent */ }
+}
+
+/* ── notionPost for PATCH ── */
+async function notionPatch(path, body) {
+  const r = await fetch(WORKER + path, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
 
 /* ── Init ── */
 renderTabs();

@@ -1808,10 +1808,14 @@ const BADGE_TARGETS = {
     commDb: '314a695f8e888076b7e3cb8108439f2b',
     doneStatuses: ['完了'],
     statusProp: 'ステータス'
+  },
+  news: {
+    commDb: '7e3fdea7165d41b1918c5d25f15e7c36',
+    isNews: true
   }
 };
 
-const APP_LABELS = { manager: '部長コミュニティ', leader: 'リーダーコミュニティ', marketing: 'マーケ・EC' };
+const APP_LABELS = { manager: '部長コミュニティ', leader: 'リーダーコミュニティ', marketing: 'マーケ・EC', news: '業界ニュース' };
 let _firstBadgeApp = null;
 
 async function checkBadges(user) {
@@ -1826,27 +1830,43 @@ async function checkBadges(user) {
     const el = document.getElementById('badge-' + appId);
     if (!el) continue;
     try {
-      const statusProp = cfg.statusProp || '状態';
-      const filterAnd = [
-        { property: '確認者', multi_select: { does_not_contain: userName } }
-      ];
-      for (const ds of cfg.doneStatuses) {
-        filterAnd.push({ property: statusProp, status: { does_not_equal: ds } });
-      }
-      const res = await fetch(BADGE_PROXY + '/databases/' + cfg.commDb + '/query', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filter: { and: filterAnd },
-          page_size: 100
-        })
-      });
-      const data = await res.json();
       let count = 0;
-      if (data.results) {
-        for (const p of data.results) {
-          const poster = p.properties?.['投稿者']?.select?.name || p.created_by?.name || '';
-          if (poster !== userName) count++;
+      if (cfg.isNews) {
+        // ニュースDB: 確認者に自分がいない直近の記事をカウント
+        const res = await fetch(BADGE_PROXY + '/databases/' + cfg.commDb + '/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filter: { property: '確認者', multi_select: { does_not_contain: userName } },
+            sorts: [{ timestamp: 'created_time', direction: 'descending' }],
+            page_size: 20
+          })
+        });
+        const data = await res.json();
+        count = data.results?.length || 0;
+      } else {
+        // コミュニティDB: 確認者に自分がいない＋完了でない＋自分の投稿でない
+        const statusProp = cfg.statusProp || '状態';
+        const filterAnd = [
+          { property: '確認者', multi_select: { does_not_contain: userName } }
+        ];
+        for (const ds of cfg.doneStatuses) {
+          filterAnd.push({ property: statusProp, status: { does_not_equal: ds } });
+        }
+        const res = await fetch(BADGE_PROXY + '/databases/' + cfg.commDb + '/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filter: { and: filterAnd },
+            page_size: 100
+          })
+        });
+        const data = await res.json();
+        if (data.results) {
+          for (const p of data.results) {
+            const poster = p.properties?.['投稿者']?.select?.name || p.created_by?.name || '';
+            if (poster !== userName) count++;
+          }
         }
       }
       if (count > 0) {

@@ -208,23 +208,23 @@ textarea.form-input { min-height:70px; resize:vertical; line-height:1.6; }
 </div>
 
 <div class="tabs-wrap">
-  <div class="tabs-label">発注管理</div>
-  <div class="tabs">
-    <button class="tab-btn active" id="tab-pending"  onclick="switchTab('pending')">未入荷<span class="tab-badge" id="badge-pending">0</span></button>
-    <button class="tab-btn"        id="tab-new"      onclick="switchTab('new')">＋ 新規発注</button>
-    <button class="tab-btn"        id="tab-pdf"      onclick="switchTab('pdf')">発注書</button>
-    <button class="tab-btn"        id="tab-history"  onclick="switchTab('history')">履歴</button>
-  </div>
   <div class="tabs-label">在庫管理</div>
   <div class="tabs">
-    <button class="tab-btn" id="tab-stock-in"   onclick="switchTab('stock-in')">📦 入出庫</button>
+    <button class="tab-btn active" id="tab-stock-in"   onclick="switchTab('stock-in')">📦 入出庫</button>
     <button class="tab-btn" id="tab-zaiko"      onclick="switchTab('zaiko')">📊 在庫</button>
     <button class="tab-btn" id="tab-auto-order" onclick="switchTab('auto-order')">⚡ 自動発注</button>
+  </div>
+  <div class="tabs-label">発注管理</div>
+  <div class="tabs">
+    <button class="tab-btn" id="tab-pending"  onclick="switchTab('pending')">未入荷<span class="tab-badge" id="badge-pending">0</span></button>
+    <button class="tab-btn" id="tab-new"      onclick="switchTab('new')">＋ 新規発注</button>
+    <button class="tab-btn" id="tab-pdf"      onclick="switchTab('pdf')">発注書</button>
+    <button class="tab-btn" id="tab-history"  onclick="switchTab('history')">履歴</button>
   </div>
 </div>
 
 <!-- ══ 未入荷タブ ══ -->
-<div class="page show" id="pane-pending">
+<div class="page" id="pane-pending">
   <div class="loading" id="pending-loading"><div class="spinner"></div><br>読み込み中...</div>
   <div id="pending-list"></div>
   <div class="empty" id="pending-empty" style="display:none;">
@@ -307,7 +307,7 @@ textarea.form-input { min-height:70px; resize:vertical; line-height:1.6; }
 </div>
 
 <!-- ══ 入出庫タブ ══ -->
-<div class="page" id="pane-stock-in">
+<div class="page show" id="pane-stock-in">
   <div class="form-page">
     <div class="toggle-group">
       <button class="toggle-btn active in" id="si-toggle-in"  onclick="setSiMode('in')">📥 入荷</button>
@@ -426,7 +426,7 @@ const SESSION_KEY = 'foo_portal_session';
 
 let loginUser = '';
 let allOrders = [];
-let curTab = 'pending';
+let curTab = 'stock-in';
 
 // ─── マスタ解決キャッシュ ─────────────────────────────────────────────
 var masterCache = {};       // { masterPageId: { shurui, shohin } }
@@ -1618,8 +1618,10 @@ async function deleteShikii(pageId) {
   if (tantoField) {
     tantoField.value = loginUser || '';
   }
-  // デフォルトタブ読み込み
-  loadPending();
+  // デフォルトタブ読み込み（入出庫を最初に表示）
+  loadStockIn();
+  // 未入荷バッジも裏で更新
+  loadPendingCount();
 })();
 </script>
 <script src="foo-swipe.js"></script>

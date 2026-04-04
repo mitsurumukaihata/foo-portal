@@ -137,17 +137,18 @@ let loginUser = '';
   } catch(e) { location.href = 'index.html'; }
 })();
 
-/* ── Categories ── */
+/* ── ニュースDB ── */
+const NEWS_DB_ID = '7e3fdea7165d41b1918c5d25f15e7c36';
 const CATEGORIES = [
-  { key: 'tire',    icon: '🛞', name: 'タイヤ',       pageId: '336a695f8e8881b4a498e0513f6d8975' },
-  { key: 'unsou',   icon: '🚚', name: '運送',         pageId: '336a695f8e8881d8a95fe3cdbc27a6c3' },
-  { key: 'dealer',  icon: '🚛', name: 'ディーラー',   pageId: '336a695f8e88812abef3e21a06c58069' },
-  { key: 'indeed',  icon: '📊', name: 'Indeed',       pageId: '336a695f8e8880a0a306d406c12854a2' },
+  { key: 'tire',    icon: '🛞', name: 'タイヤ',       filter: '🛞 タイヤ' },
+  { key: 'unsou',   icon: '🚚', name: '運送',         filter: '🚚 運送' },
+  { key: 'dealer',  icon: '🚛', name: 'ディーラー',   filter: '🚛 ディーラー' },
+  { key: 'indeed',  icon: '📊', name: 'Indeed',       filter: '📊 Indeed' },
 ];
 
 let currentTab = 0;
-const childCache = {}; // pageId -> [{id, title, date}]
-const contentCache = {}; // childPageId -> html
+const articleCache = {}; // category -> [{id, title, date, importance}]
+const contentCache = {}; // pageId -> html
 
 /* ── Render tabs ── */
 function renderTabs() {
@@ -189,36 +190,29 @@ async function notionPost(path, body) {
   return r.json();
 }
 
-/* ── Load category's child pages ── */
+/* ── Load category from DB ── */
 async function loadCategory(idx) {
   const cat = CATEGORIES[idx];
-  if (childCache[cat.pageId]) { renderArticleList(idx); return; }
+  if (articleCache[cat.filter]) { renderArticleList(idx); return; }
 
   const el = document.getElementById('page-' + cat.key);
   el.innerHTML = '<div class="loading"><div class="spinner"></div><br>読み込み中...</div>';
 
   try {
-    // Get child pages
-    let allBlocks = [], cursor;
-    do {
-      const url = `/blocks/${cat.pageId}/children?page_size=100` + (cursor ? `&start_cursor=${cursor}` : '');
-      const data = await notionGet(url);
-      allBlocks = allBlocks.concat(data.results || []);
-      cursor = data.has_more ? data.next_cursor : undefined;
-    } while (cursor);
+    const data = await notionPost('/databases/' + NEWS_DB_ID + '/query', {
+      filter: { property: 'カテゴリ', select: { equals: cat.filter } },
+      sorts: [{ property: '日付', direction: 'descending' }],
+      page_size: 30,
+    });
 
-    // Extract child_page blocks
-    const children = allBlocks
-      .filter(b => b.type === 'child_page')
-      .map(b => ({
-        id: b.id,
-        title: b.child_page?.title || '（無題）',
-      }));
+    const articles = (data.results || []).map(p => ({
+      id: p.id,
+      title: p.properties['タイトル']?.title?.[0]?.plain_text || '（無題）',
+      date: p.properties['日付']?.date?.start || '',
+      importance: p.properties['重要度']?.select?.name || '',
+    }));
 
-    // Sort by title descending (newest first — titles contain dates)
-    children.sort((a, b) => b.title.localeCompare(a.title, 'ja'));
-
-    childCache[cat.pageId] = children;
+    articleCache[cat.filter] = articles;
     renderArticleList(idx);
   } catch (e) {
     el.innerHTML = `<div class="empty-msg">読み込みに失敗しました<br><small>${e.message}</small></div>`;
@@ -229,32 +223,24 @@ async function loadCategory(idx) {
 function renderArticleList(idx) {
   const cat = CATEGORIES[idx];
   const el = document.getElementById('page-' + cat.key);
-  const children = childCache[cat.pageId] || [];
+  const articles = articleCache[cat.filter] || [];
 
-  if (!children.length) {
+  if (!articles.length) {
     el.innerHTML = '<div class="empty-msg">ニュースはまだありません</div>';
     return;
   }
 
-  el.innerHTML = children.map(child => {
-    // Parse importance badge from title
+  el.innerHTML = articles.map(art => {
     let badge = '';
-    if (child.title.includes('🚨🚨🚨')) badge = '<span class="news-badge badge-critical">緊急</span>';
-    else if (child.title.includes('🚨')) badge = '<span class="news-badge badge-warning">要注意</span>';
-    else badge = '<span class="news-badge badge-info">🆕</span>';
+    if (art.importance.includes('緊急')) badge = '<span class="news-badge badge-critical">緊急</span>';
+    else if (art.importance.includes('要注意')) badge = '<span class="news-badge badge-warning">要注意</span>';
+    else if (art.importance.includes('レポート')) badge = '<span class="news-badge" style="background:rgba(168,85,247,0.15);color:var(--purple);">レポート</span>';
+    else badge = '<span class="news-badge badge-info">参考情報</span>';
 
-    // Extract date from title (e.g., "2026/04/04（土）...")
-    const dateMatch = child.title.match(/(\d{4}\/\d{2}\/\d{2})/);
-    const dateStr = dateMatch ? dateMatch[1] : '';
+    const dateStr = art.date ? art.date.replace(/-/g, '/') : '';
 
-    // Clean title for display
-    const displayTitle = child.title
-      .replace(/🚨🚨🚨/g, '').replace(/🚨/g, '').replace(/🆕/g, '')
-      .replace(/緊急$/, '').replace(/要注意$/, '')
-      .trim();
-
-    return `<div class="news-card" onclick="openArticle('${child.id}','${escAttr(child.title)}')">
-      <div class="news-title">${esc(displayTitle)}${badge}</div>
+    return `<div class="news-card" onclick="openArticle('${art.id}','${escAttr(art.title)}')">
+      <div class="news-title">${esc(art.title)}${badge}</div>
       ${dateStr ? `<div class="news-date">${dateStr}</div>` : ''}
     </div>`;
   }).join('');

@@ -1,5 +1,5 @@
 /**
- * GitHub Actions用: 業界ニュースをClaude APIで生成しNotionに投稿するスクリプト
+ * GitHub Actions用: 業界ニュースをClaude APIで生成しNotion DBに投稿するスクリプト
  *
  * 環境変数:
  *   ANTHROPIC_API_KEY - Anthropic APIキー
@@ -7,9 +7,12 @@
  *   NEWS_TYPE         - tire | transport | dealer | indeed
  */
 
+// ── ニュースDB（1つのDBに全カテゴリ統合） ──
+const NEWS_DB_ID = '7e3fdea7165d41b1918c5d25f15e7c36';
+
 const NEWS_CONFIG = {
   tire: {
-    parentPageId: '336a695f8e8881b4a498e0513f6d8975',
+    category: '🛞 タイヤ',
     titlePrefix: 'タイヤ業界ニュース',
     systemPrompt: `あなたはタイヤ業界の専門ニュースアナリストです。
 弊社プロフィール: 有限会社タイヤマネージャーフー（広島市）、出張トラックタイヤ交換専門、主要仕入先はTOYO TIRES・BRIDGESTONE・DUNLOP。
@@ -28,7 +31,7 @@ const NEWS_CONFIG = {
 カテゴリ: 🆕新製品 / ⚠️リコール / 📊統計・市場 / 🏢企業 / 🌍海外`,
   },
   transport: {
-    parentPageId: '336a695f8e8881d8a95fe3cdbc27a6c3',
+    category: '🚚 運送',
     titlePrefix: '運送業界ニュース',
     systemPrompt: `あなたは運送業界の専門ニュースアナリストです。
 弊社プロフィール: 有限会社タイヤマネージャーフー（広島市）、出張トラックタイヤ交換専門、主な顧客は広島県内の運送会社。
@@ -43,7 +46,7 @@ const NEWS_CONFIG = {
 重要度: 🚨🚨🚨=弊社大打撃 / 🚨=要注意 / 🆕=参考情報`,
   },
   dealer: {
-    parentPageId: '336a695f8e88812abef3e21a06c58069',
+    category: '🚛 ディーラー',
     titlePrefix: 'トラックディーラーニュース',
     systemPrompt: `あなたはトラックディーラー業界の専門ニュースアナリストです。
 弊社プロフィール: 有限会社タイヤマネージャーフー（広島市）、トラック運送会社が主要顧客。
@@ -58,7 +61,7 @@ const NEWS_CONFIG = {
 ニュースがない日は投稿しない。`,
   },
   indeed: {
-    parentPageId: '336a695f8e8880a0a306d406c12854a2',
+    category: '📊 Indeed',
     titlePrefix: '【求人市場分析】広島タイヤ・自動車整備業界',
     systemPrompt: `あなたは求人市場アナリストです。
 弊社: 有限会社タイヤマネージャーフー（広島市佐伯区）、出張トラックタイヤ交換専門。
@@ -86,7 +89,7 @@ function getJSTDate() {
   const m = String(jst.getUTCMonth() + 1).padStart(2, '0');
   const d = String(jst.getUTCDate()).padStart(2, '0');
   const w = WEEKDAYS[jst.getUTCDay()];
-  return { y, m, d, w, dateStr: `${y}/${m}/${d}`, full: `${y}/${m}/${d}（${w}）` };
+  return { y, m, d, w, dateStr: `${y}-${m}-${d}`, full: `${y}/${m}/${d}（${w}）` };
 }
 
 // ── Notion API ──
@@ -107,27 +110,35 @@ async function notionRequest(method, path, body) {
   return res.json();
 }
 
-async function getChildPages(parentId) {
-  const data = await notionRequest('GET', `/blocks/${parentId}/children?page_size=100`);
-  return (data.results || [])
-    .filter(b => b.type === 'child_page')
-    .map(b => ({ id: b.id, title: b.child_page?.title || '' }));
-}
+// ── DBから直近のニュースを取得（重複防止用） ──
+async function getRecentNews(category, limit = 5) {
+  const data = await notionRequest('POST', `/databases/${NEWS_DB_ID}/query`, {
+    filter: { property: 'カテゴリ', select: { equals: category } },
+    sorts: [{ property: '日付', direction: 'descending' }],
+    page_size: limit,
+  });
 
-async function getPageContent(pageId) {
-  const data = await notionRequest('GET', `/blocks/${pageId}/children?page_size=100`);
-  return (data.results || []).map(b => {
-    const rt = b[b.type]?.rich_text;
-    return rt ? rt.map(r => r.plain_text || '').join('') : '';
-  }).join('\n');
+  const articles = [];
+  for (const page of (data.results || [])) {
+    const title = page.properties['タイトル']?.title?.[0]?.plain_text || '';
+    // ページの中身も取得
+    let content = '';
+    try {
+      const blocks = await notionRequest('GET', `/blocks/${page.id}/children?page_size=100`);
+      content = (blocks.results || []).map(b => {
+        const rt = b[b.type]?.rich_text;
+        return rt ? rt.map(r => r.plain_text || '').join('') : '';
+      }).join('\n');
+    } catch (e) { /* skip */ }
+    articles.push({ title, content });
+  }
+  return articles;
 }
 
 // ── Markdown → Notion blocks ──
 function markdownToBlocks(md) {
   const lines = md.split('\n');
   const blocks = [];
-  let inList = false;
-
   for (const line of lines) {
     if (line.startsWith('### ')) {
       blocks.push({ object: 'block', type: 'heading_3', heading_3: { rich_text: parseInline(line.slice(4)) } });
@@ -192,14 +203,9 @@ async function callClaude(systemPrompt, userPrompt) {
     throw new Error(`Claude API ${res.status}: ${text}`);
   }
   const data = await res.json();
-
-  // Web Search使用時はtool_use→tool_resultのループが必要な場合がある
-  // しかしweb_searchはserver-sideで自動実行されるので、最終レスポンスからテキストを抽出
   let resultText = '';
   for (const block of (data.content || [])) {
-    if (block.type === 'text') {
-      resultText += block.text;
-    }
+    if (block.type === 'text') resultText += block.text;
   }
   return resultText;
 }
@@ -216,19 +222,10 @@ async function main() {
   const date = getJSTDate();
   console.log(`[${newsType}] ${date.full} のニュースを生成します...`);
 
-  // 1. 過去の投稿を確認（重複防止）
+  // 1. DBから過去の投稿を取得（重複防止）
   console.log('過去の投稿を確認中...');
-  const children = await getChildPages(config.parentPageId);
-  let recentContent = '';
-  const recentChildren = children.slice(0, 5);
-  for (const child of recentChildren) {
-    try {
-      const content = await getPageContent(child.id);
-      recentContent += `\n--- ${child.title} ---\n${content}\n`;
-    } catch (e) {
-      console.warn(`子ページ取得失敗: ${child.title}`, e.message);
-    }
-  }
+  const recentArticles = await getRecentNews(config.category, 5);
+  let recentContent = recentArticles.map(a => `--- ${a.title} ---\n${a.content}`).join('\n\n');
 
   // 2. Claude APIでニュース生成
   console.log('Claude APIでニュース生成中...');
@@ -249,25 +246,31 @@ ${recentContent || '（過去の投稿なし）'}
   const newsMarkdown = await callClaude(config.systemPrompt, userPrompt);
   console.log('生成完了。Notionに投稿中...');
 
-  // 3. タイトル決定
-  let titleSuffix = '';
-  if (newsMarkdown.includes('🚨🚨🚨')) titleSuffix = ' 🚨🚨🚨緊急';
-  else if (newsMarkdown.includes('🚨')) titleSuffix = ' 🚨要注意';
+  // 3. 重要度判定
+  let importance = '🆕 参考情報';
+  if (newsType === 'indeed') importance = '📊 レポート';
+  else if (newsMarkdown.includes('🚨🚨🚨')) importance = '🚨🚨🚨 緊急';
+  else if (newsMarkdown.includes('🚨')) importance = '🚨 要注意';
 
+  // 4. タイトル決定
   const isIndeed = newsType === 'indeed';
   const title = isIndeed
     ? `${config.titlePrefix} - ${date.y}年${parseInt(date.m)}月${parseInt(date.d)}日`
-    : `${date.full}${config.titlePrefix}${titleSuffix}`;
+    : `${date.full} ${config.titlePrefix}`;
 
-  // 4. Notionに子ページ作成
+  // 5. Notion DBにページ作成
   const blocks = markdownToBlocks(newsMarkdown);
-  // Notion APIは1回100ブロックまで
   const firstBatch = blocks.slice(0, 100);
 
   const newPage = await notionRequest('POST', '/pages', {
-    parent: { page_id: config.parentPageId },
+    parent: { database_id: NEWS_DB_ID },
+    icon: { emoji: newsType === 'tire' ? '🛞' : newsType === 'transport' ? '🚚' : newsType === 'dealer' ? '🚛' : '📊' },
     properties: {
-      title: { title: [{ text: { content: title } }] },
+      'タイトル': { title: [{ text: { content: title } }] },
+      'カテゴリ': { select: { name: config.category } },
+      '日付': { date: { start: date.dateStr } },
+      '重要度': { select: { name: importance } },
+      '投稿元': { select: { name: 'GitHub Actions' } },
     },
     children: firstBatch,
   });
@@ -283,28 +286,8 @@ ${recentContent || '（過去の投稿なし）'}
 
   console.log(`✅ 投稿完了: ${title}`);
   console.log(`   Page ID: ${newPage.id}`);
-
-  // 5. 親ページの並び順を修正（最新を上に）
-  // Notion APIでは子ページの並び順を直接制御できないため、
-  // 親ページのコンテンツを取得して新しいページを先頭に移動
-  try {
-    const parentBlocks = await notionRequest('GET', `/blocks/${config.parentPageId}/children?page_size=100`);
-    const dividerIdx = parentBlocks.results.findIndex(b => b.type === 'divider');
-    if (dividerIdx >= 0) {
-      // 新しいページブロックを見つける
-      const newPageBlock = parentBlocks.results.find(b => b.type === 'child_page' && b.id === newPage.id);
-      if (newPageBlock) {
-        // dividerの後に移動
-        const afterId = parentBlocks.results[dividerIdx].id;
-        await notionRequest('PATCH', `/blocks/${newPage.id}`, {
-          // Notion APIではブロックの移動はサポートされていないため、
-          // この部分はスキップ（新しいページは自動的に末尾に追加される）
-        });
-      }
-    }
-  } catch (e) {
-    console.warn('並び順の修正をスキップ:', e.message);
-  }
+  console.log(`   カテゴリ: ${config.category}`);
+  console.log(`   重要度: ${importance}`);
 }
 
 main().catch(e => {

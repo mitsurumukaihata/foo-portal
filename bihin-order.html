@@ -188,6 +188,15 @@ textarea.form-input { min-height:70px; resize:vertical; line-height:1.6; }
 .shikii-del { background:transparent; border:none; font-size:18px; color:var(--muted); cursor:pointer; padding:2px; line-height:1; }
 .shikii-del:active { color:var(--red); }
 
+/* ── Cart item ── */
+.cart-item { display:flex; align-items:center; gap:8px; padding:8px 10px; background:var(--s2); border:1px solid var(--border); border-radius:8px; margin-bottom:4px; }
+.cart-item-info { flex:1; }
+.cart-item-name { font-size:13px; font-weight:600; }
+.cart-item-sub { font-size:10px; color:var(--muted); }
+.cart-item-qty { font-family:'DM Mono',monospace; font-size:14px; font-weight:700; color:var(--accent); margin-right:4px; }
+.cart-item-del { background:transparent; border:none; font-size:18px; color:var(--muted); cursor:pointer; padding:2px; line-height:1; }
+.cart-item-del:active { color:var(--red); }
+
 /* ── Modal ── */
 .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; display:none; align-items:flex-end; justify-content:center; }
 .modal-overlay.show { display:flex; }
@@ -315,36 +324,42 @@ textarea.form-input { min-height:70px; resize:vertical; line-height:1.6; }
     </div>
     <input type="hidden" id="si-mode" value="out">
     <div class="form-group">
-      <label class="form-label">種類<span class="req">*</span></label>
-      <select class="form-input" id="si-shurui" onchange="onSiShuruiChange()">
-        <option value="">選択してください</option>
+      <label class="form-label">倉庫<span class="req">*</span></label>
+      <select class="form-input" id="si-souko">
+        <option value="">選択</option>
+        <option value="五日市">五日市</option>
+        <option value="志和">志和</option>
       </select>
     </div>
-    <div class="form-group">
-      <label class="form-label">商品名<span class="req">*</span></label>
-      <select class="form-input" id="si-shohin">
-        <option value="">↑ 種類を選んでください</option>
-      </select>
-    </div>
-    <div class="form-row">
+    <div style="border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:14px;background:var(--s2);">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;">品目を追加</div>
       <div class="form-group">
-        <label class="form-label">数量<span class="req">*</span></label>
-        <input class="form-input" id="si-qty" type="number" inputmode="numeric" min="1" placeholder="1">
-      </div>
-      <div class="form-group">
-        <label class="form-label">倉庫<span class="req">*</span></label>
-        <select class="form-input" id="si-souko">
-          <option value="">選択</option>
-          <option value="五日市">五日市</option>
-          <option value="志和">志和</option>
+        <select class="form-input" id="si-shurui" onchange="onSiShuruiChange()" style="margin-bottom:8px;">
+          <option value="">種類を選択</option>
         </select>
       </div>
+      <div class="form-group">
+        <select class="form-input" id="si-shohin" style="margin-bottom:8px;">
+          <option value="">商品名を選択</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;align-items:flex-end;">
+        <input class="form-input" id="si-qty" type="number" inputmode="numeric" min="1" placeholder="数量" style="flex:1;">
+        <button class="btn btn-accent" id="btn-si-add" onclick="addToSiCart()" style="padding:12px 18px;white-space:nowrap;">＋ 追加</button>
+      </div>
     </div>
-    <div class="form-group">
-      <label class="form-label">メモ</label>
-      <textarea class="form-input" id="si-memo" placeholder="補足があれば記入"></textarea>
+    <div id="si-cart-area" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px 6px;">
+        <div style="font-size:12px;font-weight:700;">登録リスト</div>
+        <div style="font-size:11px;color:var(--muted);" id="si-cart-count">0件</div>
+      </div>
+      <div id="si-cart-list"></div>
+      <div class="form-group" style="margin-top:10px;">
+        <label class="form-label">メモ（全品共通）</label>
+        <textarea class="form-input" id="si-memo" placeholder="補足があれば記入"></textarea>
+      </div>
+      <button class="btn-submit" id="btn-si" onclick="submitStockIn()">まとめて登録</button>
     </div>
-    <button class="btn-submit" id="btn-si" onclick="submitStockIn()">登録する</button>
   </div>
 </div>
 
@@ -1320,8 +1335,9 @@ async function loadHistory() {
 }
 
 // ─── 入出庫タブ ────────────────────────────────────────────────────────
+var siCart = [];  // [{ shurui, shohin, qty }]
+
 function loadStockIn() {
-  // 種類セレクトを補充（loadSchemaで取得済みなら再利用）
   var sel = document.getElementById('si-shurui');
   if (sel.options.length <= 1 && shuruiOptions.length) {
     shuruiOptions.forEach(function(opt) {
@@ -1340,6 +1356,9 @@ function setSiMode(mode) {
   btnIn.classList.toggle('in',     mode === 'in');
   btnOut.classList.toggle('active', mode === 'out');
   btnOut.classList.toggle('out',    mode === 'out');
+  // ボタンラベル更新
+  var submitBtn = document.getElementById('btn-si');
+  if (submitBtn) submitBtn.textContent = 'まとめて' + (mode === 'in' ? '入荷' : '出庫') + '（' + siCart.length + '件）';
 }
 
 function onSiShuruiChange() {
@@ -1348,58 +1367,119 @@ function onSiShuruiChange() {
   while (selShohin.options.length > 1) selShohin.options.remove(1);
   selShohin.value = '';
   if (!shurui) return;
-  var items = shohinByShurui[shurui] || [];
-  items.forEach(function(name) {
+  (shohinByShurui[shurui] || []).forEach(function(name) {
     var o = document.createElement('option');
     o.value = name; o.textContent = name;
     selShohin.appendChild(o);
   });
 }
 
-async function submitStockIn() {
-  var mode   = document.getElementById('si-mode').value;
+function addToSiCart() {
   var shurui = document.getElementById('si-shurui').value;
   var shohin = document.getElementById('si-shohin').value.trim();
   var qty    = parseInt(document.getElementById('si-qty').value, 10);
-  var souko  = document.getElementById('si-souko').value;
-  var memo   = document.getElementById('si-memo').value.trim();
 
   if (!shurui) { alert('種類を選択してください'); return; }
   if (!shohin) { alert('商品名を選択してください'); return; }
   if (!qty || qty < 1) { alert('数量を1以上で入力してください'); return; }
-  if (!souko)  { alert('倉庫を選択してください'); return; }
+
+  // 同じ商品が既にカートにあれば数量を加算
+  var existing = siCart.find(function(c) { return c.shohin === shohin; });
+  if (existing) {
+    existing.qty += qty;
+  } else {
+    siCart.push({ shurui: shurui, shohin: shohin, qty: qty });
+  }
+
+  // 入力欄リセット（種類はそのまま→連続追加しやすい）
+  document.getElementById('si-shohin').value = '';
+  document.getElementById('si-qty').value = '';
+
+  renderSiCart();
+  showToast(shohin + ' x' + qty + ' を追加');
+}
+
+function removeSiCartItem(idx) {
+  siCart.splice(idx, 1);
+  renderSiCart();
+}
+
+function renderSiCart() {
+  var area  = document.getElementById('si-cart-area');
+  var list  = document.getElementById('si-cart-list');
+  var count = document.getElementById('si-cart-count');
+  var btn   = document.getElementById('btn-si');
+  var mode  = document.getElementById('si-mode').value;
+  var kubunLabel = mode === 'in' ? '入荷' : '出庫';
+
+  if (!siCart.length) {
+    area.style.display = 'none';
+    return;
+  }
+
+  area.style.display = 'block';
+  count.textContent = siCart.length + '件';
+  btn.textContent = 'まとめて' + kubunLabel + '（' + siCart.length + '件）';
+
+  var html = '';
+  siCart.forEach(function(item, i) {
+    html += '<div class="cart-item">';
+    html += '<div class="cart-item-info">';
+    html += '<div class="cart-item-name">' + item.shohin + '</div>';
+    html += '<div class="cart-item-sub">' + item.shurui + '</div>';
+    html += '</div>';
+    html += '<div class="cart-item-qty">x' + item.qty + '</div>';
+    html += '<button class="cart-item-del" onclick="removeSiCartItem(' + i + ')">✕</button>';
+    html += '</div>';
+  });
+  list.innerHTML = html;
+}
+
+async function submitStockIn() {
+  var mode  = document.getElementById('si-mode').value;
+  var souko = document.getElementById('si-souko').value;
+  var memo  = document.getElementById('si-memo').value.trim();
+
+  if (!souko)        { alert('倉庫を選択してください'); return; }
+  if (!siCart.length) { alert('品目を追加してください'); return; }
 
   var kubun = mode === 'in' ? '入荷' : '出庫';
   var btn = document.getElementById('btn-si');
   btn.disabled = true; btn.textContent = '登録中...';
 
   try {
-    var props = {
-      'タイトル': { title: [{ text: { content: shohin + ' ' + kubun + ' x' + qty } }] },
-      '種類':   { select: { name: shurui } },
-      '商品名':  { select: { name: shohin } },
-      '区分':   { select: { name: kubun } },
-      '数量':   { number: qty },
-      '倉庫':   { select: { name: souko } },
-      '作成者':  { select: { name: loginUser || '向畑 充' } }
-    };
-    if (memo) props['メモ'] = { rich_text: [{ text: { content: memo } }] };
+    for (var i = 0; i < siCart.length; i++) {
+      var item = siCart[i];
+      var props = {
+        'タイトル': { title: [{ text: { content: item.shohin + ' ' + kubun + ' x' + item.qty } }] },
+        '種類':   { select: { name: item.shurui } },
+        '商品名':  { select: { name: item.shohin } },
+        '区分':   { select: { name: kubun } },
+        '数量':   { number: item.qty },
+        '倉庫':   { select: { name: souko } },
+        '作成者':  { select: { name: loginUser || '向畑 充' } }
+      };
+      if (memo) props['メモ'] = { rich_text: [{ text: { content: memo } }] };
+      await fooNotionCreate(ZAIKO_DB, props);
+    }
 
-    await fooNotionCreate(ZAIKO_DB, props);
-    showToast(kubun + 'を登録しました');
+    showToast(siCart.length + '件の' + kubun + 'を登録しました');
 
-    // フォームリセット
+    // 全リセット
+    siCart = [];
+    renderSiCart();
     document.getElementById('si-shurui').value = '';
     var selShohin = document.getElementById('si-shohin');
     while (selShohin.options.length > 1) selShohin.options.remove(1);
     selShohin.value = '';
     document.getElementById('si-qty').value = '';
-    document.getElementById('si-souko').value = '';
     document.getElementById('si-memo').value = '';
   } catch(e) {
     alert('エラー: ' + e.message); console.error(e);
   } finally {
-    btn.disabled = false; btn.textContent = '登録する';
+    btn.disabled = false;
+    var kubunLabel = mode === 'in' ? '入荷' : '出庫';
+    btn.textContent = 'まとめて' + kubunLabel + '（' + siCart.length + '件）';
   }
 }
 

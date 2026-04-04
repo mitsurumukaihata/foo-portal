@@ -59,11 +59,14 @@ body::-webkit-scrollbar { display:none; }
 .header-title span { color:var(--accent); }
 
 /* ── Tabs ── */
-.tabs { display:flex; background:var(--s1); border-bottom:0.5px solid var(--border); position:sticky; top:52px; z-index:99; }
-.tab-btn { flex:1; padding:10px 6px 8px; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--muted); font-size:12px; font-weight:500; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; text-align:center; }
+.tabs-wrap { background:var(--s1); border-bottom:0.5px solid var(--border); position:sticky; top:52px; z-index:99; }
+.tabs { display:flex; border-bottom:0.5px solid var(--border2); }
+.tabs:last-child { border-bottom:none; }
+.tab-btn { flex:1; padding:9px 4px 7px; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--muted); font-size:11.5px; font-weight:500; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; text-align:center; white-space:nowrap; }
 .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
 .tab-badge { display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 4px; background:var(--s3); border-radius:8px; font-size:10px; font-weight:700; margin-left:3px; color:var(--muted); }
 .tab-btn.active .tab-badge { background:rgba(240,165,0,0.2); color:var(--accent); }
+.tabs-label { font-size:9px; color:var(--muted); letter-spacing:0.08em; padding:4px 10px 0; font-weight:600; }
 
 /* ── Pages ── */
 .page { display:none; padding:0 0 100px; }
@@ -148,6 +151,50 @@ textarea.form-input { min-height:70px; resize:vertical; line-height:1.6; }
 .hist-top { display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:4px; }
 .hist-name { font-size:13px; font-weight:600; flex:1; }
 .hist-meta { font-size:10px; color:var(--muted); display:flex; flex-wrap:wrap; gap:4px 10px; }
+
+/* ── Toggle ── */
+.toggle-group { display:flex; gap:0; background:var(--s3); border-radius:10px; padding:3px; margin-bottom:14px; }
+.toggle-btn { flex:1; padding:8px; border:none; background:transparent; border-radius:8px; font-size:13px; font-weight:600; font-family:'Noto Sans JP',sans-serif; color:var(--muted); cursor:pointer; transition:all 0.15s; }
+.toggle-btn.active { background:var(--s1); box-shadow:0 1px 4px rgba(0,0,0,0.2); }
+.toggle-btn.active.in { color:var(--green); }
+.toggle-btn.active.out { color:var(--red); }
+
+/* ── Zaiko card ── */
+.zaiko-group { margin:0 12px 12px; }
+.zaiko-group-header { font-size:12px; font-weight:700; color:var(--muted); padding:10px 4px 4px; border-bottom:0.5px solid var(--border); margin-bottom:6px; letter-spacing:0.05em; }
+.zaiko-row { display:flex; align-items:center; gap:8px; padding:8px 10px; background:var(--s2); border-radius:8px; margin-bottom:4px; }
+.zaiko-name { flex:1; font-size:13px; font-weight:600; }
+.zaiko-loc { display:flex; align-items:center; gap:4px; font-size:12px; }
+.zaiko-loc-label { font-size:10px; color:var(--muted); }
+.zaiko-num { font-family:'DM Mono',monospace; font-size:14px; font-weight:700; min-width:28px; text-align:right; }
+.zaiko-num.low { color:var(--red); }
+.zaiko-num.ok { color:var(--green); }
+.zaiko-divider { width:0.5px; height:24px; background:var(--border); margin:0 4px; }
+
+/* ── Alert card ── */
+.alert-card { background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); border-radius:10px; padding:10px 14px; margin:0 12px 6px; }
+.alert-card-top { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+.alert-name { font-size:13px; font-weight:700; flex:1; }
+.alert-loc { font-size:11px; color:var(--muted); }
+.alert-nums { font-size:12px; color:var(--red); }
+.alert-nums strong { font-family:'DM Mono',monospace; }
+
+/* ── Shikii list ── */
+.shikii-row { display:flex; align-items:center; gap:8px; padding:8px 10px; background:var(--s2); border-radius:8px; margin:0 12px 4px; }
+.shikii-info { flex:1; }
+.shikii-name { font-size:13px; font-weight:600; }
+.shikii-meta { font-size:11px; color:var(--muted); margin-top:1px; }
+.shikii-val { font-family:'DM Mono',monospace; font-size:13px; font-weight:700; color:var(--accent); white-space:nowrap; }
+.shikii-del { background:transparent; border:none; font-size:18px; color:var(--muted); cursor:pointer; padding:2px; line-height:1; }
+.shikii-del:active { color:var(--red); }
+
+/* ── Modal ── */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; display:none; align-items:flex-end; justify-content:center; }
+.modal-overlay.show { display:flex; }
+.modal-sheet { background:var(--s1); border-radius:16px 16px 0 0; width:100%; max-width:480px; padding:20px 16px 40px; max-height:90vh; overflow-y:auto; }
+.modal-handle { width:36px; height:4px; background:var(--border2); border-radius:2px; margin:0 auto 16px; }
+.modal-title { font-size:15px; font-weight:900; margin-bottom:14px; }
+
 </style>
 </head>
 <body>
@@ -160,11 +207,20 @@ textarea.form-input { min-height:70px; resize:vertical; line-height:1.6; }
   <div class="header-title">備品<span>発注管理</span></div>
 </div>
 
-<div class="tabs">
-  <button class="tab-btn active" id="tab-pending"  onclick="switchTab('pending')">未入荷<span class="tab-badge" id="badge-pending">0</span></button>
-  <button class="tab-btn"        id="tab-new"      onclick="switchTab('new')">＋ 新規発注</button>
-  <button class="tab-btn"        id="tab-pdf"      onclick="switchTab('pdf')">発注書</button>
-  <button class="tab-btn"        id="tab-history"  onclick="switchTab('history')">履歴</button>
+<div class="tabs-wrap">
+  <div class="tabs-label">発注管理</div>
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-pending"  onclick="switchTab('pending')">未入荷<span class="tab-badge" id="badge-pending">0</span></button>
+    <button class="tab-btn"        id="tab-new"      onclick="switchTab('new')">＋ 新規発注</button>
+    <button class="tab-btn"        id="tab-pdf"      onclick="switchTab('pdf')">発注書</button>
+    <button class="tab-btn"        id="tab-history"  onclick="switchTab('history')">履歴</button>
+  </div>
+  <div class="tabs-label">在庫管理</div>
+  <div class="tabs">
+    <button class="tab-btn" id="tab-stock-in"   onclick="switchTab('stock-in')">📦 入出庫</button>
+    <button class="tab-btn" id="tab-zaiko"      onclick="switchTab('zaiko')">📊 在庫</button>
+    <button class="tab-btn" id="tab-auto-order" onclick="switchTab('auto-order')">⚡ 自動発注</button>
+  </div>
 </div>
 
 <!-- ══ 未入荷タブ ══ -->
@@ -250,6 +306,108 @@ textarea.form-input { min-height:70px; resize:vertical; line-height:1.6; }
   </div>
 </div>
 
+<!-- ══ 入出庫タブ ══ -->
+<div class="page" id="pane-stock-in">
+  <div class="form-page">
+    <div class="toggle-group">
+      <button class="toggle-btn active in" id="si-toggle-in"  onclick="setSiMode('in')">📥 入荷</button>
+      <button class="toggle-btn out"       id="si-toggle-out" onclick="setSiMode('out')">📤 出庫</button>
+    </div>
+    <input type="hidden" id="si-mode" value="in">
+    <div class="form-group">
+      <label class="form-label">種類<span class="req">*</span></label>
+      <select class="form-input" id="si-shurui" onchange="onSiShuruiChange()">
+        <option value="">選択してください</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">商品名<span class="req">*</span></label>
+      <select class="form-input" id="si-shohin">
+        <option value="">↑ 種類を選んでください</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">数量<span class="req">*</span></label>
+        <input class="form-input" id="si-qty" type="number" inputmode="numeric" min="1" placeholder="1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">倉庫<span class="req">*</span></label>
+        <select class="form-input" id="si-souko">
+          <option value="">選択</option>
+          <option value="五日市">五日市</option>
+          <option value="志和">志和</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">メモ</label>
+      <textarea class="form-input" id="si-memo" placeholder="補足があれば記入"></textarea>
+    </div>
+    <button class="btn-submit" id="btn-si" onclick="submitStockIn()">登録する</button>
+  </div>
+</div>
+
+<!-- ══ 在庫タブ ══ -->
+<div class="page" id="pane-zaiko">
+  <div class="loading" id="zaiko-loading"><div class="spinner"></div><br>読み込み中...</div>
+  <div id="zaiko-content"></div>
+  <div class="empty" id="zaiko-empty" style="display:none;">
+    <div class="empty-icon">📦</div>
+    <div class="empty-text">在庫データがありません</div>
+  </div>
+</div>
+
+<!-- ══ 自動発注タブ ══ -->
+<div class="page" id="pane-auto-order">
+  <div class="loading" id="auto-loading"><div class="spinner"></div><br>読み込み中...</div>
+  <div id="auto-content" style="display:none;">
+    <div id="alert-section"></div>
+    <div class="section-header" style="margin-top:8px;">
+      <div class="section-dot" style="background:var(--accent);"></div>
+      <div class="section-title">しきい値設定</div>
+      <button class="btn btn-accent" style="font-size:11px;padding:5px 10px;" onclick="openShikiiModal()">＋ 追加</button>
+    </div>
+    <div id="shikii-list"></div>
+  </div>
+</div>
+
+<!-- しきい値モーダル -->
+<div class="modal-overlay" id="shikii-modal" onclick="closeShikiiModalOverlay(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">しきい値設定</div>
+    <input type="hidden" id="shikii-edit-id">
+    <div class="form-group">
+      <label class="form-label">種類<span class="req">*</span></label>
+      <select class="form-input" id="shikii-shurui" onchange="onShikiiShuruiChange()">
+        <option value="">選択してください</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">商品名<span class="req">*</span></label>
+      <select class="form-input" id="shikii-shohin">
+        <option value="">↑ 種類を選んでください</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">倉庫<span class="req">*</span></label>
+        <select class="form-input" id="shikii-souko">
+          <option value="">選択</option>
+          <option value="五日市">五日市</option>
+          <option value="志和">志和</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">しきい値<span class="req">*</span></label>
+        <input class="form-input" id="shikii-val" type="number" inputmode="numeric" min="0" placeholder="5">
+      </div>
+    </div>
+    <button class="btn-submit" id="btn-shikii-save" onclick="saveShikii()">保存する</button>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -259,8 +417,10 @@ textarea.form-input { min-height:70px; resize:vertical; line-height:1.6; }
 // bihin-order.html — 備品発注管理
 // ═══════════════════════════════════════════════════════════════════════
 
-const MASTER_DB = '332a695f8e888054bd78cfd959bd1734';
-const ORDER_DB = '85d253d249cb4b6abf9e8008cdebfe16';
+const MASTER_DB  = '332a695f8e888054bd78cfd959bd1734';
+const ORDER_DB   = '85d253d249cb4b6abf9e8008cdebfe16';
+const ZAIKO_DB   = 'fa0a48d6bd4e4a08bfeb0f4bbd9cef39';
+const SHIKII_DB  = 'e903587f16ec4aa285e77b1d955e9d1b';
 const THEME_KEY = 'foo_portal_theme';
 const SESSION_KEY = 'foo_portal_session';
 
@@ -292,7 +452,12 @@ async function resolveMasterPages(orderItems) {
       .then(function(page) {
         var shurui = (page.properties && page.properties['種類'] && page.properties['種類'].select && page.properties['種類'].select.name) || '';
         var shohin = (page.properties && page.properties['商品名'] && page.properties['商品名'].select && page.properties['商品名'].select.name) || '';
-        masterCache[id] = { shurui: shurui, shohin: shohin };
+        var seishiki = '';
+        if (page.properties && page.properties['正式名称']) {
+          var rt = page.properties['正式名称'].rich_text;
+          if (rt && rt.length) seishiki = rt[0].plain_text || '';
+        }
+        masterCache[id] = { shurui: shurui, shohin: shohin, seishiki: seishiki };
       })
       .catch(function(e) { console.warn('Master fetch error:', id, e); });
   });
@@ -443,7 +608,12 @@ async function loadSchema() {
         if (shohin) {
           masterPageMap[shohin] = page.id;
           // キャッシュにも入れておく
-          masterCache[page.id] = { shurui: shurui, shohin: shohin };
+          var seishikiMs = '';
+          if (page.properties['正式名称']) {
+            var rtMs = page.properties['正式名称'].rich_text;
+            if (rtMs && rtMs.length) seishikiMs = rtMs[0].plain_text || '';
+          }
+          masterCache[page.id] = { shurui: shurui, shohin: shohin, seishiki: seishikiMs };
         }
       });
     } catch(e) {
@@ -480,14 +650,17 @@ function onShuruiChange() {
 // ─── タブ切り替え ──────────────────────────────────────────────────────
 function switchTab(tab) {
   curTab = tab;
-  var tabs = ['pending', 'new', 'pdf', 'history'];
+  var tabs = ['pending', 'new', 'pdf', 'history', 'stock-in', 'zaiko', 'auto-order'];
   tabs.forEach(function(t) {
     document.getElementById('tab-' + t).classList.toggle('active', t === tab);
     document.getElementById('pane-' + t).classList.toggle('show', t === tab);
   });
-  if (tab === 'pending') loadPending();
-  if (tab === 'pdf') loadPdf();
-  if (tab === 'history') loadHistory();
+  if (tab === 'pending')    loadPending();
+  if (tab === 'pdf')        loadPdf();
+  if (tab === 'history')    loadHistory();
+  if (tab === 'stock-in')   loadStockIn();
+  if (tab === 'zaiko')      loadZaiko();
+  if (tab === 'auto-order') loadAutoOrder();
 }
 
 // ─── データ取得 ────────────────────────────────────────────────────────
@@ -587,7 +760,36 @@ async function loadPending() {
 async function markReceived(pageId) {
   if (!confirm('この備品を「納入済」にしますか？')) return;
   try {
+    // ページデータ取得（在庫DB登録用）
+    var orderPage = null;
+    try {
+      var pageRes = await fetch(FOO_WORKER + '/pages/' + pageId);
+      orderPage = await pageRes.json();
+    } catch(e2) { console.warn('ページ取得エラー:', e2); }
+
     await fooNotionPatch(pageId, { 'ステータス': { select: { name: '納入済' } } });
+
+    // 備品在庫DBに入荷レコードを作成
+    if (orderPage) {
+      await resolveMasterPages([orderPage]);
+      var masterInfo = getMasterInfo(orderPage);
+      var souko = propStr(orderPage, '送り先') || '';
+      var qtyNum = parseInt(propStr(orderPage, '数量'), 10) || 1;
+      if (masterInfo.shohin && masterInfo.shohin !== '—' && souko) {
+        try {
+          await fooNotionCreate(ZAIKO_DB, {
+            'タイトル': { title: [{ text: { content: masterInfo.shohin + ' 入荷 x' + qtyNum } }] },
+            '種類':  { select: { name: masterInfo.shurui || 'その他' } },
+            '商品名': { select: { name: masterInfo.shohin } },
+            '区分':  { select: { name: '入荷' } },
+            '数量':  { number: qtyNum },
+            '倉庫':  { select: { name: souko } },
+            '作成者': { select: { name: loginUser || '向畑 充' } }
+          });
+        } catch(ze) { console.warn('在庫DB登録エラー:', ze); }
+      }
+    }
+
     showToast('納入済に更新しました');
     loadPending();
   } catch(e) {
@@ -781,7 +983,7 @@ function buildPdfHtml() {
   var mkRow = function(o, i) {
     var master = getMasterInfo(o);
     var shurui = master.shurui;
-    var shohin = master.shohin;
+    var shohin = master.seishiki || master.shohin;  // 正式名称があれば優先
     var qty = propStr(o, '数量');
     var dest = propStr(o, '送り先') || '—';
     var dt = fmtDatePdf(propStr(o, '日付'));
@@ -1058,6 +1260,352 @@ async function loadHistory() {
     loading.style.display = 'none';
     list.innerHTML = '<div class="empty"><div class="empty-text">エラー: ' + e.message + '</div></div>';
     console.error(e);
+  }
+}
+
+// ─── 入出庫タブ ────────────────────────────────────────────────────────
+function loadStockIn() {
+  // 種類セレクトを補充（loadSchemaで取得済みなら再利用）
+  var sel = document.getElementById('si-shurui');
+  if (sel.options.length <= 1 && shuruiOptions.length) {
+    shuruiOptions.forEach(function(opt) {
+      var o = document.createElement('option');
+      o.value = opt.name; o.textContent = opt.name;
+      sel.appendChild(o);
+    });
+  }
+}
+
+function setSiMode(mode) {
+  document.getElementById('si-mode').value = mode;
+  var btnIn  = document.getElementById('si-toggle-in');
+  var btnOut = document.getElementById('si-toggle-out');
+  btnIn.classList.toggle('active', mode === 'in');
+  btnIn.classList.toggle('in',     mode === 'in');
+  btnOut.classList.toggle('active', mode === 'out');
+  btnOut.classList.toggle('out',    mode === 'out');
+}
+
+function onSiShuruiChange() {
+  var shurui = document.getElementById('si-shurui').value;
+  var selShohin = document.getElementById('si-shohin');
+  while (selShohin.options.length > 1) selShohin.options.remove(1);
+  selShohin.value = '';
+  if (!shurui) return;
+  var items = shohinByShurui[shurui] || [];
+  items.forEach(function(name) {
+    var o = document.createElement('option');
+    o.value = name; o.textContent = name;
+    selShohin.appendChild(o);
+  });
+}
+
+async function submitStockIn() {
+  var mode   = document.getElementById('si-mode').value;
+  var shurui = document.getElementById('si-shurui').value;
+  var shohin = document.getElementById('si-shohin').value.trim();
+  var qty    = parseInt(document.getElementById('si-qty').value, 10);
+  var souko  = document.getElementById('si-souko').value;
+  var memo   = document.getElementById('si-memo').value.trim();
+
+  if (!shurui) { alert('種類を選択してください'); return; }
+  if (!shohin) { alert('商品名を選択してください'); return; }
+  if (!qty || qty < 1) { alert('数量を1以上で入力してください'); return; }
+  if (!souko)  { alert('倉庫を選択してください'); return; }
+
+  var kubun = mode === 'in' ? '入荷' : '出庫';
+  var btn = document.getElementById('btn-si');
+  btn.disabled = true; btn.textContent = '登録中...';
+
+  try {
+    var props = {
+      'タイトル': { title: [{ text: { content: shohin + ' ' + kubun + ' x' + qty } }] },
+      '種類':   { select: { name: shurui } },
+      '商品名':  { select: { name: shohin } },
+      '区分':   { select: { name: kubun } },
+      '数量':   { number: qty },
+      '倉庫':   { select: { name: souko } },
+      '作成者':  { select: { name: loginUser || '向畑 充' } }
+    };
+    if (memo) props['メモ'] = { rich_text: [{ text: { content: memo } }] };
+
+    await fooNotionCreate(ZAIKO_DB, props);
+    showToast(kubun + 'を登録しました');
+
+    // フォームリセット
+    document.getElementById('si-shurui').value = '';
+    var selShohin = document.getElementById('si-shohin');
+    while (selShohin.options.length > 1) selShohin.options.remove(1);
+    selShohin.value = '';
+    document.getElementById('si-qty').value = '';
+    document.getElementById('si-souko').value = '';
+    document.getElementById('si-memo').value = '';
+  } catch(e) {
+    alert('エラー: ' + e.message); console.error(e);
+  } finally {
+    btn.disabled = false; btn.textContent = '登録する';
+  }
+}
+
+// ─── 在庫計算（共通）──────────────────────────────────────────────────
+async function calcStockMap() {
+  var result = {};
+  var hasMore = true;
+  var cursor = undefined;
+  while (hasMore) {
+    var params = { page_size: 100 };
+    if (cursor) params.start_cursor = cursor;
+    var data = await fooNotionQuery(ZAIKO_DB, params);
+    var items = data.results || [];
+    items.forEach(function(item) {
+      var shohin = (item.properties['商品名'] && item.properties['商品名'].select && item.properties['商品名'].select.name) || '';
+      var kubun  = (item.properties['区分']  && item.properties['区分'].select  && item.properties['区分'].select.name)  || '';
+      var souko  = (item.properties['倉庫']  && item.properties['倉庫'].select  && item.properties['倉庫'].select.name)  || '';
+      var qty    = (item.properties['数量']  && item.properties['数量'].number !== null) ? (item.properties['数量'].number || 0) : 0;
+      var shurui = (item.properties['種類']  && item.properties['種類'].select  && item.properties['種類'].select.name)  || '';
+      if (!shohin || !souko) return;
+      if (!result[shohin]) result[shohin] = { shurui: shurui, locs: {} };
+      if (!result[shohin].locs[souko]) result[shohin].locs[souko] = 0;
+      if (kubun === '入荷')      result[shohin].locs[souko] += qty;
+      else if (kubun === '出庫') result[shohin].locs[souko] -= qty;
+      // 発注中は在庫に影響しない
+    });
+    hasMore = data.has_more || false;
+    cursor  = data.next_cursor || undefined;
+  }
+  return result;
+}
+
+// ─── 在庫タブ ──────────────────────────────────────────────────────────
+async function loadZaiko() {
+  var loading = document.getElementById('zaiko-loading');
+  var content = document.getElementById('zaiko-content');
+  var empty   = document.getElementById('zaiko-empty');
+  loading.style.display = 'block';
+  content.innerHTML = '';
+  empty.style.display = 'none';
+
+  try {
+    var stockMap = await calcStockMap();
+    loading.style.display = 'none';
+
+    var keys = Object.keys(stockMap);
+    if (!keys.length) { empty.style.display = 'block'; return; }
+
+    // 種類でグループ化
+    var groups = {};
+    keys.forEach(function(shohin) {
+      var d = stockMap[shohin];
+      var shurui = d.shurui || 'その他';
+      if (!groups[shurui]) groups[shurui] = [];
+      groups[shurui].push({ shohin: shohin, locs: d.locs });
+    });
+
+    var shuruiOrder = ['BOX（TB）','BOX（LT）','BOX（PC）','バルブ','ナット','インパクト部品','パンク修理','その他'];
+    var html = '<div style="padding:10px 12px 0;">';
+
+    var renderGroup = function(shurui, items) {
+      items.sort(function(a, b) { return a.shohin.localeCompare(b.shohin, 'ja'); });
+      html += '<div class="zaiko-group">';
+      html += '<div class="zaiko-group-header">' + shurui + ' <span style="font-weight:400;">（' + items.length + '種）</span></div>';
+      items.forEach(function(it) {
+        var f = it.locs['五日市'] || 0;
+        var s = it.locs['志和']   || 0;
+        html += '<div class="zaiko-row">';
+        html += '<div class="zaiko-name">' + it.shohin + '</div>';
+        html += '<div class="zaiko-loc"><div class="zaiko-loc-label">五日市</div><div class="zaiko-num ' + (f < 0 ? 'low' : 'ok') + '">' + f + '</div></div>';
+        html += '<div class="zaiko-divider"></div>';
+        html += '<div class="zaiko-loc"><div class="zaiko-loc-label">志和</div><div class="zaiko-num ' + (s < 0 ? 'low' : 'ok') + '">' + s + '</div></div>';
+        html += '</div>';
+      });
+      html += '</div>';
+    };
+
+    shuruiOrder.forEach(function(shurui) {
+      if (groups[shurui] && groups[shurui].length) renderGroup(shurui, groups[shurui]);
+    });
+    Object.keys(groups).forEach(function(shurui) {
+      if (shuruiOrder.indexOf(shurui) < 0) renderGroup(shurui, groups[shurui]);
+    });
+
+    html += '</div>';
+    content.innerHTML = html;
+  } catch(e) {
+    loading.style.display = 'none';
+    content.innerHTML = '<div class="empty"><div class="empty-text">エラー: ' + e.message + '</div></div>';
+    console.error(e);
+  }
+}
+
+// ─── 自動発注タブ ──────────────────────────────────────────────────────
+async function loadAutoOrder() {
+  var loading    = document.getElementById('auto-loading');
+  var contentDiv = document.getElementById('auto-content');
+  var alertSec   = document.getElementById('alert-section');
+  var shikiiList = document.getElementById('shikii-list');
+  loading.style.display = 'block';
+  contentDiv.style.display = 'none';
+
+  try {
+    var results = await Promise.all([
+      calcStockMap(),
+      fooNotionQuery(SHIKII_DB, { page_size: 100 })
+    ]);
+    var stockMap    = results[0];
+    var shikiiItems = results[1].results || [];
+
+    // JS側ソート（created_time降順）
+    shikiiItems.sort(function(a, b) {
+      return (b.created_time || '').localeCompare(a.created_time || '');
+    });
+
+    // アラート計算
+    var alerts = [];
+    shikiiItems.forEach(function(item) {
+      var shohin    = (item.properties['商品名'] && item.properties['商品名'].rich_text && item.properties['商品名'].rich_text[0]) ? item.properties['商品名'].rich_text[0].plain_text : '';
+      var souko     = (item.properties['倉庫']   && item.properties['倉庫'].select   && item.properties['倉庫'].select.name)   || '';
+      var threshold = (item.properties['しきい値'] && item.properties['しきい値'].number !== null) ? item.properties['しきい値'].number : null;
+      if (!shohin || !souko || threshold === null) return;
+      var stock = (stockMap[shohin] && stockMap[shohin].locs[souko] !== undefined) ? stockMap[shohin].locs[souko] : 0;
+      if (stock < threshold) alerts.push({ shohin: shohin, souko: souko, stock: stock, threshold: threshold });
+    });
+
+    // アラートHTML
+    var alertHtml = '';
+    if (alerts.length) {
+      alertHtml += '<div class="section-header"><div class="section-dot" style="background:var(--red);"></div>';
+      alertHtml += '<div class="section-title" style="color:var(--red);">⚠️ 在庫アラート</div>';
+      alertHtml += '<div class="section-count">' + alerts.length + '件</div></div>';
+      alerts.forEach(function(a) {
+        alertHtml += '<div class="alert-card">';
+        alertHtml += '<div class="alert-card-top"><div class="alert-name">' + a.shohin + '</div><div class="alert-loc">' + a.souko + '</div></div>';
+        alertHtml += '<div class="alert-nums">在庫 <strong>' + a.stock + '</strong> / しきい値 <strong>' + a.threshold + '</strong></div>';
+        alertHtml += '</div>';
+      });
+    } else {
+      alertHtml = '<div class="section-header"><div class="section-dot" style="background:var(--green);"></div>'
+        + '<div class="section-title" style="color:var(--green);">✅ 在庫アラートなし</div></div>';
+    }
+    alertSec.innerHTML = alertHtml;
+
+    // しきい値リストHTML
+    var shikiiHtml = '';
+    if (!shikiiItems.length) {
+      shikiiHtml = '<div class="empty" style="padding:20px;"><div class="empty-text">しきい値が設定されていません</div></div>';
+    } else {
+      shikiiItems.forEach(function(item) {
+        var id        = item.id;
+        var shohin    = (item.properties['商品名'] && item.properties['商品名'].rich_text && item.properties['商品名'].rich_text[0]) ? item.properties['商品名'].rich_text[0].plain_text : '—';
+        var shurui    = (item.properties['種類']   && item.properties['種類'].rich_text   && item.properties['種類'].rich_text[0])   ? item.properties['種類'].rich_text[0].plain_text   : '—';
+        var souko     = (item.properties['倉庫']   && item.properties['倉庫'].select      && item.properties['倉庫'].select.name)     || '—';
+        var threshold = (item.properties['しきい値'] && item.properties['しきい値'].number !== null) ? item.properties['しきい値'].number : '—';
+        shikiiHtml += '<div class="shikii-row">';
+        shikiiHtml += '<div class="shikii-info"><div class="shikii-name">' + shohin + '</div><div class="shikii-meta">' + shurui + ' · ' + souko + '</div></div>';
+        shikiiHtml += '<div class="shikii-val">≥ ' + threshold + '</div>';
+        shikiiHtml += '<button class="shikii-del" onclick="deleteShikii(\'' + id + '\')" title="削除">🗑</button>';
+        shikiiHtml += '</div>';
+      });
+    }
+    shikiiList.innerHTML = shikiiHtml;
+
+    loading.style.display = 'none';
+    contentDiv.style.display = 'block';
+  } catch(e) {
+    loading.style.display = 'none';
+    contentDiv.innerHTML = '<div class="empty"><div class="empty-text">エラー: ' + e.message + '</div></div>';
+    contentDiv.style.display = 'block';
+    console.error(e);
+  }
+}
+
+function openShikiiModal() {
+  // 種類セレクトを補充
+  var sel = document.getElementById('shikii-shurui');
+  if (sel.options.length <= 1 && shuruiOptions.length) {
+    shuruiOptions.forEach(function(opt) {
+      var o = document.createElement('option');
+      o.value = opt.name; o.textContent = opt.name;
+      sel.appendChild(o);
+    });
+  }
+  // フォームリセット
+  document.getElementById('shikii-edit-id').value = '';
+  document.getElementById('shikii-shurui').value = '';
+  var selShohin = document.getElementById('shikii-shohin');
+  while (selShohin.options.length > 1) selShohin.options.remove(1);
+  selShohin.value = '';
+  document.getElementById('shikii-souko').value = '';
+  document.getElementById('shikii-val').value = '';
+
+  document.getElementById('shikii-modal').classList.add('show');
+  fooNavPush(closeShikiiModal);
+}
+
+function closeShikiiModal() {
+  document.getElementById('shikii-modal').classList.remove('show');
+}
+
+function closeShikiiModalOverlay(e) {
+  if (e.target === document.getElementById('shikii-modal')) closeShikiiModal();
+}
+
+function onShikiiShuruiChange() {
+  var shurui = document.getElementById('shikii-shurui').value;
+  var selShohin = document.getElementById('shikii-shohin');
+  while (selShohin.options.length > 1) selShohin.options.remove(1);
+  selShohin.value = '';
+  if (!shurui) return;
+  (shohinByShurui[shurui] || []).forEach(function(name) {
+    var o = document.createElement('option');
+    o.value = name; o.textContent = name;
+    selShohin.appendChild(o);
+  });
+}
+
+async function saveShikii() {
+  var shurui    = document.getElementById('shikii-shurui').value;
+  var shohin    = document.getElementById('shikii-shohin').value.trim();
+  var souko     = document.getElementById('shikii-souko').value;
+  var threshold = parseInt(document.getElementById('shikii-val').value, 10);
+
+  if (!shurui)              { alert('種類を選択してください'); return; }
+  if (!shohin)              { alert('商品名を選択してください'); return; }
+  if (!souko)               { alert('倉庫を選択してください'); return; }
+  if (isNaN(threshold) || threshold < 0) { alert('しきい値を0以上で入力してください'); return; }
+
+  var btn = document.getElementById('btn-shikii-save');
+  btn.disabled = true; btn.textContent = '保存中...';
+
+  try {
+    await fooNotionCreate(SHIKII_DB, {
+      'タイトル':  { title: [{ text: { content: shohin + '（' + souko + '）' } }] },
+      '種類':    { rich_text: [{ text: { content: shurui } }] },
+      '商品名':   { rich_text: [{ text: { content: shohin } }] },
+      '倉庫':    { select: { name: souko } },
+      'しきい値': { number: threshold }
+    });
+    closeShikiiModal();
+    showToast('しきい値を保存しました');
+    loadAutoOrder();
+  } catch(e) {
+    alert('エラー: ' + e.message); console.error(e);
+  } finally {
+    btn.disabled = false; btn.textContent = '保存する';
+  }
+}
+
+async function deleteShikii(pageId) {
+  if (!confirm('このしきい値を削除しますか？')) return;
+  try {
+    await fetch(FOO_WORKER + '/pages/' + pageId, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ archived: true })
+    });
+    showToast('削除しました');
+    loadAutoOrder();
+  } catch(e) {
+    alert('エラー: ' + e.message); console.error(e);
   }
 }
 

@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>業界ニュース | f.o.o</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#18181f; --s1:#101015; --s2:#1e1e26; --s3:#26262f;
+  --border:#2c2c38; --border2:#3c3c4a; --text:#f0f0f2; --muted:#68687a;
+  --accent:#f0a500; --accent2:#f5be40; --green:#22c55e; --red:#ef4444;
+  --blue:#3b82f6; --purple:#a855f7; --yellow:#eab308;
+  --header-bg:rgba(16,16,21,0.92);
+}
+@media(prefers-color-scheme:light){
+  :root:not([data-theme]){
+    --bg:#fdf6ee;--s1:#ffffff;--s2:#fdf0e4;--s3:#f5e6d4;
+    --border:#e8d8c4;--border2:#d8c4a8;--text:#1a1208;--muted:#a08060;
+    --accent:#e07000;--accent2:#c05800;--green:#1a9e4a;--red:#dc2626;
+    --blue:#2563eb;--purple:#9333ea;--yellow:#d97706;
+    --header-bg:rgba(255,255,255,0.92);
+  }
+}
+[data-theme="dark"]{--bg:#18181f;--s1:#101015;--s2:#1e1e26;--s3:#26262f;--border:#2c2c38;--border2:#3c3c4a;--text:#f0f0f2;--muted:#68687a;--accent:#f0a500;--accent2:#f5be40;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;--purple:#a855f7;--yellow:#eab308;--header-bg:rgba(16,16,21,0.92);}
+[data-theme="light"]{--bg:#fdf6ee;--s1:#ffffff;--s2:#fdf0e4;--s3:#f5e6d4;--border:#e8d8c4;--border2:#d8c4a8;--text:#1a1208;--muted:#a08060;--accent:#e07000;--accent2:#c05800;--green:#1a9e4a;--red:#dc2626;--blue:#2563eb;--purple:#9333ea;--yellow:#d97706;--header-bg:rgba(255,255,255,0.92);}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:600px;margin:0 auto;overflow-x:hidden;scrollbar-width:none;}
+body::-webkit-scrollbar{display:none;}
+
+.header{position:sticky;top:0;z-index:100;background:var(--header-bg);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);padding:14px 20px 10px;border-bottom:.5px solid var(--border);}
+.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;}
+.header-brand{font-size:10px;color:var(--muted);letter-spacing:.12em;}
+.header-back{font-size:11px;color:var(--muted);text-decoration:none;border:.5px solid var(--border);border-radius:20px;padding:3px 10px;}
+.header-title{font-size:17px;font-weight:900;letter-spacing:-0.02em;}
+.header-title span{color:var(--accent);}
+
+/* Tab bar */
+.tabs{display:flex;gap:0;padding:0 16px;background:var(--s1);border-bottom:.5px solid var(--border);overflow-x:auto;scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab-btn{flex:1;min-width:0;padding:12px 4px 10px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;text-align:center;white-space:nowrap;transition:all .2s;}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab-btn .tab-icon{font-size:18px;display:block;margin-bottom:2px;}
+
+/* Content */
+.page-content{display:none;padding:12px 16px 80px;}
+.page-content.active{display:block;}
+
+/* Category description */
+.cat-desc{font-size:12px;color:var(--muted);line-height:1.6;padding:12px 14px;background:var(--s2);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;}
+
+/* Article card */
+.news-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:all .15s;}
+.news-card:active{background:var(--s3);transform:scale(0.98);}
+.news-title{font-size:14px;font-weight:700;line-height:1.5;margin-bottom:4px;}
+.news-date{font-size:11px;color:var(--muted);}
+.news-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px;}
+.badge-critical{background:rgba(239,68,68,0.15);color:var(--red);}
+.badge-warning{background:rgba(234,179,8,0.15);color:var(--yellow);}
+.badge-info{background:rgba(59,130,246,0.15);color:var(--blue);}
+
+/* Viewer */
+.viewer{position:fixed;inset:0;z-index:200;background:var(--bg);display:none;flex-direction:column;}
+.viewer.open{display:flex;}
+.viewer-header{position:sticky;top:0;z-index:10;background:var(--header-bg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.viewer-back{background:none;border:none;color:var(--accent);font-size:14px;cursor:pointer;padding:4px 8px;font-weight:700;font-family:inherit;}
+.viewer-title{flex:1;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.viewer-body{flex:1;overflow-y:auto;padding:20px;-webkit-overflow-scrolling:touch;}
+
+/* Article content */
+.article-content{line-height:1.85;font-size:14px;}
+.article-content h1{font-size:18px;font-weight:900;margin:24px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent);}
+.article-content h1:first-child{margin-top:0;}
+.article-content h2{font-size:16px;font-weight:900;margin:20px 0 10px;padding-bottom:6px;border-bottom:1.5px solid var(--border2);}
+.article-content h3{font-size:14px;font-weight:700;margin:16px 0 6px;color:var(--accent);}
+.article-content p{margin:8px 0;line-height:1.8;}
+.article-content ul,.article-content ol{margin:8px 0 8px 20px;}
+.article-content li{margin:4px 0;line-height:1.8;}
+.article-content strong{color:var(--accent);font-weight:700;}
+.article-content hr{border:none;border-top:1px solid var(--border2);margin:16px 0;}
+.article-content blockquote{border-left:3px solid var(--accent);padding:8px 14px;margin:12px 0;background:color-mix(in srgb,var(--accent) 8%,transparent);border-radius:0 8px 8px 0;font-size:13px;color:var(--muted);line-height:1.7;}
+.article-content a{color:var(--accent);text-decoration:underline;}
+
+/* Loading / Empty */
+.loading{text-align:center;padding:48px 20px;color:var(--muted);font-size:13px;}
+.spinner{display:inline-block;width:24px;height:24px;border:2.5px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:8px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-msg{text-align:center;padding:40px 20px;color:var(--muted);font-size:13px;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="header-brand">F.o.o &middot; ニュース</div>
+    <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">&larr; ポータル</a>
+  </div>
+  <div class="header-title">業界<span>ニュース</span></div>
+</div>
+
+<div class="tabs" id="tab-bar"></div>
+
+<div id="pages-container"></div>
+
+<!-- Article viewer -->
+<div class="viewer" id="viewer">
+  <div class="viewer-header">
+    <button class="viewer-back" onclick="closeViewer()">&lsaquo; 戻る</button>
+    <div class="viewer-title" id="viewer-title"></div>
+  </div>
+  <div class="viewer-body">
+    <div class="article-content" id="viewer-content"></div>
+  </div>
+</div>
+
+<script src="foo-common.js"></script>
+<script>
+/* ── Theme ── */
+(function(){
+  const t = localStorage.getItem('foo_portal_theme') || 'auto';
+  if (t === 'dark') document.documentElement.setAttribute('data-theme','dark');
+  else if (t !== 'light' && window.matchMedia?.('(prefers-color-scheme:dark)').matches)
+    document.documentElement.setAttribute('data-theme','dark');
+})();
+
+/* ── Auth ── */
+const SESSION_KEY = 'foo_portal_session';
+const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
+let loginUser = '';
+(function(){
+  try {
+    const s = JSON.parse(localStorage.getItem(SESSION_KEY));
+    if (!s || !s.name || new Date(s.expires) < new Date()) { location.href = 'index.html'; return; }
+    loginUser = s.name;
+  } catch(e) { location.href = 'index.html'; }
+})();
+
+/* ── Categories ── */
+const CATEGORIES = [
+  { key: 'tire',    icon: '🛞', name: 'タイヤ',       pageId: '336a695f8e8881b4a498e0513f6d8975' },
+  { key: 'unsou',   icon: '🚚', name: '運送',         pageId: '336a695f8e8881d8a95fe3cdbc27a6c3' },
+  { key: 'dealer',  icon: '🚛', name: 'ディーラー',   pageId: '336a695f8e88812abef3e21a06c58069' },
+  { key: 'indeed',  icon: '📊', name: 'Indeed',       pageId: '336a695f8e8880a0a306d406c12854a2' },
+];
+
+let currentTab = 0;
+const childCache = {}; // pageId -> [{id, title, date}]
+const contentCache = {}; // childPageId -> html
+
+/* ── Render tabs ── */
+function renderTabs() {
+  const bar = document.getElementById('tab-bar');
+  bar.innerHTML = CATEGORIES.map((cat, i) =>
+    `<button class="tab-btn${i === currentTab ? ' active' : ''}" onclick="switchNewsTab(${i})">
+      <span class="tab-icon">${cat.icon}</span>${cat.name}
+    </button>`
+  ).join('');
+
+  const container = document.getElementById('pages-container');
+  container.innerHTML = CATEGORIES.map((cat, i) =>
+    `<div class="page-content${i === currentTab ? ' active' : ''}" id="page-${cat.key}">
+      <div class="loading"><div class="spinner"></div><br>読み込み中...</div>
+    </div>`
+  ).join('');
+}
+
+function switchNewsTab(idx) {
+  currentTab = idx;
+  document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+  document.querySelectorAll('.page-content').forEach((p, i) => p.classList.toggle('active', i === idx));
+  loadCategory(idx);
+}
+
+/* ── Notion API ── */
+async function notionGet(path) {
+  const r = await fetch(WORKER + path, { headers: { 'Content-Type': 'application/json' } });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+async function notionPost(path, body) {
+  const r = await fetch(WORKER + path, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+/* ── Load category's child pages ── */
+async function loadCategory(idx) {
+  const cat = CATEGORIES[idx];
+  if (childCache[cat.pageId]) { renderArticleList(idx); return; }
+
+  const el = document.getElementById('page-' + cat.key);
+  el.innerHTML = '<div class="loading"><div class="spinner"></div><br>読み込み中...</div>';
+
+  try {
+    // Get child pages
+    let allBlocks = [], cursor;
+    do {
+      const url = `/blocks/${cat.pageId}/children?page_size=100` + (cursor ? `&start_cursor=${cursor}` : '');
+      const data = await notionGet(url);
+      allBlocks = allBlocks.concat(data.results || []);
+      cursor = data.has_more ? data.next_cursor : undefined;
+    } while (cursor);
+
+    // Extract child_page blocks
+    const children = allBlocks
+      .filter(b => b.type === 'child_page')
+      .map(b => ({
+        id: b.id,
+        title: b.child_page?.title || '（無題）',
+      }));
+
+    // Sort by title descending (newest first — titles contain dates)
+    children.sort((a, b) => b.title.localeCompare(a.title, 'ja'));
+
+    childCache[cat.pageId] = children;
+    renderArticleList(idx);
+  } catch (e) {
+    el.innerHTML = `<div class="empty-msg">読み込みに失敗しました<br><small>${e.message}</small></div>`;
+  }
+}
+
+/* ── Render article list ── */
+function renderArticleList(idx) {
+  const cat = CATEGORIES[idx];
+  const el = document.getElementById('page-' + cat.key);
+  const children = childCache[cat.pageId] || [];
+
+  if (!children.length) {
+    el.innerHTML = '<div class="empty-msg">ニュースはまだありません</div>';
+    return;
+  }
+
+  el.innerHTML = children.map(child => {
+    // Parse importance badge from title
+    let badge = '';
+    if (child.title.includes('🚨🚨🚨')) badge = '<span class="news-badge badge-critical">緊急</span>';
+    else if (child.title.includes('🚨')) badge = '<span class="news-badge badge-warning">要注意</span>';
+    else badge = '<span class="news-badge badge-info">🆕</span>';
+
+    // Extract date from title (e.g., "2026/04/04（土）...")
+    const dateMatch = child.title.match(/(\d{4}\/\d{2}\/\d{2})/);
+    const dateStr = dateMatch ? dateMatch[1] : '';
+
+    // Clean title for display
+    const displayTitle = child.title
+      .replace(/🚨🚨🚨/g, '').replace(/🚨/g, '').replace(/🆕/g, '')
+      .replace(/緊急$/, '').replace(/要注意$/, '')
+      .trim();
+
+    return `<div class="news-card" onclick="openArticle('${child.id}','${escAttr(child.title)}')">
+      <div class="news-title">${esc(displayTitle)}${badge}</div>
+      ${dateStr ? `<div class="news-date">${dateStr}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+/* ── Open article ── */
+async function openArticle(pageId, title) {
+  const viewer = document.getElementById('viewer');
+  const vTitle = document.getElementById('viewer-title');
+  const vContent = document.getElementById('viewer-content');
+
+  vTitle.textContent = title;
+  viewer.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  if (typeof fooNavPush === 'function') fooNavPush(closeViewer);
+
+  if (contentCache[pageId]) {
+    vContent.innerHTML = contentCache[pageId];
+    return;
+  }
+
+  vContent.innerHTML = '<div class="loading"><div class="spinner"></div><br>読み込み中...</div>';
+
+  try {
+    let allBlocks = [], cursor;
+    do {
+      const url = `/blocks/${pageId}/children?page_size=100` + (cursor ? `&start_cursor=${cursor}` : '');
+      const data = await notionGet(url);
+      allBlocks = allBlocks.concat(data.results || []);
+      cursor = data.has_more ? data.next_cursor : undefined;
+    } while (cursor);
+
+    const html = blocksToHTML(allBlocks);
+    contentCache[pageId] = html;
+    vContent.innerHTML = html;
+  } catch (e) {
+    vContent.innerHTML = `<div style="color:var(--red);padding:20px;">読み込みエラー: ${e.message}</div>`;
+  }
+}
+
+function closeViewer() {
+  document.getElementById('viewer').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+/* ── Notion blocks → HTML ── */
+function blocksToHTML(blocks) {
+  let html = '', inList = null;
+  for (const block of blocks) {
+    const type = block.type;
+    if (inList && type !== inList + '_list_item') {
+      html += inList === 'bulleted' ? '</ul>' : '</ol>';
+      inList = null;
+    }
+    if (type === 'heading_1') html += '<h1>' + rt2html(block.heading_1.rich_text) + '</h1>';
+    else if (type === 'heading_2') html += '<h2>' + rt2html(block.heading_2.rich_text) + '</h2>';
+    else if (type === 'heading_3') html += '<h3>' + rt2html(block.heading_3.rich_text) + '</h3>';
+    else if (type === 'paragraph') { const t = rt2html(block.paragraph.rich_text); if (t.trim()) html += '<p>' + t + '</p>'; }
+    else if (type === 'bulleted_list_item') { if (inList !== 'bulleted') { html += '<ul>'; inList = 'bulleted'; } html += '<li>' + rt2html(block.bulleted_list_item.rich_text) + '</li>'; }
+    else if (type === 'numbered_list_item') { if (inList !== 'numbered') { html += '<ol>'; inList = 'numbered'; } html += '<li>' + rt2html(block.numbered_list_item.rich_text) + '</li>'; }
+    else if (type === 'divider') html += '<hr>';
+    else if (type === 'quote') html += '<blockquote>' + rt2html(block.quote.rich_text) + '</blockquote>';
+    else if (type === 'callout') { const icon = block.callout.icon?.emoji || ''; html += '<blockquote>' + icon + ' ' + rt2html(block.callout.rich_text) + '</blockquote>'; }
+    else if (type === 'toggle') html += '<details style="margin:8px 0;"><summary style="cursor:pointer;font-weight:700;color:var(--accent);">' + rt2html(block.toggle.rich_text) + '</summary><div style="padding:8px 0 8px 16px;font-size:13px;color:var(--muted);">(折りたたみ内容はNotion上で確認)</div></details>';
+  }
+  if (inList) html += inList === 'bulleted' ? '</ul>' : '</ol>';
+  return html || '<p style="color:var(--muted);">（内容はNotionで確認してください）</p>';
+}
+
+function rt2html(rts) {
+  if (!rts?.length) return '';
+  return rts.map(rt => {
+    let t = esc(rt.plain_text || '');
+    if (rt.annotations) {
+      if (rt.annotations.bold) t = '<strong>' + t + '</strong>';
+      if (rt.annotations.italic) t = '<em>' + t + '</em>';
+      if (rt.annotations.strikethrough) t = '<s>' + t + '</s>';
+      if (rt.annotations.underline) t = '<u>' + t + '</u>';
+      if (rt.annotations.code) t = '<code style="background:var(--s3);padding:1px 5px;border-radius:3px;font-size:12px;">' + t + '</code>';
+    }
+    if (rt.href) t = '<a href="' + rt.href + '" target="_blank">' + t + '</a>';
+    return t;
+  }).join('');
+}
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s) { return s.replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+
+/* ── Init ── */
+renderTabs();
+loadCategory(0);
+</script>
+<script src="foo-swipe.js"></script>
+</body>
+</html>

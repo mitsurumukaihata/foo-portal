@@ -283,7 +283,6 @@ async function loadStaffList() {
   try {
     const res = await notionAPI('POST', `/databases/${MASTER_DB}/query`, {
       filter: { property: '在籍', select: { equals: '在籍中' } },
-      sorts:  [{ property: '表示順', direction: 'ascending' }],
       page_size: 50,
     });
     if (res.object === 'error') throw new Error(res.message);
@@ -363,7 +362,7 @@ async function loadMeisai(dbId, name) {
     document.getElementById('header-sub').textContent = `${count}件の明細`;
     renderList();
   } catch(e) {
-    showError('読み込みエラー: ' + e.message);
+    showError('明細読み込みエラー: ' + e.message + ' (DB: ' + dbId + ')');
   }
 }
 

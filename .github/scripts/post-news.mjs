@@ -164,7 +164,7 @@ function parseInline(text) {
   return parts.length ? parts : [{ type: 'text', text: { content: text } }];
 }
 
-// ── Claude API ──
+// ── Claude API（Web Search付き） ──
 async function callClaude(systemPrompt, userPrompt) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -175,8 +175,15 @@ async function callClaude(systemPrompt, userPrompt) {
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 4096,
+      max_tokens: 8192,
       system: systemPrompt,
+      tools: [
+        {
+          type: 'web_search_20250305',
+          name: 'web_search',
+          max_uses: 10,
+        }
+      ],
       messages: [{ role: 'user', content: userPrompt }],
     }),
   });
@@ -185,7 +192,16 @@ async function callClaude(systemPrompt, userPrompt) {
     throw new Error(`Claude API ${res.status}: ${text}`);
   }
   const data = await res.json();
-  return data.content?.[0]?.text || '';
+
+  // Web Search使用時はtool_use→tool_resultのループが必要な場合がある
+  // しかしweb_searchはserver-sideで自動実行されるので、最終レスポンスからテキストを抽出
+  let resultText = '';
+  for (const block of (data.content || [])) {
+    if (block.type === 'text') {
+      resultText += block.text;
+    }
+  }
+  return resultText;
 }
 
 // ── メイン処理 ──

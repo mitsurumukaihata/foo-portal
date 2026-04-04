@@ -201,7 +201,7 @@ async function loadCategory(idx) {
   try {
     const data = await notionPost('/databases/' + NEWS_DB_ID + '/query', {
       filter: { property: 'カテゴリ', select: { equals: cat.filter } },
-      sorts: [{ property: '日付', direction: 'descending' }],
+      sorts: [{ timestamp: 'created_time', direction: 'descending' }],
       page_size: 30,
     });
 

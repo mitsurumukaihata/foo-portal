@@ -1484,7 +1484,7 @@ const APP_DEFS = [
   { key: '📢 マーケ・EC', id: 'marketing', label: 'マーケ・EC', sub: 'コミュ · オークション · SNS', section: 'コミュニティ', url: 'https://mitsurumukaihata.github.io/foo-portal/marketing.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="12" y1="7" x2="12" y2="13"/></svg>` },
   // ── ニュース ──
-  { key: '📰 業界ニュース', id: 'news', label: '業界ニュース', sub: 'タイヤ · 運送 · ディーラー · Indeed', section: 'ニュース', allAccess: true, url: 'https://mitsurumukaihata.github.io/foo-portal/news.html',
+  { key: '📰 業界ニュース', id: 'news', label: '業界ニュース', sub: 'タイヤ · 運送 · ディーラー · Indeed', section: 'ニュース', url: 'https://mitsurumukaihata.github.io/foo-portal/news.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><line x1="10" y1="6" x2="18" y2="6"/><line x1="10" y1="10" x2="18" y2="10"/><line x1="10" y1="14" x2="14" y2="14"/></svg>` },
   // ── 人事 ──
   { key: '🛡️ ハラスメント記録', id: 'harassment', label: 'ハラスメント記録', sub: '事案記録 · 証拠管理', section: '人事', url: 'https://mitsurumukaihata.github.io/foo-portal/harassment-log.html',
@@ -1826,8 +1826,7 @@ async function checkBadges(user) {
   let totalAll = 0;
   _firstBadgeApp = null;
   for (const [appId, cfg] of Object.entries(BADGE_TARGETS)) {
-    const appDef = APP_DEFS.find(d => d.id === appId);
-    if (!apps[appId] && !(appDef && appDef.allAccess)) continue;
+    if (!apps[appId]) continue;
     const el = document.getElementById('badge-' + appId);
     if (!el) continue;
     try {

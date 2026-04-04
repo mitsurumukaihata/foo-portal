@@ -1,0 +1,62 @@
+name: Daily Industry News
+
+on:
+  schedule:
+    # JST 6:50 = UTC 21:50 (前日)
+    - cron: '50 21 * * *'   # 運送業界ニュース (JST 6:50)
+    # JST 6:55 = UTC 21:55 (前日)
+    - cron: '55 21 * * *'   # トラックディーラーニュース (JST 6:55)
+    # JST 7:00 = UTC 22:00 (前日)
+    - cron: '0 22 * * *'    # タイヤ業界ニュース (JST 7:00)
+  workflow_dispatch:
+    inputs:
+      news_type:
+        description: 'ニュースタイプ (tire/transport/dealer/all)'
+        required: true
+        default: 'all'
+
+jobs:
+  transport-news:
+    if: github.event_name == 'workflow_dispatch' && (inputs.news_type == 'transport' || inputs.news_type == 'all') || github.event.schedule == '50 21 * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Post transport news
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NOTION_API_TOKEN: ${{ secrets.NOTION_API_TOKEN }}
+          NEWS_TYPE: transport
+        run: node .github/scripts/post-news.mjs
+
+  dealer-news:
+    if: github.event_name == 'workflow_dispatch' && (inputs.news_type == 'dealer' || inputs.news_type == 'all') || github.event.schedule == '55 21 * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Post dealer news
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NOTION_API_TOKEN: ${{ secrets.NOTION_API_TOKEN }}
+          NEWS_TYPE: dealer
+        run: node .github/scripts/post-news.mjs
+
+  tire-news:
+    if: github.event_name == 'workflow_dispatch' && (inputs.news_type == 'tire' || inputs.news_type == 'all') || github.event.schedule == '0 22 * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Post tire news
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NOTION_API_TOKEN: ${{ secrets.NOTION_API_TOKEN }}
+          NEWS_TYPE: tire
+        run: node .github/scripts/post-news.mjs

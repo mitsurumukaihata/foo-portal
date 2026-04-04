@@ -1,0 +1,22 @@
+name: Weekly Indeed Analysis
+
+on:
+  schedule:
+    # JST 毎週月曜 9:20 = UTC 日曜 0:20
+    - cron: '20 0 * * 1'
+  workflow_dispatch:
+
+jobs:
+  indeed-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Post Indeed analysis
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NOTION_API_TOKEN: ${{ secrets.NOTION_API_TOKEN }}
+          NEWS_TYPE: indeed
+        run: node .github/scripts/post-news.mjs

@@ -310,10 +310,10 @@ textarea.form-input { min-height:70px; resize:vertical; line-height:1.6; }
 <div class="page show" id="pane-stock-in">
   <div class="form-page">
     <div class="toggle-group">
-      <button class="toggle-btn active in" id="si-toggle-in"  onclick="setSiMode('in')">📥 入荷</button>
-      <button class="toggle-btn out"       id="si-toggle-out" onclick="setSiMode('out')">📤 出庫</button>
+      <button class="toggle-btn in"          id="si-toggle-in"  onclick="setSiMode('in')">📥 入荷</button>
+      <button class="toggle-btn active out" id="si-toggle-out" onclick="setSiMode('out')">📤 出庫</button>
     </div>
-    <input type="hidden" id="si-mode" value="in">
+    <input type="hidden" id="si-mode" value="out">
     <div class="form-group">
       <label class="form-label">種類<span class="req">*</span></label>
       <select class="form-input" id="si-shurui" onchange="onSiShuruiChange()">
@@ -1210,50 +1210,106 @@ async function loadHistory() {
   empty.style.display = 'none';
 
   try {
-    var data = await fooNotionQuery(ORDER_DB, {
-      filter: {
-        or: [
-          { property: 'ステータス', select: { equals: '納入済' } },
-          { property: 'ステータス', select: { equals: 'キャンセル' } }
-        ]
-      },
-      sorts: [{ property: '日付', direction: 'descending' }],
-      page_size: 50
-    });
-    var items = data.results || [];
+    // 発注履歴 + 入出庫履歴を並列取得
+    var results = await Promise.all([
+      fooNotionQuery(ORDER_DB, {
+        filter: {
+          or: [
+            { property: 'ステータス', select: { equals: '納入済' } },
+            { property: 'ステータス', select: { equals: 'キャンセル' } }
+          ]
+        },
+        sorts: [{ property: '日付', direction: 'descending' }],
+        page_size: 50
+      }),
+      fooNotionQuery(ZAIKO_DB, { page_size: 100 })
+    ]);
+
+    var orderItems = results[0].results || [];
+    var zaikoItems = results[1].results || [];
 
     // マスタ情報を解決
-    await resolveMasterPages(items);
+    await resolveMasterPages(orderItems);
+
+    // 入出庫レコードをcreated_time降順でソート
+    zaikoItems.sort(function(a, b) {
+      return (b.created_time || '').localeCompare(a.created_time || '');
+    });
 
     loading.style.display = 'none';
 
-    if (!items.length) {
+    if (!orderItems.length && !zaikoItems.length) {
       empty.style.display = 'block';
       return;
     }
 
     var html = '';
-    items.forEach(function(item) {
-      var master = getMasterInfo(item);
-      var shurui = master.shurui;
-      var shohin = master.shohin;
-      var qty = propStr(item, '数量');
-      var status = propStr(item, 'ステータス');
-      var dt = fmtDate(propStr(item, '日付'));
-      var catClass = getCatBadgeClass(shurui);
 
-      html += '<div class="hist-card">';
-      html += '<div class="hist-top">';
-      html += '<span class="badge ' + catClass + '" style="margin-right:6px;">' + shurui + '</span>';
-      html += '<span class="hist-name">' + shohin + '</span>';
-      html += getStatusBadge(status);
+    // ── 入出庫履歴（上に表示）──
+    if (zaikoItems.length) {
+      html += '<div class="section-header">';
+      html += '<div class="section-dot" style="background:var(--accent);"></div>';
+      html += '<div class="section-title">入出庫履歴</div>';
+      html += '<div class="section-count">' + zaikoItems.length + '件</div>';
       html += '</div>';
-      html += '<div class="hist-meta">';
-      html += '<span>数量: <strong>' + qty + '</strong></span>';
-      html += '<span>日付: ' + dt + '</span>';
+
+      zaikoItems.forEach(function(item) {
+        var shohin  = (item.properties['商品名'] && item.properties['商品名'].select && item.properties['商品名'].select.name) || '—';
+        var shurui  = (item.properties['種類']  && item.properties['種類'].select  && item.properties['種類'].select.name)  || '—';
+        var kubun   = (item.properties['区分']  && item.properties['区分'].select  && item.properties['区分'].select.name)  || '—';
+        var qty     = (item.properties['数量']  && item.properties['数量'].number !== null) ? item.properties['数量'].number : 0;
+        var souko   = (item.properties['倉庫']  && item.properties['倉庫'].select  && item.properties['倉庫'].select.name)  || '—';
+        var creator = (item.properties['作成者'] && item.properties['作成者'].select && item.properties['作成者'].select.name) || '—';
+        var dt      = fmtDate((item.created_time || '').slice(0, 10));
+        var catClass = getCatBadgeClass(shurui);
+        var kubunColor = kubun === '入荷' ? 'var(--green)' : kubun === '出庫' ? 'var(--red)' : 'var(--blue)';
+
+        html += '<div class="hist-card">';
+        html += '<div class="hist-top">';
+        html += '<span class="badge ' + catClass + '" style="margin-right:6px;">' + shurui + '</span>';
+        html += '<span class="hist-name">' + shohin + '</span>';
+        html += '<span class="badge" style="background:rgba(0,0,0,0.06);color:' + kubunColor + ';font-weight:700;">' + kubun + '</span>';
+        html += '</div>';
+        html += '<div class="hist-meta">';
+        html += '<span>数量: <strong>' + qty + '</strong></span>';
+        html += '<span>倉庫: ' + souko + '</span>';
+        html += '<span>担当: <strong>' + creator + '</strong></span>';
+        html += '<span>' + dt + '</span>';
+        html += '</div>';
+        html += '</div>';
+      });
+    }
+
+    // ── 発注履歴（下に表示）──
+    if (orderItems.length) {
+      html += '<div class="section-header" style="margin-top:8px;">';
+      html += '<div class="section-dot" style="background:var(--blue);"></div>';
+      html += '<div class="section-title">発注履歴</div>';
+      html += '<div class="section-count">' + orderItems.length + '件</div>';
       html += '</div>';
-      html += '</div>';
-    });
+
+      orderItems.forEach(function(item) {
+        var master = getMasterInfo(item);
+        var shurui = master.shurui;
+        var shohin = master.shohin;
+        var qty = propStr(item, '数量');
+        var status = propStr(item, 'ステータス');
+        var dt = fmtDate(propStr(item, '日付'));
+        var catClass = getCatBadgeClass(shurui);
+
+        html += '<div class="hist-card">';
+        html += '<div class="hist-top">';
+        html += '<span class="badge ' + catClass + '" style="margin-right:6px;">' + shurui + '</span>';
+        html += '<span class="hist-name">' + shohin + '</span>';
+        html += getStatusBadge(status);
+        html += '</div>';
+        html += '<div class="hist-meta">';
+        html += '<span>数量: <strong>' + qty + '</strong></span>';
+        html += '<span>日付: ' + dt + '</span>';
+        html += '</div>';
+        html += '</div>';
+      });
+    }
 
     list.innerHTML = html;
   } catch(e) {

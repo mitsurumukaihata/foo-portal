@@ -224,8 +224,9 @@ async function main() {
 
   // 1. DBから過去の投稿を取得（重複防止）
   console.log('過去の投稿を確認中...');
-  const recentArticles = await getRecentNews(config.category, 5);
-  let recentContent = recentArticles.map(a => `--- ${a.title} ---\n${a.content}`).join('\n\n');
+  const recentArticles = await getRecentNews(config.category, 3);
+  // 重複防止用にタイトルと内容の先頭500文字だけ渡す（トークン節約）
+  let recentContent = recentArticles.map(a => `--- ${a.title} ---\n${a.content.slice(0, 500)}`).join('\n\n');
 
   // 2. Claude APIでニュース生成
   console.log('Claude APIでニュース生成中...');

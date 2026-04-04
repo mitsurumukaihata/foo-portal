@@ -212,6 +212,9 @@ async function loadCategory(idx) {
       importance: p.properties['重要度']?.select?.name || '',
     }));
 
+    // 日付降順でソート（プロキシ側のソートが文字化けする場合の保険）
+    articles.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
     articleCache[cat.filter] = articles;
     renderArticleList(idx);
   } catch (e) {

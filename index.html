@@ -394,7 +394,20 @@ body {
 .divider { height: 0.5px; background: var(--border); margin: 24px 20px 0; }
 
 .portal-footer { display: flex; justify-content: space-between; align-items: center; padding: 20px 20px 0; }
+.footer-left { display: flex; align-items: center; gap: 8px; }
 .footer-ver { font-size: 10px; color: var(--muted); letter-spacing: 0.06em; }
+.btn-updates {
+  font-size: 10px; color: var(--accent);
+  background: transparent;
+  border: 0.5px solid var(--accent);
+  border-radius: 20px;
+  padding: 3px 10px;
+  cursor: pointer;
+  font-family: 'Noto Sans JP', sans-serif;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+.btn-updates:hover { opacity: 1; }
 .btn-logout {
   font-size: 11px; color: var(--muted);
   background: transparent;
@@ -406,6 +419,18 @@ body {
   transition: border-color 0.15s;
 }
 .btn-logout:hover { border-color: var(--border2); }
+
+/* Update modal */
+.update-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:300; display:none; align-items:flex-end; justify-content:center; }
+.update-overlay.show { display:flex; }
+.update-sheet { background:var(--s1); border-radius:16px 16px 0 0; width:100%; max-width:480px; max-height:80vh; overflow-y:auto; padding:20px 16px 40px; }
+.update-handle { width:36px; height:4px; background:var(--border2); border-radius:2px; margin:0 auto 14px; }
+.update-title { font-size:15px; font-weight:900; margin-bottom:14px; }
+.update-item { padding:10px 0; border-bottom:0.5px solid var(--border); }
+.update-item:last-child { border-bottom:none; }
+.update-date { font-size:10px; color:var(--muted); font-family:'DM Mono',monospace; margin-bottom:3px; }
+.update-text { font-size:13px; line-height:1.6; }
+.update-tag { display:inline-block; font-size:9px; font-weight:700; padding:1px 6px; border-radius:10px; background:var(--s3); color:var(--muted); margin-left:4px; }
 
 /* ══════════════════════════════════════════
    顧客情報アプリ（フルスクリーンオーバーレイ）
@@ -1414,6 +1439,58 @@ function logout() {
   location.reload();
 }
 
+// ─── アップデート情報 ─────────────────────────────────────────────────────────
+// apps: 関連アプリID配列。空=全員表示。ユーザーがそのアプリにアクセス権があれば表示。
+const UPDATE_LOG = [
+  { date: '2026/04/06', text: '業界ニュースを社員に公開（タイヤ・運送・ディーラー）', apps: ['news'] },
+  { date: '2026/04/06', text: '備品発注：しきい値を一覧で編集できるように改善', apps: ['bihin'] },
+  { date: '2026/04/06', text: '備品発注：出庫履歴に出庫者・種類・商品名フィルター追加', apps: ['bihin'] },
+  { date: '2026/04/06', text: '備品発注：カート方式でまとめて出庫登録できるように', apps: ['bihin'] },
+  { date: '2026/04/06', text: '備品発注：在庫確認・自動発注アラート機能を追加', apps: ['bihin'] },
+  { date: '2026/04/06', text: '発注書PDFで正式名称に対応', apps: ['bihin'] },
+  { date: '2026/04/05', text: '業界ニュースの自動配信を開始（毎朝更新）', apps: ['news'] },
+  { date: '2026/04/04', text: '給与明細の表示を改善', apps: ['payslip'] },
+  { date: '2026/04/03', text: 'ホーム画面のテーマ切替（ダーク/ライト/自動）を全ページ統一', apps: [] },
+];
+
+function openUpdates() {
+  let existing = document.getElementById('update-overlay');
+  if (existing) { existing.classList.add('show'); return; }
+
+  const userApps = (window._currentUser && window._currentUser.apps) || {};
+
+  // ユーザーのアプリ権限でフィルタリング
+  const filtered = UPDATE_LOG.filter(function(u) {
+    if (!u.apps.length) return true; // 全員表示
+    return u.apps.some(function(a) { return userApps[a]; });
+  });
+
+  const overlay = document.createElement('div');
+  overlay.id = 'update-overlay';
+  overlay.className = 'update-overlay show';
+  overlay.onclick = function(e) { if (e.target === overlay) overlay.classList.remove('show'); };
+
+  let itemsHtml = '';
+  if (!filtered.length) {
+    itemsHtml = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">新しい更新はありません</div>';
+  } else {
+    filtered.forEach(function(u) {
+      itemsHtml += '<div class="update-item">';
+      itemsHtml += '<div class="update-date">' + u.date + '</div>';
+      itemsHtml += '<div class="update-text">' + u.text + '</div>';
+      itemsHtml += '</div>';
+    });
+  }
+
+  overlay.innerHTML = '<div class="update-sheet">'
+    + '<div class="update-handle"></div>'
+    + '<div class="update-title">📋 更新情報</div>'
+    + itemsHtml
+    + '</div>';
+
+  document.body.appendChild(overlay);
+}
+
 // ─── Notion API ───────────────────────────────────────────────────────────────
 async function notionAPI(method, path, body) {
   const controller = new AbortController();
@@ -1660,6 +1737,7 @@ function launchPortal(user) {
   document.getElementById('portal-avatar').textContent = initials;
   document.getElementById('portal-name').textContent   = user.name;
   document.getElementById('portal-role').textContent   = user.group || user.role;
+  window._currentUser = user;
   renderPortalApps(user);
   checkBadges(user);
 }
@@ -1754,7 +1832,10 @@ function renderPortalApps(user) {
 
   // フッター
   html += `<div class="portal-footer">
-    <div class="footer-ver">v2.0 · 2026</div>
+    <div class="footer-left">
+      <div class="footer-ver">v2.0 · 2026</div>
+      <button class="btn-updates" onclick="openUpdates()">更新情報</button>
+    </div>
     <button class="btn-logout" onclick="logout()">ログアウト</button>
   </div>`;
 

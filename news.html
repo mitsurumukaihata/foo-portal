@@ -148,12 +148,18 @@ let loginUser = '';
 
 /* ── ニュースDB ── */
 const NEWS_DB_ID = '7e3fdea7165d41b1918c5d25f15e7c36';
-const CATEGORIES = [
+const ALL_CATEGORIES = [
   { key: 'tire',    icon: '🛞', name: 'タイヤ',       filter: '🛞 タイヤ' },
   { key: 'unsou',   icon: '🚚', name: '運送',         filter: '🚚 運送' },
   { key: 'dealer',  icon: '🚛', name: 'ディーラー',   filter: '🚛 ディーラー' },
-  { key: 'indeed',  icon: '📊', name: 'Indeed',       filter: '📊 Indeed' },
+  { key: 'indeed',  icon: '📊', name: 'Indeed',       filter: '📊 Indeed', ownerOnly: true },
 ];
+// Indeed は向畑さんのみ表示
+const OWNER_NAMES = ['向畑 充', '向畑充'];
+const CATEGORIES = ALL_CATEGORIES.filter(function(cat) {
+  if (!cat.ownerOnly) return true;
+  return OWNER_NAMES.indexOf(loginUser) >= 0;
+});
 
 let currentTab = 0;
 const articleCache = {}; // category -> [{id, title, date, importance}]

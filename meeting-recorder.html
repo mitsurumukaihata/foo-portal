@@ -78,17 +78,17 @@ body::-webkit-scrollbar { display:none; }
 }
 
 /* ── Timer ── */
-.timer { font-family:'DM Mono',monospace; font-size:48px; font-weight:500; text-align:center; letter-spacing:0.05em; padding:10px 0; }
+.timer { font-family:'DM Mono',monospace; font-size:48px; font-weight:500; text-align:center; letter-spacing:0.05em; padding:10px 0; color:var(--muted); opacity:0.5; }
 
 /* ── Recording controls ── */
 .rec-controls { display:flex; gap:12px; justify-content:center; padding:16px 0; }
 .rec-ctrl-btn { padding:12px 28px; border-radius:12px; border:none; font-size:14px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; }
 .rec-ctrl-btn:active { opacity:0.8; transform:scale(0.97); }
-.rec-ctrl-btn.stop { background:var(--red); color:#fff; }
-.rec-ctrl-btn.pause { background:var(--s3); border:1px solid var(--border); color:var(--text); }
+.rec-ctrl-btn.stop { background:var(--red); color:#fff; opacity:0.7; }
+.rec-ctrl-btn.pause { background:var(--s3); border:1px solid var(--border); color:var(--muted); opacity:0.7; }
 
 /* ── Transcript live area ── */
-.transcript-live { background:var(--s2); border:1.5px solid var(--border); border-radius:12px; margin:12px 0; padding:14px; max-height:280px; overflow-y:auto; font-size:13px; line-height:1.8; scroll-behavior:smooth; }
+.transcript-live { background:var(--s2); border:1.5px solid var(--border); border-radius:12px; margin:12px 0; padding:14px; max-height:280px; overflow-y:auto; font-size:13px; line-height:1.8; scroll-behavior:smooth; opacity:0.4; }
 .transcript-final { color:var(--text); }
 .transcript-interim { color:var(--muted); font-style:italic; }
 .transcript-empty { color:var(--muted); text-align:center; padding:20px 0; font-size:12px; }

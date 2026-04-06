@@ -410,6 +410,40 @@ textarea.form-input { min-height:70px; resize:vertical; line-height:1.6; }
   </div>
 </div>
 
+<!-- 発注編集モーダル -->
+<div class="modal-overlay" id="edit-order-modal" onclick="closeEditOrderOverlay(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">発注内容を編集</div>
+    <input type="hidden" id="edit-order-id">
+    <div class="form-group">
+      <label class="form-label">商品名</label>
+      <div id="edit-order-shohin" style="font-size:14px;font-weight:700;padding:8px 0;"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">数量</label>
+        <input class="form-input" id="edit-order-qty" type="number" inputmode="numeric" min="1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">送り先</label>
+        <select class="form-input" id="edit-order-dest">
+          <option value="五日市">五日市</option>
+          <option value="志和">志和</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">備考</label>
+      <textarea class="form-input" id="edit-order-biko" placeholder="補足事項"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button class="btn-submit" id="btn-edit-order-save" onclick="saveEditOrder()" style="flex:2;">保存する</button>
+      <button class="btn-submit" id="btn-edit-order-delete" onclick="deleteEditOrder()" style="flex:1;background:var(--red);">削除</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -917,11 +951,13 @@ async function loadPdf() {
         var shohin = master.shohin;
         var qty = propStr(o, '数量');
         var biko = propStr(o, '備考');
-        html += '<div class="pdf-item">';
+        var dest = propStr(o, '送り先');
+        html += '<div class="pdf-item" onclick="openEditOrder(\'' + o.id + '\')" style="cursor:pointer;">';
         html += '<span class="badge ' + getCatBadgeClass(shurui) + '" style="margin-right:6px;">' + shurui + '</span>';
         html += '<span class="pdf-item-name">' + shohin + '</span>';
         if (biko) html += '<span class="pdf-item-memo">' + biko + '</span>';
         html += '<span class="pdf-item-qty">x' + qty + '</span>';
+        html += '<span style="font-size:14px;color:var(--muted);margin-left:6px;">✏️</span>';
         html += '</div>';
       });
       html += '</div>';
@@ -1864,6 +1900,73 @@ async function onShikiiInputChange(el) {
   }
   el.classList.remove('changed');
   renderAlerts();
+}
+
+// ─── 発注編集 ──────────────────────────────────────────────────────────
+function openEditOrder(pageId) {
+  var order = allOrders.find(function(o) { return o.id === pageId; });
+  if (!order) return;
+  var master = getMasterInfo(order);
+  document.getElementById('edit-order-id').value = pageId;
+  document.getElementById('edit-order-shohin').textContent = master.shurui + '　' + master.shohin;
+  document.getElementById('edit-order-qty').value = propStr(order, '数量');
+  document.getElementById('edit-order-dest').value = propStr(order, '送り先') || '五日市';
+  document.getElementById('edit-order-biko').value = propStr(order, '備考');
+  document.getElementById('edit-order-modal').classList.add('show');
+  fooNavPush(closeEditOrder);
+}
+
+function closeEditOrder() {
+  document.getElementById('edit-order-modal').classList.remove('show');
+}
+
+function closeEditOrderOverlay(e) {
+  if (e.target === document.getElementById('edit-order-modal')) closeEditOrder();
+}
+
+async function saveEditOrder() {
+  var pageId = document.getElementById('edit-order-id').value;
+  var qty = parseInt(document.getElementById('edit-order-qty').value, 10);
+  var dest = document.getElementById('edit-order-dest').value;
+  var biko = document.getElementById('edit-order-biko').value.trim();
+
+  if (!qty || qty < 1) { alert('数量を1以上で入力してください'); return; }
+
+  var btn = document.getElementById('btn-edit-order-save');
+  btn.disabled = true; btn.textContent = '保存中...';
+
+  try {
+    var props = {
+      '数量': { number: qty },
+      '送り先': { select: { name: dest } },
+      '備考': { rich_text: [{ text: { content: biko } }] }
+    };
+    await fooNotionPatch(pageId, props);
+    closeEditOrder();
+    showToast('更新しました');
+    loadPdf();
+  } catch(e) {
+    alert('エラー: ' + e.message); console.error(e);
+  } finally {
+    btn.disabled = false; btn.textContent = '保存する';
+  }
+}
+
+async function deleteEditOrder() {
+  if (!confirm('この発注を削除しますか？')) return;
+  var pageId = document.getElementById('edit-order-id').value;
+  try {
+    await fetch(FOO_WORKER + '/pages/' + pageId, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ archived: true })
+    });
+    closeEditOrder();
+    showToast('削除しました');
+    loadPdf();
+  } catch(e) {
+    alert('エラー: ' + e.message); console.error(e);
+  }
 }
 
 // ─── 初期化 ────────────────────────────────────────────────────────────

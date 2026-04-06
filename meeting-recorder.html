@@ -226,13 +226,22 @@ body::-webkit-scrollbar { display:none; }
   </div>
 </div>
 
+<!-- Screen: Confirm (要約するか取り消すか) -->
+<div class="screen" id="screen-confirm">
+  <div style="padding:40px 20px;text-align:center;">
+    <div style="font-size:32px;margin-bottom:12px;">🎙️</div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:6px;">録音が完了しました</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:24px;" id="confirm-info"></div>
+    <div style="display:flex;flex-direction:column;gap:10px;max-width:300px;margin:0 auto;">
+      <button class="rec-ctrl-btn" style="background:var(--accent);color:#fff;width:100%;opacity:1;padding:14px;" onclick="proceedWithSummary()">要約して保存する</button>
+      <button class="rec-ctrl-btn" style="background:var(--s3);border:1px solid var(--border);color:var(--muted);width:100%;opacity:1;padding:14px;" onclick="discardRecording()">取り消し</button>
+    </div>
+  </div>
+</div>
+
 <!-- Screen: Processing -->
 <div class="screen" id="screen-processing">
   <div class="processing-area">
-    <div class="processing-step" id="step-transcribe">
-      <div class="spinner"></div>
-      <span>文字起こし整理中...</span>
-    </div>
     <div class="processing-step" id="step-summarize">
       <div class="spinner"></div>
       <span>要約生成中...</span>
@@ -715,8 +724,8 @@ function stopRecording() {
   processAndShowResult();
 }
 
-/* ── Process and show result ── */
-async function processAndShowResult() {
+/* ── Show confirm screen after recording stops ── */
+function processAndShowResult() {
   var fullText = getFullTranscriptText();
 
   if (!fullText.trim()) {
@@ -725,14 +734,28 @@ async function processAndShowResult() {
     return;
   }
 
-  // Show processing
+  // Show confirm screen
+  var mins = Math.floor(elapsedSeconds / 60);
+  var secs = elapsedSeconds % 60;
+  var infoEl = document.getElementById('confirm-info');
+  infoEl.textContent = '録音時間: ' + mins + '分' + secs + '秒　文字数: ' + fullText.length + '文字';
+  showScreen('screen-confirm');
+}
+
+function discardRecording() {
+  // 全部破棄（課金ゼロ）
+  localStorage.removeItem('foo_meeting_recorder_autosave');
+  showToast('取り消しました');
+  backToIdle();
+}
+
+async function proceedWithSummary() {
+  var fullText = getFullTranscriptText();
+
   showScreen('screen-processing');
   resetProcessingSteps();
 
-  // Step 1: Transcribe (already done)
-  setStepDone('step-transcribe');
-
-  // Step 2: AI summarize
+  // Step 1: AI summarize
   setStepActive('step-summarize');
   try {
     aiResult = await aiSummarize(fullText);
@@ -742,7 +765,7 @@ async function processAndShowResult() {
   }
   setStepDone('step-summarize');
 
-  // Step 3: Prepare display
+  // Step 2: Prepare display
   setStepActive('step-save');
   await sleep(300);
   setStepDone('step-save');
@@ -752,12 +775,11 @@ async function processAndShowResult() {
 }
 
 function resetProcessingSteps() {
-  var steps = ['step-transcribe', 'step-summarize', 'step-save'];
+  var steps = ['step-summarize', 'step-save'];
   for (var i = 0; i < steps.length; i++) {
     var el = document.getElementById(steps[i]);
     if (el) { el.className = 'processing-step'; }
   }
-  setStepActive('step-transcribe');
 }
 
 function setStepActive(id) {

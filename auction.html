@@ -622,6 +622,7 @@ select.sep-input { appearance: none; -webkit-appearance: none;
         <div class="st-opt" onclick="selectStatus(this)">発送準備中</div>
         <div class="st-opt" onclick="selectStatus(this)">交渉中</div>
         <div class="st-opt" onclick="selectStatus(this)">発送済</div>
+        <div class="st-opt" onclick="selectStatus(this)">受取連絡</div>
       </div>
       <div class="modal-actions">
         <button class="btn-cancel" onclick="closeModal('modal-change')">キャンセル</button>
@@ -841,10 +842,10 @@ function updateStats() {
     const s = p(r, '進捗');
     if (counts[s] !== undefined) counts[s]++;
   });
-  document.getElementById('cnt-all').textContent   = counts['未掲載'];
-  document.getElementById('cnt-posted').textContent = counts['掲載中'];
-  document.getElementById('cnt-prep').textContent   = counts['発送準備中'];
-  document.getElementById('cnt-shipped').textContent = counts['発送済'];
+  document.getElementById('cnt-all').textContent     = counts['未掲載'];
+  document.getElementById('cnt-posted').textContent   = counts['掲載中'];
+  document.getElementById('cnt-prep').textContent     = counts['発送準備中'];
+  document.getElementById('cnt-shipped').textContent  = counts['発送済'];
 }
 
 // ===== FILTERS =====

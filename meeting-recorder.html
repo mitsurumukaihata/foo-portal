@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>会議録音 | f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --red: #ef4444;
+  --blue: #3b82f6; --purple: #a855f7; --yellow: #eab308;
+  --pink: #ec4899; --orange: #f97316; --gray: #6b7280;
+  --header-bg: rgba(16,16,21,0.92);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+    --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208; --muted: #a08060;
+    --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --red: #dc2626;
+    --blue: #2563eb; --purple: #9333ea; --yellow: #d97706;
+    --pink: #db2777; --orange: #ea580c; --gray: #6b7280;
+    --header-bg: rgba(255,255,255,0.92);
+  }
+}
+[data-theme="dark"] {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --red: #ef4444;
+  --blue: #3b82f6; --purple: #a855f7; --yellow: #eab308;
+  --pink: #ec4899; --orange: #f97316; --gray: #6b7280;
+  --header-bg: rgba(16,16,21,0.92);
+}
+[data-theme="light"] {
+  --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+  --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208; --muted: #a08060;
+  --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --red: #dc2626;
+  --blue: #2563eb; --purple: #9333ea; --yellow: #d97706;
+  --pink: #db2777; --orange: #ea580c; --gray: #6b7280;
+  --header-bg: rgba(255,255,255,0.92);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; max-width:480px; margin:0 auto; overflow-x:hidden; scrollbar-width:none; }
+body::-webkit-scrollbar { display:none; }
+
+/* ── Header ── */
+.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:100; }
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+.header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+.header-back { font-size:11px; color:var(--muted); text-decoration:none; border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; }
+.header-back:active { opacity:0.6; }
+.header-title { font-size:17px; font-weight:900; letter-spacing:-0.02em; }
+.header-title span { color:var(--accent); }
+
+/* ── Screen containers ── */
+.screen { display:none; padding:20px 16px 100px; }
+.screen.show { display:block; }
+
+/* ── Record button ── */
+.rec-area { display:flex; flex-direction:column; align-items:center; padding:40px 0 30px; }
+.rec-btn { width:100px; height:100px; border-radius:50%; border:4px solid var(--red); background:transparent; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s; position:relative; }
+.rec-btn:active { transform:scale(0.95); }
+.rec-btn-inner { width:44px; height:44px; border-radius:50%; background:var(--red); transition:all 0.2s; }
+.rec-btn.recording .rec-btn-inner { border-radius:6px; width:32px; height:32px; }
+.rec-btn.recording { animation:pulse-ring 1.5s ease-in-out infinite; }
+.rec-label { margin-top:14px; font-size:13px; color:var(--muted); font-weight:500; }
+
+@keyframes pulse-ring {
+  0%   { box-shadow:0 0 0 0 rgba(239,68,68,0.4); }
+  70%  { box-shadow:0 0 0 16px rgba(239,68,68,0); }
+  100% { box-shadow:0 0 0 0 rgba(239,68,68,0); }
+}
+
+/* ── Timer ── */
+.timer { font-family:'DM Mono',monospace; font-size:48px; font-weight:500; text-align:center; letter-spacing:0.05em; padding:10px 0; }
+
+/* ── Recording controls ── */
+.rec-controls { display:flex; gap:12px; justify-content:center; padding:16px 0; }
+.rec-ctrl-btn { padding:12px 28px; border-radius:12px; border:none; font-size:14px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; }
+.rec-ctrl-btn:active { opacity:0.8; transform:scale(0.97); }
+.rec-ctrl-btn.stop { background:var(--red); color:#fff; }
+.rec-ctrl-btn.pause { background:var(--s3); border:1px solid var(--border); color:var(--text); }
+
+/* ── Transcript live area ── */
+.transcript-live { background:var(--s2); border:1.5px solid var(--border); border-radius:12px; margin:12px 0; padding:14px; max-height:280px; overflow-y:auto; font-size:13px; line-height:1.8; scroll-behavior:smooth; }
+.transcript-final { color:var(--text); }
+.transcript-interim { color:var(--muted); font-style:italic; }
+.transcript-empty { color:var(--muted); text-align:center; padding:20px 0; font-size:12px; }
+
+/* ── Dim overlay ── */
+.dim-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.95); z-index:9999; display:none; flex-direction:column; align-items:center; justify-content:center; gap:16px; cursor:pointer; }
+.dim-overlay.show { display:flex; }
+.dim-dot { width:24px; height:24px; border-radius:50%; background:var(--red); animation:pulse-dot 1.2s ease-in-out infinite; }
+@keyframes pulse-dot {
+  0%, 100% { opacity:0.4; transform:scale(0.9); }
+  50%      { opacity:1;   transform:scale(1.1); }
+}
+.dim-text { color:#fff; font-size:16px; font-weight:700; }
+.dim-timer { color:rgba(255,255,255,0.6); font-family:'DM Mono',monospace; font-size:28px; }
+
+/* ── Interrupt overlay ── */
+.interrupt-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:9998; display:none; flex-direction:column; align-items:center; justify-content:center; gap:20px; padding:30px; }
+.interrupt-overlay.show { display:flex; }
+.interrupt-msg { color:#fff; font-size:16px; font-weight:700; text-align:center; line-height:1.6; }
+.interrupt-btns { display:flex; gap:12px; }
+.interrupt-btn { padding:14px 28px; border-radius:12px; border:none; font-size:14px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; }
+.interrupt-btn.resume { background:var(--green); color:#fff; }
+.interrupt-btn.end { background:var(--s3); color:var(--text); border:1px solid var(--border2); }
+
+/* ── Processing screen ── */
+.processing-area { display:flex; flex-direction:column; align-items:center; padding:50px 20px; gap:24px; }
+.processing-step { display:flex; align-items:center; gap:10px; font-size:14px; color:var(--muted); transition:color 0.3s; }
+.processing-step.active { color:var(--accent); }
+.processing-step.done { color:var(--green); }
+.spinner { width:18px; height:18px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; flex-shrink:0; }
+.processing-step.done .spinner { border-color:var(--green); border-top-color:var(--green); animation:none; }
+.check-icon { color:var(--green); font-size:16px; flex-shrink:0; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── Result screen ── */
+.result-section { background:var(--s2); border:1.5px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:12px; }
+.result-section-title { font-size:11px; color:var(--accent); font-weight:700; margin-bottom:8px; letter-spacing:0.05em; text-transform:uppercase; }
+.result-summary { font-size:13px; line-height:1.8; }
+.result-actions { list-style:none; }
+.result-actions li { font-size:13px; line-height:1.8; padding:2px 0; }
+.result-actions li::before { content:''; display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--accent); margin-right:8px; vertical-align:middle; }
+.result-transcript { font-size:12px; line-height:1.8; color:var(--muted); max-height:200px; overflow-y:auto; }
+.result-transcript.expanded { max-height:none; }
+.expand-btn { background:none; border:none; color:var(--accent); font-size:12px; font-weight:600; cursor:pointer; padding:6px 0; font-family:'Noto Sans JP',sans-serif; }
+
+/* ── Participant input ── */
+.participants-input { width:100%; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:12px 14px; font-size:14px; color:var(--text); outline:none; font-family:'Noto Sans JP',sans-serif; }
+.participants-input:focus { border-color:var(--accent); }
+.participants-input::placeholder { color:var(--muted); opacity:0.6; }
+
+/* ── Save button ── */
+.btn-save { width:100%; padding:14px; border-radius:12px; background:var(--accent); border:none; color:#fff; font-size:15px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; margin-top:12px; }
+.btn-save:active { opacity:0.8; transform:scale(0.98); }
+.btn-save:disabled { opacity:0.4; cursor:default; transform:none; }
+
+/* ── History cards ── */
+.history-header { font-size:13px; font-weight:700; color:var(--muted); padding:20px 0 8px; letter-spacing:0.03em; }
+.history-card { background:var(--s2); border:1.5px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:8px; cursor:pointer; transition:all 0.2s; }
+.history-card:active { transform:scale(0.98); }
+.history-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:4px; }
+.history-card-title { font-size:14px; font-weight:700; line-height:1.4; flex:1; }
+.history-card-meta { font-size:11px; color:var(--muted); display:flex; gap:10px; flex-wrap:wrap; }
+.history-card-detail { display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
+.history-card.expanded .history-card-detail { display:block; }
+.history-detail-section { margin-bottom:8px; }
+.history-detail-label { font-size:10px; color:var(--accent); font-weight:700; margin-bottom:3px; letter-spacing:0.05em; }
+.history-detail-text { font-size:12px; line-height:1.7; color:var(--muted); }
+
+/* ── Badge ── */
+.badge { display:inline-block; font-size:9px; font-weight:700; padding:2px 8px; border-radius:20px; white-space:nowrap; }
+.badge-done { background:rgba(34,197,94,0.15); color:var(--green); }
+.badge-recording { background:rgba(239,68,68,0.15); color:var(--red); }
+.badge-processing { background:rgba(59,130,246,0.15); color:var(--blue); }
+
+/* ── Toast ── */
+.toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:var(--green); color:#fff; padding:10px 24px; border-radius:10px; font-size:13px; font-weight:700; z-index:500; opacity:0; transition:opacity 0.3s; pointer-events:none; max-width:90%; text-align:center; }
+.toast.show { opacity:1; }
+
+/* ── Restore banner ── */
+.restore-banner { background:var(--s2); border:1.5px solid var(--accent); border-radius:12px; padding:14px 16px; margin-bottom:16px; }
+.restore-banner-text { font-size:13px; margin-bottom:10px; line-height:1.5; }
+.restore-banner-btns { display:flex; gap:8px; }
+.restore-btn { flex:1; padding:10px; border-radius:8px; border:none; font-size:13px; font-weight:700; cursor:pointer; font-family:'Noto Sans JP',sans-serif; }
+.restore-btn.yes { background:var(--accent); color:#fff; }
+.restore-btn.no { background:var(--s3); color:var(--text); border:1px solid var(--border); }
+
+/* ── Warning ── */
+.warning-box { background:rgba(234,179,8,0.1); border:1px solid rgba(234,179,8,0.3); border-radius:10px; padding:12px 14px; margin-bottom:16px; font-size:12px; color:var(--yellow); line-height:1.5; }
+
+/* ── Empty state ── */
+.empty-state { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; line-height:1.6; }
+
+/* ── Meeting title input ── */
+.meeting-title-input { width:100%; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:12px 14px; font-size:14px; color:var(--text); outline:none; font-family:'Noto Sans JP',sans-serif; margin-bottom:12px; }
+.meeting-title-input:focus { border-color:var(--accent); }
+.meeting-title-input::placeholder { color:var(--muted); opacity:0.6; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-top">
+    <div class="header-brand">F.o.o · 会議</div>
+    <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
+  </div>
+  <div class="header-title">会議<span>録音</span></div>
+</div>
+
+<!-- Screen: Idle -->
+<div class="screen show" id="screen-idle">
+  <div id="restore-area"></div>
+  <div id="speech-warning"></div>
+  <div class="rec-area">
+    <button class="rec-btn" id="btn-record" onclick="startRecording()">
+      <div class="rec-btn-inner"></div>
+    </button>
+    <div class="rec-label">タップして録音開始</div>
+  </div>
+  <div class="history-header">最近の録音</div>
+  <div id="history-list">
+    <div class="empty-state">読み込み中...</div>
+  </div>
+</div>
+
+<!-- Screen: Recording -->
+<div class="screen" id="screen-recording">
+  <div class="timer" id="timer">00:00</div>
+  <div class="rec-controls">
+    <button class="rec-ctrl-btn pause" id="btn-pause" onclick="togglePause()">一時停止</button>
+    <button class="rec-ctrl-btn stop" onclick="stopRecording()">録音終了</button>
+  </div>
+  <div class="transcript-live" id="transcript-live">
+    <div class="transcript-empty">音声を認識しています...</div>
+  </div>
+</div>
+
+<!-- Screen: Processing -->
+<div class="screen" id="screen-processing">
+  <div class="processing-area">
+    <div class="processing-step" id="step-transcribe">
+      <div class="spinner"></div>
+      <span>文字起こし整理中...</span>
+    </div>
+    <div class="processing-step" id="step-summarize">
+      <div class="spinner"></div>
+      <span>要約生成中...</span>
+    </div>
+    <div class="processing-step" id="step-save">
+      <div class="spinner"></div>
+      <span>保存中...</span>
+    </div>
+  </div>
+</div>
+
+<!-- Screen: Result -->
+<div class="screen" id="screen-result">
+  <div class="result-section">
+    <div class="result-section-title">要約</div>
+    <div class="result-summary" id="result-summary"></div>
+  </div>
+  <div class="result-section">
+    <div class="result-section-title">アクションアイテム</div>
+    <ul class="result-actions" id="result-actions"></ul>
+  </div>
+  <div class="result-section">
+    <div class="result-section-title">全文書き起こし</div>
+    <div class="result-transcript" id="result-transcript"></div>
+    <button class="expand-btn" id="btn-expand" onclick="toggleTranscript()">全文を表示</button>
+  </div>
+  <div class="result-section">
+    <div class="result-section-title">会議タイトル</div>
+    <input class="meeting-title-input" id="input-title" placeholder="例: 週次定例会議">
+  </div>
+  <div class="result-section">
+    <div class="result-section-title">参加者</div>
+    <input class="participants-input" id="input-participants" placeholder="例: 田中, 鈴木, 佐藤">
+  </div>
+  <button class="btn-save" id="btn-save" onclick="saveToNotion()">Notionに保存</button>
+  <button class="btn-save" style="background:var(--s3);color:var(--text);border:1px solid var(--border);margin-top:8px;" onclick="backToIdle()">戻る</button>
+</div>
+
+<!-- Dim overlay -->
+<div class="dim-overlay" id="dim-overlay" onclick="dismissDim()">
+  <div class="dim-dot"></div>
+  <div class="dim-text">録音中</div>
+  <div class="dim-timer" id="dim-timer">00:00</div>
+</div>
+
+<!-- Interrupt overlay -->
+<div class="interrupt-overlay" id="interrupt-overlay">
+  <div class="interrupt-msg">録音が中断されました。<br>再開しますか？</div>
+  <div class="interrupt-btns">
+    <button class="interrupt-btn resume" onclick="resumeFromInterrupt()">録音を再開</button>
+    <button class="interrupt-btn end" onclick="endFromInterrupt()">録音を終了</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="foo-common.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   meeting-recorder.html — 会議録音・文字起こし・AI要約
+   ═══════════════════════════════════════════════════════════════════ */
+
+var WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
+var RECORDING_DB = 'c470904f1e624056b675dc080420cc1d';
+var SESSION_KEY = 'foo_portal_session';
+var THEME_KEY = 'foo_portal_theme';
+var AUTOSAVE_KEY = 'foo_meeting_recorder_autosave';
+
+var loginUser = '';
+
+/* ── Auth ── */
+(function(){
+  try {
+    var s = JSON.parse(localStorage.getItem(SESSION_KEY));
+    if (!s || !s.name || new Date(s.expires) < new Date()) { location.href = 'index.html'; return; }
+    if (!s.apps || !s.apps.meeting_recorder) { location.href = 'index.html'; return; }
+    loginUser = s.name;
+  } catch(e) { location.href = 'index.html'; }
+})();
+
+/* ── State ── */
+var isRecording = false;
+var isPaused = false;
+var mediaRecorder = null;
+var audioStream = null;
+var recognition = null;
+var wakeLock = null;
+var transcriptParts = [];    // array of { text, timestamp }
+var interimText = '';
+var recordStartTime = null;
+var pausedDuration = 0;      // total ms spent paused
+var pauseStartTime = null;
+var timerInterval = null;
+var dimTimeout = null;
+var autosaveInterval = null;
+var lastVisibleTime = 0;
+var aiResult = null;         // { summary, actionItems, participants }
+var DIM_DELAY = 60000;       // 60 seconds
+var AUTOSAVE_DELAY = 300000; // 5 minutes
+var speechSupported = true;
+
+/* ── Toast ── */
+function showToast(msg) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(function(){ el.classList.remove('show'); }, 2500);
+}
+
+/* ── Screen switching ── */
+function showScreen(id) {
+  var screens = document.querySelectorAll('.screen');
+  for (var i = 0; i < screens.length; i++) {
+    screens[i].classList.remove('show');
+  }
+  var target = document.getElementById(id);
+  if (target) target.classList.add('show');
+}
+
+/* ── Timer formatting ── */
+function formatTime(ms) {
+  var totalSec = Math.floor(ms / 1000);
+  var m = Math.floor(totalSec / 60);
+  var s = totalSec % 60;
+  return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+}
+
+function getElapsedMs() {
+  if (!recordStartTime) return 0;
+  var now = isPaused && pauseStartTime ? pauseStartTime : Date.now();
+  return now - recordStartTime - pausedDuration;
+}
+
+function updateTimer() {
+  var elapsed = getElapsedMs();
+  var str = formatTime(elapsed);
+  var timerEl = document.getElementById('timer');
+  var dimTimerEl = document.getElementById('dim-timer');
+  if (timerEl) timerEl.textContent = str;
+  if (dimTimerEl) dimTimerEl.textContent = str;
+}
+
+/* ── Speech recognition check ── */
+(function checkSpeech(){
+  var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    speechSupported = false;
+    var warn = document.getElementById('speech-warning');
+    if (warn) {
+      warn.innerHTML = '<div class="warning-box">このブラウザは音声認識に対応していません。Chrome/Edgeをご利用ください。録音は可能ですが、文字起こしは行われません。</div>';
+    }
+  }
+})();
+
+/* ── Check for autosave restore ── */
+(function checkRestore(){
+  try {
+    var data = JSON.parse(localStorage.getItem(AUTOSAVE_KEY));
+    if (!data || !data.transcript || !data.savedAt) return;
+    var age = Date.now() - data.savedAt;
+    if (age > 86400000) { // 24 hours
+      localStorage.removeItem(AUTOSAVE_KEY);
+      return;
+    }
+    var area = document.getElementById('restore-area');
+    if (!area) return;
+    var parts = data.transcript;
+    var count = parts.length;
+    var timeStr = new Date(data.savedAt).toLocaleString('ja-JP');
+    area.innerHTML = '<div class="restore-banner">' +
+      '<div class="restore-banner-text">前回の録音データがあります。（' + count + '件の発言、' + timeStr + '）<br>復元しますか？</div>' +
+      '<div class="restore-banner-btns">' +
+        '<button class="restore-btn yes" onclick="restoreAutosave()">復元する</button>' +
+        '<button class="restore-btn no" onclick="clearAutosave()">破棄する</button>' +
+      '</div></div>';
+  } catch(e) { /* ignore */ }
+})();
+
+function restoreAutosave() {
+  try {
+    var data = JSON.parse(localStorage.getItem(AUTOSAVE_KEY));
+    if (data && data.transcript) {
+      transcriptParts = data.transcript;
+      recordStartTime = data.startTime || Date.now();
+      processAndShowResult();
+    }
+  } catch(e) {
+    showToast('復元に失敗しました');
+  }
+  var area = document.getElementById('restore-area');
+  if (area) area.innerHTML = '';
+}
+
+function clearAutosave() {
+  localStorage.removeItem(AUTOSAVE_KEY);
+  var area = document.getElementById('restore-area');
+  if (area) area.innerHTML = '';
+  showToast('破棄しました');
+}
+
+/* ── Wake Lock ── */
+async function acquireWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', function(){
+        wakeLock = null;
+      });
+    }
+  } catch(e) { /* not supported or denied */ }
+}
+
+function releaseWakeLock() {
+  if (wakeLock) {
+    try { wakeLock.release(); } catch(e) {}
+    wakeLock = null;
+  }
+}
+
+/* ── Dim screen ── */
+function resetDimTimer() {
+  clearTimeout(dimTimeout);
+  if (isRecording && !isPaused) {
+    dimTimeout = setTimeout(function(){ showDim(); }, DIM_DELAY);
+  }
+}
+
+function showDim() {
+  if (!isRecording || isPaused) return;
+  document.getElementById('dim-overlay').classList.add('show');
+}
+
+function dismissDim() {
+  document.getElementById('dim-overlay').classList.remove('show');
+  resetDimTimer();
+}
+
+/* ── Visibility / Interruption ── */
+document.addEventListener('visibilitychange', function(){
+  if (document.hidden) {
+    lastVisibleTime = Date.now();
+  } else {
+    // Re-acquire wake lock
+    if (isRecording) acquireWakeLock();
+
+    if (isRecording && !isPaused) {
+      var gap = Date.now() - lastVisibleTime;
+      if (gap > 2000) {
+        document.getElementById('interrupt-overlay').classList.add('show');
+      }
+    }
+    dismissDim();
+  }
+});
+
+function resumeFromInterrupt() {
+  document.getElementById('interrupt-overlay').classList.remove('show');
+  // Restart speech recognition (it may have stopped while hidden)
+  startSpeechRecognition();
+  resetDimTimer();
+}
+
+function endFromInterrupt() {
+  document.getElementById('interrupt-overlay').classList.remove('show');
+  stopRecording();
+}
+
+/* ── Touch handler for dim reset ── */
+document.addEventListener('touchstart', function(){ if (isRecording) resetDimTimer(); }, { passive: true });
+document.addEventListener('click', function(){ if (isRecording) resetDimTimer(); });
+
+/* ── Speech Recognition ── */
+function startSpeechRecognition() {
+  if (!speechSupported) return;
+  var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) return;
+
+  if (recognition) {
+    try { recognition.abort(); } catch(e) {}
+  }
+
+  recognition = new SpeechRecognition();
+  recognition.lang = 'ja-JP';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
+
+  recognition.onresult = function(event) {
+    var finalText = '';
+    var interim = '';
+    for (var i = event.resultIndex; i < event.results.length; i++) {
+      var transcript = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        finalText += transcript;
+      } else {
+        interim += transcript;
+      }
+    }
+    if (finalText) {
+      transcriptParts.push({ text: finalText, timestamp: Date.now() });
+    }
+    interimText = interim;
+    renderTranscript();
+  };
+
+  recognition.onerror = function(event) {
+    // 'no-speech' and 'aborted' are normal; don't show error
+    if (event.error === 'no-speech' || event.error === 'aborted') return;
+    console.warn('Speech error:', event.error);
+  };
+
+  recognition.onend = function() {
+    // Auto-restart if still recording and not paused
+    if (isRecording && !isPaused) {
+      setTimeout(function(){
+        if (isRecording && !isPaused) {
+          startSpeechRecognition();
+        }
+      }, 200);
+    }
+  };
+
+  try {
+    recognition.start();
+  } catch(e) {
+    console.warn('Speech start failed:', e);
+  }
+}
+
+function stopSpeechRecognition() {
+  if (recognition) {
+    try { recognition.abort(); } catch(e) {}
+    recognition = null;
+  }
+  interimText = '';
+}
+
+function renderTranscript() {
+  var container = document.getElementById('transcript-live');
+  if (!container) return;
+  var html = '';
+  for (var i = 0; i < transcriptParts.length; i++) {
+    html += '<div class="transcript-final">' + escHtml(transcriptParts[i].text) + '</div>';
+  }
+  if (interimText) {
+    html += '<div class="transcript-interim">' + escHtml(interimText) + '</div>';
+  }
+  if (!html) {
+    html = '<div class="transcript-empty">音声を認識しています...</div>';
+  }
+  container.innerHTML = html;
+  container.scrollTop = container.scrollHeight;
+}
+
+function escHtml(s) {
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+/* ── Start recording ── */
+async function startRecording() {
+  try {
+    audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch(e) {
+    showToast('マイクへのアクセスが拒否されました');
+    return;
+  }
+
+  // MediaRecorder
+  var mimeType = 'audio/webm;codecs=opus';
+  if (!MediaRecorder.isTypeSupported(mimeType)) {
+    mimeType = 'audio/webm';
+    if (!MediaRecorder.isTypeSupported(mimeType)) {
+      mimeType = '';
+    }
+  }
+  try {
+    var opts = mimeType ? { mimeType: mimeType } : {};
+    mediaRecorder = new MediaRecorder(audioStream, opts);
+    mediaRecorder.ondataavailable = function(e) { /* chunks not stored permanently */ };
+    mediaRecorder.start(1000);
+  } catch(e) {
+    showToast('録音の開始に失敗しました');
+    return;
+  }
+
+  // State
+  isRecording = true;
+  isPaused = false;
+  transcriptParts = [];
+  interimText = '';
+  pausedDuration = 0;
+  pauseStartTime = null;
+  recordStartTime = Date.now();
+  aiResult = null;
+
+  // UI
+  showScreen('screen-recording');
+  document.getElementById('btn-record').classList.add('recording');
+  renderTranscript();
+  updateTimer();
+  timerInterval = setInterval(updateTimer, 1000);
+
+  // Speech
+  startSpeechRecognition();
+
+  // Wake Lock
+  acquireWakeLock();
+
+  // Dim timer
+  resetDimTimer();
+
+  // Autosave
+  autosaveInterval = setInterval(function(){
+    doAutosave();
+  }, AUTOSAVE_DELAY);
+}
+
+/* ── Pause / Resume ── */
+function togglePause() {
+  if (!isRecording) return;
+  var btn = document.getElementById('btn-pause');
+
+  if (isPaused) {
+    // Resume
+    isPaused = false;
+    if (pauseStartTime) {
+      pausedDuration += Date.now() - pauseStartTime;
+      pauseStartTime = null;
+    }
+    if (mediaRecorder && mediaRecorder.state === 'paused') mediaRecorder.resume();
+    startSpeechRecognition();
+    btn.textContent = '一時停止';
+    resetDimTimer();
+  } else {
+    // Pause
+    isPaused = true;
+    pauseStartTime = Date.now();
+    if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.pause();
+    stopSpeechRecognition();
+    btn.textContent = '再開';
+    clearTimeout(dimTimeout);
+    dismissDim();
+  }
+}
+
+/* ── Stop recording ── */
+function stopRecording() {
+  isRecording = false;
+  isPaused = false;
+
+  // Stop media
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    try { mediaRecorder.stop(); } catch(e) {}
+  }
+  if (audioStream) {
+    audioStream.getTracks().forEach(function(t){ t.stop(); });
+    audioStream = null;
+  }
+
+  // Stop speech
+  stopSpeechRecognition();
+
+  // Stop wake lock
+  releaseWakeLock();
+
+  // Stop timers
+  clearInterval(timerInterval);
+  clearTimeout(dimTimeout);
+  clearInterval(autosaveInterval);
+
+  // Dismiss overlays
+  dismissDim();
+  document.getElementById('interrupt-overlay').classList.remove('show');
+  document.getElementById('btn-record').classList.remove('recording');
+
+  // Process
+  processAndShowResult();
+}
+
+/* ── Process and show result ── */
+async function processAndShowResult() {
+  var fullText = getFullTranscriptText();
+
+  if (!fullText.trim()) {
+    showToast('文字起こしがありません');
+    backToIdle();
+    return;
+  }
+
+  // Show processing
+  showScreen('screen-processing');
+  resetProcessingSteps();
+
+  // Step 1: Transcribe (already done)
+  setStepDone('step-transcribe');
+
+  // Step 2: AI summarize
+  setStepActive('step-summarize');
+  try {
+    aiResult = await aiSummarize(fullText);
+  } catch(e) {
+    console.warn('AI summarize failed:', e);
+    aiResult = null;
+  }
+  setStepDone('step-summarize');
+
+  // Step 3: Prepare display
+  setStepActive('step-save');
+  await sleep(300);
+  setStepDone('step-save');
+
+  // Show result
+  showResultScreen(fullText);
+}
+
+function resetProcessingSteps() {
+  var steps = ['step-transcribe', 'step-summarize', 'step-save'];
+  for (var i = 0; i < steps.length; i++) {
+    var el = document.getElementById(steps[i]);
+    if (el) { el.className = 'processing-step'; }
+  }
+  setStepActive('step-transcribe');
+}
+
+function setStepActive(id) {
+  var el = document.getElementById(id);
+  if (el) el.className = 'processing-step active';
+}
+
+function setStepDone(id) {
+  var el = document.getElementById(id);
+  if (el) {
+    el.className = 'processing-step done';
+    el.querySelector('.spinner').outerHTML = '<span class="check-icon">✓</span>';
+  }
+}
+
+function sleep(ms) { return new Promise(function(r){ setTimeout(r, ms); }); }
+
+function getFullTranscriptText() {
+  var parts = [];
+  for (var i = 0; i < transcriptParts.length; i++) {
+    parts.push(transcriptParts[i].text);
+  }
+  return parts.join('\n');
+}
+
+/* ── AI Summarization ── */
+async function aiSummarize(text) {
+  var controller = new AbortController();
+  var timer = setTimeout(function(){ controller.abort(); }, 30000);
+
+  try {
+    var r = await fetch(WORKER + '/ai/summarize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text, lang: 'ja' }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var data = await r.json();
+    return {
+      summary: data.summary || '',
+      actionItems: data.actionItems || data.action_items || [],
+      participants: data.participants || [],
+    };
+  } catch(e) {
+    clearTimeout(timer);
+    throw e;
+  }
+}
+
+/* ── Show result screen ── */
+function showResultScreen(fullText) {
+  showScreen('screen-result');
+
+  // Summary
+  var summaryEl = document.getElementById('result-summary');
+  if (aiResult && aiResult.summary) {
+    summaryEl.textContent = aiResult.summary;
+  } else {
+    summaryEl.innerHTML = '<span style="color:var(--muted)">要約の生成に失敗しました。手動で保存できます。</span>';
+  }
+
+  // Action items
+  var actionsEl = document.getElementById('result-actions');
+  if (aiResult && aiResult.actionItems && aiResult.actionItems.length > 0) {
+    var html = '';
+    for (var i = 0; i < aiResult.actionItems.length; i++) {
+      html += '<li>' + escHtml(aiResult.actionItems[i]) + '</li>';
+    }
+    actionsEl.innerHTML = html;
+  } else {
+    actionsEl.innerHTML = '<li style="color:var(--muted)">なし</li>';
+  }
+
+  // Transcript
+  var transcriptEl = document.getElementById('result-transcript');
+  transcriptEl.textContent = fullText;
+  transcriptEl.classList.remove('expanded');
+  var expandBtn = document.getElementById('btn-expand');
+  if (expandBtn) expandBtn.textContent = '全文を表示';
+
+  // Title suggestion
+  var titleInput = document.getElementById('input-title');
+  var now = new Date();
+  var defaultTitle = (now.getMonth() + 1) + '/' + now.getDate() + ' 会議録音';
+  titleInput.value = defaultTitle;
+
+  // Participants
+  var participantsInput = document.getElementById('input-participants');
+  if (aiResult && aiResult.participants && aiResult.participants.length > 0) {
+    participantsInput.value = aiResult.participants.join(', ');
+  } else {
+    participantsInput.value = '';
+  }
+}
+
+function toggleTranscript() {
+  var el = document.getElementById('result-transcript');
+  var btn = document.getElementById('btn-expand');
+  if (el.classList.contains('expanded')) {
+    el.classList.remove('expanded');
+    btn.textContent = '全文を表示';
+  } else {
+    el.classList.add('expanded');
+    btn.textContent = '閉じる';
+  }
+}
+
+/* ── Save to Notion ── */
+async function saveToNotion() {
+  var btn = document.getElementById('btn-save');
+  btn.disabled = true;
+  btn.textContent = '保存中...';
+
+  var title = document.getElementById('input-title').value.trim() || '会議録音';
+  var participants = document.getElementById('input-participants').value.trim();
+  var fullText = getFullTranscriptText();
+  var elapsed = getElapsedMs();
+  var durationStr = formatTime(elapsed);
+  var summaryText = (aiResult && aiResult.summary) ? aiResult.summary : '';
+  var actionText = '';
+  if (aiResult && aiResult.actionItems && aiResult.actionItems.length > 0) {
+    actionText = aiResult.actionItems.join('\n');
+  }
+
+  // Build properties for Notion
+  var props = {
+    'タイトル': { title: [{ text: { content: title } }] },
+    '録音者': { rich_text: [{ text: { content: loginUser } }] },
+    '録音時間': { rich_text: [{ text: { content: durationStr } }] },
+    'ステータス': { select: { name: '完了' } },
+  };
+
+  if (participants) {
+    props['参加者'] = { rich_text: [{ text: { content: participants } }] };
+  }
+  if (summaryText) {
+    props['要約'] = { rich_text: [{ text: { content: summaryText.substring(0, 2000) } }] };
+  }
+  if (actionText) {
+    props['アクション'] = { rich_text: [{ text: { content: actionText.substring(0, 2000) } }] };
+  }
+
+  try {
+    // Create page
+    var page = await fooNotionCreate(RECORDING_DB, props);
+    var pageId = page.id;
+
+    // If transcript is long, add as page body blocks
+    if (fullText.length > 0) {
+      var blocks = buildTextBlocks(fullText);
+      if (blocks.length > 0) {
+        await appendBlocks(pageId, blocks);
+      }
+    }
+
+    // Clear autosave
+    localStorage.removeItem(AUTOSAVE_KEY);
+
+    showToast('Notionに保存しました');
+    backToIdle();
+  } catch(e) {
+    console.error('Save error:', e);
+    showToast('保存に失敗しました: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = 'Notionに保存';
+  }
+}
+
+function buildTextBlocks(text) {
+  // Split text into chunks of 1900 chars (Notion block limit is ~2000)
+  var blocks = [];
+  var remaining = text;
+  while (remaining.length > 0) {
+    var chunk = remaining.substring(0, 1900);
+    remaining = remaining.substring(1900);
+    blocks.push({
+      object: 'block',
+      type: 'paragraph',
+      paragraph: {
+        rich_text: [{ type: 'text', text: { content: chunk } }]
+      }
+    });
+  }
+  return blocks;
+}
+
+async function appendBlocks(pageId, blocks) {
+  // Notion API allows max 100 blocks per request
+  var batchSize = 100;
+  for (var i = 0; i < blocks.length; i += batchSize) {
+    var batch = blocks.slice(i, i + batchSize);
+    var r = await fetch(WORKER + '/blocks/' + pageId + '/children', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ children: batch }),
+    });
+    if (!r.ok) {
+      var err = await r.text();
+      throw new Error('Block append failed: ' + err);
+    }
+  }
+}
+
+/* ── Autosave ── */
+function doAutosave() {
+  if (!isRecording || transcriptParts.length === 0) return;
+  try {
+    var data = {
+      transcript: transcriptParts,
+      startTime: recordStartTime,
+      userName: loginUser,
+      savedAt: Date.now(),
+    };
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
+  } catch(e) { /* storage full or error */ }
+}
+
+/* ── Back to idle ── */
+function backToIdle() {
+  showScreen('screen-idle');
+  transcriptParts = [];
+  interimText = '';
+  aiResult = null;
+  document.getElementById('timer').textContent = '00:00';
+  loadHistory();
+}
+
+/* ── History ── */
+async function loadHistory() {
+  var container = document.getElementById('history-list');
+  try {
+    var data = await fooNotionQuery(RECORDING_DB, {
+      page_size: 20,
+      sorts: [{ timestamp: 'created_time', direction: 'descending' }],
+    });
+
+    if (!data.results || data.results.length === 0) {
+      container.innerHTML = '<div class="empty-state">録音履歴はまだありません</div>';
+      return;
+    }
+
+    var html = '';
+    for (var i = 0; i < data.results.length; i++) {
+      var pg = data.results[i];
+      var p = pg.properties || {};
+
+      var titleVal = '';
+      if (p['タイトル'] && p['タイトル'].title && p['タイトル'].title.length > 0) {
+        titleVal = p['タイトル'].title[0].plain_text || '';
+      }
+
+      var statusVal = '';
+      if (p['ステータス'] && p['ステータス'].select) {
+        statusVal = p['ステータス'].select.name || '';
+      }
+
+      var durationVal = '';
+      if (p['録音時間'] && p['録音時間'].rich_text && p['録音時間'].rich_text.length > 0) {
+        durationVal = p['録音時間'].rich_text[0].plain_text || '';
+      }
+
+      var summaryVal = '';
+      if (p['要約'] && p['要約'].rich_text && p['要約'].rich_text.length > 0) {
+        summaryVal = p['要約'].rich_text[0].plain_text || '';
+      }
+
+      var actionVal = '';
+      if (p['アクション'] && p['アクション'].rich_text && p['アクション'].rich_text.length > 0) {
+        actionVal = p['アクション'].rich_text[0].plain_text || '';
+      }
+
+      var createdStr = '';
+      if (pg.created_time) {
+        var d = new Date(pg.created_time);
+        createdStr = (d.getMonth() + 1) + '/' + d.getDate() + ' ' + (d.getHours() < 10 ? '0' : '') + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes();
+      }
+
+      var badgeClass = statusVal === '完了' ? 'badge-done' : (statusVal === '録音中' ? 'badge-recording' : 'badge-processing');
+
+      html += '<div class="history-card" onclick="toggleHistoryCard(this)">';
+      html += '<div class="history-card-top">';
+      html += '<div class="history-card-title">' + escHtml(titleVal || '無題') + '</div>';
+      if (statusVal) html += '<span class="badge ' + badgeClass + '">' + escHtml(statusVal) + '</span>';
+      html += '</div>';
+      html += '<div class="history-card-meta">';
+      if (createdStr) html += '<span>' + createdStr + '</span>';
+      if (durationVal) html += '<span>' + escHtml(durationVal) + '</span>';
+      html += '</div>';
+
+      // Detail (hidden)
+      if (summaryVal || actionVal) {
+        html += '<div class="history-card-detail">';
+        if (summaryVal) {
+          html += '<div class="history-detail-section"><div class="history-detail-label">要約</div><div class="history-detail-text">' + escHtml(summaryVal) + '</div></div>';
+        }
+        if (actionVal) {
+          html += '<div class="history-detail-section"><div class="history-detail-label">アクション</div><div class="history-detail-text">' + escHtml(actionVal).replace(/\n/g, '<br>') + '</div></div>';
+        }
+        html += '</div>';
+      }
+
+      html += '</div>';
+    }
+    container.innerHTML = html;
+
+  } catch(e) {
+    console.error('History load error:', e);
+    container.innerHTML = '<div class="empty-state">履歴の読み込みに失敗しました</div>';
+  }
+}
+
+function toggleHistoryCard(el) {
+  el.classList.toggle('expanded');
+}
+
+/* ── Init ── */
+loadHistory();
+</script>
+<script src="foo-swipe.js"></script>
+</body>
+</html>

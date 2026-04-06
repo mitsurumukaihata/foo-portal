@@ -885,10 +885,13 @@ async function saveToNotion() {
   }
 
   // Build properties for Notion
+  var now = new Date();
+  var jstIso = new Date(now.getTime() + 9 * 60 * 60 * 1000).toISOString().replace('Z', '+09:00');
   var props = {
     'タイトル': { title: [{ text: { content: title } }] },
-    '録音者': { rich_text: [{ text: { content: loginUser } }] },
-    '録音時間': { rich_text: [{ text: { content: durationStr } }] },
+    '日時': { date: { start: jstIso } },
+    '録音者': { select: { name: loginUser } },
+    '録音時間': { number: Math.round(elapsedSeconds / 60) || 1 },
     'ステータス': { select: { name: '完了' } },
   };
 
@@ -1017,8 +1020,8 @@ async function loadHistory() {
       }
 
       var durationVal = '';
-      if (p['録音時間'] && p['録音時間'].rich_text && p['録音時間'].rich_text.length > 0) {
-        durationVal = p['録音時間'].rich_text[0].plain_text || '';
+      if (p['録音時間'] && p['録音時間'].number !== null && p['録音時間'].number !== undefined) {
+        durationVal = p['録音時間'].number + '分';
       }
 
       var summaryVal = '';

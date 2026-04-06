@@ -201,7 +201,7 @@ async function callClaude(systemPrompt, userPrompt) {
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-3-5-haiku-latest',
       max_tokens: 8192,
       system: systemPrompt,
       tools: [

@@ -285,6 +285,7 @@ body::-webkit-scrollbar { display:none; }
   <div class="dim-dot"></div>
   <div class="dim-text">録音中</div>
   <div class="dim-timer" id="dim-timer">00:00</div>
+  <div style="margin-top:30px;"><button onclick="event.stopPropagation();stopRecording();" style="background:var(--red);color:#fff;border:none;border-radius:10px;padding:12px 28px;font-size:14px;font-weight:700;font-family:'Noto Sans JP',sans-serif;opacity:0.5;cursor:pointer;">録音終了</button></div>
 </div>
 
 <!-- Interrupt overlay -->
@@ -727,18 +728,15 @@ function stopRecording() {
 /* ── Show confirm screen after recording stops ── */
 function processAndShowResult() {
   var fullText = getFullTranscriptText();
-
-  if (!fullText.trim()) {
-    showToast('文字起こしがありません');
-    backToIdle();
-    return;
-  }
-
-  // Show confirm screen
   var mins = Math.floor(elapsedSeconds / 60);
   var secs = elapsedSeconds % 60;
   var infoEl = document.getElementById('confirm-info');
-  infoEl.textContent = '録音時間: ' + mins + '分' + secs + '秒　文字数: ' + fullText.length + '文字';
+
+  if (!fullText.trim()) {
+    infoEl.textContent = '録音時間: ' + mins + '分' + secs + '秒　※文字起こしがありません';
+  } else {
+    infoEl.textContent = '録音時間: ' + mins + '分' + secs + '秒　文字数: ' + fullText.length + '文字';
+  }
   showScreen('screen-confirm');
 }
 

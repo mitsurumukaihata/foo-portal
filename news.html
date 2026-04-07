@@ -37,13 +37,13 @@ body::-webkit-scrollbar{display:none;}
 .header-title{font-size:17px;font-weight:900;letter-spacing:-0.02em;}
 .header-title span{color:var(--accent);}
 
-/* Tab grid */
-.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px 16px;background:var(--s1);border-bottom:.5px solid var(--border);}
-.tab-btn{position:relative;padding:10px 8px;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;color:var(--muted);font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;text-align:center;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;}
+/* Tab rows */
+.tabs{display:flex;flex-wrap:wrap;gap:6px;padding:10px 16px;background:var(--s1);border-bottom:.5px solid var(--border);}
+.tab-btn{position:relative;padding:7px 12px;background:var(--s2);border:1.5px solid var(--border);border-radius:20px;color:var(--muted);font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;text-align:center;transition:all .15s;display:flex;align-items:center;gap:4px;white-space:nowrap;}
 .tab-btn:active{transform:scale(0.97);}
 .tab-btn.active{color:var(--accent);border-color:var(--accent);background:rgba(240,165,0,0.06);}
-.tab-btn .tab-icon{font-size:16px;}
-.tab-badge-new{position:absolute;top:-4px;right:-4px;width:18px;height:18px;background:var(--red);color:#fff;font-size:9px;font-weight:700;border-radius:50%;display:flex;align-items:center;justify-content:center;display:none;}
+.tab-btn .tab-icon{font-size:14px;}
+.tab-badge-new{position:absolute;top:-4px;right:-4px;width:16px;height:16px;background:var(--red);color:#fff;font-size:8px;font-weight:700;border-radius:50%;display:flex;align-items:center;justify-content:center;display:none;}
 .tab-badge-new.show{display:flex;}
 
 /* Content */

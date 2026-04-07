@@ -607,7 +607,8 @@ function goToNegStock(size, catKey) {
 function refreshNegBanners() {
   if (state.step === 0) {
     const el = document.getElementById('entry-content');
-    if (el) renderSize(el);
+    // 準備中一覧や他の特別画面を表示中は再描画しない
+    if (el && !el.querySelector('.screen-label') && !el.querySelector('.prep-empty')) renderSize(el);
   }
   const stockEl = document.getElementById('stock-content');
   if (stockEl?.querySelector('.stock-size-search')) renderStockHome();

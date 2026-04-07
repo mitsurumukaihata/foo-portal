@@ -2,10 +2,10 @@ name: Daily Industry News
 
 on:
   schedule:
-    # レートリミット対策: 各ジョブ間を10分以上空ける
-    - cron: '45 21 * * *'   # 運送業界ニュース (JST 6:45)
-    - cron: '57 21 * * *'   # トラックディーラーニュース (JST 6:57)
-    - cron: '10 22 * * *'   # タイヤ業界ニュース (JST 7:10)
+    # 月水金のみ配信（レートリミット対策: 各ジョブ間10分以上）
+    - cron: '45 21 * * 0,2,4'   # 運送業界ニュース (JST 月水金 6:45)
+    - cron: '57 21 * * 0,2,4'   # トラックディーラーニュース (JST 月水金 6:57)
+    - cron: '10 22 * * 0,2,4'   # タイヤ業界ニュース (JST 月水金 7:10)
   workflow_dispatch:
     inputs:
       news_type:
@@ -15,7 +15,7 @@ on:
 
 jobs:
   transport-news:
-    if: github.event_name == 'workflow_dispatch' && (inputs.news_type == 'transport' || inputs.news_type == 'all') || github.event.schedule == '45 21 * * *'
+    if: github.event_name == 'workflow_dispatch' && (inputs.news_type == 'transport' || inputs.news_type == 'all') || github.event.schedule == '45 21 * * 0,2,4'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,7 +30,7 @@ jobs:
         run: node .github/scripts/post-news.mjs
 
   dealer-news:
-    if: github.event_name == 'workflow_dispatch' && (inputs.news_type == 'dealer' || inputs.news_type == 'all') || github.event.schedule == '57 21 * * *'
+    if: github.event_name == 'workflow_dispatch' && (inputs.news_type == 'dealer' || inputs.news_type == 'all') || github.event.schedule == '57 21 * * 0,2,4'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,7 +45,7 @@ jobs:
         run: node .github/scripts/post-news.mjs
 
   tire-news:
-    if: github.event_name == 'workflow_dispatch' && (inputs.news_type == 'tire' || inputs.news_type == 'all') || github.event.schedule == '10 22 * * *'
+    if: github.event_name == 'workflow_dispatch' && (inputs.news_type == 'tire' || inputs.news_type == 'all') || github.event.schedule == '10 22 * * 0,2,4'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

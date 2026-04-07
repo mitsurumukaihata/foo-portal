@@ -37,12 +37,14 @@ body::-webkit-scrollbar{display:none;}
 .header-title{font-size:17px;font-weight:900;letter-spacing:-0.02em;}
 .header-title span{color:var(--accent);}
 
-/* Tab bar */
-.tabs{display:flex;gap:0;padding:0 16px;background:var(--s1);border-bottom:.5px solid var(--border);overflow-x:auto;scrollbar-width:none;}
-.tabs::-webkit-scrollbar{display:none;}
-.tab-btn{flex:1;min-width:0;padding:12px 4px 10px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;text-align:center;white-space:nowrap;transition:all .2s;}
-.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
-.tab-btn .tab-icon{font-size:18px;display:block;margin-bottom:2px;}
+/* Tab grid */
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px 16px;background:var(--s1);border-bottom:.5px solid var(--border);}
+.tab-btn{position:relative;padding:10px 8px;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;color:var(--muted);font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;text-align:center;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.tab-btn:active{transform:scale(0.97);}
+.tab-btn.active{color:var(--accent);border-color:var(--accent);background:rgba(240,165,0,0.06);}
+.tab-btn .tab-icon{font-size:16px;}
+.tab-badge-new{position:absolute;top:-4px;right:-4px;width:18px;height:18px;background:var(--red);color:#fff;font-size:9px;font-weight:700;border-radius:50%;display:flex;align-items:center;justify-content:center;display:none;}
+.tab-badge-new.show{display:flex;}
 
 /* Content */
 .page-content{display:none;padding:12px 16px 80px;}
@@ -174,26 +176,58 @@ const contentCache = {}; // pageId -> html
 
 /* ── Render tabs ── */
 function renderTabs() {
-  const bar = document.getElementById('tab-bar');
-  bar.innerHTML = CATEGORIES.map((cat, i) =>
-    `<button class="tab-btn${i === currentTab ? ' active' : ''}" onclick="switchNewsTab(${i})">
-      <span class="tab-icon">${cat.icon}</span>${cat.name}
-    </button>`
-  ).join('');
+  var bar = document.getElementById('tab-bar');
+  bar.innerHTML = CATEGORIES.map(function(cat, i) {
+    return '<button class="tab-btn' + (i === currentTab ? ' active' : '') + '" id="tab-' + cat.key + '" onclick="switchNewsTab(' + i + ')">'
+      + '<span class="tab-icon">' + cat.icon + '</span>' + cat.name
+      + '<span class="tab-badge-new" id="badge-' + cat.key + '"></span>'
+      + '</button>';
+  }).join('');
 
-  const container = document.getElementById('pages-container');
-  container.innerHTML = CATEGORIES.map((cat, i) =>
-    `<div class="page-content${i === currentTab ? ' active' : ''}" id="page-${cat.key}">
-      <div class="loading"><div class="spinner"></div><br>読み込み中...</div>
-    </div>`
-  ).join('');
+  var container = document.getElementById('pages-container');
+  container.innerHTML = CATEGORIES.map(function(cat, i) {
+    return '<div class="page-content' + (i === currentTab ? ' active' : '') + '" id="page-' + cat.key + '">'
+      + '<div class="loading"><div class="spinner"></div><br>読み込み中...</div>'
+      + '</div>';
+  }).join('');
+
+  // 全カテゴリの未読数をチェック
+  checkAllBadges();
 }
 
 function switchNewsTab(idx) {
   currentTab = idx;
-  document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
-  document.querySelectorAll('.page-content').forEach((p, i) => p.classList.toggle('active', i === idx));
+  document.querySelectorAll('.tab-btn').forEach(function(b, i) { b.classList.toggle('active', i === idx); });
+  document.querySelectorAll('.page-content').forEach(function(p, i) { p.classList.toggle('active', i === idx); });
+  // このタブのバッジを消す
+  var cat = CATEGORIES[idx];
+  var badge = document.getElementById('badge-' + cat.key);
+  if (badge) badge.classList.remove('show');
   loadCategory(idx);
+}
+
+/* ── Check unread badges for all categories ── */
+async function checkAllBadges() {
+  for (var i = 0; i < CATEGORIES.length; i++) {
+    var cat = CATEGORIES[i];
+    try {
+      var data = await notionPost('/databases/' + NEWS_DB_ID + '/query', {
+        filter: {
+          and: [
+            { property: 'カテゴリ', select: { equals: cat.filter } },
+            { property: '確認者', multi_select: { does_not_contain: loginUser } }
+          ]
+        },
+        page_size: 1,
+      });
+      var count = (data.results || []).length;
+      var badge = document.getElementById('badge-' + cat.key);
+      if (badge && count > 0) {
+        badge.textContent = '!';
+        badge.classList.add('show');
+      }
+    } catch(e) { /* silent */ }
+  }
 }
 
 /* ── Notion API ── */

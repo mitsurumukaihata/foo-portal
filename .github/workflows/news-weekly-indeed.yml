@@ -1,9 +1,7 @@
 name: Weekly Indeed Analysis
 
 on:
-  schedule:
-    # JST 毎週月曜 9:20 = UTC 日曜 0:20
-    - cron: '20 0 * * 1'
+  # schedule停止: Claude Code経由の手動投稿に移行（2026/04/07）
   workflow_dispatch:
 
 jobs:

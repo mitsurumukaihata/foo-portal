@@ -1,11 +1,9 @@
 name: Daily Industry News
 
 on:
-  schedule:
-    # 月水金のみ配信（UTC=JST-9h。JST月水金の朝=UTC日火木の夜）
-    - cron: '45 21 * * 0,2,4'   # 運送業界ニュース (UTC日火木 21:45 = JST月水金 6:45)
-    - cron: '57 21 * * 0,2,4'   # トラックディーラーニュース (UTC日火木 21:57 = JST月水金 6:57)
-    - cron: '10 22 * * 0,2,4'   # タイヤ業界ニュース (UTC日火木 22:10 = JST月水金 7:10)
+  # schedule停止: Claude Code経由の手動投稿に移行（2026/04/07）
+  # Anthropic API課金を削減するため、スケジュール自動配信を停止。
+  # 必要時はworkflow_dispatchで手動実行可能。
   workflow_dispatch:
     inputs:
       news_type:

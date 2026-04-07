@@ -149,16 +149,23 @@ let loginUser = '';
 /* ── ニュースDB ── */
 const NEWS_DB_ID = '7e3fdea7165d41b1918c5d25f15e7c36';
 const ALL_CATEGORIES = [
-  { key: 'tire',    icon: '🛞', name: 'タイヤ',       filter: '🛞 タイヤ' },
-  { key: 'unsou',   icon: '🚚', name: '運送',         filter: '🚚 運送' },
-  { key: 'dealer',  icon: '🚛', name: 'ディーラー',   filter: '🚛 ディーラー' },
-  { key: 'indeed',  icon: '📊', name: 'Indeed',       filter: '📊 Indeed', ownerOnly: true },
+  { key: 'tire',       icon: '🛞', name: 'タイヤ',       filter: '🛞 タイヤ' },
+  { key: 'unsou',      icon: '🚚', name: '運送',         filter: '🚚 運送' },
+  { key: 'dealer',     icon: '🚛', name: 'ディーラー',   filter: '🚛 ディーラー' },
+  { key: 'subsidy',    icon: '💴', name: '経営・助成金', filter: '💴 経営・助成金', keiriOnly: true },
+  { key: 'hiroshima',  icon: '📈', name: '広島経済',     filter: '📈 広島経済' },
+  { key: 'maintenance',icon: '🔧', name: '自動車整備',   filter: '🔧 自動車整備' },
+  { key: 'logistics',  icon: '🌍', name: '物流DX',       filter: '🌍 物流DX' },
+  { key: 'sns',        icon: '📱', name: 'SNSマーケ',    filter: '📱 SNSマーケ' },
+  { key: 'indeed',     icon: '📊', name: 'Indeed',       filter: '📊 Indeed', ownerOnly: true },
 ];
-// Indeed は向畑さんのみ表示
+// Indeed: 向畑充のみ / 経営・助成金: 向畑充+向畑綾花のみ / 他: 全社員
 const OWNER_NAMES = ['向畑 充', '向畑充'];
+const KEIRI_NAMES = ['向畑 充', '向畑充', '向畑 綾花', '向畑綾花'];
 const CATEGORIES = ALL_CATEGORIES.filter(function(cat) {
-  if (!cat.ownerOnly) return true;
-  return OWNER_NAMES.indexOf(loginUser) >= 0;
+  if (cat.ownerOnly) return OWNER_NAMES.indexOf(loginUser) >= 0;
+  if (cat.keiriOnly) return KEIRI_NAMES.indexOf(loginUser) >= 0;
+  return true;
 });
 
 let currentTab = 0;

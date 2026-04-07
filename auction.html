@@ -586,16 +586,26 @@ select.sep-input { appearance: none; -webkit-appearance: none;
         <div class="fform-note">タイヤ情報（サイズ・残溝等）の入力欄は省略しています</div>
       </div>
 
-      <!-- ===== S（その他）===== -->
+      <!-- ===== S（その他商品）===== -->
       <div id="fform-s" class="fform-section" style="display:none;">
         <div class="sec-lbl">基本情報</div>
         <div class="form-grid">
           <div class="fg"><label>管理番号</label><input type="text" id="fs-mgmt" inputmode="text" lang="en" placeholder="例: S05"><div class="mgmt-hint" id="mgmt-hint-s"></div></div>
+          <div class="fg full"><label>商品名（タイトル用）</label><input type="text" id="fs-name" placeholder="例: トラック用リアバンパー"></div>
+          <div class="fg"><label>カテゴリ</label><select id="fs-cat" class="fg-sel"><option value="">選択</option><option>外装パーツ</option><option>内装</option><option>工具</option><option>電装</option><option>ホイール関連</option><option>タイヤ関連</option><option>その他</option></select></div>
+          <div class="fg"><label>メーカー・型番</label><input type="text" id="fs-maker" placeholder="例: 日野純正 52159-E0030"></div>
+          <div class="fg"><label>状態</label><select id="fs-cond" class="fg-sel"><option value="">選択</option><option>新品</option><option>中古美品</option><option>中古</option><option>ジャンク</option></select></div>
+          <div class="fg"><label>数量</label><select id="fs-num" class="fg-sel"><option value="">選択</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>セット</option></select></div>
+          <div class="fg"><label>サイズ・寸法</label><input type="text" id="fs-size" placeholder="例: 幅180cm×高さ30cm"></div>
+          <div class="fg"><label>対応車種</label><input type="text" id="fs-vehicle" placeholder="例: 日野プロフィア"></div>
+        </div>
+        <div class="sec-lbl">状態詳細・出品</div>
+        <div class="form-grid">
+          <div class="fg full"><label>キズ・不具合の説明</label><textarea id="fs-damage" placeholder="例: 右端に小キズあり（写真3枚目参照）"></textarea></div>
           <div class="fg"><label>出品価格（円）</label><input type="number" id="fs-price" inputmode="numeric" placeholder="0"></div>
-          <div class="fg full"><label>商品名（タイトル用）</label><input type="text" id="fs-name" placeholder="例: 工具セット"></div>
+          <div class="fg"><label>進捗</label><select id="fs-status" class="fg-sel"><option>未掲載</option><option>掲載中</option><option>交渉中</option></select></div>
           <div class="fg"><label>保管場所</label><select id="fs-storage" class="fg-sel"><option value="">—</option><option>１F</option><option>２F</option><option>３F</option><option>外１F</option><option>外２F</option><option>外３F</option><option>コンテナ</option><option>五Ｓ下</option></select></div>
           <div class="fg"><label>保管場所詳細</label><input type="text" id="fs-storage-detail" placeholder="例: 棚B-3"></div>
-          <div class="fg"><label>進捗</label><select id="fs-status" class="fg-sel"><option>未掲載</option><option>掲載中</option><option>交渉中</option></select></div>
           <div class="fg full"><label>商品説明</label><textarea id="fs-desc" placeholder="ヤフオク掲載用の説明文"></textarea></div>
           <div class="fg full"><label>備考欄</label><textarea id="fs-note" placeholder="内部メモ"></textarea></div>
         </div>
@@ -1400,10 +1410,21 @@ async function submitForm() {
     price = gv('fk-price'); status = gv('fk-status'); desc = gt('fk-desc'); note = gt('fk-note');
     if (!size) { showFormMsg('商品名を入力してください', true); return; }
   } else if (type === 's') {
-    mgmt = gt('fs-mgmt'); maker = ''; size = gt('fs-name'); pattern = ''; cat = ''; num = ''; tread = '';
-    serial = ''; newcar = ''; cond = ''; truck = ''; wheel = '__NO__';
+    mgmt = gt('fs-mgmt'); maker = gt('fs-maker'); size = gt('fs-name'); pattern = ''; cat = gv('fs-cat'); num = gv('fs-num'); tread = '';
+    serial = ''; newcar = ''; cond = gv('fs-cond'); truck = ''; wheel = '__NO__';
     storage = gv('fs-storage'); storDet = gt('fs-storage-detail');
-    price = gv('fs-price'); status = gv('fs-status'); desc = gt('fs-desc'); note = gt('fs-note');
+    price = gv('fs-price'); status = gv('fs-status');
+    // S系は商品説明に各フィールド情報を自動追記
+    var sDamage = gt('fs-damage'); var sSize = gt('fs-size'); var sVehicle = gt('fs-vehicle');
+    var sDescParts = [];
+    if (gt('fs-desc')) sDescParts.push(gt('fs-desc'));
+    if (sSize) sDescParts.push('【サイズ・寸法】' + sSize);
+    if (sVehicle) sDescParts.push('【対応車種】' + sVehicle);
+    if (maker) sDescParts.push('【メーカー・型番】' + maker);
+    if (cond) sDescParts.push('【状態】' + cond);
+    if (sDamage) sDescParts.push('【キズ・不具合】' + sDamage);
+    desc = sDescParts.join('\n');
+    note = gt('fs-note');
     if (!size) { showFormMsg('商品名を入力してください', true); return; }
   }
 
@@ -2158,10 +2179,10 @@ function resetForm() {
     const el = document.getElementById(id); if (el) el.selectedIndex = 0;
   });
   // Sその他
-  ['fs-mgmt','fs-name','fs-storage-detail','fs-price','fs-desc','fs-note'].forEach(id => {
+  ['fs-mgmt','fs-name','fs-maker','fs-size','fs-vehicle','fs-damage','fs-storage-detail','fs-price','fs-desc','fs-note'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
-  ['fs-storage','fs-status'].forEach(id => {
+  ['fs-cat','fs-cond','fs-num','fs-storage','fs-status'].forEach(id => {
     const el = document.getElementById(id); if (el) el.selectedIndex = 0;
   });
   // hint全消し

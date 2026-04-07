@@ -1938,6 +1938,8 @@ async function checkBadges(user) {
     try {
       let count = 0;
       if (cfg.isNews) {
+        // ニュースバッジは向畑さんのみ
+        if (userName !== '向畑 充') continue;
         // ニュースDB: 確認者に自分がいない直近の記事をカウント
         const res = await fetch(BADGE_PROXY + '/databases/' + cfg.commDb + '/query', {
           method: 'POST',

@@ -199,15 +199,15 @@ function switchNewsTab(idx) {
   currentTab = idx;
   document.querySelectorAll('.tab-btn').forEach(function(b, i) { b.classList.toggle('active', i === idx); });
   document.querySelectorAll('.page-content').forEach(function(p, i) { p.classList.toggle('active', i === idx); });
-  // このタブのバッジを消す
-  var cat = CATEGORIES[idx];
-  var badge = document.getElementById('badge-' + cat.key);
-  if (badge) badge.classList.remove('show');
+  // バッジはタブを開いただけでは消さない（記事を開いて既読になったら消える）
   loadCategory(idx);
 }
 
-/* ── Check unread badges for all categories ── */
+/* ── Check unread badges for all categories（向畑さんのみ） ── */
 async function checkAllBadges() {
+  // バッジ機能は向畑さんのみ
+  if (OWNER_NAMES.indexOf(loginUser) < 0) return;
+
   for (var i = 0; i < CATEGORIES.length; i++) {
     var cat = CATEGORIES[i];
     try {
@@ -228,6 +228,32 @@ async function checkAllBadges() {
       }
     } catch(e) { /* silent */ }
   }
+}
+
+/* ── 記事既読後にバッジを再チェック ── */
+async function refreshBadgeForCategory(catKey) {
+  if (OWNER_NAMES.indexOf(loginUser) < 0) return;
+  var cat = CATEGORIES.find(function(c) { return c.key === catKey; });
+  if (!cat) return;
+  try {
+    var data = await notionPost('/databases/' + NEWS_DB_ID + '/query', {
+      filter: {
+        and: [
+          { property: 'カテゴリ', select: { equals: cat.filter } },
+          { property: '確認者', multi_select: { does_not_contain: loginUser } }
+        ]
+      },
+      page_size: 1,
+    });
+    var badge = document.getElementById('badge-' + cat.key);
+    if (badge) {
+      if ((data.results || []).length > 0) {
+        badge.classList.add('show');
+      } else {
+        badge.classList.remove('show');
+      }
+    }
+  } catch(e) { /* silent */ }
 }
 
 /* ── Notion API ── */
@@ -336,8 +362,10 @@ async function openArticle(pageId, title) {
     contentCache[pageId] = html;
     vContent.innerHTML = html;
 
-    // 確認者に自分を追加（既読マーク）
-    markAsRead(pageId);
+    // 確認者に自分を追加（既読マーク）→ バッジ再チェック
+    await markAsRead(pageId);
+    var cat = CATEGORIES[currentTab];
+    if (cat) refreshBadgeForCategory(cat.key);
   } catch (e) {
     vContent.innerHTML = `<div style="color:var(--red);padding:20px;">読み込みエラー: ${e.message}</div>`;
   }

@@ -392,6 +392,9 @@ select.sep-input { appearance: none; -webkit-appearance: none;
 .thumb-canvas-wrap canvas { flex:1; width:100%; object-fit:contain; border-radius:4px; min-height:0; }
 .thumb-btns { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
 .thumb-btn { padding:10px 20px; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; text-align:center; display:flex; align-items:center; justify-content:center; }
+.thumb-zoom-ctrl { display:flex; align-items:center; gap:6px; padding:6px 0; }
+.thumb-zoom-btn { width:36px; height:36px; border:none; border-radius:8px; background:#333; color:#fff; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.thumb-zoom-btn:active { background:#555; }
 .thumb-btn-upload { background:var(--amber); color:#fff; }
 .thumb-btn-download { background:var(--green); color:#fff; }
 .thumb-btn-close { background:var(--bg2); border:1px solid var(--border); color:var(--text); }
@@ -695,6 +698,13 @@ select.sep-input { appearance: none; -webkit-appearance: none;
 <div class="thumb-overlay" id="thumb-overlay">
   <div class="thumb-canvas-wrap">
     <canvas id="thumb-cv"></canvas>
+    <div class="thumb-zoom-ctrl" id="thumb-zoom-ctrl" style="display:none;">
+      <button class="thumb-zoom-btn" onclick="thumbZoom(-0.1)">➖</button>
+      <input type="range" id="thumb-zoom-range" min="50" max="300" value="100" oninput="thumbZoomSlider(this.value)" style="flex:1;accent-color:#f0a500;">
+      <button class="thumb-zoom-btn" onclick="thumbZoom(0.1)">➕</button>
+      <button class="thumb-zoom-btn" onclick="thumbResetPos()">↺</button>
+    </div>
+    <div style="font-size:10px;color:#888;text-align:center;margin-top:2px;" id="thumb-drag-hint" style="display:none;">写真をドラッグで移動 / スライダーでズーム</div>
     <div class="thumb-btns">
       <label class="thumb-btn thumb-btn-upload">📷 写真選択<input type="file" accept="image/*" id="thumb-file" style="display:none" onchange="onThumbFileSelect(event)"></label>
       <button class="thumb-btn thumb-btn-download" onclick="downloadThumb()">📥 保存</button>
@@ -2321,6 +2331,15 @@ function showToast(msg, isErr = false) {
 
 // ===== サムネ自動生成 =====
 var thumbPageId = null;
+var thumbScale = 1.0;
+var thumbOffX = 0;
+var thumbOffY = 0;
+var thumbCurrentImg = null;
+var thumbDragging = false;
+var thumbDragStartX = 0;
+var thumbDragStartY = 0;
+var thumbDragOffX = 0;
+var thumbDragOffY = 0;
 var _logoCache = {};
 
 // ロゴ画像を事前にプリロード
@@ -2335,18 +2354,25 @@ var _logoCache = {};
 
 function openThumbGen(pageId) {
   thumbPageId = pageId;
+  thumbScale = 1.0;
+  thumbOffX = 0;
+  thumbOffY = 0;
+  thumbCurrentImg = null;
   var record = allRecords.find(function(r) { return r.id === pageId; });
   if (!record) return;
 
   document.getElementById('thumb-overlay').classList.add('show');
-  // ファイル入力リセット
+  document.getElementById('thumb-zoom-ctrl').style.display = 'none';
+  document.getElementById('thumb-drag-hint').style.display = 'none';
   document.getElementById('thumb-file').value = '';
+  document.getElementById('thumb-zoom-range').value = 100;
   drawThumb(record, null);
 }
 
 function closeThumbOverlay() {
   document.getElementById('thumb-overlay').classList.remove('show');
   thumbPageId = null;
+  thumbCurrentImg = null;
 }
 
 function onThumbFileSelect(e) {
@@ -2358,11 +2384,92 @@ function onThumbFileSelect(e) {
   var reader = new FileReader();
   reader.onload = function(ev) {
     var img = new Image();
-    img.onload = function() { drawThumb(record, img); };
+    img.onload = function() {
+      thumbCurrentImg = img;
+      thumbScale = 1.0;
+      thumbOffX = 0;
+      thumbOffY = 0;
+      document.getElementById('thumb-zoom-range').value = 100;
+      document.getElementById('thumb-zoom-ctrl').style.display = 'flex';
+      document.getElementById('thumb-drag-hint').style.display = 'block';
+      drawThumb(record, img);
+    };
     img.src = ev.target.result;
   };
   reader.readAsDataURL(file);
 }
+
+// ズーム操作
+function thumbZoom(delta) {
+  thumbScale = Math.max(0.5, Math.min(3.0, thumbScale + delta));
+  document.getElementById('thumb-zoom-range').value = Math.round(thumbScale * 100);
+  redrawThumb();
+}
+
+function thumbZoomSlider(val) {
+  thumbScale = val / 100;
+  redrawThumb();
+}
+
+function thumbResetPos() {
+  thumbScale = 1.0;
+  thumbOffX = 0;
+  thumbOffY = 0;
+  document.getElementById('thumb-zoom-range').value = 100;
+  redrawThumb();
+}
+
+function redrawThumb() {
+  var record = allRecords.find(function(r) { return r.id === thumbPageId; });
+  if (record) drawThumb(record, thumbCurrentImg);
+}
+
+// Canvas上でのドラッグ操作
+(function() {
+  var cv;
+  function getCv() { if (!cv) cv = document.getElementById('thumb-cv'); return cv; }
+
+  function getPos(e) {
+    var rect = getCv().getBoundingClientRect();
+    var t = e.touches ? e.touches[0] : e;
+    return { x: t.clientX - rect.left, y: t.clientY - rect.top, scaleX: getCv().width / rect.width, scaleY: getCv().height / rect.height };
+  }
+
+  function onStart(e) {
+    if (!thumbCurrentImg) return;
+    var pos = getPos(e);
+    thumbDragging = true;
+    thumbDragStartX = pos.x;
+    thumbDragStartY = pos.y;
+    thumbDragOffX = thumbOffX;
+    thumbDragOffY = thumbOffY;
+    e.preventDefault();
+  }
+
+  function onMove(e) {
+    if (!thumbDragging) return;
+    var pos = getPos(e);
+    thumbOffX = thumbDragOffX + (pos.x - thumbDragStartX) * pos.scaleX;
+    thumbOffY = thumbDragOffY + (pos.y - thumbDragStartY) * pos.scaleY;
+    redrawThumb();
+    e.preventDefault();
+  }
+
+  function onEnd(e) {
+    thumbDragging = false;
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var c = getCv();
+    c.addEventListener('mousedown', onStart);
+    c.addEventListener('mousemove', onMove);
+    c.addEventListener('mouseup', onEnd);
+    c.addEventListener('mouseleave', onEnd);
+    c.addEventListener('touchstart', onStart, { passive: false });
+    c.addEventListener('touchmove', onMove, { passive: false });
+    c.addEventListener('touchend', onEnd);
+  });
+})();
 
 function drawThumb(record, tireImg) {
   var cv = document.getElementById('thumb-cv');
@@ -2391,9 +2498,11 @@ function drawThumb(record, tireImg) {
   if (tireImg) {
     var imgW = tireImg.naturalWidth || tireImg.width;
     var imgH = tireImg.naturalHeight || tireImg.height;
-    var dw = W;
-    var dh = imgH * (W / imgW);
-    H = Math.round(dh + 160); // 写真の高さ + 下部帯
+    var baseW = W;
+    var baseH = imgH * (W / imgW);
+    var dw = baseW * thumbScale;
+    var dh = baseH * thumbScale;
+    H = Math.round(baseH + 160); // 元の写真高さ + 下部帯（Canvasサイズはズームに依存しない）
   }
   cv.width = W;
   cv.height = H;
@@ -2402,9 +2511,11 @@ function drawThumb(record, tireImg) {
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, W, H);
 
-  // タイヤ写真（上から配置、幅いっぱい）
+  // タイヤ写真（ズーム・オフセット対応）
   if (tireImg) {
-    ctx.drawImage(tireImg, 0, 0, dw, dh);
+    var dx = (W - dw) / 2 + thumbOffX;
+    var dy = (baseH - dh) / 2 + thumbOffY;
+    ctx.drawImage(tireImg, dx, dy, dw, dh);
   } else {
     ctx.fillStyle = '#f0f0f0';
     ctx.fillRect(0, 0, W, H - 160);

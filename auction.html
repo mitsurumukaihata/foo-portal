@@ -694,7 +694,7 @@ select.sep-input { appearance: none; -webkit-appearance: none;
 <!-- サムネ自動生成オーバーレイ -->
 <div class="thumb-overlay" id="thumb-overlay">
   <div class="thumb-canvas-wrap">
-    <canvas id="thumb-cv" width="1200" height="1200"></canvas>
+    <canvas id="thumb-cv"></canvas>
     <div class="thumb-btns">
       <label class="thumb-btn thumb-btn-upload">📷 写真選択<input type="file" accept="image/*" id="thumb-file" style="display:none" onchange="onThumbFileSelect(event)"></label>
       <button class="thumb-btn thumb-btn-download" onclick="downloadThumb()">📥 保存</button>

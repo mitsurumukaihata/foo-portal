@@ -2427,13 +2427,13 @@ function drawThumb(record, tireImg) {
     var lw, lh;
     if (ratio > 3) {
       // 横にとても長いロゴ（BRIDGESTONE, YOKOHAMA等）
-      lw = 420; lh = lw / ratio;
+      lw = 550; lh = lw / ratio;
     } else if (ratio > 2) {
       // 横長ロゴ（DUNLOP, MICHELIN, GOODYEAR等）
-      lw = 360; lh = lw / ratio;
+      lw = 480; lh = lw / ratio;
     } else {
       // 正方形寄りのロゴ（TOYO等）
-      lh = 110; lw = lh * ratio;
+      lh = 130; lw = lh * ratio;
     }
     // 上部帯の高さ150px内で縦中央に配置
     var ly = (150 - lh) / 2;

@@ -390,7 +390,7 @@ select.sep-input { appearance: none; -webkit-appearance: none;
 .thumb-overlay.show { display:flex; }
 .thumb-canvas-wrap { background:#222; border-radius:12px; padding:16px; max-width:95%; }
 .thumb-canvas-wrap canvas { max-width:100%; border-radius:8px; }
-.thumb-btns { display:flex; gap:10px; margin-top:12px; justify-content:center; }
+.thumb-btns { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
 .thumb-btn { padding:10px 20px; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
 .thumb-btn-upload { background:var(--amber); color:#fff; }
 .thumb-btn-download { background:var(--green); color:#fff; }
@@ -696,8 +696,9 @@ select.sep-input { appearance: none; -webkit-appearance: none;
   <div class="thumb-canvas-wrap">
     <canvas id="thumb-cv" width="1200" height="1200"></canvas>
     <div class="thumb-btns">
-      <label class="thumb-btn thumb-btn-upload">📷 写真を選択<input type="file" accept="image/*" id="thumb-file" style="display:none" onchange="onThumbFileSelect(event)"></label>
-      <button class="thumb-btn thumb-btn-download" onclick="downloadThumb()">📥 ダウンロード</button>
+      <label class="thumb-btn thumb-btn-upload">📷 写真選択<input type="file" accept="image/*" id="thumb-file" style="display:none" onchange="onThumbFileSelect(event)"></label>
+      <button class="thumb-btn thumb-btn-download" onclick="downloadThumb()">📥 保存</button>
+      <label class="thumb-btn thumb-btn-upload">🔄 写真変更<input type="file" accept="image/*" id="thumb-file2" style="display:none" onchange="onThumbFileSelect(event)"></label>
       <button class="thumb-btn thumb-btn-close" onclick="closeThumbOverlay()">✕ 閉じる</button>
     </div>
   </div>
@@ -2457,7 +2458,7 @@ function drawThumb(record, tireImg) {
   if (num) {
     ctx.font = 'bold 56px "DM Mono", "Noto Sans JP", monospace';
     var sizeWidth = ctx.measureText(size).width;
-    var numX = 30 + sizeWidth + 40;
+    var numX = 30 + sizeWidth + 80;
     ctx.fillStyle = '#999999';
     ctx.font = 'bold 30px "Noto Sans JP", sans-serif';
     ctx.fillText('本数', numX, H - 120);

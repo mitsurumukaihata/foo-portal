@@ -2392,43 +2392,43 @@ function drawThumb(record, tireImg) {
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, W, H);
 
-  // タイヤ写真（中央・少し大きめ）
+  // タイヤ写真（中央・大きく・上寄せ）
   if (tireImg) {
     var imgW = tireImg.naturalWidth || tireImg.width;
     var imgH = tireImg.naturalHeight || tireImg.height;
-    var scale = Math.min((W - 20) / imgW, (H - 340) / imgH);
+    var scale = Math.min(W / imgW, (H - 160) / imgH);
     var dw = imgW * scale;
     var dh = imgH * scale;
     var dx = (W - dw) / 2;
-    var dy = 190 + ((H - 340 - dh) / 2);
+    var dy = (H - 160 - dh) / 2;
     ctx.drawImage(tireImg, dx, dy, dw, dh);
   } else {
     ctx.fillStyle = '#f0f0f0';
-    ctx.fillRect(40, 190, W - 80, H - 340);
+    ctx.fillRect(0, 0, W, H - 160);
     ctx.fillStyle = '#ccc';
     ctx.font = '48px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('📷 写真を選択してください', W/2, H/2);
+    ctx.fillText('📷 写真を選択してください', W/2, (H - 160)/2);
     ctx.textAlign = 'left';
   }
 
-  // 上部帯（ロゴ用に大きく）
-  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  // 上部帯（半透明で写真の上に重ねる）
+  ctx.fillStyle = 'rgba(255,255,255,0.88)';
   ctx.fillRect(0, 0, W, 180);
 
-  // メーカーロゴ or テキスト（倍サイズ）
+  // メーカーロゴ or テキスト
   if (typeof MAKER_LOGOS !== 'undefined' && MAKER_LOGOS[maker] && _logoCache[maker]) {
     var logoImg = _logoCache[maker];
     var natW = logoImg.naturalWidth || 1;
     var natH = logoImg.naturalHeight || 1;
     var ratio = natW / natH;
     var lw, lh;
-    var maxH = 150;
+    var maxH = 160;
     if (ratio > 3) {
-      lw = Math.min(W * 0.7, 840); lh = lw / ratio;
+      lw = 1000; lh = lw / ratio;
     } else if (ratio > 2) {
-      lw = Math.min(W * 0.6, 720); lh = lw / ratio;
+      lw = 900; lh = lw / ratio;
     } else {
       lh = maxH; lw = lh * ratio;
     }
@@ -2437,7 +2437,7 @@ function drawThumb(record, tireImg) {
     ctx.drawImage(logoImg, 28, ly, lw, lh);
   } else {
     ctx.fillStyle = '#333333';
-    ctx.font = 'bold 80px "Noto Sans JP", sans-serif';
+    ctx.font = 'bold 90px "Noto Sans JP", sans-serif';
     ctx.textBaseline = 'middle';
     ctx.fillText(maker, 30, 90);
   }

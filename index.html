@@ -1938,14 +1938,29 @@ async function checkBadges(user) {
     try {
       let count = 0;
       if (cfg.isNews) {
-        // ニュースバッジは向畑さんのみ
-        if (userName !== '向畑 充') continue;
-        // ニュースDB: 確認者に自分がいない直近の記事をカウント
+        // ニュース通知: 向畑充=全カテゴリ、藤井真理亜=SNSマーケのみ、他=なし
+        const isOwner = userName === '向畑 充';
+        const isFujii = userName === '藤井真理亜' || userName === '藤井 真理亜';
+        if (!isOwner && !isFujii) continue;
+
+        // カテゴリ別にフィルタリング
+        let newsFilter;
+        if (isOwner) {
+          // 向畑さん: 全カテゴリ
+          newsFilter = { property: '確認者', multi_select: { does_not_contain: userName } };
+        } else if (isFujii) {
+          // 藤井さん: SNSマーケのみ
+          newsFilter = { and: [
+            { property: '確認者', multi_select: { does_not_contain: userName } },
+            { property: 'カテゴリ', select: { equals: '📱 SNSマーケ' } }
+          ]};
+        }
+
         const res = await fetch(BADGE_PROXY + '/databases/' + cfg.commDb + '/query', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            filter: { property: '確認者', multi_select: { does_not_contain: userName } },
+            filter: newsFilter,
             sorts: [{ timestamp: 'created_time', direction: 'descending' }],
             page_size: 20
           })

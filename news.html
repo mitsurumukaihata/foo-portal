@@ -287,12 +287,16 @@ async function loadCategory(idx) {
       page_size: 30,
     });
 
-    const articles = (data.results || []).map(p => ({
-      id: p.id,
-      title: p.properties['タイトル']?.title?.[0]?.plain_text || '（無題）',
-      date: p.properties['日付']?.date?.start || '',
-      importance: p.properties['重要度']?.select?.name || '',
-    }));
+    const articles = (data.results || []).map(p => {
+      var readers = (p.properties['確認者']?.multi_select || []).map(s => s.name);
+      return {
+        id: p.id,
+        title: p.properties['タイトル']?.title?.[0]?.plain_text || '（無題）',
+        date: p.properties['日付']?.date?.start || '',
+        importance: p.properties['重要度']?.select?.name || '',
+        isRead: readers.indexOf(loginUser) >= 0,
+      };
+    });
 
     // 日付降順でソート（プロキシ側のソートが文字化けする場合の保険）
     articles.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
@@ -324,8 +328,10 @@ function renderArticleList(idx) {
 
     const dateStr = art.date ? art.date.replace(/-/g, '/') : '';
 
-    return `<div class="news-card" onclick="openArticle('${art.id}','${escAttr(art.title)}')">
-      <div class="news-title">${esc(art.title)}${badge}</div>
+    var unreadMark = (!art.isRead && OWNER_NAMES.indexOf(loginUser) >= 0) ? '<span style="display:inline-block;width:8px;height:8px;background:var(--red);border-radius:50%;margin-right:6px;flex-shrink:0;"></span>' : '';
+
+    return `<div class="news-card" onclick="openArticle('${art.id}','${escAttr(art.title)}')" style="${!art.isRead ? 'border-left:3px solid var(--accent);' : ''}">
+      <div class="news-title" style="display:flex;align-items:flex-start;">${unreadMark}<span>${esc(art.title)}</span>${badge}</div>
       ${dateStr ? `<div class="news-date">${dateStr}</div>` : ''}
     </div>`;
   }).join('');

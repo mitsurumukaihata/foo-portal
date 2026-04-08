@@ -2415,7 +2415,7 @@ function drawThumb(record, tireImg) {
 
   // 上部帯（半透明で写真の上に重ねる）
   ctx.fillStyle = 'rgba(255,255,255,0.88)';
-  ctx.fillRect(0, 0, W, 220);
+  ctx.fillRect(0, 0, W, 160);
 
   // メーカーロゴ（メーカー毎に個別サイズ設定）
   var LOGO_SIZES = {
@@ -2435,14 +2435,14 @@ function drawThumb(record, tireImg) {
     // 帯の高さ160px内に収める
     var lw = ls.w;
     var lh = ls.h;
-    if (lh > 200) { lw = lw * (200 / lh); lh = 200; }
-    var ly = (220 - lh) / 2;
+    if (lh > 140) { lw = lw * (140 / lh); lh = 140; }
+    var ly = (160 - lh) / 2;
     ctx.drawImage(logoImg, 24, ly, lw, lh);
   } else {
     ctx.fillStyle = '#333333';
     ctx.font = 'bold 80px "Noto Sans JP", sans-serif';
     ctx.textBaseline = 'middle';
-    ctx.fillText(maker, 30, 110);
+    ctx.fillText(maker, 30, 80);
   }
 
   // 右上バッジ
@@ -2458,7 +2458,7 @@ function drawThumb(record, tireImg) {
     var tw = ctx.measureText(label).width;
     var bw = tw + 44;
     var bh = 70;
-    var by = 75;
+    var by = 45;
     bx -= bw;
 
     ctx.beginPath();

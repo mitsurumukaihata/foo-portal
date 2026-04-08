@@ -2424,16 +2424,19 @@ function drawThumb(record, tireImg) {
     var natH = logoImg.naturalHeight || 1;
     var ratio = natW / natH;
     var lw, lh;
-    var maxH = 160;
+    var maxH = 300;
     if (ratio > 3) {
-      lw = 1000; lh = lw / ratio;
+      lw = W; lh = lw / ratio;
     } else if (ratio > 2) {
-      lw = 900; lh = lw / ratio;
+      lw = W * 0.9; lh = lw / ratio;
     } else {
       lh = maxH; lw = lh * ratio;
     }
     if (lh > maxH) { lw = lw * (maxH / lh); lh = maxH; }
-    var ly = (180 - lh) / 2;
+    // 上部帯をロゴに合わせて拡張
+    ctx.fillStyle = 'rgba(255,255,255,0.88)';
+    ctx.fillRect(0, 0, W, lh + 40);
+    var ly = 20;
     ctx.drawImage(logoImg, 28, ly, lw, lh);
   } else {
     ctx.fillStyle = '#333333';

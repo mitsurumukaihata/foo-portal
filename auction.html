@@ -2400,11 +2400,11 @@ function drawThumb(record, tireImg) {
     var dw = imgW * scale;
     var dh = imgH * scale;
     var dx = (W - dw) / 2;
-    var dy = 160 + ((H - 360 - dh) / 2);
+    var dy = 210 + ((H - 410 - dh) / 2);
     ctx.drawImage(tireImg, dx, dy, dw, dh);
   } else {
     ctx.fillStyle = '#f0f0f0';
-    ctx.fillRect(40, 160, W - 80, H - 360);
+    ctx.fillRect(40, 210, W - 80, H - 410);
     ctx.fillStyle = '#ccc';
     ctx.font = '48px sans-serif';
     ctx.textAlign = 'center';
@@ -2415,7 +2415,7 @@ function drawThumb(record, tireImg) {
 
   // 上部帯
   ctx.fillStyle = 'rgba(255,255,255,0.92)';
-  ctx.fillRect(0, 0, W, 150);
+  ctx.fillRect(0, 0, W, 200);
 
   // メーカーロゴ or テキスト
   if (typeof MAKER_LOGOS !== 'undefined' && MAKER_LOGOS[maker] && _logoCache[maker]) {
@@ -2425,18 +2425,17 @@ function drawThumb(record, tireImg) {
     var ratio = natW / natH;
     // メーカーごとに最適サイズ（上部帯150px内にバランスよく配置）
     var lw, lh;
+    // 上部帯を大きくしてロゴを目立たせる
+    var maxH = 160;
     if (ratio > 3) {
-      // 横にとても長いロゴ（BRIDGESTONE, YOKOHAMA等）
-      lw = 550; lh = lw / ratio;
+      lw = 700; lh = lw / ratio;
     } else if (ratio > 2) {
-      // 横長ロゴ（DUNLOP, MICHELIN, GOODYEAR等）
-      lw = 480; lh = lw / ratio;
+      lw = 600; lh = lw / ratio;
     } else {
-      // 正方形寄りのロゴ（TOYO等）
-      lh = 130; lw = lh * ratio;
+      lh = maxH; lw = lh * ratio;
     }
-    // 上部帯の高さ150px内で縦中央に配置
-    var ly = (150 - lh) / 2;
+    if (lh > maxH) { lw = lw * (maxH / lh); lh = maxH; }
+    var ly = (200 - lh) / 2;
     ctx.drawImage(logoImg, 28, ly, lw, lh);
   } else {
     ctx.fillStyle = '#333333';
@@ -2458,7 +2457,7 @@ function drawThumb(record, tireImg) {
     var tw = ctx.measureText(label).width;
     var bw = tw + 44;
     var bh = 70;
-    var by = 40;
+    var by = 65;
     bx -= bw;
 
     ctx.beginPath();

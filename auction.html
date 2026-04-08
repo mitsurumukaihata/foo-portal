@@ -384,6 +384,19 @@ select.sep-input { appearance: none; -webkit-appearance: none;
   .stat-row{gap:8px;}
   .filter-grid{grid-template-columns:repeat(4,1fr);}
 }
+
+/* ===== サムネ自動生成オーバーレイ ===== */
+.thumb-overlay { position:fixed; inset:0; z-index:600; background:rgba(0,0,0,0.8); display:none; flex-direction:column; align-items:center; justify-content:center; }
+.thumb-overlay.show { display:flex; }
+.thumb-canvas-wrap { background:#222; border-radius:12px; padding:16px; max-width:95%; }
+.thumb-canvas-wrap canvas { max-width:100%; border-radius:8px; }
+.thumb-btns { display:flex; gap:10px; margin-top:12px; justify-content:center; }
+.thumb-btn { padding:10px 20px; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
+.thumb-btn-upload { background:var(--amber); color:#fff; }
+.thumb-btn-download { background:var(--green); color:#fff; }
+.thumb-btn-close { background:var(--bg2); border:1px solid var(--border); color:var(--text); }
+.ship-card-btn-thumb { border-color: var(--teal); color: var(--teal); }
+.ship-card-btn-thumb:hover { background: var(--teal-bg); }
 </style>
 </head>
 <body>
@@ -675,6 +688,18 @@ select.sep-input { appearance: none; -webkit-appearance: none;
       <!-- JS生成 -->
     </div>
     <button class="sheet-close-btn" onclick="closeModal('modal-sheet')">閉じる</button>
+  </div>
+</div>
+
+<!-- サムネ自動生成オーバーレイ -->
+<div class="thumb-overlay" id="thumb-overlay">
+  <div class="thumb-canvas-wrap">
+    <canvas id="thumb-cv" width="1200" height="1200"></canvas>
+    <div class="thumb-btns">
+      <label class="thumb-btn thumb-btn-upload">📷 写真を選択<input type="file" accept="image/*" id="thumb-file" style="display:none" onchange="onThumbFileSelect(event)"></label>
+      <button class="thumb-btn thumb-btn-download" onclick="downloadThumb()">📥 ダウンロード</button>
+      <button class="thumb-btn thumb-btn-close" onclick="closeThumbOverlay()">✕ 閉じる</button>
+    </div>
   </div>
 </div>
 
@@ -2052,6 +2077,7 @@ function renderShipList() {
       </div>
       <div class="ship-card-btns">
         ${hasError ? `<button class="ship-card-btn ship-card-btn-edit" onclick="toggleEditPanel('${r.id}')">✏️ 編集</button>` : ''}
+        <button class="ship-card-btn ship-card-btn-thumb" onclick="openThumbGen('${r.id}')">📷 サムネ</button>
         <button class="ship-card-btn ship-card-btn-code" onclick="openShipDetail('${r.id}')">📋 出品コード</button>
       </div>
       ${hasError ? `<div class="ship-edit-panel" id="${panelId}">${buildEditPanel(r)}</div>` : ''}
@@ -2289,6 +2315,175 @@ function showToast(msg, isErr = false) {
   t.style.borderColor = isErr ? 'var(--red)' : 'var(--amber)';
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ===== サムネ自動生成 =====
+var thumbPageId = null;
+
+function openThumbGen(pageId) {
+  thumbPageId = pageId;
+  var record = allRecords.find(function(r) { return r.id === pageId; });
+  if (!record) return;
+
+  document.getElementById('thumb-overlay').classList.add('show');
+  // ファイル入力リセット
+  document.getElementById('thumb-file').value = '';
+  drawThumb(record, null);
+}
+
+function closeThumbOverlay() {
+  document.getElementById('thumb-overlay').classList.remove('show');
+  thumbPageId = null;
+}
+
+function onThumbFileSelect(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var record = allRecords.find(function(r) { return r.id === thumbPageId; });
+  if (!record) return;
+
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    var img = new Image();
+    img.onload = function() { drawThumb(record, img); };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function drawThumb(record, tireImg) {
+  var cv = document.getElementById('thumb-cv');
+  var ctx = cv.getContext('2d');
+  var W = 1200, H = 1200;
+
+  // データ取得
+  var maker = p(record, 'メーカー') || '';
+  var size = p(record, 'サイズ（正式）') || p(record, '名前') || '';
+  var pattern = p(record, 'パターン') || '';
+  var category = p(record, 'カテゴリ') || '';
+  var serial = p(record, 'セリアル') || '';
+  var num = p(record, '本数') || '';
+  var cond = p(record, '新車外し？') || '';
+  if (!cond) {
+    var tireState = p(record, '状態タイヤ（選択）') || '';
+    if (tireState.includes('新品')) cond = '新品';
+    else if (tireState.includes('イボ残り')) cond = '新品溝';
+    else if (tireState.includes('良好')) cond = '良品溝';
+    else if (tireState) cond = tireState.split('（')[0];
+  }
+  var mgmt = p(record, '管理番号') || '';
+
+  // 背景（白）
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, H);
+
+  // タイヤ写真（中央）
+  if (tireImg) {
+    var imgW = tireImg.naturalWidth || tireImg.width;
+    var imgH = tireImg.naturalHeight || tireImg.height;
+    var scale = Math.min((W - 40) / imgW, (H - 360) / imgH);
+    var dw = imgW * scale;
+    var dh = imgH * scale;
+    var dx = (W - dw) / 2;
+    var dy = 160 + ((H - 360 - dh) / 2);
+    ctx.drawImage(tireImg, dx, dy, dw, dh);
+  } else {
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(40, 160, W - 80, H - 360);
+    ctx.fillStyle = '#ccc';
+    ctx.font = '48px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('📷 写真を選択してください', W/2, H/2);
+    ctx.textAlign = 'left';
+  }
+
+  // 上部帯
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.fillRect(0, 0, W, 150);
+
+  // メーカー名
+  ctx.fillStyle = '#333333';
+  ctx.font = 'bold 64px "Noto Sans JP", sans-serif';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(maker, 30, 75);
+
+  // 右上バッジ
+  var badges = [];
+  if (serial) badges.push(serial.slice(0,4) + '年製');
+  if (category) badges.push(category);
+  if (cond) badges.push(cond);
+
+  var bx = W - 30;
+  for (var bi = badges.length - 1; bi >= 0; bi--) {
+    var label = badges[bi];
+    ctx.font = 'bold 36px "Noto Sans JP", sans-serif';
+    var tw = ctx.measureText(label).width;
+    var bw = tw + 44;
+    var bh = 70;
+    var by = 40;
+    bx -= bw;
+
+    ctx.beginPath();
+    ctx.roundRect(bx, by, bw, bh, 35);
+    ctx.fillStyle = '#f0a500';
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 34px "Noto Sans JP", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, bx + bw/2, by + bh/2);
+    ctx.textAlign = 'left';
+    bx -= 14;
+  }
+
+  // 下部帯
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.fillRect(0, H - 160, W, 160);
+
+  // 左下: サイズ
+  ctx.fillStyle = '#999999';
+  ctx.font = 'bold 30px "Noto Sans JP", sans-serif';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('サイズ', 30, H - 120);
+  ctx.font = 'bold 56px "DM Mono", "Noto Sans JP", monospace';
+  ctx.fillStyle = '#222222';
+  ctx.fillText(size, 30, H - 60);
+
+  // 右下: 管理番号 + ロゴ
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#f0a500';
+  ctx.font = 'bold 72px "DM Mono", monospace';
+  ctx.fillText(mgmt, W - 30, H - 90);
+  ctx.fillStyle = '#888888';
+  ctx.font = 'bold 28px "Noto Sans JP", sans-serif';
+  ctx.fillText('Tire Manager f.o.o', W - 30, H - 30);
+  ctx.textAlign = 'left';
+
+  // 本数バッジ
+  if (num) {
+    var numLabel = num + '本';
+    ctx.font = 'bold 34px "Noto Sans JP", sans-serif';
+    var ntw = ctx.measureText(numLabel).width;
+    ctx.beginPath();
+    ctx.roundRect(30, H - 210, ntw + 36, 56, 28);
+    ctx.fillStyle = 'rgba(240,165,0,0.9)';
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(numLabel, 48, H - 182);
+  }
+}
+
+function downloadThumb() {
+  var cv = document.getElementById('thumb-cv');
+  var record = allRecords.find(function(r) { return r.id === thumbPageId; });
+  var mgmt = record ? (p(record, '管理番号') || 'thumb') : 'thumb';
+  var link = document.createElement('a');
+  link.download = mgmt + '_thumbnail.png';
+  link.href = cv.toDataURL('image/png');
+  link.click();
 }
 </script>
 <script src="foo-swipe.js"></script>

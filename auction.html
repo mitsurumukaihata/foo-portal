@@ -2442,7 +2442,7 @@ function drawThumb(record, tireImg) {
   ctx.fillStyle = 'rgba(255,255,255,0.92)';
   ctx.fillRect(0, H - 160, W, 160);
 
-  // 左下: サイズ
+  // 左下: サイズ + 本数
   ctx.fillStyle = '#999999';
   ctx.font = 'bold 30px "Noto Sans JP", sans-serif';
   ctx.textBaseline = 'middle';
@@ -2450,6 +2450,19 @@ function drawThumb(record, tireImg) {
   ctx.font = 'bold 56px "DM Mono", "Noto Sans JP", monospace';
   ctx.fillStyle = '#222222';
   ctx.fillText(size, 30, H - 60);
+
+  // サイズの右に本数（同じスタイル）
+  if (num) {
+    ctx.font = 'bold 56px "DM Mono", "Noto Sans JP", monospace';
+    var sizeWidth = ctx.measureText(size).width;
+    var numX = 30 + sizeWidth + 40;
+    ctx.fillStyle = '#999999';
+    ctx.font = 'bold 30px "Noto Sans JP", sans-serif';
+    ctx.fillText('本数', numX, H - 120);
+    ctx.font = 'bold 56px "DM Mono", "Noto Sans JP", monospace';
+    ctx.fillStyle = '#222222';
+    ctx.fillText(num + '本', numX, H - 60);
+  }
 
   // 右下: 管理番号 + ロゴ
   ctx.textAlign = 'right';
@@ -2460,20 +2473,6 @@ function drawThumb(record, tireImg) {
   ctx.font = 'bold 28px "Noto Sans JP", sans-serif';
   ctx.fillText('Tire Manager f.o.o', W - 30, H - 30);
   ctx.textAlign = 'left';
-
-  // 本数バッジ
-  if (num) {
-    var numLabel = num + '本';
-    ctx.font = 'bold 34px "Noto Sans JP", sans-serif';
-    var ntw = ctx.measureText(numLabel).width;
-    ctx.beginPath();
-    ctx.roundRect(30, H - 210, ntw + 36, 56, 28);
-    ctx.fillStyle = 'rgba(240,165,0,0.9)';
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(numLabel, 48, H - 182);
-  }
 }
 
 function downloadThumb() {

@@ -2418,15 +2418,16 @@ function drawThumb(record, tireImg) {
   ctx.fillRect(0, 0, W, 160);
 
   // メーカーロゴ（メーカー毎に個別サイズ設定）
+  // Goodyear w:450 h:89 を基準に全メーカーの視覚的サイズを統一
   var LOGO_SIZES = {
-    'TOYO':        { w: 350, h: 350 },  // 正方形 1:1
-    'PIRELLI':     { w: 1000, h: 1000 }, // 正方形 1:1 ※2倍
-    'BRIDGESTONE': { w: 1238, h: 825 }, // 横長 1.5:1 ※さらに1.5倍
-    'DUNLOP':      { w: 500, h: 373 },  // 横長 1.34:1
-    'YOKOHAMA':    { w: 850, h: 134 },  // 超横長 6.35:1
-    'ミシュラン':    { w: 650, h: 198 },  // 横長 3.29:1
-    'Good Year':   { w: 450, h: 89 },   // 超横長 5.08:1 ※0.9倍
-    'ファルケン':    { w: 500, h: 200 },
+    'TOYO':        { w: 130, h: 130 },  // 正方形 1:1
+    'PIRELLI':     { w: 130, h: 130 },  // 正方形 1:1
+    'BRIDGESTONE': { w: 380, h: 253 },  // 横長 1.5:1
+    'DUNLOP':      { w: 340, h: 254 },  // 横長 1.34:1
+    'YOKOHAMA':    { w: 500, h: 79 },   // 超横長 6.35:1
+    'ミシュラン':    { w: 420, h: 128 },  // 横長 3.29:1
+    'Good Year':   { w: 450, h: 89 },   // 超横長 5.08:1 ※基準
+    'ファルケン':    { w: 350, h: 130 },
   };
 
   if (typeof MAKER_LOGOS !== 'undefined' && MAKER_LOGOS[maker] && _logoCache[maker]) {

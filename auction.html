@@ -2367,9 +2367,8 @@ function onThumbFileSelect(e) {
 function drawThumb(record, tireImg) {
   var cv = document.getElementById('thumb-cv');
   var ctx = cv.getContext('2d');
-  var W = 1200, H = 1200;
-  cv.width = W;
-  cv.height = H;
+  var W = 1200;
+  var H = 1200; // デフォルト。写真があればアスペクト比で調整
 
   // データ取得
   var maker = p(record, 'メーカー') || '';
@@ -2388,20 +2387,24 @@ function drawThumb(record, tireImg) {
   }
   var mgmt = p(record, '管理番号') || '';
 
+  // 写真があればCanvasの高さを写真に合わせる
+  if (tireImg) {
+    var imgW = tireImg.naturalWidth || tireImg.width;
+    var imgH = tireImg.naturalHeight || tireImg.height;
+    var dw = W;
+    var dh = imgH * (W / imgW);
+    H = Math.round(dh + 160); // 写真の高さ + 下部帯
+  }
+  cv.width = W;
+  cv.height = H;
+
   // 背景（白）
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, W, H);
 
-  // タイヤ写真（中央・大きく・上寄せ）※サイズ固定
+  // タイヤ写真（上から配置、幅いっぱい）
   if (tireImg) {
-    var imgW = tireImg.naturalWidth || tireImg.width;
-    var imgH = tireImg.naturalHeight || tireImg.height;
-    var scale = Math.min(W / imgW, (H - 160) / imgH);
-    var dw = imgW * scale;
-    var dh = imgH * scale;
-    var dx = (W - dw) / 2;
-    var dy = (H - 160 - dh) / 2;
-    ctx.drawImage(tireImg, dx, dy, dw, dh);
+    ctx.drawImage(tireImg, 0, 0, dw, dh);
   } else {
     ctx.fillStyle = '#f0f0f0';
     ctx.fillRect(0, 0, W, H - 160);

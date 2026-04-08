@@ -2436,7 +2436,7 @@ function drawThumb(record, tireImg) {
     // 帯の高さ160px内に収める
     var lw = ls.w;
     var lh = ls.h;
-    if (lh > 140) { lw = lw * (140 / lh); lh = 140; }
+    // 高さ制限なし（LOGO_SIZESで個別に最適化済み）
     var ly = (160 - lh) / 2;
     ctx.drawImage(logoImg, 24, ly, lw, lh);
   } else {

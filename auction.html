@@ -2320,6 +2320,17 @@ function showToast(msg, isErr = false) {
 
 // ===== サムネ自動生成 =====
 var thumbPageId = null;
+var _logoCache = {};
+
+// ロゴ画像を事前にプリロード
+(function() {
+  if (typeof MAKER_LOGOS === 'undefined') return;
+  for (var key in MAKER_LOGOS) {
+    var img = new Image();
+    img.src = MAKER_LOGOS[key];
+    _logoCache[key] = img;
+  }
+})();
 
 function openThumbGen(pageId) {
   thumbPageId = pageId;
@@ -2406,20 +2417,12 @@ function drawThumb(record, tireImg) {
   ctx.fillRect(0, 0, W, 150);
 
   // メーカーロゴ or テキスト
-  if (typeof MAKER_LOGOS !== 'undefined' && MAKER_LOGOS[maker]) {
-    var logoImg = new Image();
-    logoImg.src = MAKER_LOGOS[maker];
-    try {
-      var lh = 90;
-      var lw = logoImg.width * (lh / logoImg.height);
-      if (lw > 500) { lw = 500; lh = logoImg.height * (500 / logoImg.width); }
-      ctx.drawImage(logoImg, 24, (150 - lh) / 2, lw, lh);
-    } catch(e) {
-      ctx.fillStyle = '#333333';
-      ctx.font = 'bold 64px "Noto Sans JP", sans-serif';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(maker, 30, 75);
-    }
+  if (typeof MAKER_LOGOS !== 'undefined' && MAKER_LOGOS[maker] && _logoCache[maker]) {
+    var logoImg = _logoCache[maker];
+    var lh = 90;
+    var lw = logoImg.naturalWidth * (lh / logoImg.naturalHeight);
+    if (lw > 500) { lw = 500; lh = logoImg.naturalHeight * (500 / logoImg.naturalWidth); }
+    ctx.drawImage(logoImg, 24, (150 - lh) / 2, lw, lh);
   } else {
     ctx.fillStyle = '#333333';
     ctx.font = 'bold 64px "Noto Sans JP", sans-serif';

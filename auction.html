@@ -1959,7 +1959,20 @@ function checkMissingFields(record) {
   const prefix  = mgmt ? mgmt[0].toUpperCase() : '';
   const isWheel = p(record, 'ホイール付き？') === true;
 
-  if (!mgmt)                              warnings.push({ text: '管理番号未入力', level: 'error' });
+  if (!mgmt) warnings.push({ text: '管理番号未入力', level: 'error' });
+
+  // S系（その他商品）は専用チェック
+  if (prefix === 'S') {
+    if (!p(record, '名前'))                 warnings.push({ text: '商品名未入力',     level: 'error' });
+    if (!p(record, '値段'))                 warnings.push({ text: '価格未設定',       level: 'warn'  });
+    if (!p(record, '状態タイヤ（選択）'))   warnings.push({ text: '状態未選択',       level: 'warn'  });
+    if (!p(record, 'カテゴリ'))             warnings.push({ text: 'カテゴリ未選択',   level: 'warn'  });
+    if (!p(record, '商品説明'))             warnings.push({ text: '商品説明未入力',   level: 'warn'  });
+    if (!p(record, '固定文（Sテンプレ本文）')) warnings.push({ text: 'S固定文未入力', level: 'error' });
+    return warnings;
+  }
+
+  // T系・K系・ホイール付き（タイヤ系）のチェック
   if (!p(record, 'メーカー'))             warnings.push({ text: 'メーカー未選択', level: 'error' });
   if (!p(record, 'サイズ（正式）') && !p(record, '名前')) warnings.push({ text: 'サイズ未入力', level: 'error' });
   if (!p(record, '値段'))                 warnings.push({ text: '価格未設定',     level: 'warn'  });
@@ -1976,8 +1989,7 @@ function checkMissingFields(record) {
 
   // 固定文チェック（管理番号の種類に応じて）
   if (prefix === 'K' && !p(record, '固定文（Kテンプレ本文）'))         warnings.push({ text: 'K固定文未入力', level: 'error' });
-  else if (prefix === 'S' && !p(record, '固定文（Sテンプレ本文）'))    warnings.push({ text: 'S固定文未入力', level: 'error' });
-  else if (prefix && prefix !== 'K' && prefix !== 'S' && !p(record, '固定文（テンプレ本文）')) {
+  else if (prefix && prefix !== 'K' && !p(record, '固定文（テンプレ本文）')) {
     warnings.push({ text: '固定文未入力', level: 'error' });
   }
 

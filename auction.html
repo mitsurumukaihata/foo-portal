@@ -2355,6 +2355,13 @@ function drawThumb(record, tireImg) {
   var cv = document.getElementById('thumb-cv');
   var ctx = cv.getContext('2d');
   var W = 1200, H = 1200;
+  // 高DPI対応（2倍解像度で描画→CSS表示サイズは維持）
+  var dpr = 2;
+  cv.width = W * dpr;
+  cv.height = H * dpr;
+  cv.style.width = W + 'px';
+  cv.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
 
   // データ取得
   var maker = p(record, 'メーカー') || '';

@@ -627,7 +627,10 @@ select.sep-input { appearance: none; -webkit-appearance: none;
         </div>
       </div>
 
-      <button class="submit-btn" id="submit-btn" onclick="submitForm()">Notionに登録</button>
+      <div style="display:flex;gap:8px;margin-top:18px;">
+        <button class="submit-btn" id="submit-btn" onclick="submitForm()" style="margin-top:0;">Notionに登録</button>
+        <button class="submit-btn" onclick="openThumbFromForm()" style="margin-top:0;background:var(--teal,#2dd4bf);flex:0 0 auto;padding:12px 16px;">📷</button>
+      </div>
       <div class="form-msg" id="form-msg"></div>
     </div>
   </div>
@@ -2629,13 +2632,93 @@ function drawThumb(record, tireImg) {
 
 function downloadThumb() {
   var cv = document.getElementById('thumb-cv');
-  var record = allRecords.find(function(r) { return r.id === thumbPageId; });
-  var mgmt = record ? (p(record, '管理番号') || 'thumb') : 'thumb';
+  var mgmt = 'thumb';
+  if (thumbPageId === '__form__') {
+    mgmt = document.getElementById('f-mgmt')?.value || document.getElementById('fw-mgmt')?.value || document.getElementById('fk-mgmt')?.value || document.getElementById('fs-mgmt')?.value || 'thumb';
+  } else {
+    var record = allRecords.find(function(r) { return r.id === thumbPageId; });
+    mgmt = record ? (p(record, '管理番号') || 'thumb') : 'thumb';
+  }
   var link = document.createElement('a');
   link.download = mgmt + '_thumbnail.png';
   link.href = cv.toDataURL('image/png');
   link.click();
 }
+
+// 新規登録フォームからサムネ生成
+function openThumbFromForm() {
+  // フォームの現在の値から擬似recordを作成
+  var type = document.querySelector('.fform-section:not([style*="display:none"],[style*="display: none"])');
+  var maker = '', size = '', pattern = '', category = '', serial = '', num = '', cond = '', mgmt = '';
+
+  if (type && type.id === 'fform-tire') {
+    mgmt = document.getElementById('f-mgmt')?.value || '';
+    maker = document.getElementById('f-maker-form')?.value || '';
+    size = document.getElementById('f-size')?.value || '';
+    pattern = document.getElementById('f-pattern')?.value || '';
+    category = document.getElementById('f-cat')?.value || '';
+    num = document.getElementById('f-num')?.value || '';
+    serial = document.getElementById('f-serial')?.value || '';
+    cond = document.getElementById('f-newcar')?.value || '';
+    if (!cond) cond = document.getElementById('f-cond')?.value || '';
+  } else if (type && type.id === 'fform-wheel') {
+    mgmt = document.getElementById('fw-mgmt')?.value || '';
+    maker = document.getElementById('fw-maker')?.value || '';
+    size = document.getElementById('fw-size')?.value || '';
+    pattern = document.getElementById('fw-pattern')?.value || '';
+    category = document.getElementById('fw-cat')?.value || '';
+    num = document.getElementById('fw-num')?.value || '';
+    serial = document.getElementById('fw-serial')?.value || '';
+    cond = document.getElementById('fw-cond')?.value || '';
+  } else if (type && type.id === 'fform-k') {
+    mgmt = document.getElementById('fk-mgmt')?.value || '';
+    size = document.getElementById('fk-name')?.value || '';
+  } else if (type && type.id === 'fform-s') {
+    mgmt = document.getElementById('fs-mgmt')?.value || '';
+    size = document.getElementById('fs-name')?.value || '';
+    category = document.getElementById('fs-cat')?.value || '';
+    cond = document.getElementById('fs-cond')?.value || '';
+  }
+
+  // 擬似record
+  var fakeRecord = { properties: {
+    '管理番号': { rich_text: [{ plain_text: mgmt }] },
+    'メーカー': maker ? { select: { name: maker } } : null,
+    'サイズ（正式）': { rich_text: [{ plain_text: size }] },
+    '名前': { title: [{ plain_text: size }] },
+    'パターン': { rich_text: [{ plain_text: pattern }] },
+    'カテゴリ': category ? { select: { name: category } } : null,
+    '本数': num ? { select: { name: num } } : null,
+    'セリアル': { rich_text: [{ plain_text: serial }] },
+    '新車外し？': cond ? { select: { name: cond } } : null,
+    '状態タイヤ（選択）': cond ? { select: { name: cond } } : null,
+  }};
+
+  thumbPageId = '__form__';
+  thumbScale = 1.0;
+  thumbOffX = 0;
+  thumbOffY = 0;
+  thumbCurrentImg = null;
+  document.getElementById('thumb-overlay').classList.add('show');
+  document.getElementById('thumb-zoom-ctrl').style.display = 'none';
+  document.getElementById('thumb-drag-hint').style.display = 'none';
+  document.getElementById('thumb-file').value = '';
+  document.getElementById('thumb-zoom-range').value = 100;
+
+  // drawThumbに擬似recordを渡す（redrawThumb用にグローバルに保持）
+  window._thumbFakeRecord = fakeRecord;
+  drawThumb(fakeRecord, null);
+}
+
+// redrawThumbをフォーム対応に
+var _origRedrawThumb = redrawThumb;
+redrawThumb = function() {
+  if (thumbPageId === '__form__' && window._thumbFakeRecord) {
+    drawThumb(window._thumbFakeRecord, thumbCurrentImg);
+  } else {
+    _origRedrawThumb();
+  }
+};
 </script>
 <script src="foo-swipe.js"></script>
 </body>

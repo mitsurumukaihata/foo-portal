@@ -1790,9 +1790,8 @@ function renderPortalApps(user) {
   const showPayslip = apps['payslip'];
   const nameNoSpace = (user.name || '').replace(/\s/g, '');
   const showKeiriPortal = isKeiri || nameNoSpace === '向畑充';
-  // 業務権限: 管理者・事務・経理・部長・リーダー + 向畑充
-  const jomuGroups = ['管理者', '事務', '経理', '部長', 'リーダー'];
-  const showSalesPortal = jomuGroups.includes(group) || nameNoSpace === '向畑充';
+  // 売上管理ポータル: 向畑充 + 岡崎のみ
+  const showSalesPortal = nameNoSpace === '向畑充' || nameNoSpace.includes('岡崎');
 
   let html = '';
 
@@ -1805,7 +1804,7 @@ function renderPortalApps(user) {
         <div class="app-icon" style="font-size:26px;">💰</div>
         <div class="app-text">
           <div class="app-name" style="color:#1e3a5f;">売上管理ポータル <span style="font-size:11px;color:var(--muted);font-weight:400;">↗</span></div>
-          <div class="app-sub">売上伝票・車番履歴・KPI（業務権限のみ）</div>
+          <div class="app-sub">売上伝票・車番履歴・KPI</div>
         </div>
         <div class="app-arrow">›</div>
       </a>`;

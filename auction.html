@@ -2530,8 +2530,8 @@ function drawThumb(record, tireImg) {
     ctx.textAlign = 'left';
   }
 
-  // 上部帯（半透明で写真の上に重ねる）
-  ctx.fillStyle = 'rgba(255,255,255,0.88)';
+  // 上部帯（不透明白・写真の写り込み防止）
+  ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, W, 160);
 
   // メーカーロゴ（メーカー毎に個別サイズ設定）
@@ -2593,8 +2593,8 @@ function drawThumb(record, tireImg) {
     bx -= 14;
   }
 
-  // 下部帯
-  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  // 下部帯（不透明白・写真の写り込み防止）
+  ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, H - 160, W, 160);
 
   // 左下: サイズ + 本数
@@ -2640,8 +2640,8 @@ function downloadThumb() {
     mgmt = record ? (p(record, '管理番号') || 'thumb') : 'thumb';
   }
   var link = document.createElement('a');
-  link.download = mgmt + '_thumbnail.png';
-  link.href = cv.toDataURL('image/png');
+  link.download = mgmt + '_thumbnail.jpg';
+  link.href = cv.toDataURL('image/jpeg', 0.92);
   link.click();
 }
 

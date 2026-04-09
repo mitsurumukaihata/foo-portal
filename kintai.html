@@ -153,18 +153,90 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 
 /* ── 統合打刻画面（A案） ── */
 .a-time-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:6px; }
-.a-time-box { background:var(--s2); border:1.5px solid var(--border); border-radius:12px; padding:14px 10px; text-align:center; cursor:pointer; transition:all 0.15s; }
+.a-time-box {
+  background:var(--s2);
+  border:2px solid var(--border);
+  border-radius:12px;
+  padding:14px 10px 14px;
+  text-align:center;
+  cursor:pointer;
+  transition:all 0.18s;
+  position:relative;
+  overflow:visible;
+}
 .a-time-box:active { transform:scale(0.98); }
-.a-time-box.focus { border-color:var(--accent); background:rgba(240,165,0,0.06); }
-.a-time-box.done { border-color:var(--green); background:rgba(34,197,94,0.06); }
-.a-time-box .a-label { font-size:10px; color:var(--muted); margin-bottom:4px; letter-spacing:0.08em; }
+
+/* 入力中（focus）: オレンジの太枠 + 背景色 + 上部に▼アクティブインジケーター */
+.a-time-box.focus {
+  border-color:var(--accent);
+  background:rgba(240,165,0,0.14);
+  box-shadow:0 0 0 4px rgba(240,165,0,0.15), 0 4px 16px rgba(240,165,0,0.25);
+  transform:translateY(-2px);
+}
+.a-time-box.focus::before {
+  content:'';
+  position:absolute;
+  top:-10px;
+  left:50%;
+  transform:translateX(-50%);
+  width:0;
+  height:0;
+  border-left:8px solid transparent;
+  border-right:8px solid transparent;
+  border-top:8px solid var(--accent);
+}
+.a-time-box.focus::after {
+  content:'入力中';
+  position:absolute;
+  top:-10px;
+  right:10px;
+  background:var(--accent);
+  color:#fff;
+  font-size:9px;
+  font-weight:700;
+  padding:2px 8px;
+  border-radius:10px;
+  letter-spacing:0.08em;
+  box-shadow:0 2px 6px rgba(240,165,0,0.4);
+  animation:focus-pulse 1.6s ease-in-out infinite;
+}
+@keyframes focus-pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%     { opacity:0.85; transform:scale(1.05); }
+}
+
+/* 完了（done）: 緑枠 + 薄背景 */
+.a-time-box.done {
+  border-color:var(--green);
+  background:rgba(34,197,94,0.08);
+}
+.a-time-box.done::after {
+  content:'✓';
+  position:absolute;
+  top:-8px;
+  right:8px;
+  width:18px;
+  height:18px;
+  background:var(--green);
+  color:#fff;
+  font-size:11px;
+  font-weight:900;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 2px 6px rgba(34,197,94,0.4);
+}
+
+.a-time-box .a-label { font-size:11px; color:var(--muted); margin-bottom:4px; letter-spacing:0.1em; font-weight:700; }
 .a-time-box.focus .a-label { color:var(--accent); }
 .a-time-box.done .a-label { color:var(--green); }
 .a-time-box .a-value { font-family:'DM Mono',monospace; font-size:28px; font-weight:700; }
 .a-time-box .a-value.empty { color:var(--muted); font-size:13px; font-weight:400; }
 .a-time-box .a-value.filled { color:var(--accent); }
+.a-time-box.focus .a-value.empty { color:var(--accent); }
 .a-time-box.done .a-value { color:var(--green); }
-.a-indicator { font-size:10px; text-align:center; color:var(--accent); margin-bottom:6px; font-weight:700; }
+.a-indicator { font-size:11px; text-align:center; color:var(--accent); margin:10px 0 8px; font-weight:700; }
 
 /* ── 打刻画面（修正用） ── */
 .time-disp { background:var(--s2); border:1.5px solid var(--border); border-radius:12px; padding:20px; text-align:center; margin-bottom:12px; transition:border-color 0.15s; }

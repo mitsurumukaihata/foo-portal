@@ -100,46 +100,39 @@ body {
 }
 
 /* ══ レスポンシブ: タブレット以上で広いレイアウト ══ */
-/* 700px〜: iPad Mini 6 (744px) 縦向きもタブレット扱い */
+/* 700px〜: タブレット（iPad Mini縦744px対応） */
 @media (min-width: 700px) {
   body { max-width: 720px; }
   .portal-header { padding: 22px 32px 18px; }
   .sec { padding: 28px 32px 0; }
-  /* アプリを2列グリッドに */
   .sec > .app-row,
   .sec > a.app-row,
   .sec > div.app-row { display:inline-flex; width:calc(50% - 4px); vertical-align:top; }
   .grid2 { grid-template-columns: repeat(2, 1fr); }
   .portal-title { font-size: 26px; }
 }
-/* 900px〜: 大きめタブレット or 横向き */
+/* 900px〜: 中サイズPC/iPad横（2〜3列） */
 @media (min-width: 900px) {
   body { max-width: 880px; }
-}
-/* 1100px〜: PC */
-@media (min-width: 1100px) {
-  body { max-width: 1100px; }
-  .portal-header { padding: 28px 40px 22px; }
-  .sec { padding: 32px 40px 0; }
-  /* 3列グリッド */
-  .grid2 { grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .portal-body { display: block; }
+  /* 事務など行タイプ: 3列 */
   .sec > .app-row,
   .sec > a.app-row,
-  .sec > div.app-row {
-    display: inline-flex;
-    width: calc(33.333% - 6px);
-    margin-right: 6px;
-    vertical-align: top;
-  }
-  /* グリッド内カードを行スタイル（アイコン左・テキスト右）に変換 */
+  .sec > div.app-row { width:calc(33.333% - 6px); margin-right:6px; }
+  /* グリッドタイプ: 3列 + 行スタイルカード */
+  .grid2 { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  /* カードを行スタイルに（アイコン左・name右・sub右） */
   .grid2 .app-card {
-    display: flex;
+    display: grid;
+    grid-template-columns: 42px 1fr;
+    grid-template-rows: auto auto;
+    column-gap: 12px;
+    row-gap: 2px;
     align-items: center;
-    gap: 14px;
-    padding: 14px 16px;
+    padding: 12px 14px;
   }
   .grid2 .app-card .app-icon {
+    grid-row: 1 / 3;
+    grid-column: 1;
     width: 42px;
     height: 42px;
     margin-bottom: 0;
@@ -148,23 +141,35 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
   }
   .grid2 .app-card .app-icon svg { width: 20px; height: 20px; }
-  .grid2 .app-card .app-name { font-size: 14px; flex: 1; min-width: 0; }
-  .grid2 .app-card .app-sub { display: block; font-size: 11px; margin-top: 2px; color: var(--muted); width: 100%; }
-  /* name と sub を縦に並べるために name を wrap するラッパー風にする */
-  .grid2 .app-card {
-    flex-wrap: wrap;
+  .grid2 .app-card .app-name {
+    grid-column: 2;
+    grid-row: 1;
+    font-size: 13px;
+    align-self: end;
+    margin-top: 0;
   }
-  .grid2 .app-card .app-icon { order: 1; }
-  .grid2 .app-card .app-name { order: 2; width: calc(100% - 56px); }
-  .grid2 .app-card .app-sub { order: 3; width: calc(100% - 56px); margin-left: 56px; margin-top: -8px; }
+  .grid2 .app-card .app-sub {
+    grid-column: 2;
+    grid-row: 2;
+    font-size: 11px;
+    color: var(--muted);
+    align-self: start;
+    margin-top: 0;
+  }
+}
+/* 1100px〜: 広めPC */
+@media (min-width: 1100px) {
+  body { max-width: 1100px; }
+  .portal-header { padding: 28px 40px 22px; }
+  .sec { padding: 32px 40px 0; }
+  .portal-body { display: block; }
   .portal-title { font-size: 30px; }
   .portal-tabs { margin-top: 14px; }
   .portal-tab { padding: 9px 18px; font-size: 13px; }
 }
-/* 1440px〜: 大画面PC */
+/* 1440px〜: 大画面PC（4列） */
 @media (min-width: 1440px) {
   body { max-width: 1320px; }
   .grid2 { grid-template-columns: repeat(4, 1fr); }

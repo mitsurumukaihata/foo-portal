@@ -2064,7 +2064,7 @@ async function createRecord(kubun, warehouse) {
   const wField = db.warehouseField;
   const props = {
     'タイトル': { title: [{ text: { content: buildTitle(state.size) } }] },
-    'サイズコード': { select: { name: state.size || '' } },
+    'サイズコード': { select: { name: (state.size || '').replace(/ /g, '\u3000') } },
     'パターン名': { select: { name: state.pattern } },
     '数量': { number: state.qty },
     '区分': { select: { name: kubun } },

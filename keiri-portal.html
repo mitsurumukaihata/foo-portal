@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>経理ポータル | f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+/* 経理カラーテーマ（緑/紺） */
+:root {
+  --bg: #0f1a17;
+  --s1: #0a1513;
+  --s2: #152621;
+  --s3: #1c332c;
+  --border: #23453a;
+  --border2: #346354;
+  --text: #eef2ee;
+  --muted: #7a8f85;
+  --accent: #7aa66b;
+  --accent2: #9cc48d;
+  --gold: #c9a227;
+  --navy: #1e3a5f;
+  --green: #0f4c3a;
+  --red: #ef4444;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #f3f7f1; --s1: #ffffff; --s2: #eaf1e8; --s3: #dde8da;
+    --border: #c8d8c2; --border2: #a8c09e; --text: #0f1a17; --muted: #5e7260;
+    --accent: #3d7c4a; --accent2: #2d5f36; --gold: #b8910d;
+    --navy: #1e3a5f; --green: #0f4c3a; --red: #dc2626;
+  }
+}
+[data-theme="dark"] {
+  --bg: #0f1a17; --s1: #0a1513; --s2: #152621; --s3: #1c332c;
+  --border: #23453a; --border2: #346354; --text: #eef2ee; --muted: #7a8f85;
+  --accent: #7aa66b; --accent2: #9cc48d; --gold: #c9a227;
+  --navy: #1e3a5f; --green: #0f4c3a; --red: #ef4444;
+}
+[data-theme="light"] {
+  --bg: #f3f7f1; --s1: #ffffff; --s2: #eaf1e8; --s3: #dde8da;
+  --border: #c8d8c2; --border2: #a8c09e; --text: #0f1a17; --muted: #5e7260;
+  --accent: #3d7c4a; --accent2: #2d5f36; --gold: #b8910d;
+  --navy: #1e3a5f; --green: #0f4c3a; --red: #dc2626;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; max-width:480px; margin:0 auto; }
+
+.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:100; }
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+.header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+.header-brand .tag-keiri { background:var(--accent); color:#fff; padding:2px 7px; border-radius:10px; font-weight:700; font-size:9px; margin-left:6px; letter-spacing:0.05em; }
+.header-back { font-size:11px; color:var(--muted); text-decoration:none; border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; }
+.header-title { font-size:20px; font-weight:900; letter-spacing:-0.02em; margin-top:4px; }
+.header-title span { color:var(--accent); }
+
+.content { padding:20px 20px 48px; }
+.screen-label { font-size:10px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:6px; margin-top:4px; }
+.greeting { font-size:13px; color:var(--muted); margin-bottom:18px; line-height:1.6; }
+.greeting strong { color:var(--accent2); font-weight:700; }
+
+/* アプリカード */
+.card-grid { display:flex; flex-direction:column; gap:14px; }
+.app-card {
+  background:linear-gradient(135deg, var(--s2) 0%, var(--s3) 100%);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:22px 20px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:16px;
+  transition:transform 0.12s, border-color 0.15s, box-shadow 0.15s;
+  box-shadow:0 2px 8px rgba(0,0,0,0.12);
+  text-decoration:none;
+  color:var(--text);
+}
+.app-card:active { transform:scale(0.98); }
+.app-card:hover { border-color:var(--accent); box-shadow:0 4px 12px rgba(122,166,107,0.2); }
+.app-icon { font-size:36px; flex-shrink:0; }
+.app-body { flex:1; min-width:0; }
+.app-name { font-size:17px; font-weight:900; letter-spacing:-0.01em; margin-bottom:3px; }
+.app-desc { font-size:11px; color:var(--muted); line-height:1.5; }
+.app-arrow { color:var(--muted); font-size:22px; font-weight:300; }
+
+/* 権限エラー */
+.denied { padding:60px 20px; text-align:center; }
+.denied-icon { font-size:48px; margin-bottom:16px; }
+.denied-title { font-size:22px; font-weight:900; margin-bottom:8px; }
+.denied-title span { color:var(--red); }
+.denied-msg { font-size:13px; color:var(--muted); line-height:1.7; margin-bottom:28px; }
+.denied-back { display:inline-block; background:var(--accent); border-radius:10px; padding:13px 28px; color:#fff; font-size:14px; font-weight:700; text-decoration:none; }
+
+/* フッター */
+.foot { text-align:center; padding:24px 20px 32px; font-size:10px; color:var(--muted); letter-spacing:0.1em; }
+.foot .brand { font-weight:700; color:var(--accent); }
+
+/* ローディング */
+.spinner { width:28px; height:28px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 12px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-wrap { text-align:center; padding:60px 20px; }
+.loading-text { font-size:13px; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- ローディング -->
+<div id="loading" class="loading-wrap">
+  <div class="spinner"></div>
+  <div class="loading-text">読み込み中...</div>
+</div>
+
+<!-- 権限エラー -->
+<div id="denied" class="denied" style="display:none;">
+  <div class="denied-icon">🔒</div>
+  <div class="denied-title">権限が<span>ありません</span></div>
+  <div class="denied-msg">
+    経理ポータルは経理担当者と<br>向畑 充のみアクセスできます。
+  </div>
+  <a class="denied-back" href="https://mitsurumukaihata.github.io/foo-portal/">← 通常ポータルへ</a>
+</div>
+
+<!-- メイン -->
+<div id="app" style="display:none;">
+  <div class="header">
+    <div class="header-top">
+      <div class="header-brand">F.o.o · 経理<span class="tag-keiri">KEIRI</span></div>
+      <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← 通常ポータル</a>
+    </div>
+    <div class="header-title">経理<span>ポータル</span></div>
+  </div>
+
+  <div class="content">
+    <div class="greeting" id="greeting"></div>
+
+    <div class="screen-label">経理専用アプリ</div>
+    <div class="card-grid">
+      <a class="app-card" href="salary-admin.html">
+        <div class="app-icon">🧾</div>
+        <div class="app-body">
+          <div class="app-name">給与明細作成</div>
+          <div class="app-desc">勤怠データから社員別の給与明細を自動生成・編集・保存</div>
+        </div>
+        <div class="app-arrow">›</div>
+      </a>
+
+      <a class="app-card" href="kintai.html?mode=all">
+        <div class="app-icon">📋</div>
+        <div class="app-body">
+          <div class="app-name">出勤簿確認</div>
+          <div class="app-desc">全社員の勤怠一覧を閲覧（日付別・社員別）</div>
+        </div>
+        <div class="app-arrow">›</div>
+      </a>
+    </div>
+
+    <div class="foot">
+      <span class="brand">F.o.o</span> · 経理ポータル · v1.0
+    </div>
+  </div>
+</div>
+
+<script>
+// ── テーマ同期 ──
+(function(){
+  const t = localStorage.getItem('foo_portal_theme') || 'auto';
+  if (t !== 'auto') document.documentElement.setAttribute('data-theme', t);
+})();
+
+const SESSION_KEY  = 'foo_portal_session';
+const SESSION_DAYS = 30;
+
+function loadSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (!d || new Date(d.expires) < new Date()) { localStorage.removeItem(SESSION_KEY); return null; }
+    const expires = new Date(); expires.setDate(expires.getDate() + SESSION_DAYS);
+    d.expires = expires.toISOString();
+    localStorage.setItem(SESSION_KEY, JSON.stringify(d));
+    return d;
+  } catch(e) { return null; }
+}
+
+function isKeiriAllowed(session) {
+  if (!session || !session.name) return false;
+  const name = session.name.replace(/\s/g, '');
+  const group = session.group || '';
+  return group === '経理' || name === '向畑充';
+}
+
+function init() {
+  const session = loadSession();
+  const loading = document.getElementById('loading');
+  const app = document.getElementById('app');
+  const denied = document.getElementById('denied');
+
+  if (!session) {
+    location.href = 'https://mitsurumukaihata.github.io/foo-portal/';
+    return;
+  }
+  if (!isKeiriAllowed(session)) {
+    loading.style.display = 'none';
+    denied.style.display = 'block';
+    return;
+  }
+
+  // 挨拶
+  const hour = new Date().getHours();
+  const greetWord = hour < 10 ? 'おはようございます' : (hour < 18 ? 'こんにちは' : 'お疲れさまです');
+  const greetEl = document.getElementById('greeting');
+  greetEl.innerHTML = `${greetWord}、<strong>${session.name}</strong>さん。<br>経理業務をお手伝いします。`;
+
+  loading.style.display = 'none';
+  app.style.display = 'block';
+}
+
+init();
+</script>
+</body>
+</html>

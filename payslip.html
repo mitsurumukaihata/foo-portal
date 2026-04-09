@@ -348,16 +348,40 @@ async function loadMeisai(dbId, name) {
     });
     if (res.object === 'error') throw new Error(res.message);
 
-    allData = (res.results || []).map(p => ({
-      id:      p.id,
-      title:   p.properties['名前']?.title?.[0]?.plain_text || '',
-      date:    p.properties['給与支給日']?.date?.start || '',
-      cat:     p.properties['カテゴリ']?.select?.name || '',
-      year:    p.properties['年']?.select?.name || '',
-      month:   p.properties['月']?.select?.name || '',
-      files:   p.properties['給与明細']?.files || [],
-      pageUrl: `https://www.notion.so/${p.id.replace(/-/g,'')}`,
-    }));
+    allData = (res.results || []).map(p => {
+      const props = p.properties;
+      return {
+        id:      p.id,
+        title:   props['名前']?.title?.[0]?.plain_text || '',
+        date:    props['給与支給日']?.date?.start || '',
+        cat:     props['カテゴリ']?.select?.name || '',
+        year:    props['年']?.select?.name || '',
+        month:   props['月']?.select?.name || '',
+        files:   props['給与明細']?.files || [],
+        pageUrl: `https://www.notion.so/${p.id.replace(/-/g,'')}`,
+        // 構造化データ（新形式）
+        structured: props['総支給額']?.number != null ? {
+          workDays:      props['出勤日数']?.number || 0,
+          totalHours:    props['実労働時間']?.number || 0,
+          overtimeHours: props['残業時間']?.number || 0,
+          yukyuHours:    props['有給時間']?.number || 0,
+          absentDays:    props['欠勤日数']?.number || 0,
+          基本給:    props['基本給']?.number || 0,
+          残業手当:  props['残業手当']?.number || 0,
+          通勤手当:  props['通勤手当']?.number || 0,
+          総支給額:  props['総支給額']?.number || 0,
+          健康保険:  props['健康保険']?.number || 0,
+          厚生年金:  props['厚生年金']?.number || 0,
+          雇用保険:  props['雇用保険']?.number || 0,
+          所得税:    props['所得税']?.number || 0,
+          住民税:    props['住民税']?.number || 0,
+          控除合計:  props['控除合計']?.number || 0,
+          差引支給額: props['差引支給額']?.number || 0,
+          締め期間開始: props['締め期間開始']?.date?.start || '',
+          締め期間終了: props['締め期間終了']?.date?.start || '',
+        } : null,
+      };
+    });
 
     const count = allData.length;
     document.getElementById('header-sub').textContent = `${count}件の明細`;
@@ -429,8 +453,14 @@ function cardHTML(r) {
   const monthNum = r.month ? r.month.replace('月','') : (r.date ? parseInt(r.date.slice(5,7)) : '—');
   const cc = CAT_COLOR[r.cat] || { bg: 'rgba(104,104,122,0.15)', text: 'var(--muted)' };
   const hasFile = r.files.length > 0;
-  const noFileClass = hasFile ? '' : 'no-file';
-  const onclick = hasFile ? `onclick="openPdf(${JSON.stringify(r).replace(/"/g,'&quot;')})"` : '';
+  const hasStructured = r.structured != null;
+  const isClickable = hasStructured || hasFile;
+  const noFileClass = isClickable ? '' : 'no-file';
+  const onclick = isClickable ? `onclick="openMeisai('${r.id}')"` : '';
+
+  const netPayHTML = hasStructured
+    ? `<span style="font-size:11px;color:var(--accent);font-weight:700;font-family:'DM Mono',monospace;">差引 ¥${r.structured.差引支給額.toLocaleString('ja-JP')}</span>`
+    : '';
 
   return `<div class="meisai-card ${noFileClass}" ${onclick}>
     <div class="meisai-month-badge" style="background:${cc.bg};">
@@ -442,11 +472,92 @@ function cardHTML(r) {
       <div class="meisai-meta">
         <span class="meisai-cat" style="background:${cc.bg};color:${cc.text};">${esc(r.cat)}</span>
         ${r.date ? `<span class="meisai-date">${r.date.replace(/-/g,'/')}</span>` : ''}
-        ${!hasFile ? `<span style="font-size:10px;color:var(--muted);">ファイルなし</span>` : ''}
+        ${netPayHTML}
+        ${!isClickable ? `<span style="font-size:10px;color:var(--muted);">ファイルなし</span>` : ''}
       </div>
     </div>
-    ${hasFile ? `<div class="meisai-arrow">›</div>` : ''}
+    ${isClickable ? `<div class="meisai-arrow">›</div>` : ''}
   </div>`;
+}
+
+// 明細を開く: 構造化データがあればインライン表示、なければPDFを開く
+function openMeisai(id) {
+  const r = allData.find(x => x.id === id);
+  if (!r) return;
+  if (r.structured) {
+    showStructuredDetail(r);
+  } else if (r.files.length > 0) {
+    openPdf(r);
+  }
+}
+
+function showStructuredDetail(r) {
+  const s = r.structured;
+  const yen = (n) => (n == null ? 0 : Math.round(n)).toLocaleString('ja-JP') + ' 円';
+  const html = `
+    <div id="detail-overlay" onclick="if(event.target===this)closeDetail()" style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 12px;">
+      <div style="background:var(--s1);border:1px solid var(--border);border-radius:14px;max-width:440px;width:100%;padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <div style="font-size:17px;font-weight:900;">${esc(r.title || r.month)}</div>
+          <button onclick="closeDetail()" style="background:transparent;border:none;color:var(--muted);font-size:24px;cursor:pointer;">×</button>
+        </div>
+        ${s.締め期間開始 ? `<div style="font-size:11px;color:var(--muted);margin-bottom:14px;">締め期間: ${s.締め期間開始} 〜 ${s.締め期間終了}</div>` : ''}
+
+        <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:13px;">
+          <div style="font-size:10px;color:var(--muted);letter-spacing:0.1em;margin-bottom:6px;">勤怠</div>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;text-align:center;">
+            <div><div style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;">${s.workDays}</div><div style="font-size:9px;color:var(--muted);">出勤</div></div>
+            <div><div style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;">${s.totalHours.toFixed(1)}h</div><div style="font-size:9px;color:var(--muted);">実労働</div></div>
+            <div><div style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;">${s.overtimeHours.toFixed(1)}h</div><div style="font-size:9px;color:var(--muted);">残業</div></div>
+            <div><div style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;">${s.yukyuHours.toFixed(1)}h</div><div style="font-size:9px;color:var(--muted);">有給</div></div>
+            <div><div style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;">${s.absentDays}</div><div style="font-size:9px;color:var(--muted);">欠勤</div></div>
+          </div>
+        </div>
+
+        <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:12px;">
+          <div style="font-size:10px;color:var(--muted);letter-spacing:0.1em;margin-bottom:6px;">支給</div>
+          ${detailRow('基本給', s.基本給)}
+          ${detailRow('残業手当', s.残業手当)}
+          ${detailRow('通勤手当', s.通勤手当)}
+          <div style="display:flex;justify-content:space-between;padding:8px 0 2px;border-top:1.5px solid var(--accent);margin-top:4px;font-size:14px;font-weight:900;color:var(--accent);">
+            <div>総支給額</div><div style="font-family:'DM Mono',monospace;">${yen(s.総支給額)}</div>
+          </div>
+        </div>
+
+        <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:12px;">
+          <div style="font-size:10px;color:var(--muted);letter-spacing:0.1em;margin-bottom:6px;">控除</div>
+          ${detailRow('健康保険', s.健康保険)}
+          ${detailRow('厚生年金', s.厚生年金)}
+          ${detailRow('雇用保険', s.雇用保険)}
+          ${detailRow('所得税', s.所得税)}
+          ${detailRow('住民税', s.住民税)}
+          <div style="display:flex;justify-content:space-between;padding:8px 0 2px;border-top:1.5px solid var(--red);margin-top:4px;font-size:14px;font-weight:900;color:var(--red);">
+            <div>控除合計</div><div style="font-family:'DM Mono',monospace;">${yen(s.控除合計)}</div>
+          </div>
+        </div>
+
+        <div style="background:linear-gradient(135deg,rgba(240,165,0,0.18),rgba(240,165,0,0.05));border:2px solid var(--accent);border-radius:12px;padding:18px 20px;margin-bottom:14px;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;letter-spacing:0.1em;">差引支給額</div>
+          <div style="font-size:28px;font-weight:900;color:var(--accent);font-family:'DM Mono',monospace;text-align:right;">${yen(s.差引支給額)}</div>
+        </div>
+
+        ${r.files.length > 0 ? `<button onclick="closeDetail(); openPdf(allData.find(x=>x.id==='${r.id}'));" style="width:100%;background:transparent;border:1.5px solid var(--border2);border-radius:10px;padding:12px;color:var(--text);font-size:13px;cursor:pointer;">📄 PDFを開く</button>` : ''}
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function detailRow(label, val) {
+  const yen = (n) => (n == null ? 0 : Math.round(n)).toLocaleString('ja-JP') + ' 円';
+  return `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px dashed var(--border);font-size:12px;">
+    <div style="color:var(--muted);">${label}</div>
+    <div style="font-family:'DM Mono',monospace;font-weight:600;">${yen(val)}</div>
+  </div>`;
+}
+
+function closeDetail() {
+  document.getElementById('detail-overlay')?.remove();
 }
 
 function esc(s) {

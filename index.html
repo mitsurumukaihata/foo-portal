@@ -1788,8 +1788,24 @@ function renderPortalApps(user) {
   });
 
   const showPayslip = apps['payslip'];
+  const nameNoSpace = (user.name || '').replace(/\s/g, '');
+  const showKeiriPortal = isKeiri || nameNoSpace === '向畑充';
 
   let html = '';
+
+  // ─── 経理ポータル遷移ボタン（経理・向畑充のみ表示） ──────────────────────
+  if (showKeiriPortal) {
+    html += `<div class="sec">
+      <a href="keiri-portal.html" class="app-row" style="background:linear-gradient(135deg,rgba(61,124,74,0.12),rgba(30,58,95,0.08));border:1px solid rgba(61,124,74,0.35);text-decoration:none;color:var(--text);">
+        <div class="app-icon" style="font-size:26px;">🧮</div>
+        <div class="app-text">
+          <div class="app-name" style="color:#3d7c4a;">経理ポータル</div>
+          <div class="app-sub">給与明細作成・出勤簿確認（経理専用）</div>
+        </div>
+        <div class="app-arrow">›</div>
+      </a>
+    </div><div class="divider"></div>`;
+  }
 
   const sectionOrder = ['現場・業務', '事務', 'EC/マーケ', 'コミュニティ', 'ニュース', '人事', 'マニュアル', '管理', '経理', '給与'];
 

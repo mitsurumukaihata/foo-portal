@@ -148,6 +148,41 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 .denied-msg { font-size:13px; color:var(--muted); line-height:1.7; margin-bottom:28px; }
 .denied-back { display:inline-block; background:var(--accent); border-radius:10px; padding:13px 28px; color:#fff; font-size:14px; font-weight:700; text-decoration:none; }
 
+/* 経理グループ アプリリスト */
+.keiri-apps { display:flex; flex-direction:column; gap:8px; }
+.keiri-app {
+  background: var(--s2);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 0.15s;
+}
+.keiri-app:hover { border-color: var(--accent); }
+.keiri-app:active { transform: scale(0.99); }
+.keiri-app-icon {
+  width: 42px; height: 42px;
+  border-radius: 10px;
+  background: rgba(122,166,107,0.12);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.keiri-app-icon svg { width: 20px; height: 20px; }
+.keiri-app-text { flex: 1; min-width: 0; }
+.keiri-app-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.keiri-app-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.keiri-app-arrow { color: var(--muted); font-size: 20px; font-weight: 300; }
+@media (min-width: 700px) {
+  .keiri-apps { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+}
+@media (min-width: 1100px) {
+  .keiri-apps { grid-template-columns: repeat(3, 1fr); }
+}
+
 /* フッター */
 .foot { text-align:center; padding:24px 20px 32px; font-size:10px; color:var(--muted); letter-spacing:0.1em; }
 .foot .brand { font-weight:700; color:var(--accent); }
@@ -214,6 +249,11 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
       </a>
     </div>
 
+    <div class="screen-label" style="margin-top:24px;">経理グループ</div>
+    <div class="keiri-apps" id="keiri-apps">
+      <!-- init() で権限フィルタ後に動的描画 -->
+    </div>
+
     <div class="foot">
       <span class="brand">F.o.o</span> · 経理ポータル · v1.0
     </div>
@@ -271,6 +311,30 @@ function init() {
   const greetWord = hour < 10 ? 'おはようございます' : (hour < 18 ? 'こんにちは' : 'お疲れさまです');
   const greetEl = document.getElementById('greeting');
   greetEl.innerHTML = `${greetWord}、<strong>${session.name}</strong>さん。<br>経理業務をお手伝いします。`;
+
+  // 経理グループアプリ一覧（index.html の 経理 セクションから移動）
+  const KEIRI_APPS = [
+    { name: '資金繰り',        sub: '入出金管理 · 残高 · 返済',     url: 'cashflow.html',             icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>' },
+    { name: '月次KPI',         sub: '達成率 · 前年比 · トレンド',   url: 'kpi.html',                  icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>' },
+    { name: '借入一覧',        sub: '返済状況 · 引落予定',          url: 'loan.html',                 icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M3 10h18"/><path d="M5 6l7-3 7 3"/><line x1="4" y1="10" x2="4" y2="21"/><line x1="20" y1="10" x2="20" y2="21"/></svg>' },
+    { name: '設備購入予定表',  sub: '見積 · 発注 · 納品管理',       url: 'equipment-purchase.html',   icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="10" y1="14" x2="14" y2="14"/></svg>' },
+    { name: 'サブスク管理',    sub: '月額 · 年額 · 契約更新',       url: 'subscription-manager.html', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>' },
+    { name: 'サンフレチケット',sub: '観戦者名簿 · チケット管理',    url: 'sanfre-ticket.html',        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>' },
+    { name: '就業規則',        sub: '規則 · 給与規程 · 休業規程',   url: 'employment-rules.html',     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>' },
+  ];
+  const keiriAppsEl = document.getElementById('keiri-apps');
+  if (keiriAppsEl) {
+    keiriAppsEl.innerHTML = KEIRI_APPS.map(a => `
+      <a class="keiri-app" href="${a.url}">
+        <div class="keiri-app-icon" style="color:var(--accent);">${a.icon}</div>
+        <div class="keiri-app-text">
+          <div class="keiri-app-name">${a.name}</div>
+          <div class="keiri-app-sub">${a.sub}</div>
+        </div>
+        <div class="keiri-app-arrow">›</div>
+      </a>
+    `).join('');
+  }
 
   // ポータル切替タブ（この画面は経理がアクティブ）
   const SVG_SHANAI = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg>';

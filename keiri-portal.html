@@ -80,7 +80,8 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 }
 [data-theme="dark"] .portal-tab.shanai { color:#f0a500; }
 [data-theme="dark"] .portal-tab.sales { color:#6a8fbf; }
-.portal-tab-icon { font-size:14px; }
+.portal-tab-icon { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; }
+.portal-tab-icon svg { width:16px; height:16px; }
 .portal-tab-ext { font-size:10px; opacity:0.7; margin-left:2px; }
 
 .content { padding:20px 20px 48px; }
@@ -245,13 +246,16 @@ function init() {
   greetEl.innerHTML = `${greetWord}、<strong>${session.name}</strong>さん。<br>経理業務をお手伝いします。`;
 
   // ポータル切替タブ（この画面は経理がアクティブ）
+  const SVG_SHANAI = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg>';
+  const SVG_SALES  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 4 7-8"/><path d="M14 8h7v7"/><path d="M3 21h18"/></svg>';
+  const SVG_KEIRI  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><rect x="8" y="6" width="8" height="3" rx="0.5"/><circle cx="9" cy="13" r="0.8" fill="currentColor"/><circle cx="12" cy="13" r="0.8" fill="currentColor"/><circle cx="15" cy="13" r="0.8" fill="currentColor"/><circle cx="9" cy="17" r="0.8" fill="currentColor"/><circle cx="12" cy="17" r="0.8" fill="currentColor"/><circle cx="15" cy="17" r="0.8" fill="currentColor"/></svg>';
   const nameNoSp = (session.name || '').replace(/\s/g, '');
   const showSales = nameNoSp === '向畑充' || nameNoSp.includes('岡崎');
-  let tabHtml = '<a class="portal-tab shanai" href="https://mitsurumukaihata.github.io/foo-portal/"><span class="portal-tab-icon">🏠</span>社内</a>';
+  let tabHtml = `<a class="portal-tab shanai" href="https://mitsurumukaihata.github.io/foo-portal/"><span class="portal-tab-icon">${SVG_SHANAI}</span>社内</a>`;
   if (showSales) {
-    tabHtml += '<a class="portal-tab sales" href="https://mitsurumukaihata.github.io/foo-sales/" target="_blank" rel="noopener"><span class="portal-tab-icon">💰</span>売上管理<span class="portal-tab-ext">↗</span></a>';
+    tabHtml += `<a class="portal-tab sales" href="https://mitsurumukaihata.github.io/foo-sales/" target="_blank" rel="noopener"><span class="portal-tab-icon">${SVG_SALES}</span>売上管理<span class="portal-tab-ext">↗</span></a>`;
   }
-  tabHtml += '<div class="portal-tab active"><span class="portal-tab-icon">🧮</span>経理</div>';
+  tabHtml += `<div class="portal-tab active"><span class="portal-tab-icon">${SVG_KEIRI}</span>経理</div>`;
   document.getElementById('portal-tabs').innerHTML = tabHtml;
 
   loading.style.display = 'none';

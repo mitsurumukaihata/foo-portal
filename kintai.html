@@ -547,15 +547,8 @@ async function renderHome() {
           <div class="check-label">労災扱い</div>
         </div>
       </div>
-      <div id="home-yukyu-wrap" style="display:none;">
-        <div class="screen-label">有給使用時間帯</div>
-        <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
-          <input class="yukyu-inp" type="time" id="home-yukyu-start" style="flex:1;" value="15:00" onchange="calcYukyuPreview()">
-          <span style="color:var(--muted);font-size:14px;">〜</span>
-          <input class="yukyu-inp" type="time" id="home-yukyu-end" style="flex:1;" value="18:00" onchange="calcYukyuPreview()">
-        </div>
-        <div id="home-yukyu-calc" style="font-size:12px;color:var(--muted);margin-top:6px;"></div>
-        <input type="hidden" id="home-yukyu-inp">
+      <div id="home-yukyu-wrap" style="display:none;padding:10px 12px;background:rgba(240,165,0,0.08);border:1px solid rgba(240,165,0,0.25);border-radius:8px;margin-top:8px;">
+        <div id="home-yukyu-calc" style="font-size:12px;color:var(--accent2);line-height:1.6;"></div>
       </div>
       <div class="screen-label">備考（任意）</div>
       <textarea class="memo-input" id="home-memo" placeholder="例）休憩30分のため15:30打刻"></textarea>
@@ -654,6 +647,8 @@ function homeUpdateDisp(type) {
     if (arr.length === 4) box?.classList.add('done');
     else box?.classList.remove('done');
   }
+  // 有給チェック中ならプレビュー更新
+  if (window._homeChecks?.yukyu) calcYukyuPreview();
 }
 
 function homeToggleCheck(el, key) {
@@ -664,24 +659,70 @@ function homeToggleCheck(el, key) {
   if (window._homeChecks.yukyu) calcYukyuPreview();
 }
 
-function calcYukyuPreview() {
-  var ys = document.getElementById('home-yukyu-start')?.value || '';
-  var ye = document.getElementById('home-yukyu-end')?.value || '';
-  var calcEl = document.getElementById('home-yukyu-calc');
-  if (!calcEl || !ys || !ye) { if (calcEl) calcEl.textContent = ''; return; }
-  var ysParts = ys.split(':'), yeParts = ye.split(':');
-  var ysMin = parseInt(ysParts[0]) * 60 + parseInt(ysParts[1]);
-  var yeMin = parseInt(yeParts[0]) * 60 + parseInt(yeParts[1]);
+// ─── 定時 ──
+const WORK_START_MIN = 9 * 60;   // 09:00 = 540分
+const WORK_END_MIN   = 18 * 60;  // 18:00 = 1080分
+
+function padTime(h, m) {
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+}
+
+// 出勤・退勤（分）から有給時間帯を計算
+// 戻り値: { ysMin, yeMin, yukyuMin, breakDeducted } または null
+function calcYukyuRangeFromTimes(sMin, tMin) {
+  var ysMin = null, yeMin = null;
+  // 退勤が定時より早い → 退勤〜18:00 が有給
+  if (tMin !== null && tMin < WORK_END_MIN) {
+    ysMin = tMin;
+    yeMin = WORK_END_MIN;
+  }
+  // 出勤が定時より遅い → 9:00〜出勤 が有給（退勤は定時以降 or 未入力）
+  else if (sMin !== null && sMin > WORK_START_MIN) {
+    ysMin = WORK_START_MIN;
+    yeMin = sMin;
+  }
+  if (ysMin === null || yeMin === null) return null;
   var total = yeMin - ysMin;
-  if (total <= 0) { calcEl.textContent = '⚠️ 終了時間が開始時間より前です'; return; }
+  if (total <= 0) return null;
   var breakPoint = 12 * 60 + 1;
   var breakDeducted = (ysMin <= breakPoint && yeMin > breakPoint);
   var yukyuMin = breakDeducted ? total - 60 : total;
-  var h = Math.floor(yukyuMin / 60);
-  var m = yukyuMin % 60;
+  return { ysMin: ysMin, yeMin: yeMin, yukyuMin: Math.max(0, yukyuMin), breakDeducted: breakDeducted };
+}
+
+function calcYukyuPreview() {
+  var calcEl = document.getElementById('home-yukyu-calc');
+  if (!calcEl) return;
+  var sArr = window._homeDigits?.s || [];
+  var tArr = window._homeDigits?.t || [];
+  var sMin = null, tMin = null;
+  if (sArr.length === 4) {
+    var sNum = parseInt(sArr.join(''));
+    var sH = Math.floor(sNum / 100), sM = sNum % 100;
+    if (sH <= 23 && sM <= 59) sMin = sH * 60 + sM;
+  }
+  if (tArr.length === 4) {
+    var tNum = parseInt(tArr.join(''));
+    var tH = Math.floor(tNum / 100), tM = tNum % 100;
+    if (tH <= 23 && tM <= 59) tMin = tH * 60 + tM;
+  }
+  if (sMin === null && tMin === null) {
+    calcEl.innerHTML = '💡 出勤・退勤を入力すると有給時間が自動計算されます';
+    return;
+  }
+  var range = calcYukyuRangeFromTimes(sMin, tMin);
+  if (!range) {
+    calcEl.innerHTML = '定時内勤務のため有給時間は0時間です';
+    return;
+  }
+  var h = Math.floor(range.yukyuMin / 60);
+  var m = range.yukyuMin % 60;
   var timeStr = h + '時間' + (m > 0 ? m + '分' : '');
-  calcEl.innerHTML = '→ 有給 <strong style="color:var(--accent);">' + timeStr + '</strong>'
-    + (breakDeducted ? '（12:01を含むため休憩1h差引）' : '');
+  var ysStr = padTime(Math.floor(range.ysMin / 60), range.ysMin % 60);
+  var yeStr = padTime(Math.floor(range.yeMin / 60), range.yeMin % 60);
+  calcEl.innerHTML = '🏖 有給: <strong>' + ysStr + '〜' + yeStr + '</strong> '
+    + '→ <strong style="color:var(--accent);">' + timeStr + '</strong>'
+    + (range.breakDeducted ? '<br><span style="font-size:10px;">（12:01を含むため休憩1h差引）</span>' : '');
 }
 
 async function homeSubmit() {
@@ -723,26 +764,13 @@ async function homeSubmit() {
   const btn = document.getElementById('home-submit');
   btn.disabled = true; btn.textContent = '送信中…';
 
-  // 有給使用時間の計算（12:01ルール）
+  // 有給使用時間の計算（出勤・退勤から自動・12:01ルール）
   var yukyuHours = 0;
   if (chk.yukyu) {
-    var ys = document.getElementById('home-yukyu-start')?.value || '';
-    var ye = document.getElementById('home-yukyu-end')?.value || '';
-    if (ys && ye) {
-      var ysParts = ys.split(':'), yeParts = ye.split(':');
-      var ysMin = parseInt(ysParts[0]) * 60 + parseInt(ysParts[1]);
-      var yeMin = parseInt(yeParts[0]) * 60 + parseInt(yeParts[1]);
-      var yukyuMin = yeMin - ysMin;
-      // 12:01（721分）が有給時間帯に含まれる場合、有給から1h引く
-      var breakPoint = 12 * 60 + 1; // 12:01 = 721分
-      if (ysMin <= breakPoint && yeMin > breakPoint) {
-        yukyuMin -= 60; // 有給側から休憩1h引く
-      }
-      yukyuHours = Math.max(0, yukyuMin / 60);
-    }
-    // hidden inputにも反映
-    var yukyuInp = document.getElementById('home-yukyu-inp');
-    if (yukyuInp) yukyuInp.value = yukyuHours;
+    var sMinCalc = sNum !== null ? (Math.floor(sNum / 100) * 60 + sNum % 100) : null;
+    var tMinCalc = tNum !== null ? (Math.floor(tNum / 100) * 60 + tNum % 100) : null;
+    var range = calcYukyuRangeFromTimes(sMinCalc, tMinCalc);
+    if (range) yukyuHours = range.yukyuMin / 60;
   }
 
   try {
@@ -961,8 +989,9 @@ function renderTaikin() {
         </div>
       </div>
       ${checks.yukyu ? `
-        <div class="screen-label">有給使用時間（時間単位）</div>
-        <input class="yukyu-inp" type="number" inputmode="decimal" placeholder="例：2" value="${checks.yukyuTime}" oninput="checks.yukyuTime=this.value" id="yukyu-inp">` : ''}
+        <div style="padding:10px 12px;background:rgba(240,165,0,0.08);border:1px solid rgba(240,165,0,0.25);border-radius:8px;margin-top:8px;">
+          <div id="taikin-yukyu-calc" style="font-size:12px;color:var(--accent2);line-height:1.6;"></div>
+        </div>` : ''}
       <div class="screen-label">備考（任意）</div>
       <textarea class="memo-input" id="memo-inp" placeholder="例）休憩30分のため15:30打刻" oninput="memo=this.value">${memo}</textarea>
       <div id="taikin-error"></div>
@@ -987,6 +1016,10 @@ function renderTaikin() {
         updateSyukkin2Disp(syukkin2Digits);
       }
       checkTaikinReady(syukkin2Digits, !hasSyukkin);
+      // 有給チェック中＆退勤4桁完了で自動計算
+      if (checks.yukyu && activeTaikinField === 'taikin' && timeDigits.length === 4) {
+        autoCalcTaikinYukyu();
+      }
     });
   });
 
@@ -1044,8 +1077,17 @@ function renderTaikin() {
         '労災扱い': { checkbox: checks.rousai },
         '備考': { rich_text: memo ? [{ text: { content: memo } }] : [] },
       };
-      if (checks.yukyu && checks.yukyuTime) {
-        props['有給使用時間'] = { number: parseFloat(checks.yukyuTime) || 0 };
+      if (checks.yukyu) {
+        var sNumT = selectedDateRecord?.properties?.['出勤']?.number;
+        var sMinT = (sNumT !== undefined && sNumT !== null) ? (Math.floor(sNumT / 100) * 60 + sNumT % 100) : null;
+        // 新規作成時はsyukkin2Digitsから
+        if (sMinT === null && syukkin2Digits.length === 4) {
+          var s2n = parseInt(syukkin2Digits.join(''));
+          sMinT = Math.floor(s2n / 100) * 60 + s2n % 100;
+        }
+        var tMinT = Math.floor(taikinNum / 100) * 60 + taikinNum % 100;
+        var yukyuH = calcYukyuHoursFromTimes(sMinT, tMinT);
+        if (yukyuH > 0) props['有給使用時間'] = { number: yukyuH };
       }
 
       if (selectedDateRecord) {
@@ -1108,8 +1150,9 @@ function buildTimeInputHTML(id, label, placeholder) {
         </div>
       </div>
       ${checks.yukyu ? `
-        <div class="screen-label">有給使用時間（時間単位）</div>
-        <input class="yukyu-inp" type="number" inputmode="decimal" placeholder="例：2" value="${checks.yukyuTime}" oninput="checks.yukyuTime=this.value">` : ''}
+        <div style="padding:10px 12px;background:rgba(240,165,0,0.08);border:1px solid rgba(240,165,0,0.25);border-radius:8px;margin-top:8px;">
+          <div id="syukkin-yukyu-calc" style="font-size:12px;color:var(--accent2);line-height:1.6;"></div>
+        </div>` : ''}
       <div class="screen-label">備考（任意）</div>
       <textarea class="memo-input" id="memo-inp" placeholder="特記事項があれば入力" oninput="memo=this.value">${memo}</textarea>
       <div id="${id}-error"></div>
@@ -1137,6 +1180,10 @@ function bindTimeInput(id) {
       updateTimeDisp(id);
       const submitBtn = document.getElementById(`${id}-submit`);
       if (submitBtn) submitBtn.disabled = timeDigits.length < 4;
+      // 有給チェック中＆4桁完了で自動計算
+      if (checks.yukyu && timeDigits.length === 4 && id === 'syukkin') {
+        autoCalcSyukkinYukyu();
+      }
     });
   });
 }
@@ -1170,7 +1217,11 @@ async function submitSyukkin() {
       '労災扱い': { checkbox: checks.rousai },
       '備考': { rich_text: memo ? [{ text: { content: memo } }] : [] },
     };
-    if (checks.yukyu && checks.yukyuTime) props['有給使用時間'] = { number: parseFloat(checks.yukyuTime)||0 };
+    if (checks.yukyu) {
+      var sMinS = Math.floor(num / 100) * 60 + num % 100;
+      var yukyuH = calcYukyuHoursFromTimes(sMinS, null);
+      if (yukyuH > 0) props['有給使用時間'] = { number: yukyuH };
+    }
     const res = await notionAPI('POST', '/pages', { parent: { database_id: KINTAI_DB }, properties: props });
     selectedDateRecord = res;
     showDone('出勤を記録しました', `${USER.name} · ${formatDate(selectedDate)}`);
@@ -1188,9 +1239,66 @@ function toggleCheck(key) {
   // 有給使用の場合、時間入力欄を再描画
   if (key === 'yukyu') {
     const page = document.getElementById('page-syukkin').classList.contains('active') ? 'syukkin' : 'taikin';
-    if (page === 'syukkin') { renderSyukkin(); }
-    else { renderTaikin(); }
+    if (page === 'syukkin') { renderSyukkin(); autoCalcSyukkinYukyu(); }
+    else { renderTaikin(); autoCalcTaikinYukyu(); }
   }
+}
+
+// ─── 有給プレビュー共通関数 ────────────────────────────────────────────────
+// calcElId の要素に sMin / tMin から計算した有給情報を表示
+function _renderYukyuPreview(calcElId, sMin, tMin) {
+  var calcEl = document.getElementById(calcElId);
+  if (!calcEl) return 0;
+  if (sMin === null && tMin === null) {
+    calcEl.innerHTML = '💡 出勤・退勤を入力すると有給時間が自動計算されます';
+    return 0;
+  }
+  var range = calcYukyuRangeFromTimes(sMin, tMin);
+  if (!range) {
+    calcEl.innerHTML = '定時内勤務のため有給時間は0時間です';
+    return 0;
+  }
+  var h = Math.floor(range.yukyuMin / 60);
+  var m = range.yukyuMin % 60;
+  var timeStr = h + '時間' + (m > 0 ? m + '分' : '');
+  var ysStr = padTime(Math.floor(range.ysMin / 60), range.ysMin % 60);
+  var yeStr = padTime(Math.floor(range.yeMin / 60), range.yeMin % 60);
+  calcEl.innerHTML = '🏖 有給: <strong>' + ysStr + '〜' + yeStr + '</strong> '
+    + '→ <strong style="color:var(--accent);">' + timeStr + '</strong>'
+    + (range.breakDeducted ? '<br><span style="font-size:10px;">（12:01を含むため休憩1h差引）</span>' : '');
+  return range.yukyuMin / 60;
+}
+
+// 退勤画面: 出勤記録＋退勤入力から有給プレビュー
+function autoCalcTaikinYukyu() {
+  if (!checks.yukyu) return;
+  var sNum = selectedDateRecord?.properties?.['出勤']?.number;
+  var sMin = (sNum !== undefined && sNum !== null) ? (Math.floor(sNum / 100) * 60 + sNum % 100) : null;
+  var tMin = null;
+  if (timeDigits.length === 4) {
+    var tNum = parseInt(timeDigits.join(''));
+    var tH = Math.floor(tNum / 100), tM = tNum % 100;
+    if (tH <= 23 && tM <= 59) tMin = tH * 60 + tM;
+  }
+  _renderYukyuPreview('taikin-yukyu-calc', sMin, tMin);
+}
+
+// 出勤画面: 出勤入力のみから有給プレビュー
+function autoCalcSyukkinYukyu() {
+  if (!checks.yukyu) return;
+  var sMin = null;
+  if (timeDigits.length === 4) {
+    var sNum = parseInt(timeDigits.join(''));
+    var sH = Math.floor(sNum / 100), sM = sNum % 100;
+    if (sH <= 23 && sM <= 59) sMin = sH * 60 + sM;
+  }
+  _renderYukyuPreview('syukkin-yukyu-calc', sMin, null);
+}
+
+// submit時の有給時間計算（hours）
+function calcYukyuHoursFromTimes(sMin, tMin) {
+  var range = calcYukyuRangeFromTimes(sMin, tMin);
+  return range ? range.yukyuMin / 60 : 0;
 }
 
 // ─── 指定休カレンダー ─────────────────────────────────────────────────────

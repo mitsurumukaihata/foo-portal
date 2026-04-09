@@ -59,6 +59,30 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 .header-title { font-size:20px; font-weight:900; letter-spacing:-0.02em; margin-top:4px; }
 .header-title span { color:var(--accent); }
 
+/* ── ポータル切替タブ ── */
+.portal-tabs { display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap; }
+.portal-tab {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:7px 14px; background:var(--s2); border:1.5px solid var(--border);
+  border-radius:22px; font-size:12px; font-weight:700; color:var(--muted);
+  cursor:pointer; transition:all 0.15s; text-decoration:none; white-space:nowrap;
+}
+.portal-tab.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+.portal-tab.shanai {
+  border-color:rgba(240,165,0,0.5);
+  background:linear-gradient(135deg, rgba(240,165,0,0.14), rgba(240,165,0,0.04));
+  color:#e07000;
+}
+.portal-tab.sales {
+  border-color:rgba(30,58,95,0.5);
+  background:linear-gradient(135deg, rgba(30,58,95,0.14), rgba(201,162,39,0.06));
+  color:#1e3a5f;
+}
+[data-theme="dark"] .portal-tab.shanai { color:#f0a500; }
+[data-theme="dark"] .portal-tab.sales { color:#6a8fbf; }
+.portal-tab-icon { font-size:14px; }
+.portal-tab-ext { font-size:10px; opacity:0.7; margin-left:2px; }
+
 .content { padding:20px 20px 48px; }
 .screen-label { font-size:10px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:6px; margin-top:4px; }
 .greeting { font-size:13px; color:var(--muted); margin-bottom:18px; line-height:1.6; }
@@ -133,6 +157,9 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
       <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← 通常ポータル</a>
     </div>
     <div class="header-title">経理<span>ポータル</span></div>
+    <div class="portal-tabs" id="portal-tabs">
+      <!-- init() で動的描画 -->
+    </div>
   </div>
 
   <div class="content">
@@ -216,6 +243,16 @@ function init() {
   const greetWord = hour < 10 ? 'おはようございます' : (hour < 18 ? 'こんにちは' : 'お疲れさまです');
   const greetEl = document.getElementById('greeting');
   greetEl.innerHTML = `${greetWord}、<strong>${session.name}</strong>さん。<br>経理業務をお手伝いします。`;
+
+  // ポータル切替タブ（この画面は経理がアクティブ）
+  const nameNoSp = (session.name || '').replace(/\s/g, '');
+  const showSales = nameNoSp === '向畑充' || nameNoSp.includes('岡崎');
+  let tabHtml = '<a class="portal-tab shanai" href="https://mitsurumukaihata.github.io/foo-portal/"><span class="portal-tab-icon">🏠</span>社内</a>';
+  if (showSales) {
+    tabHtml += '<a class="portal-tab sales" href="https://mitsurumukaihata.github.io/foo-sales/" target="_blank" rel="noopener"><span class="portal-tab-icon">💰</span>売上管理<span class="portal-tab-ext">↗</span></a>';
+  }
+  tabHtml += '<div class="portal-tab active"><span class="portal-tab-icon">🧮</span>経理</div>';
+  document.getElementById('portal-tabs').innerHTML = tabHtml;
 
   loading.style.display = 'none';
   app.style.display = 'block';

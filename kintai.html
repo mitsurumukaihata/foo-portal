@@ -548,8 +548,14 @@ async function renderHome() {
         </div>
       </div>
       <div id="home-yukyu-wrap" style="display:none;">
-        <div class="screen-label">有給使用時間（時間単位）</div>
-        <input class="yukyu-inp" type="number" inputmode="decimal" placeholder="例：2" id="home-yukyu-inp">
+        <div class="screen-label">有給使用時間帯</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
+          <input class="yukyu-inp" type="time" id="home-yukyu-start" style="flex:1;" value="15:00" onchange="calcYukyuPreview()">
+          <span style="color:var(--muted);font-size:14px;">〜</span>
+          <input class="yukyu-inp" type="time" id="home-yukyu-end" style="flex:1;" value="18:00" onchange="calcYukyuPreview()">
+        </div>
+        <div id="home-yukyu-calc" style="font-size:12px;color:var(--muted);margin-top:6px;"></div>
+        <input type="hidden" id="home-yukyu-inp">
       </div>
       <div class="screen-label">備考（任意）</div>
       <textarea class="memo-input" id="home-memo" placeholder="例）休憩30分のため15:30打刻"></textarea>
@@ -655,6 +661,27 @@ function homeToggleCheck(el, key) {
   el.classList.toggle('on', window._homeChecks[key]);
   const wrap = document.getElementById('home-yukyu-wrap');
   if (wrap) wrap.style.display = window._homeChecks.yukyu ? 'block' : 'none';
+  if (window._homeChecks.yukyu) calcYukyuPreview();
+}
+
+function calcYukyuPreview() {
+  var ys = document.getElementById('home-yukyu-start')?.value || '';
+  var ye = document.getElementById('home-yukyu-end')?.value || '';
+  var calcEl = document.getElementById('home-yukyu-calc');
+  if (!calcEl || !ys || !ye) { if (calcEl) calcEl.textContent = ''; return; }
+  var ysParts = ys.split(':'), yeParts = ye.split(':');
+  var ysMin = parseInt(ysParts[0]) * 60 + parseInt(ysParts[1]);
+  var yeMin = parseInt(yeParts[0]) * 60 + parseInt(yeParts[1]);
+  var total = yeMin - ysMin;
+  if (total <= 0) { calcEl.textContent = '⚠️ 終了時間が開始時間より前です'; return; }
+  var breakPoint = 12 * 60 + 1;
+  var breakDeducted = (ysMin <= breakPoint && yeMin > breakPoint);
+  var yukyuMin = breakDeducted ? total - 60 : total;
+  var h = Math.floor(yukyuMin / 60);
+  var m = yukyuMin % 60;
+  var timeStr = h + '時間' + (m > 0 ? m + '分' : '');
+  calcEl.innerHTML = '→ 有給 <strong style="color:var(--accent);">' + timeStr + '</strong>'
+    + (breakDeducted ? '（12:01を含むため休憩1h差引）' : '');
 }
 
 async function homeSubmit() {
@@ -693,9 +720,30 @@ async function homeSubmit() {
 
   const chk = window._homeChecks;
   const memoVal = document.getElementById('home-memo')?.value || '';
-  const yukyuTime = document.getElementById('home-yukyu-inp')?.value || '';
   const btn = document.getElementById('home-submit');
   btn.disabled = true; btn.textContent = '送信中…';
+
+  // 有給使用時間の計算（12:01ルール）
+  var yukyuHours = 0;
+  if (chk.yukyu) {
+    var ys = document.getElementById('home-yukyu-start')?.value || '';
+    var ye = document.getElementById('home-yukyu-end')?.value || '';
+    if (ys && ye) {
+      var ysParts = ys.split(':'), yeParts = ye.split(':');
+      var ysMin = parseInt(ysParts[0]) * 60 + parseInt(ysParts[1]);
+      var yeMin = parseInt(yeParts[0]) * 60 + parseInt(yeParts[1]);
+      var yukyuMin = yeMin - ysMin;
+      // 12:01（721分）が有給時間帯に含まれる場合、有給から1h引く
+      var breakPoint = 12 * 60 + 1; // 12:01 = 721分
+      if (ysMin <= breakPoint && yeMin > breakPoint) {
+        yukyuMin -= 60; // 有給側から休憩1h引く
+      }
+      yukyuHours = Math.max(0, yukyuMin / 60);
+    }
+    // hidden inputにも反映
+    var yukyuInp = document.getElementById('home-yukyu-inp');
+    if (yukyuInp) yukyuInp.value = yukyuHours;
+  }
 
   try {
     const props = {};
@@ -705,8 +753,8 @@ async function homeSubmit() {
     props['欠勤']     = { checkbox: chk.kekkin };
     props['労災扱い'] = { checkbox: chk.rousai };
     props['備考']     = { rich_text: memoVal ? [{ text: { content: memoVal } }] : [] };
-    if (chk.yukyu && yukyuTime) {
-      props['有給使用時間'] = { number: parseFloat(yukyuTime) || 0 };
+    if (chk.yukyu && yukyuHours > 0) {
+      props['有給使用時間'] = { number: yukyuHours };
     }
 
     if (selectedDateRecord) {

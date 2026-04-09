@@ -58,19 +58,19 @@
 body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; max-width:480px; margin:0 auto; }
 
 /* ── レスポンシブ ── */
-@media (min-width: 768px) {
-  body { max-width: 760px; }
+@media (min-width: 700px) {
+  body { max-width: 720px; }
   .header { padding: 22px 32px 18px; }
   .content { padding: 24px 32px 48px; }
   .header-title { font-size: 26px; }
   .row2 { gap: 14px; }
 }
-@media (min-width: 1024px) {
+@media (min-width: 900px) { body { max-width: 880px; } }
+@media (min-width: 1100px) {
   body { max-width: 1000px; }
   .header { padding: 28px 40px 22px; }
   .content { padding: 28px 40px 48px; }
   .header-title { font-size: 30px; }
-  /* 明細プレビューを2カラム化 */
   .content .sum-card + .sum-card { margin-top: 14px; }
 }
 @media print {

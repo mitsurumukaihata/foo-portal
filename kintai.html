@@ -1941,7 +1941,13 @@ window.onload = () => {
   }
   USER = session;
   document.getElementById('app').style.display = 'block';
-  renderHome();
+  // URLパラメータで初期タブ指定 (?mode=all で全員確認タブ)
+  const params = new URLSearchParams(location.search);
+  if (params.get('mode') === 'all') {
+    switchKintaiTab('all');
+  } else {
+    renderHome();
+  }
 };
 </script>
 <script src="foo-swipe.js"></script>

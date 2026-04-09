@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>給与明細作成 | f.o.o 経理</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+/* 経理カラーテーマ */
+:root {
+  --bg: #0f1a17;
+  --s1: #0a1513;
+  --s2: #152621;
+  --s3: #1c332c;
+  --border: #23453a;
+  --border2: #346354;
+  --text: #eef2ee;
+  --muted: #7a8f85;
+  --accent: #7aa66b;
+  --accent2: #9cc48d;
+  --gold: #c9a227;
+  --red: #ef4444;
+  --blue: #3b82f6;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #f3f7f1; --s1: #ffffff; --s2: #eaf1e8; --s3: #dde8da;
+    --border: #c8d8c2; --border2: #a8c09e; --text: #0f1a17; --muted: #5e7260;
+    --accent: #3d7c4a; --accent2: #2d5f36; --gold: #b8910d;
+    --red: #dc2626; --blue: #2563eb;
+  }
+}
+[data-theme="dark"] {
+  --bg: #0f1a17; --s1: #0a1513; --s2: #152621; --s3: #1c332c;
+  --border: #23453a; --border2: #346354; --text: #eef2ee; --muted: #7a8f85;
+  --accent: #7aa66b; --accent2: #9cc48d; --gold: #c9a227;
+  --red: #ef4444; --blue: #3b82f6;
+}
+[data-theme="light"] {
+  --bg: #f3f7f1; --s1: #ffffff; --s2: #eaf1e8; --s3: #dde8da;
+  --border: #c8d8c2; --border2: #a8c09e; --text: #0f1a17; --muted: #5e7260;
+  --accent: #3d7c4a; --accent2: #2d5f36; --gold: #b8910d;
+  --red: #dc2626; --blue: #2563eb;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; max-width:480px; margin:0 auto; }
+
+/* ヘッダー */
+.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:100; }
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+.header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+.header-back { font-size:11px; color:var(--muted); text-decoration:none; border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; }
+.header-title { font-size:20px; font-weight:900; letter-spacing:-0.02em; margin-top:4px; }
+.header-title span { color:var(--accent); }
+
+/* ページ */
+.page { display:none; padding-bottom:48px; }
+.page.active { display:block; }
+.content { padding:18px 20px; }
+.screen-label { font-size:10px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:6px; margin-top:14px; }
+.screen-title { font-size:19px; font-weight:900; letter-spacing:-0.02em; margin-bottom:14px; line-height:1.3; }
+
+/* 入力 */
+.inp { width:100%; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:12px 14px; font-size:14px; color:var(--text); font-family:'Noto Sans JP',sans-serif; outline:none; transition:border-color 0.15s; }
+.inp:focus { border-color:var(--accent); }
+select.inp { appearance:none; -webkit-appearance:none; background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237a8f85' stroke-width='3'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; padding-right:36px; }
+
+.inp-num { text-align:right; font-family:'DM Mono',monospace; font-weight:500; }
+
+.row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+/* ボタン */
+.btn-primary { width:100%; background:var(--accent); border:none; border-radius:10px; padding:15px; color:#fff; font-size:14px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; margin-top:12px; transition:opacity 0.15s; }
+.btn-primary:disabled { opacity:0.4; cursor:default; }
+.btn-secondary { width:100%; background:transparent; border:1.5px solid var(--border2); border-radius:10px; padding:12px; color:var(--text); font-size:14px; font-family:'Noto Sans JP',sans-serif; cursor:pointer; margin-top:8px; }
+.btn-danger { background:transparent; border:1.5px solid var(--red); color:var(--red); }
+
+/* エラー */
+.error-box { background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:8px; padding:12px 14px; margin-top:12px; font-size:12px; color:var(--red); line-height:1.5; }
+.info-box { background:rgba(122,166,107,0.08); border:1px solid rgba(122,166,107,0.25); border-radius:8px; padding:12px 14px; margin-bottom:12px; font-size:12px; color:var(--accent2); line-height:1.6; }
+.warn-box { background:rgba(201,162,39,0.08); border:1px solid rgba(201,162,39,0.3); border-radius:8px; padding:12px 14px; margin-bottom:12px; font-size:12px; color:var(--gold); line-height:1.6; }
+
+/* サマリカード */
+.sum-card { background:var(--s2); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:14px; }
+.sum-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:0.5px dashed var(--border); font-size:13px; }
+.sum-row:last-child { border-bottom:none; }
+.sum-row.big { padding:10px 0; font-size:15px; font-weight:700; }
+.sum-row.total { border-top:2px solid var(--accent); margin-top:6px; padding:12px 0 4px; font-size:17px; font-weight:900; color:var(--accent); }
+.sum-label { color:var(--muted); }
+.sum-val { font-family:'DM Mono',monospace; font-weight:700; }
+
+/* 編集可能行 */
+.edit-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:0.5px dashed var(--border); }
+.edit-row:last-child { border-bottom:none; }
+.edit-label { font-size:13px; color:var(--muted); flex-shrink:0; min-width:90px; }
+.edit-input { width:120px; background:var(--s3); border:1px solid var(--border); border-radius:6px; padding:6px 10px; font-size:13px; color:var(--text); font-family:'DM Mono',monospace; font-weight:600; text-align:right; outline:none; }
+.edit-input:focus { border-color:var(--accent); }
+
+/* ローディング */
+.spinner { width:28px; height:28px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 12px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-wrap { text-align:center; padding:48px 20px; }
+.loading-text { font-size:13px; color:var(--muted); }
+
+/* 権限エラー */
+.denied { padding:60px 20px; text-align:center; }
+.denied-icon { font-size:48px; margin-bottom:16px; }
+.denied-title { font-size:22px; font-weight:900; margin-bottom:8px; }
+.denied-title span { color:var(--red); }
+.denied-msg { font-size:13px; color:var(--muted); line-height:1.7; margin-bottom:28px; }
+.denied-back { display:inline-block; background:var(--accent); border-radius:10px; padding:13px 28px; color:#fff; font-size:14px; font-weight:700; text-decoration:none; }
+
+/* 履歴カード */
+.hist-card { background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:10px; cursor:pointer; transition:border-color 0.12s; }
+.hist-card:active { transform:scale(0.99); }
+.hist-card:hover { border-color:var(--accent); }
+.hist-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.hist-month { font-size:15px; font-weight:900; color:var(--accent); }
+.hist-date { font-size:11px; color:var(--muted); font-family:'DM Mono',monospace; }
+.hist-amt { display:flex; justify-content:space-between; font-size:12px; }
+.hist-amt-label { color:var(--muted); }
+.hist-amt-val { font-family:'DM Mono',monospace; font-weight:600; }
+
+/* 完了ポップ */
+.done-wrap { text-align:center; padding:60px 20px; }
+.done-icon { font-size:48px; margin-bottom:16px; color:var(--accent); }
+.done-title { font-size:22px; font-weight:900; margin-bottom:8px; }
+.done-sub { font-size:13px; color:var(--muted); margin-bottom:28px; }
+
+.kintai-table { background:var(--s2); border-radius:10px; padding:12px 14px; margin-bottom:14px; font-size:13px; }
+.kintai-row { display:flex; justify-content:space-between; padding:5px 0; border-bottom:0.5px dashed var(--border); }
+.kintai-row:last-child { border-bottom:none; }
+.kintai-label { color:var(--muted); }
+.kintai-val { font-family:'DM Mono',monospace; font-weight:600; }
+
+/* タブ */
+.tab-bar { display:flex; background:var(--s1); border-bottom:0.5px solid var(--border); }
+.tab { flex:1; padding:12px 6px 10px; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--muted); font-size:12px; font-family:'Noto Sans JP',sans-serif; font-weight:700; cursor:pointer; transition:all 0.15s; }
+.tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+@media print {
+  body { background:#fff !important; color:#000 !important; max-width:none !important; }
+  .no-print { display:none !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ローディング -->
+<div id="loading" class="loading-wrap">
+  <div class="spinner"></div>
+  <div class="loading-text">読み込み中...</div>
+</div>
+
+<!-- 権限エラー -->
+<div id="denied" class="denied" style="display:none;">
+  <div class="denied-icon">🔒</div>
+  <div class="denied-title">権限が<span>ありません</span></div>
+  <div class="denied-msg">給与明細作成は経理担当者と向畑 充のみ利用できます。</div>
+  <a class="denied-back" href="keiri-portal.html">← 経理ポータルへ</a>
+</div>
+
+<!-- メインアプリ -->
+<div id="app" style="display:none;">
+  <div class="header no-print">
+    <div class="header-top">
+      <div class="header-brand">F.o.o · 経理</div>
+      <a class="header-back" href="keiri-portal.html">← 経理ポータル</a>
+    </div>
+    <div class="header-title">給与<span>明細作成</span></div>
+  </div>
+
+  <div class="tab-bar no-print">
+    <button class="tab active" id="tab-new" onclick="switchTab('new')">新規作成</button>
+    <button class="tab" id="tab-hist" onclick="switchTab('hist')">過去明細</button>
+  </div>
+
+  <!-- 新規作成ページ -->
+  <div class="page active" id="page-new">
+    <div id="new-content"></div>
+  </div>
+
+  <!-- 過去明細ページ -->
+  <div class="page" id="page-hist">
+    <div id="hist-content"></div>
+  </div>
+
+  <!-- 完了ページ -->
+  <div class="page" id="page-done">
+    <div id="done-content"></div>
+  </div>
+</div>
+
+<script>
+// ── テーマ同期 ──
+(function(){
+  const t = localStorage.getItem('foo_portal_theme') || 'auto';
+  if (t !== 'auto') document.documentElement.setAttribute('data-theme', t);
+})();
+
+// ─── 定数 ─────────────────────────────────────────────────────────────
+const WORKER_URL    = 'https://notion-proxy.33322666666mm.workers.dev';
+const MASTER_DB     = '08c5405729794337886b3565352ef96a';
+const KINTAI_DB     = '200a695f8e8880b181d8c77b7dde51b5';
+const SESSION_KEY   = 'foo_portal_session';
+const SESSION_DAYS  = 30;
+
+// 締め日: 毎月15日締め・当月支給
+const CLOSING_DAY = 15;
+
+// ─── 状態 ─────────────────────────────────────────────────────────────
+let USER = null;
+let employees = [];           // {name, pageId, meisaiDbId, 給与体系, 基本給, 時給, etc.}
+let selectedEmpIdx = -1;
+let targetYear = 0;
+let targetMonth = 0;
+let kintaiSummary = null;     // 集計結果
+let payslipData = null;       // 計算結果（編集可能）
+let existingRecordId = null;  // 既存レコードID（編集時）
+let currentTab = 'new';
+
+// ─── セッション ────────────────────────────────────────────────────────
+function loadSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (!d || new Date(d.expires) < new Date()) { localStorage.removeItem(SESSION_KEY); return null; }
+    const expires = new Date(); expires.setDate(expires.getDate() + SESSION_DAYS);
+    d.expires = expires.toISOString();
+    localStorage.setItem(SESSION_KEY, JSON.stringify(d));
+    return d;
+  } catch(e) { return null; }
+}
+
+function isKeiriAllowed(session) {
+  if (!session || !session.name) return false;
+  const name = session.name.replace(/\s/g, '');
+  return (session.group || '') === '経理' || name === '向畑充';
+}
+
+// ─── Notion API ────────────────────────────────────────────────────────
+async function notionAPI(method, path, body, timeout) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeout || 20000);
+  try {
+    const res = await fetch(WORKER_URL + path, {
+      method, headers: {'Content-Type':'application/json'},
+      body: body ? JSON.stringify(body) : undefined,
+      signal: ctrl.signal,
+    });
+    clearTimeout(t);
+    const data = await res.json();
+    if (data.object === 'error') throw new Error(data.message || 'Notion API エラー');
+    return data;
+  } catch(e) {
+    clearTimeout(t);
+    if (e.name === 'AbortError') throw new Error('タイムアウト。通信環境を確認してください。');
+    throw e;
+  }
+}
+
+// ─── ユーティリティ ────────────────────────────────────────────────────
+function zeroPad(n, w) { return String(n).padStart(w, '0'); }
+function yen(n) { return (n == null ? 0 : Math.round(n)).toLocaleString('ja-JP') + ' 円'; }
+function num(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+function toHourMinutes(h) { const hi = Math.floor(h); const mi = Math.round((h - hi) * 60); return `${hi}時間${mi > 0 ? mi + '分' : ''}`; }
+
+// 締め期間を計算（例：2026年4月分 → 3/16〜4/15）
+function getClosingPeriod(year, month) {
+  // month: 1-12
+  const end = new Date(year, month - 1, CLOSING_DAY);
+  const startDate = new Date(year, month - 2, CLOSING_DAY + 1);
+  return {
+    start: `${startDate.getFullYear()}-${zeroPad(startDate.getMonth()+1, 2)}-${zeroPad(startDate.getDate(), 2)}`,
+    end:   `${end.getFullYear()}-${zeroPad(end.getMonth()+1, 2)}-${zeroPad(end.getDate(), 2)}`,
+  };
+}
+
+// ─── 社員一覧取得 ──────────────────────────────────────────────────────
+async function loadEmployees() {
+  const res = await notionAPI('POST', `/databases/${MASTER_DB}/query`, {
+    filter: { property: '在籍', select: { equals: '在籍中' } },
+    page_size: 100,
+  });
+  const list = [];
+  (res.results || []).forEach(p => {
+    const props = p.properties;
+    const name = props['氏名']?.title?.[0]?.plain_text || '';
+    if (!name) return;
+    list.push({
+      name,
+      pageId: p.id,
+      group: props['アプリグループ']?.select?.name || '一般',
+      meisaiDbId: props['明細DB_ID']?.rich_text?.[0]?.plain_text || '',
+      給与体系: props['給与体系']?.select?.name || '',
+      基本給: num(props['基本給']?.number),
+      時給: num(props['時給']?.number),
+      通勤手当: num(props['通勤手当']?.number),
+      扶養人数: num(props['扶養人数']?.number),
+      住民税月額: num(props['住民税月額']?.number),
+      健康保険月額: num(props['健康保険月額']?.number),
+      厚生年金月額: num(props['厚生年金月額']?.number),
+      所定労働日数: num(props['所定労働日数']?.number) || 21,
+      所定労働時間: num(props['所定労働時間']?.number) || 168,
+    });
+  });
+  list.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+  return list;
+}
+
+// ─── 勤怠集計 ──────────────────────────────────────────────────────────
+async function aggregateKintai(empName, startDate, endDate) {
+  const res = await notionAPI('POST', `/databases/${KINTAI_DB}/query`, {
+    filter: { and: [
+      { property: '社員名', select: { equals: empName } },
+      { property: '日付', date: { on_or_after: startDate } },
+      { property: '日付', date: { on_or_before: endDate } },
+    ]},
+    sorts: [{ property: '日付', direction: 'ascending' }],
+    page_size: 100,
+  });
+
+  let workDays = 0;
+  let totalMinutes = 0;   // 実労働時間（分）
+  let overtimeMinutes = 0;// 残業時間（分）
+  let yukyuHours = 0;
+  let absentDays = 0;
+  const details = [];
+
+  (res.results || []).forEach(r => {
+    const p = r.properties;
+    const sNum = p['出勤']?.number;
+    const tNum = p['退勤']?.number;
+    const yukyu = p['有給使用']?.checkbox === true;
+    const yukyuT = num(p['有給使用時間']?.number);
+    const absent = p['欠勤']?.checkbox === true;
+    const date = p['日付']?.date?.start || '';
+
+    if (absent) { absentDays++; details.push({ date, label: '欠勤' }); return; }
+    if (yukyu) yukyuHours += yukyuT;
+    if (sNum == null || tNum == null) return;
+
+    const sH = Math.floor(sNum / 100), sM = sNum % 100;
+    const tH = Math.floor(tNum / 100), tM = tNum % 100;
+    const sMin = sH * 60 + sM;
+    const tMin = tH * 60 + tM;
+    if (tMin <= sMin) return;
+
+    // 実働 = 退勤 - 出勤 - 休憩1h - 有給時間
+    let workMin = (tMin - sMin) - 60 - Math.round(yukyuT * 60);
+    if (workMin < 0) workMin = 0;
+
+    workDays++;
+    totalMinutes += workMin;
+    // 残業: 1日8h(480分)超過分
+    if (workMin > 480) overtimeMinutes += (workMin - 480);
+
+    details.push({
+      date, s: `${zeroPad(sH,2)}:${zeroPad(sM,2)}`, t: `${zeroPad(tH,2)}:${zeroPad(tM,2)}`,
+      work: (workMin / 60).toFixed(2), overtime: ((workMin - 480) / 60).toFixed(2),
+    });
+  });
+
+  return {
+    workDays,
+    totalHours: totalMinutes / 60,
+    overtimeHours: overtimeMinutes / 60,
+    yukyuHours,
+    absentDays,
+    details,
+  };
+}
+
+// ─── 計算エンジン ──────────────────────────────────────────────────────
+// 概算所得税（国税庁月額表 甲欄の超簡易近似版）
+function estimateIncomeTax(taxableAmount, dependents) {
+  // 月額表の近似: 扶養0人、概算の階段
+  // 社会保険料控除後の金額 = taxableAmount
+  // 扶養1人につき概算で控除額 +1600円程度減額
+  if (taxableAmount < 88000) return 0;
+  let tax = 0;
+  if (taxableAmount < 100000) tax = (taxableAmount - 88000) * 0.05;
+  else if (taxableAmount < 150000) tax = 600 + (taxableAmount - 100000) * 0.02;
+  else if (taxableAmount < 200000) tax = 1600 + (taxableAmount - 150000) * 0.04;
+  else if (taxableAmount < 270000) tax = 3600 + (taxableAmount - 200000) * 0.06;
+  else if (taxableAmount < 350000) tax = 7800 + (taxableAmount - 270000) * 0.08;
+  else if (taxableAmount < 500000) tax = 14200 + (taxableAmount - 350000) * 0.10;
+  else tax = 29200 + (taxableAmount - 500000) * 0.15;
+  // 扶養人数で軽減
+  tax -= dependents * 1600;
+  return Math.max(0, Math.round(tax));
+}
+
+function calculatePayslip(emp, summary) {
+  // 基本給
+  let basePay = 0;
+  let overtimePay = 0;
+
+  if (emp.給与体系 === '時給') {
+    // 時給制: 通常時間 × 時給 + 残業時間 × 時給 × 1.25
+    const normalHours = summary.totalHours - summary.overtimeHours;
+    basePay = Math.round(normalHours * emp.時給);
+    overtimePay = Math.round(summary.overtimeHours * emp.時給 * 1.25);
+  } else {
+    // 月給制: 基本給 − 欠勤控除 + 残業手当
+    const deductPerDay = emp.所定労働日数 > 0 ? emp.基本給 / emp.所定労働日数 : 0;
+    const absentDeduct = Math.round(summary.absentDays * deductPerDay);
+    basePay = emp.基本給 - absentDeduct;
+    const hourlyRate = emp.所定労働時間 > 0 ? emp.基本給 / emp.所定労働時間 : 0;
+    overtimePay = Math.round(summary.overtimeHours * hourlyRate * 1.25);
+  }
+
+  const transport = emp.通勤手当 || 0;
+  const total = basePay + overtimePay + transport;
+
+  // 控除
+  const health = emp.健康保険月額 || 0;
+  const pension = emp.厚生年金月額 || 0;
+  const employment = Math.round(total * 0.006); // 雇用保険 0.6%
+  const residence = emp.住民税月額 || 0;
+
+  const socialSum = health + pension + employment;
+  const taxable = total - socialSum;
+  const incomeTax = estimateIncomeTax(taxable, emp.扶養人数);
+
+  const deductionTotal = socialSum + incomeTax + residence;
+  const netPay = total - deductionTotal;
+
+  return {
+    基本給: basePay,
+    残業手当: overtimePay,
+    通勤手当: transport,
+    総支給額: total,
+    健康保険: health,
+    厚生年金: pension,
+    雇用保険: employment,
+    所得税: incomeTax,
+    住民税: residence,
+    控除合計: deductionTotal,
+    差引支給額: netPay,
+  };
+}
+
+// ═══ 画面遷移 ═══════════════════════════════════════════════════════
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+}
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-new').classList.toggle('active', tab === 'new');
+  document.getElementById('tab-hist').classList.toggle('active', tab === 'hist');
+  if (tab === 'new') { showPage('new'); renderSelector(); }
+  else { showPage('hist'); renderHistSelector(); }
+}
+
+// ─── 画面1: 社員選択 + 年月選択 ────────────────────────────────────────
+function renderSelector() {
+  const now = new Date();
+  if (targetYear === 0) { targetYear = now.getFullYear(); targetMonth = now.getMonth() + 1; }
+
+  const monthOpts = [];
+  for (let i = 0; i < 13; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const y = d.getFullYear(), m = d.getMonth() + 1;
+    const sel = (y === targetYear && m === targetMonth) ? 'selected' : '';
+    monthOpts.push(`<option value="${y}-${m}" ${sel}>${y}年 ${m}月</option>`);
+  }
+
+  const empOpts = employees.map((e, i) => {
+    const sel = i === selectedEmpIdx ? 'selected' : '';
+    const taikei = e.給与体系 || '未設定';
+    return `<option value="${i}" ${sel}>${e.name} (${taikei})</option>`;
+  }).join('');
+
+  const period = getClosingPeriod(targetYear, targetMonth);
+
+  document.getElementById('new-content').innerHTML = `
+    <div class="content">
+      <div class="info-box">
+        <strong>締め日: 毎月15日</strong><br>
+        例）2026年4月分 = 3/16 〜 4/15 の勤怠、当月支給
+      </div>
+
+      <div class="screen-label">対象社員</div>
+      <select class="inp" id="sel-emp" onchange="selectedEmpIdx = parseInt(this.value); renderSelector();">
+        <option value="-1">選択してください</option>
+        ${empOpts}
+      </select>
+
+      <div class="screen-label">対象年月</div>
+      <select class="inp" id="sel-month" onchange="onMonthChange(this.value)">
+        ${monthOpts}
+      </select>
+
+      <div class="screen-label">締め期間</div>
+      <div class="kintai-table">
+        <div class="kintai-row"><div class="kintai-label">期間</div><div class="kintai-val">${period.start} 〜 ${period.end}</div></div>
+      </div>
+
+      <button class="btn-primary" id="gen-btn" onclick="generatePayslip()" ${selectedEmpIdx < 0 ? 'disabled' : ''}>
+        明細を生成する
+      </button>
+      <div id="sel-error"></div>
+    </div>
+  `;
+}
+
+function onMonthChange(v) {
+  const [y, m] = v.split('-').map(Number);
+  targetYear = y; targetMonth = m;
+  renderSelector();
+}
+
+// ─── 明細生成 ──────────────────────────────────────────────────────────
+async function generatePayslip() {
+  const emp = employees[selectedEmpIdx];
+  if (!emp) return;
+
+  const errEl = document.getElementById('sel-error');
+  errEl.innerHTML = '';
+
+  // 給与情報チェック
+  if (!emp.給与体系) {
+    errEl.innerHTML = `<div class="error-box">${emp.name}さんの給与体系が未設定です。<br>Notionの社員マスタで「給与体系」「基本給/時給」等を設定してください。</div>`;
+    return;
+  }
+  if (emp.給与体系 === '月給' && !emp.基本給) {
+    errEl.innerHTML = `<div class="error-box">${emp.name}さんの基本給が未設定です。</div>`;
+    return;
+  }
+  if (emp.給与体系 === '時給' && !emp.時給) {
+    errEl.innerHTML = `<div class="error-box">${emp.name}さんの時給が未設定です。</div>`;
+    return;
+  }
+
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true; btn.textContent = '集計中…';
+
+  try {
+    const period = getClosingPeriod(targetYear, targetMonth);
+    kintaiSummary = await aggregateKintai(emp.name, period.start, period.end);
+    payslipData = calculatePayslip(emp, kintaiSummary);
+    existingRecordId = null;
+
+    // 既存レコードチェック（同じ年月で既に明細があれば編集モード）
+    if (emp.meisaiDbId) {
+      try {
+        const res = await notionAPI('POST', `/databases/${emp.meisaiDbId}/query`, {
+          filter: { and: [
+            { property: '年', select: { equals: String(targetYear) } },
+            { property: '月', select: { equals: targetMonth + '月' } },
+            { property: 'カテゴリ', select: { equals: '給与' } },
+          ]},
+          page_size: 1,
+        });
+        if (res.results && res.results.length > 0) {
+          existingRecordId = res.results[0].id;
+        }
+      } catch(e) { console.warn('既存レコードチェック失敗:', e); }
+    }
+
+    renderPreview();
+  } catch(e) {
+    errEl.innerHTML = `<div class="error-box">集計に失敗しました: ${e.message}</div>`;
+    btn.disabled = false; btn.textContent = '明細を生成する';
+  }
+}
+
+// ─── プレビュー画面 ────────────────────────────────────────────────────
+function renderPreview() {
+  const emp = employees[selectedEmpIdx];
+  const period = getClosingPeriod(targetYear, targetMonth);
+  const payDate = `${targetYear}-${zeroPad(targetMonth,2)}-25`; // 支給日は25日を仮定
+
+  document.getElementById('new-content').innerHTML = `
+    <div class="content">
+      ${existingRecordId ? '<div class="warn-box">⚠️ この月の明細は既に存在します。保存すると上書きされます。</div>' : ''}
+
+      <div class="screen-label">対象</div>
+      <div class="sum-card">
+        <div class="sum-row big"><div>${emp.name}</div><div class="sum-val">${targetYear}年 ${targetMonth}月分</div></div>
+        <div class="sum-row"><div class="sum-label">締め期間</div><div class="sum-val">${period.start} 〜 ${period.end}</div></div>
+        <div class="sum-row"><div class="sum-label">給与体系</div><div class="sum-val">${emp.給与体系}</div></div>
+      </div>
+
+      <div class="screen-label">勤怠集計</div>
+      <div class="kintai-table">
+        <div class="kintai-row"><div class="kintai-label">出勤日数</div><div class="kintai-val">${kintaiSummary.workDays} 日</div></div>
+        <div class="kintai-row"><div class="kintai-label">実労働時間</div><div class="kintai-val">${kintaiSummary.totalHours.toFixed(2)} 時間</div></div>
+        <div class="kintai-row"><div class="kintai-label">うち残業</div><div class="kintai-val">${kintaiSummary.overtimeHours.toFixed(2)} 時間</div></div>
+        <div class="kintai-row"><div class="kintai-label">有給使用</div><div class="kintai-val">${kintaiSummary.yukyuHours.toFixed(1)} 時間</div></div>
+        <div class="kintai-row"><div class="kintai-label">欠勤</div><div class="kintai-val">${kintaiSummary.absentDays} 日</div></div>
+      </div>
+
+      <div class="screen-label">支給（編集可）</div>
+      <div class="sum-card">
+        ${editRow('基本給', payslipData.基本給)}
+        ${editRow('残業手当', payslipData.残業手当)}
+        ${editRow('通勤手当', payslipData.通勤手当)}
+        <div class="sum-row total"><div>総支給額</div><div class="sum-val" id="sum-total">${yen(payslipData.総支給額)}</div></div>
+      </div>
+
+      <div class="screen-label">控除（編集可）</div>
+      <div class="sum-card">
+        ${editRow('健康保険', payslipData.健康保険)}
+        ${editRow('厚生年金', payslipData.厚生年金)}
+        ${editRow('雇用保険', payslipData.雇用保険)}
+        ${editRow('所得税', payslipData.所得税)}
+        ${editRow('住民税', payslipData.住民税)}
+        <div class="sum-row total"><div>控除合計</div><div class="sum-val" id="sum-deduction">${yen(payslipData.控除合計)}</div></div>
+      </div>
+
+      <div class="sum-card" style="background:linear-gradient(135deg,rgba(122,166,107,0.18),rgba(61,124,74,0.08));border-color:var(--accent);">
+        <div class="sum-row total" style="font-size:20px;">
+          <div>差引支給額</div>
+          <div class="sum-val" id="sum-net">${yen(payslipData.差引支給額)}</div>
+        </div>
+      </div>
+
+      <div class="screen-label">備考（任意）</div>
+      <textarea class="inp" id="memo-inp" placeholder="備考があれば入力" style="min-height:60px;"></textarea>
+
+      <button class="btn-primary" onclick="saveToNotion()">💾 Notion に保存</button>
+      <button class="btn-secondary" onclick="printPayslip()">🖨️ 印刷 / PDF出力</button>
+      <button class="btn-secondary btn-danger" onclick="renderSelector()">← キャンセル</button>
+      <div id="save-error"></div>
+    </div>
+  `;
+
+  // 編集イベント
+  document.querySelectorAll('.edit-input').forEach(inp => {
+    inp.addEventListener('input', recalcTotals);
+  });
+}
+
+function editRow(label, value) {
+  const key = label;
+  return `<div class="edit-row">
+    <div class="edit-label">${label}</div>
+    <input type="number" class="edit-input" data-field="${key}" value="${value}">
+  </div>`;
+}
+
+function recalcTotals() {
+  const getField = (key) => num(document.querySelector(`[data-field="${key}"]`)?.value);
+  payslipData.基本給    = getField('基本給');
+  payslipData.残業手当  = getField('残業手当');
+  payslipData.通勤手当  = getField('通勤手当');
+  payslipData.健康保険  = getField('健康保険');
+  payslipData.厚生年金  = getField('厚生年金');
+  payslipData.雇用保険  = getField('雇用保険');
+  payslipData.所得税    = getField('所得税');
+  payslipData.住民税    = getField('住民税');
+  payslipData.総支給額  = payslipData.基本給 + payslipData.残業手当 + payslipData.通勤手当;
+  payslipData.控除合計  = payslipData.健康保険 + payslipData.厚生年金 + payslipData.雇用保険 + payslipData.所得税 + payslipData.住民税;
+  payslipData.差引支給額 = payslipData.総支給額 - payslipData.控除合計;
+  document.getElementById('sum-total').textContent     = yen(payslipData.総支給額);
+  document.getElementById('sum-deduction').textContent = yen(payslipData.控除合計);
+  document.getElementById('sum-net').textContent       = yen(payslipData.差引支給額);
+}
+
+// ─── Notion 保存 ───────────────────────────────────────────────────────
+async function saveToNotion() {
+  const emp = employees[selectedEmpIdx];
+  const errEl = document.getElementById('save-error');
+  errEl.innerHTML = '';
+  if (!emp.meisaiDbId) {
+    errEl.innerHTML = `<div class="error-box">${emp.name}さんの明細DBが未設定です。<br>社員マスタの「明細DB_ID」を設定してください。</div>`;
+    return;
+  }
+
+  const period = getClosingPeriod(targetYear, targetMonth);
+  const memo = document.getElementById('memo-inp')?.value || '';
+  const payDate = `${targetYear}-${zeroPad(targetMonth,2)}-25`;
+  const title = `${targetYear}年${targetMonth}月 給与明細 - ${emp.name}`;
+
+  const props = {
+    '名前': { title: [{ text: { content: title } }] },
+    'カテゴリ': { select: { name: '給与' } },
+    '年': { select: { name: String(targetYear) } },
+    '月': { select: { name: `${targetMonth}月` } },
+    '給与支給日': { date: { start: payDate } },
+    '締め期間開始': { date: { start: period.start } },
+    '締め期間終了': { date: { start: period.end } },
+    '出勤日数': { number: kintaiSummary.workDays },
+    '実労働時間': { number: Math.round(kintaiSummary.totalHours * 100) / 100 },
+    '所定労働時間': { number: emp.所定労働時間 },
+    '残業時間': { number: Math.round(kintaiSummary.overtimeHours * 100) / 100 },
+    '有給時間': { number: Math.round(kintaiSummary.yukyuHours * 10) / 10 },
+    '欠勤日数': { number: kintaiSummary.absentDays },
+    '基本給': { number: payslipData.基本給 },
+    '残業手当': { number: payslipData.残業手当 },
+    '通勤手当': { number: payslipData.通勤手当 },
+    '総支給額': { number: payslipData.総支給額 },
+    '健康保険': { number: payslipData.健康保険 },
+    '厚生年金': { number: payslipData.厚生年金 },
+    '雇用保険': { number: payslipData.雇用保険 },
+    '所得税': { number: payslipData.所得税 },
+    '住民税': { number: payslipData.住民税 },
+    '控除合計': { number: payslipData.控除合計 },
+    '差引支給額': { number: payslipData.差引支給額 },
+    'メモ': { rich_text: memo ? [{ text: { content: memo } }] : [] },
+  };
+
+  const btn = document.querySelector('.btn-primary');
+  btn.disabled = true; btn.textContent = '保存中…';
+
+  try {
+    if (existingRecordId) {
+      await notionAPI('PATCH', `/pages/${existingRecordId}`, { properties: props });
+    } else {
+      await notionAPI('POST', '/pages', {
+        parent: { database_id: emp.meisaiDbId },
+        properties: props,
+      });
+    }
+    showDone();
+  } catch(e) {
+    errEl.innerHTML = `<div class="error-box">保存に失敗しました: ${e.message}</div>`;
+    btn.disabled = false; btn.textContent = '💾 Notion に保存';
+  }
+}
+
+function showDone() {
+  const emp = employees[selectedEmpIdx];
+  document.getElementById('done-content').innerHTML = `
+    <div class="done-wrap">
+      <div class="done-icon">✅</div>
+      <div class="done-title">保存しました</div>
+      <div class="done-sub">${emp.name} · ${targetYear}年${targetMonth}月分</div>
+      <button class="btn-primary" onclick="printPayslip()">🖨️ 印刷 / PDF出力</button>
+      <button class="btn-secondary" onclick="selectedEmpIdx=-1; switchTab('new');">別の明細を作成</button>
+      <button class="btn-secondary" onclick="location.href='keiri-portal.html'">← 経理ポータルへ</button>
+    </div>
+  `;
+  showPage('done');
+}
+
+// ─── 印刷レイアウト ────────────────────────────────────────────────────
+function printPayslip() {
+  const emp = employees[selectedEmpIdx];
+  const period = getClosingPeriod(targetYear, targetMonth);
+  const payDate = `${targetYear}年${targetMonth}月25日`;
+
+  const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>給与明細 ${emp.name} ${targetYear}年${targetMonth}月</title>
+  <style>
+  @page { size: A4 portrait; margin: 15mm; }
+  body { font-family:'Noto Sans JP',sans-serif; color:#000; background:#fff; padding:0; margin:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .wrapper { max-width:180mm; margin:0 auto; }
+  h1 { font-size:22px; text-align:center; margin-bottom:6px; letter-spacing:2px; }
+  .company { font-size:12px; text-align:center; color:#666; margin-bottom:18px; }
+  .meta { display:flex; justify-content:space-between; font-size:13px; margin-bottom:14px; padding:10px 14px; background:#f0f7ee; border-radius:6px; border:1px solid #c8d8c2; }
+  .meta div strong { display:inline-block; min-width:70px; }
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px; }
+  .box { border:1px solid #333; border-radius:4px; overflow:hidden; }
+  .box-title { background:#0f4c3a; color:#fff; padding:7px 12px; font-size:13px; font-weight:700; letter-spacing:1px; }
+  .box table { width:100%; border-collapse:collapse; }
+  .box td { padding:7px 12px; font-size:12px; border-bottom:0.5px solid #ddd; }
+  .box td:nth-child(2) { text-align:right; font-family:'DM Mono',monospace; font-weight:600; }
+  .box tr:last-child td { border-bottom:none; }
+  .box tr.sub-total { background:#eaf1e8; font-weight:700; }
+  .net-box { background:#0f4c3a; color:#fff; padding:18px 24px; border-radius:6px; display:flex; justify-content:space-between; align-items:center; margin-top:10px; }
+  .net-box .label { font-size:14px; letter-spacing:2px; }
+  .net-box .amount { font-size:24px; font-weight:900; font-family:'DM Mono',monospace; }
+  .kintai-box { border:1px solid #c8d8c2; border-radius:4px; padding:10px 14px; margin-bottom:16px; background:#fafdf8; }
+  .kintai-box h3 { font-size:12px; color:#3d7c4a; margin-bottom:6px; letter-spacing:1px; }
+  .kintai-grid { display:grid; grid-template-columns:repeat(5, 1fr); gap:8px; font-size:11px; }
+  .kintai-item { text-align:center; }
+  .kintai-item .val { font-size:14px; font-weight:700; font-family:'DM Mono',monospace; color:#0f4c3a; }
+  .kintai-item .lbl { color:#666; }
+  .memo { font-size:11px; color:#555; margin-top:10px; padding:8px 12px; border-left:3px solid #c8d8c2; background:#fafdf8; }
+  .foot { text-align:center; font-size:10px; color:#999; margin-top:24px; }
+  </style></head><body>
+  <div class="wrapper">
+    <h1>給 与 明 細 書</h1>
+    <div class="company">有限会社タイヤマネージャーフー</div>
+
+    <div class="meta">
+      <div><strong>氏名</strong> ${emp.name}</div>
+      <div><strong>支給日</strong> ${payDate}</div>
+      <div><strong>締め期間</strong> ${period.start} 〜 ${period.end}</div>
+    </div>
+
+    <div class="kintai-box">
+      <h3>勤怠</h3>
+      <div class="kintai-grid">
+        <div class="kintai-item"><div class="val">${kintaiSummary.workDays}</div><div class="lbl">出勤日数</div></div>
+        <div class="kintai-item"><div class="val">${kintaiSummary.totalHours.toFixed(1)}h</div><div class="lbl">実労働</div></div>
+        <div class="kintai-item"><div class="val">${kintaiSummary.overtimeHours.toFixed(1)}h</div><div class="lbl">残業</div></div>
+        <div class="kintai-item"><div class="val">${kintaiSummary.yukyuHours.toFixed(1)}h</div><div class="lbl">有給</div></div>
+        <div class="kintai-item"><div class="val">${kintaiSummary.absentDays}</div><div class="lbl">欠勤</div></div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="box">
+        <div class="box-title">支給</div>
+        <table>
+          <tr><td>基本給</td><td>${yen(payslipData.基本給)}</td></tr>
+          <tr><td>残業手当</td><td>${yen(payslipData.残業手当)}</td></tr>
+          <tr><td>通勤手当</td><td>${yen(payslipData.通勤手当)}</td></tr>
+          <tr class="sub-total"><td>総支給額</td><td>${yen(payslipData.総支給額)}</td></tr>
+        </table>
+      </div>
+
+      <div class="box">
+        <div class="box-title">控除</div>
+        <table>
+          <tr><td>健康保険</td><td>${yen(payslipData.健康保険)}</td></tr>
+          <tr><td>厚生年金</td><td>${yen(payslipData.厚生年金)}</td></tr>
+          <tr><td>雇用保険</td><td>${yen(payslipData.雇用保険)}</td></tr>
+          <tr><td>所得税</td><td>${yen(payslipData.所得税)}</td></tr>
+          <tr><td>住民税</td><td>${yen(payslipData.住民税)}</td></tr>
+          <tr class="sub-total"><td>控除合計</td><td>${yen(payslipData.控除合計)}</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="net-box">
+      <div class="label">差 引 支 給 額</div>
+      <div class="amount">${yen(payslipData.差引支給額)}</div>
+    </div>
+
+    ${document.getElementById('memo-inp')?.value ? `<div class="memo">備考: ${document.getElementById('memo-inp').value}</div>` : ''}
+
+    <div class="foot">発行日: ${new Date().toLocaleDateString('ja-JP')} / 有限会社タイヤマネージャーフー</div>
+  </div>
+  <script>window.onload = function() { setTimeout(function(){ window.print(); }, 300); };<\/script>
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  if (!w) { alert('ポップアップがブロックされました。ブラウザ設定で許可してください。'); return; }
+  w.document.write(html);
+  w.document.close();
+}
+
+// ─── 過去明細 ─────────────────────────────────────────────────────────
+function renderHistSelector() {
+  const empOpts = employees.map((e, i) => {
+    const sel = i === selectedEmpIdx ? 'selected' : '';
+    return `<option value="${i}" ${sel}>${e.name}</option>`;
+  }).join('');
+
+  document.getElementById('hist-content').innerHTML = `
+    <div class="content">
+      <div class="screen-label">対象社員</div>
+      <select class="inp" id="hist-emp" onchange="onHistEmpChange(this.value)">
+        <option value="-1">選択してください</option>
+        ${empOpts}
+      </select>
+      <div id="hist-list" style="margin-top:14px;"></div>
+    </div>
+  `;
+
+  if (selectedEmpIdx >= 0) onHistEmpChange(selectedEmpIdx);
+}
+
+async function onHistEmpChange(v) {
+  selectedEmpIdx = parseInt(v);
+  const emp = employees[selectedEmpIdx];
+  const list = document.getElementById('hist-list');
+  if (!emp || !emp.meisaiDbId) {
+    list.innerHTML = `<div class="warn-box">この社員の明細DBが未設定です。</div>`;
+    return;
+  }
+  list.innerHTML = `<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">読み込み中…</div></div>`;
+
+  try {
+    const res = await notionAPI('POST', `/databases/${emp.meisaiDbId}/query`, {
+      filter: { property: 'カテゴリ', select: { equals: '給与' } },
+      sorts: [{ property: '給与支給日', direction: 'descending' }],
+      page_size: 24,
+    });
+    const records = res.results || [];
+    if (!records.length) {
+      list.innerHTML = `<div class="info-box">明細がまだありません。</div>`;
+      return;
+    }
+    let html = '';
+    records.forEach(r => {
+      const p = r.properties;
+      const year = p['年']?.select?.name || '';
+      const month = p['月']?.select?.name || '';
+      const payDate = p['給与支給日']?.date?.start || '';
+      const total = p['総支給額']?.number;
+      const net = p['差引支給額']?.number;
+      const hasStructured = total != null;
+      html += `<div class="hist-card" onclick="openHistRecord('${r.id}', ${selectedEmpIdx})">
+        <div class="hist-top">
+          <div class="hist-month">${year}年 ${month}</div>
+          <div class="hist-date">${payDate}</div>
+        </div>
+        ${hasStructured ? `
+        <div class="hist-amt"><div class="hist-amt-label">総支給</div><div class="hist-amt-val">${yen(total)}</div></div>
+        <div class="hist-amt"><div class="hist-amt-label">差引支給</div><div class="hist-amt-val" style="color:var(--accent);">${yen(net)}</div></div>
+        ` : `<div class="hist-amt"><div class="hist-amt-label" style="color:var(--muted);font-size:11px;">PDFのみ（構造化データなし）</div></div>`}
+      </div>`;
+    });
+    list.innerHTML = html;
+  } catch(e) {
+    list.innerHTML = `<div class="error-box">読み込みに失敗しました: ${e.message}</div>`;
+  }
+}
+
+async function openHistRecord(pageId, empIdx) {
+  selectedEmpIdx = empIdx;
+  try {
+    const r = await notionAPI('GET', `/pages/${pageId}`);
+    const p = r.properties;
+    const yearStr = p['年']?.select?.name;
+    const monthStr = p['月']?.select?.name;
+    if (!yearStr || !monthStr) { alert('年月情報がありません'); return; }
+    targetYear = parseInt(yearStr);
+    targetMonth = parseInt(monthStr.replace('月',''));
+    if (p['総支給額']?.number == null) { alert('構造化データがありません（旧形式の明細）'); return; }
+    existingRecordId = pageId;
+    kintaiSummary = {
+      workDays: p['出勤日数']?.number || 0,
+      totalHours: p['実労働時間']?.number || 0,
+      overtimeHours: p['残業時間']?.number || 0,
+      yukyuHours: p['有給時間']?.number || 0,
+      absentDays: p['欠勤日数']?.number || 0,
+      details: [],
+    };
+    payslipData = {
+      基本給: p['基本給']?.number || 0,
+      残業手当: p['残業手当']?.number || 0,
+      通勤手当: p['通勤手当']?.number || 0,
+      総支給額: p['総支給額']?.number || 0,
+      健康保険: p['健康保険']?.number || 0,
+      厚生年金: p['厚生年金']?.number || 0,
+      雇用保険: p['雇用保険']?.number || 0,
+      所得税: p['所得税']?.number || 0,
+      住民税: p['住民税']?.number || 0,
+      控除合計: p['控除合計']?.number || 0,
+      差引支給額: p['差引支給額']?.number || 0,
+    };
+    currentTab = 'new';
+    document.getElementById('tab-new').classList.add('active');
+    document.getElementById('tab-hist').classList.remove('active');
+    showPage('new');
+    renderPreview();
+  } catch(e) {
+    alert('読み込みに失敗しました: ' + e.message);
+  }
+}
+
+// ═══ 初期化 ═══════════════════════════════════════════════════════════
+async function init() {
+  const session = loadSession();
+  const loading = document.getElementById('loading');
+  const app = document.getElementById('app');
+  const denied = document.getElementById('denied');
+
+  if (!session) {
+    location.href = 'https://mitsurumukaihata.github.io/foo-portal/';
+    return;
+  }
+  if (!isKeiriAllowed(session)) {
+    loading.style.display = 'none';
+    denied.style.display = 'block';
+    return;
+  }
+
+  USER = session;
+  try {
+    employees = await loadEmployees();
+    loading.style.display = 'none';
+    app.style.display = 'block';
+    renderSelector();
+  } catch(e) {
+    loading.innerHTML = `<div class="error-box">社員一覧の取得に失敗しました: ${e.message}</div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>

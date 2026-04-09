@@ -99,6 +99,9 @@ body {
   margin: 0 auto;
 }
 
+/* .grid2 基本定義（メディアクエリの前に定義してソース順で上書きされないように） */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
 /* ══ レスポンシブ: タブレット以上で広いレイアウト ══ */
 /* 700px〜: タブレット（iPad Mini縦744px対応） */
 @media (min-width: 700px) {
@@ -509,7 +512,7 @@ body {
 .app-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
 .app-arrow { color: var(--muted); font-size: 20px; font-weight: 300; }
 
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+/* .grid2 の基本定義はレスポンシブCSSの前（〜100行目付近）に移動済み */
 .app-card {
   background: var(--s1);
   border: 0.5px solid var(--border);

@@ -6,6 +6,13 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3d7c4a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
 <title>給与明細作成 | f.o.o 経理</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
@@ -49,6 +56,26 @@
 
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; max-width:480px; margin:0 auto; }
+
+/* ── レスポンシブ ── */
+@media (min-width: 768px) {
+  body { max-width: 760px; }
+  .header { padding: 22px 32px 18px; }
+  .content { padding: 24px 32px 48px; }
+  .header-title { font-size: 26px; }
+  .row2 { gap: 14px; }
+}
+@media (min-width: 1024px) {
+  body { max-width: 1000px; }
+  .header { padding: 28px 40px 22px; }
+  .content { padding: 28px 40px 48px; }
+  .header-title { font-size: 30px; }
+  /* 明細プレビューを2カラム化 */
+  .content .sum-card + .sum-card { margin-top: 14px; }
+}
+@media print {
+  body { max-width: none !important; }
+}
 
 /* ヘッダー */
 .header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:100; }

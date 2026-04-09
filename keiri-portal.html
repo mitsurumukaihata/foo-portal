@@ -6,6 +6,15 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3d7c4a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="F.o.o 経理">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
 <title>経理ポータル | f.o.o</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
@@ -50,6 +59,23 @@
 
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; max-width:480px; margin:0 auto; }
+
+/* ── レスポンシブ ── */
+@media (min-width: 768px) {
+  body { max-width: 760px; }
+  .header { padding: 22px 32px 18px; }
+  .content { padding: 32px; }
+  .header-title { font-size: 26px; }
+  .card-grid { flex-direction: row; flex-wrap: wrap; gap: 16px; }
+  .card-grid .app-card { flex: 1 1 calc(50% - 8px); min-width: 280px; }
+}
+@media (min-width: 1024px) {
+  body { max-width: 1100px; }
+  .header { padding: 28px 40px 22px; }
+  .content { padding: 40px; }
+  .header-title { font-size: 30px; }
+  .card-grid .app-card { flex: 1 1 calc(33.333% - 12px); }
+}
 
 .header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:100; }
 .header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }

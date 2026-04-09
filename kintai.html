@@ -706,8 +706,10 @@ function calcYukyuPreview() {
     var tH = Math.floor(tNum / 100), tM = tNum % 100;
     if (tH <= 23 && tM <= 59) tMin = tH * 60 + tM;
   }
+  // 出退勤未入力 → 丸一日有給（8時間）
   if (sMin === null && tMin === null) {
-    calcEl.innerHTML = '💡 出勤・退勤を入力すると有給時間が自動計算されます';
+    calcEl.innerHTML = '🏖 <strong>丸一日有給</strong> → <strong style="color:var(--accent);">8時間</strong>'
+      + '<br><span style="font-size:10px;">（出退勤を入力すると半日有給として自動計算されます）</span>';
     return;
   }
   var range = calcYukyuRangeFromTimes(sMin, tMin);
@@ -731,9 +733,11 @@ async function homeSubmit() {
   const errEl = document.getElementById('home-error');
   errEl.innerHTML = '';
 
-  // 少なくとも出勤か退勤のどちらかは入力必須
-  if (sArr.length < 4 && tArr.length < 4) {
-    errEl.innerHTML = '<div class="error-box">出勤または退勤の時刻を入力してください</div>';
+  // 少なくとも出勤か退勤のどちらかは入力必須（ただし丸一日有給 or 欠勤の場合は時刻不要）
+  const chkEarly = window._homeChecks;
+  const fullDayLeave = chkEarly.yukyu || chkEarly.kekkin || chkEarly.rousai;
+  if (sArr.length < 4 && tArr.length < 4 && !fullDayLeave) {
+    errEl.innerHTML = '<div class="error-box">出勤または退勤の時刻を入力してください<br>（丸一日有給の場合は有給使用にチェック）</div>';
     return;
   }
 
@@ -769,8 +773,13 @@ async function homeSubmit() {
   if (chk.yukyu) {
     var sMinCalc = sNum !== null ? (Math.floor(sNum / 100) * 60 + sNum % 100) : null;
     var tMinCalc = tNum !== null ? (Math.floor(tNum / 100) * 60 + tNum % 100) : null;
-    var range = calcYukyuRangeFromTimes(sMinCalc, tMinCalc);
-    if (range) yukyuHours = range.yukyuMin / 60;
+    if (sMinCalc === null && tMinCalc === null) {
+      // 出退勤なし + 有給チェック = 丸一日有給 (8時間)
+      yukyuHours = 8;
+    } else {
+      var range = calcYukyuRangeFromTimes(sMinCalc, tMinCalc);
+      if (range) yukyuHours = range.yukyuMin / 60;
+    }
   }
 
   try {

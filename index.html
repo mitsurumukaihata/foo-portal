@@ -1186,6 +1186,39 @@ body {
   background: rgba(0,0,0,0.05);
   color: rgba(0,0,0,0.8);
 }
+
+/* 更新ボタン（リロード） */
+.refresh-btn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 20px;
+  width: 30px; height: 26px;
+  padding: 0;
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  margin-right: 6px;
+}
+.refresh-btn svg { width:14px; height:14px; }
+.refresh-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--accent);
+}
+.refresh-btn.spinning svg { animation: refresh-spin 0.6s linear infinite; }
+@keyframes refresh-spin { to { transform: rotate(360deg); } }
+[data-theme="light"] .refresh-btn,
+:root:not([data-theme]) .refresh-btn {
+  border-color: rgba(0,0,0,0.15);
+  color: rgba(0,0,0,0.5);
+}
+[data-theme="light"] .refresh-btn:hover {
+  background: rgba(0,0,0,0.05);
+  color: var(--accent);
+}
+.header-right { display: flex; align-items: center; }
 </style>
 <script>
 // テーマを最速で適用（フラッシュ防止）
@@ -1255,7 +1288,16 @@ body {
   <div class="portal-header">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
       <div class="portal-brand">Tire Manager · f.o.o</div>
-      <button class="theme-toggle" id="theme-toggle-btn" onclick="cycleTheme()" title="テーマ切り替え">🌙</button>
+      <div class="header-right">
+        <button class="refresh-btn" onclick="hardReload(this)" title="更新（最新版を取得）">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"/>
+            <polyline points="1 20 1 14 7 14"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+        </button>
+        <button class="theme-toggle" id="theme-toggle-btn" onclick="cycleTheme()" title="テーマ切り替え">🌙</button>
+      </div>
     </div>
     <div class="portal-title">社内<span>ポータル</span></div>
     <div class="portal-tabs" id="portal-tabs">
@@ -1559,6 +1601,19 @@ function cycleTheme() {
   const next = current === 'auto' ? 'dark' : current === 'dark' ? 'light' : 'auto';
   localStorage.setItem(THEME_KEY, next);
   applyTheme(next);
+}
+
+// ─── 強制リロード（PWA向けの更新ボタン） ────────────────────────────────
+function hardReload(btn) {
+  if (btn) btn.classList.add('spinning');
+  // キャッシュバスティング: URLに ?_= をつけてフルリロード
+  const sep = location.href.includes('?') ? '&' : '?';
+  const cleanHref = location.href.replace(/[?&]_=\d+/g, '');
+  const newHref = cleanHref + (cleanHref.includes('?') ? '&' : '?') + '_=' + Date.now();
+  // 少しスピナーを見せてから遷移
+  setTimeout(function() {
+    location.href = newHref;
+  }, 200);
 }
 
 function initTheme() {
@@ -3291,19 +3346,19 @@ async function saveCustomer() {
     pulling = false;
 
     if (distance >= THRESHOLD && isPortalVisible()) {
-      // リフレッシュ実行
+      // リフレッシュ実行（ページ自体を再読み込み＝HTML/CSS/JSも更新）
       indicator.style.transition = 'top 0.25s cubic-bezier(.2,.8,.4,1)';
       indicator.style.top = '20px';
       indicator.classList.add('refreshing');
       indicator.style.borderColor = 'var(--accent)';
 
-      // ポータルのデータ再読み込み
-      const session = loadSession();
-      if (session) {
-        renderPortalApps(session);
-        checkBadges(session);
-      }
+      // キャッシュを無視してページ全体を再読み込み
+      setTimeout(function() {
+        location.reload();
+      }, 300);
+      return;
 
+      // 以下は旧実装（到達しない）
       // 0.8秒後にインジケーター非表示
       setTimeout(function() {
         indicator.style.transition = 'top 0.25s cubic-bezier(.2,.8,.4,1)';

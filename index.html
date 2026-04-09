@@ -100,8 +100,9 @@ body {
 }
 
 /* ══ レスポンシブ: タブレット以上で広いレイアウト ══ */
-@media (min-width: 768px) {
-  body { max-width: 760px; }
+/* 700px〜: iPad Mini 6 (744px) 縦向きもタブレット扱い */
+@media (min-width: 700px) {
+  body { max-width: 720px; }
   .portal-header { padding: 22px 32px 18px; }
   .sec { padding: 28px 32px 0; }
   /* アプリを2列グリッドに */
@@ -111,13 +112,17 @@ body {
   .grid2 { grid-template-columns: repeat(2, 1fr); }
   .portal-title { font-size: 26px; }
 }
-@media (min-width: 1024px) {
+/* 900px〜: 大きめタブレット or 横向き */
+@media (min-width: 900px) {
+  body { max-width: 880px; }
+}
+/* 1100px〜: PC */
+@media (min-width: 1100px) {
   body { max-width: 1100px; }
   .portal-header { padding: 28px 40px 22px; }
   .sec { padding: 32px 40px 0; }
   /* 3列グリッド */
   .grid2 { grid-template-columns: repeat(3, 1fr); }
-  /* アプリカードも3列 */
   .portal-body { display: block; }
   .sec > .app-row,
   .sec > a.app-row,
@@ -131,6 +136,7 @@ body {
   .portal-tabs { margin-top: 14px; }
   .portal-tab { padding: 9px 18px; font-size: 13px; }
 }
+/* 1440px〜: 大画面PC */
 @media (min-width: 1440px) {
   body { max-width: 1320px; }
   .grid2 { grid-template-columns: repeat(4, 1fr); }

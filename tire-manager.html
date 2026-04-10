@@ -1692,7 +1692,73 @@ function renderStockResult(size, catKey, records) {
   html += '<button class="btn-primary" style="margin-top:16px;" onclick="renderStockHome()">&#128269; 別のサイズを検索</button></div>';
   el.innerHTML = html;
 }
-function onStockTap(el) { _currentPattern = el.getAttribute('data-pattern'); stockHistory(el.getAttribute('data-mode')); }
+function onStockTap(el) {
+  _currentPattern = el.getAttribute('data-pattern');
+  var mode = el.getAttribute('data-mode');
+  // 準備/発注中はそのまま履歴表示
+  if (mode.indexOf('準備') >= 0 || mode.indexOf('発注中') >= 0) {
+    stockHistory(mode);
+    return;
+  }
+  // 在庫数タップ: 選択ポップアップを表示
+  var pattern = _currentPattern;
+  var size = _stockSize;
+  var catKey = _stockCatKey;
+  var warehouse = mode; // 倉庫名
+  var whShort = warehouse.replace('倉庫', '');
+  var overlay = document.createElement('div');
+  overlay.id = 'stock-action-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div style="background:var(--s1);border:1px solid var(--border);border-radius:16px;width:100%;max-width:320px;padding:24px 20px 20px;text-align:center;">
+      <div style="font-size:11px;color:var(--muted);letter-spacing:0.1em;margin-bottom:4px;">在庫アクション</div>
+      <div style="font-size:16px;font-weight:900;margin-bottom:2px;">${pattern}</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px;">${size} · ${whShort}</div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="stockActionEntry('${size}','${catKey}','${pattern.replace(/'/g,"\\'")}','${warehouse}')" style="flex:1;padding:14px 10px;background:var(--accent);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">
+          🔄 入出庫
+        </button>
+        <button onclick="stockActionHistory('${size}','${catKey}','${pattern.replace(/'/g,"\\'")}','${warehouse}')" style="flex:1;padding:14px 10px;background:var(--s3);border:1.5px solid var(--border2);border-radius:12px;color:var(--text);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">
+          📋 履歴
+        </button>
+      </div>
+      <button onclick="this.closest('#stock-action-overlay').remove()" style="width:100%;margin-top:10px;padding:10px;background:transparent;border:none;color:var(--muted);font-size:12px;cursor:pointer;font-family:inherit;">キャンセル</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+// 在庫→入出庫: サイズ・カテゴリ・パターンをセットしてステップ3(数量)へ飛ぶ
+function stockActionEntry(size, catKey, pattern, warehouse) {
+  document.getElementById('stock-action-overlay')?.remove();
+  resetState();
+  state.size = size;
+  state.cat = catKey;
+  state.pattern = pattern;
+  state.step = 3; // 数量ステップ
+  switchTab('entry');
+  renderEntry();
+}
+
+// 在庫→履歴: サイズ+パターンでフィルタ済みの履歴タブへ
+function stockActionHistory(size, catKey, pattern, warehouse) {
+  document.getElementById('stock-action-overlay')?.remove();
+  // 履歴フィルター状態を設定
+  historyPatternFilter = pattern;
+  historyWhFilter = '全部';
+  historyKubunFilter = '全部';
+  window._historySelectedSize = size;
+  // 履歴タブに切り替え
+  switchTab('history');
+  historyLoaded = false;
+  loadHistory(true).then(function() {
+    // サイズフィルターを適用
+    var searchInput = document.getElementById('history-search');
+    if (searchInput) searchInput.value = size;
+    applyHistoryFilter(size);
+  });
+}
 function stockHistory(mode) {
   var catKey = _stockCatKey, pattern = _currentPattern, size = _stockSize, records = _stockRecords;
   var el = document.getElementById('stock-content');

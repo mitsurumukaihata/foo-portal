@@ -646,57 +646,61 @@ async function refreshNegStockForSize(catKey, size) {
   } catch(e) { console.warn('negStock部分更新失敗:', e); }
 }
 
-// ログイン時バックグラウンド全スキャン（全DBの全レコードを一括取得）
+// ログイン時バックグラウンド全スキャン（全DBを並列取得で高速化）
 async function backgroundNegScan() {
-  for (const [catKey, db] of Object.entries(DB_MAP)) {
-    try {
-      const kurikoshiDate = await getKurikoshiDate(db.id);
-      let all = [], cursor;
-      // サイズフィルターなしで全レコードを取得（繰越以降 or 準備は常時）
-      const filter = kurikoshiDate ? { or: [
-        { timestamp: 'created_time', created_time: { on_or_after: kurikoshiDate } },
-        { property: '区分', select: { equals: '準備' } }
-      ]} : undefined;
-      while (true) {
-        const body = { page_size: 100 };
-        if (filter) body.filter = filter;
-        if (cursor) body.start_cursor = cursor;
-        const res = await notionAPI('POST', `/databases/${db.id}/query`, body);
-        if (res.object === 'error') break;
-        all = all.concat(res.results);
-        if (!res.has_more) break;
-        cursor = res.next_cursor;
-      }
-      // サイズ別に在庫計算
-      const bySize = {};
-      all.forEach(r => {
-        const props = r.properties;
-        const size = props['サイズコード']?.select?.name;
-        const pattern = props['パターン名']?.select?.name;
-        const warehouse = props[db.warehouseField]?.select?.name;
-        const qty = props['数量']?.number || 0;
-        const kubun = props['区分']?.select?.name || '';
-        if (!size || !pattern || kubun === '発注中' || !warehouse) return;
-        const sign = KUBUN_SIGN[kubun] || 0;
-        if (sign === 0) return;
-        if (!bySize[size]) bySize[size] = {};
-        if (!bySize[size][pattern]) bySize[size][pattern] = {};
-        bySize[size][pattern][warehouse] = (bySize[size][pattern][warehouse] || 0) + sign * qty;
-      });
-      // マイナス検出・キャッシュ更新（このカテゴリの全エントリをクリアしてから再登録）
-      NEGATIVE_STOCK_ITEMS = NEGATIVE_STOCK_ITEMS.filter(i => i.catKey !== catKey);
-      const now = Date.now();
-      Object.entries(bySize).forEach(([size, patterns]) => {
-        Object.entries(patterns).forEach(([pattern, warehouses]) => {
-          Object.entries(warehouses).forEach(([warehouse, qty]) => {
-            if (qty < 0) NEGATIVE_STOCK_ITEMS.push({ catKey, size, pattern, warehouse, qty, t: now });
-          });
+  const entries = Object.entries(DB_MAP);
+  // 全DBを並列でスキャン（順番待ちなし）
+  const results = await Promise.allSettled(entries.map(async ([catKey, db]) => {
+    const kurikoshiDate = await getKurikoshiDate(db.id);
+    let all = [], cursor;
+    const filter = kurikoshiDate ? { or: [
+      { timestamp: 'created_time', created_time: { on_or_after: kurikoshiDate } },
+      { property: '区分', select: { equals: '準備' } }
+    ]} : undefined;
+    while (true) {
+      const body = { page_size: 100 };
+      if (filter) body.filter = filter;
+      if (cursor) body.start_cursor = cursor;
+      const res = await notionAPI('POST', `/databases/${db.id}/query`, body);
+      if (res.object === 'error') break;
+      all = all.concat(res.results);
+      if (!res.has_more) break;
+      cursor = res.next_cursor;
+    }
+    return { catKey, db, all };
+  }));
+
+  // 結果を集計
+  NEGATIVE_STOCK_ITEMS = [];
+  const now = Date.now();
+  results.forEach(r => {
+    if (r.status !== 'fulfilled') return;
+    const { catKey, db, all } = r.value;
+    const bySize = {};
+    all.forEach(rec => {
+      const props = rec.properties;
+      const size = props['サイズコード']?.select?.name;
+      const pattern = props['パターン名']?.select?.name;
+      const warehouse = props[db.warehouseField]?.select?.name;
+      const qty = props['数量']?.number || 0;
+      const kubun = props['区分']?.select?.name || '';
+      if (!size || !pattern || kubun === '発注中' || !warehouse) return;
+      const sign = KUBUN_SIGN[kubun] || 0;
+      if (sign === 0) return;
+      if (!bySize[size]) bySize[size] = {};
+      if (!bySize[size][pattern]) bySize[size][pattern] = {};
+      bySize[size][pattern][warehouse] = (bySize[size][pattern][warehouse] || 0) + sign * qty;
+    });
+    Object.entries(bySize).forEach(([size, patterns]) => {
+      Object.entries(patterns).forEach(([pattern, warehouses]) => {
+        Object.entries(warehouses).forEach(([warehouse, qty]) => {
+          if (qty < 0) NEGATIVE_STOCK_ITEMS.push({ catKey, size, pattern, warehouse, qty, t: now });
         });
       });
-      saveNegStock();
-    } catch(e) { console.warn('backgroundNegScan', catKey, e.message); }
-  }
-  refreshNegBanners(); // スキャン完了後にバナーを更新
+    });
+  });
+  saveNegStock();
+  refreshNegBanners();
 }
 
 function launchApp() {

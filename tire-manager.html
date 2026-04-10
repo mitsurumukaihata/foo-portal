@@ -614,6 +614,19 @@ function refreshNegBanners() {
   if (stockEl?.querySelector('.stock-size-search')) renderStockHome();
 }
 
+// 操作後に該当サイズだけマイナス在庫キャッシュを即時更新
+async function refreshNegStockForSize(catKey, size) {
+  try {
+    const db = DB_MAP[catKey];
+    if (!db) return;
+    const kurikoshiDate = await getKurikoshiDate(db.id);
+    const records = await fetchAllRecords(db.id, size, kurikoshiDate);
+    const result = calcStock(records, catKey);
+    updateNegStock(catKey, size, result.stock);
+    refreshNegBanners();
+  } catch(e) { console.warn('negStock部分更新失敗:', e); }
+}
+
 // ログイン時バックグラウンド全スキャン（全DBの全レコードを一括取得）
 async function backgroundNegScan() {
   for (const [catKey, db] of Object.entries(DB_MAP)) {
@@ -1462,6 +1475,10 @@ async function submitPrepToShukko(pageId, catKey) {
       nokoriMsg = `（残り${nokori}本を準備に残しました）`;
     }
 
+    // マイナス在庫キャッシュを即時更新
+    const _size = _spp['サイズコード']?.select?.name || '';
+    if (_size) refreshNegStockForSize(catKey, _size);
+
     const el = document.getElementById('entry-content');
     el.innerHTML = `<div class="content" style="text-align:center;padding:40px 20px;"><div style="font-size:48px;margin-bottom:16px;">✅</div><div class="screen-title">出庫に変更しました</div><div style="font-size:14px;color:var(--muted);margin-bottom:32px;">Notionのレコードを更新しました${nokoriMsg ? '<br>' + nokoriMsg : ''}</div><button class="btn-primary" onclick="renderEntry()">新しい入出庫を記録する</button><button class="btn-prep" style="margin-top:8px;" onclick="loadAllPrepList()">📋 準備リストに戻る</button></div>`;
   } catch(e) {
@@ -2166,6 +2183,8 @@ async function submitEntry() {
     } else {
       updateSnapshot(state.cat, state.pattern, state.size, state.kubun, state.qty, state.warehouse, null);
     }
+    // マイナス在庫キャッシュを即時更新（バナーとの不整合を防ぐ）
+    refreshNegStockForSize(state.cat, state.size);
     goStep(8);
   } catch(e) {
     const errEl = document.getElementById('confirm-error');

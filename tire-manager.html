@@ -646,20 +646,26 @@ async function refreshNegStockForSize(catKey, size) {
   } catch(e) { console.warn('negStock部分更新失敗:', e); }
 }
 
-// ログイン時バックグラウンド全スキャン（全DBを並列取得で高速化）
+// ログイン時バックグラウンド全スキャン（3DBずつチャンク並列で高速かつ安定）
 async function backgroundNegScan() {
   const entries = Object.entries(DB_MAP);
-  // 全DBを並列でスキャン（順番待ちなし）
-  const results = await Promise.allSettled(entries.map(async ([catKey, db]) => {
+  NEGATIVE_STOCK_ITEMS = [];
+  const now = Date.now();
+
+  // 1DBをスキャンする関数
+  async function scanOne(catKey, db) {
     const kurikoshiDate = await getKurikoshiDate(db.id);
     let all = [], cursor;
-    const filter = kurikoshiDate ? { or: [
-      { timestamp: 'created_time', created_time: { on_or_after: kurikoshiDate } },
-      { property: '区分', select: { equals: '準備' } }
-    ]} : undefined;
+    // 繰越がないDBは直近90日に限定（全件取得を防ぐ）
+    const fallbackDate = new Date(Date.now() - 90 * 86400000).toISOString();
+    const dateThreshold = kurikoshiDate || fallbackDate;
+    const filter = { or: [
+      { timestamp: 'created_time', created_time: { on_or_after: dateThreshold } },
+      { property: '区分', select: { equals: '準備' } },
+      { property: '区分', select: { equals: '発注中' } },
+    ]};
     while (true) {
-      const body = { page_size: 100 };
-      if (filter) body.filter = filter;
+      const body = { filter, page_size: 100 };
       if (cursor) body.start_cursor = cursor;
       const res = await notionAPI('POST', `/databases/${db.id}/query`, body);
       if (res.object === 'error') break;
@@ -667,15 +673,7 @@ async function backgroundNegScan() {
       if (!res.has_more) break;
       cursor = res.next_cursor;
     }
-    return { catKey, db, all };
-  }));
-
-  // 結果を集計
-  NEGATIVE_STOCK_ITEMS = [];
-  const now = Date.now();
-  results.forEach(r => {
-    if (r.status !== 'fulfilled') return;
-    const { catKey, db, all } = r.value;
+    // 在庫計算
     const bySize = {};
     all.forEach(rec => {
       const props = rec.properties;
@@ -691,6 +689,7 @@ async function backgroundNegScan() {
       if (!bySize[size][pattern]) bySize[size][pattern] = {};
       bySize[size][pattern][warehouse] = (bySize[size][pattern][warehouse] || 0) + sign * qty;
     });
+    // マイナス検出
     Object.entries(bySize).forEach(([size, patterns]) => {
       Object.entries(patterns).forEach(([pattern, warehouses]) => {
         Object.entries(warehouses).forEach(([warehouse, qty]) => {
@@ -698,7 +697,13 @@ async function backgroundNegScan() {
         });
       });
     });
-  });
+  }
+
+  // 3DBずつチャンク並列実行（API負荷を抑えつつ高速化）
+  for (let i = 0; i < entries.length; i += 3) {
+    const chunk = entries.slice(i, i + 3);
+    await Promise.allSettled(chunk.map(([catKey, db]) => scanOne(catKey, db)));
+  }
   saveNegStock();
   refreshNegBanners();
 }

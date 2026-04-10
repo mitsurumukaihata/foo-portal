@@ -2482,17 +2482,28 @@ function openDetail(id) {
     `<option value="${l}" ${l===curLoc?'selected':''}>${l||'未選択'}</option>`
   ).join('');
 
+  // パターン候補を取得（サイズから該当DBのパターン一覧）
+  const sizeVal = propStr(o,'サイズ') || propStr(o,'サイズコード') || '';
+  let patternOpts = '<option value="">選択してください</option>';
+  if (sizeVal) {
+    const matchingDBs = Object.entries(DB_MAP).filter(([k, db]) => db.sizes?.includes(sizeVal));
+    const allPats = [...new Set(matchingDBs.flatMap(([k, db]) => db.patterns || []))];
+    allPats.sort();
+    patternOpts += allPats.map(p => `<option value="${p}" ${p===pattern?'selected':''}>${p}</option>`).join('');
+  }
+  if (pattern && !patternOpts.includes(`value="${pattern}" selected`)) {
+    patternOpts += `<option value="${pattern}" selected>${pattern}</option>`;
+  }
+
   const html = `
     <!-- タイヤ情報ヘッダー -->
     <div style="background:var(--s2);border-radius:10px;padding:12px 14px;margin-bottom:14px;">
       <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:2px;">${sup}</div>
-      <div style="font-size:16px;font-weight:700;">${pattern ? pattern+'　' : ''}${size}</div>
+      <div style="font-size:16px;font-weight:700;">${size}</div>
       <div style="font-size:11px;color:var(--muted);margin-top:4px;display:flex;flex-wrap:wrap;gap:8px;">
         ${orderD ? `<span>発注日：${orderD}</span>` : ''}
-        ${due ? `<span>納期：${due}</span>` : ''}
         ${ostaff ? `<span>発注者：${ostaff}</span>` : ''}
         ${recv ? `<span>受注者：${recv}</span>` : ''}
-        ${memo ? `<span>備考：${memo}</span>` : ''}
       </div>
     </div>
 
@@ -2502,6 +2513,16 @@ function openDetail(id) {
       <div class="status-row">
         ${statuses.map(s => `<button class="status-btn${s===curStatus?' '+STATUS_BTN[s]:''}" onclick="selectStatus('${s}',this)">${s}</button>`).join('')}
       </div>
+    </div>
+
+    <!-- パターン名（編集可能） -->
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:700;">パターン名</div>
+      <select id="detail-pattern"
+        style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border2);
+               background:var(--s2);color:var(--text);font-size:15px;padding:0 12px;font-family:inherit;">
+        ${patternOpts}
+      </select>
     </div>
 
     <!-- 数量（編集可能） -->
@@ -2521,13 +2542,29 @@ function openDetail(id) {
     </div>
 
     <!-- 納入予定場所（編集可能） -->
-    <div style="margin-bottom:16px;">
+    <div style="margin-bottom:14px;">
       <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:700;">納入予定場所</div>
       <select id="detail-loc"
         style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border2);
-               background:var(--s2);color:var(--text);font-size:15px;padding:0 12px;">
+               background:var(--s2);color:var(--text);font-size:15px;padding:0 12px;font-family:inherit;">
         ${locOpts}
       </select>
+    </div>
+
+    <!-- 納期予定日（編集可能） -->
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:700;">納期予定日</div>
+      <input id="detail-due" type="date" value="${due}"
+        style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border2);
+               background:var(--s2);color:var(--text);font-size:15px;padding:0 12px;font-family:inherit;">
+    </div>
+
+    <!-- 備考（編集可能） -->
+    <div style="margin-bottom:16px;">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:700;">備考</div>
+      <textarea id="detail-memo" placeholder="備考・特記事項"
+        style="width:100%;min-height:60px;border-radius:10px;border:1.5px solid var(--border2);
+               background:var(--s2);color:var(--text);font-size:14px;padding:10px 12px;font-family:inherit;resize:vertical;">${memo}</textarea>
     </div>
 
     <button class="update-btn" onclick="updateDetail()">更新する</button>`;
@@ -2552,24 +2589,35 @@ function selectStatus(s, btn) {
 
 async function updateDetail() {
   if(!curOrder || !curStatus) return;
-  const btn   = document.querySelector('.update-btn');
-  const qty   = parseInt(document.getElementById('detail-qty')?.textContent) || null;
-  const loc   = document.getElementById('detail-loc')?.value || '';
+  const btn     = document.querySelector('.update-btn');
+  const qty     = parseInt(document.getElementById('detail-qty')?.textContent) || null;
+  const loc     = document.getElementById('detail-loc')?.value || '';
+  const pattern = document.getElementById('detail-pattern')?.value || '';
+  const due     = document.getElementById('detail-due')?.value || '';
+  const memo    = document.getElementById('detail-memo')?.value || '';
   btn.disabled = true; btn.textContent = '更新中...';
   try {
     const props = { 'ステータス': {select:{name: curStatus}} };
-    if(qty)  props['数量']          = {number: qty};
-    if(loc)  props['納入予定場所']  = {select:{name: loc}};
-    else     props['納入予定場所']  = {select: null};
+    if(qty)      props['数量']          = {number: qty};
+    if(loc)      props['納入予定場所']  = {select:{name: loc}};
+    else         props['納入予定場所']  = {select: null};
+    if(pattern)  { try { props['パターン'] = {select:{name: pattern}}; } catch(e){} }
+    else         props['パターン']      = {select: null};
+    if(due)      props['納期予定日']    = {date:{start: due}};
+    props['備考欄'] = {rich_text: memo ? [{text:{content: memo}}] : []};
 
     await notionPatch(curOrder.id, props);
 
     // ローカルも更新
     const idx = orders.findIndex(o => o.id === curOrder.id);
     if(idx >= 0) {
-      orders[idx].properties['ステータス'].select   = {name: curStatus};
-      if(qty && orders[idx].properties['数量']) orders[idx].properties['数量'].number = qty;
-      if(orders[idx].properties['納入予定場所']) orders[idx].properties['納入予定場所'].select = loc ? {name:loc} : null;
+      const p = orders[idx].properties;
+      p['ステータス'].select = {name: curStatus};
+      if(qty && p['数量']) p['数量'].number = qty;
+      if(p['納入予定場所']) p['納入予定場所'].select = loc ? {name:loc} : null;
+      if(pattern && p['パターン']) p['パターン'].select = {name: pattern};
+      if(due && p['納期予定日']) p['納期予定日'].date = {start: due};
+      if(p['備考欄']?.rich_text) p['備考欄'].rich_text = memo ? [{plain_text:memo,text:{content:memo}}] : [];
     }
     closeModal();
     if(curTab==='pending') renderPending();

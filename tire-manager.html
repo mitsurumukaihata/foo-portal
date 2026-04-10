@@ -547,6 +547,7 @@ function getNegBannerHTML() {
     </div>
     <div style="margin-top:8px;text-align:right;">
       <button onclick="event.stopPropagation();negRescan(this)" style="background:none;border:1px solid var(--red);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--red);cursor:pointer;font-family:'Noto Sans JP',sans-serif;">🔄 再スキャン</button>
+      <button onclick="event.stopPropagation();forceCleanNegStock()" style="background:none;border:1px solid var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--muted);cursor:pointer;font-family:'Noto Sans JP',sans-serif;margin-left:6px;">✕ クリア</button>
     </div>
   </div>`;
 }
@@ -554,10 +555,28 @@ function getNegBannerHTML() {
 async function negRescan(btn) {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ スキャン中…'; }
   try {
-    await backgroundNegScan();
-  } catch(e) { console.warn('再スキャン失敗:', e); }
-  // スキャン結果に関わらず常にバナーを更新（解消されたら消える、残ってたら最新値で再表示）
+    // 30秒タイムアウト付きスキャン
+    await Promise.race([
+      backgroundNegScan(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 30000))
+    ]);
+  } catch(e) {
+    console.warn('再スキャン:', e.message);
+    // タイムアウト or エラー時はキャッシュをクリアしてバナーを消す
+    if (e.message === 'timeout') {
+      NEGATIVE_STOCK_ITEMS = [];
+      saveNegStock();
+    }
+  }
   refreshNegBanners();
+}
+
+// バナー長押しでキャッシュ強制クリア
+function forceCleanNegStock() {
+  NEGATIVE_STOCK_ITEMS = [];
+  saveNegStock();
+  refreshNegBanners();
+  alert('マイナス在庫キャッシュをクリアしました。次回ログイン時に再スキャンされます。');
 }
 
 function showNegModal() {

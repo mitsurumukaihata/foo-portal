@@ -553,20 +553,26 @@ function getNegBannerHTML() {
 }
 
 async function negRescan(btn) {
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ スキャン中…'; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ チェック中…'; }
   try {
-    // 30秒タイムアウト付きスキャン
-    await Promise.race([
-      backgroundNegScan(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 30000))
-    ]);
+    if (NEGATIVE_STOCK_ITEMS.length > 0) {
+      // マイナス項目があればピンポイント再チェック（高速）
+      const checks = new Set(NEGATIVE_STOCK_ITEMS.map(i => i.catKey + '||' + i.size));
+      NEGATIVE_STOCK_ITEMS = [];
+      for (const key of checks) {
+        const [catKey, size] = key.split('||');
+        try { await refreshNegStockForSize(catKey, size); } catch(e) {}
+      }
+      saveNegStock();
+    } else {
+      // マイナス項目がなければ全スキャン（タイムアウト30秒）
+      await Promise.race([
+        backgroundNegScan(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 30000))
+      ]);
+    }
   } catch(e) {
     console.warn('再スキャン:', e.message);
-    // タイムアウト or エラー時はキャッシュをクリアしてバナーを消す
-    if (e.message === 'timeout') {
-      NEGATIVE_STOCK_ITEMS = [];
-      saveNegStock();
-    }
   }
   refreshNegBanners();
 }
@@ -721,7 +727,11 @@ function launchApp() {
     refreshNegBanners();
     history.replaceState(null, '', location.pathname); // URLパラメータを消す
   }
-  backgroundNegScan();  // バックグラウンドでマイナス在庫を全スキャン
+  // バックグラウンドでマイナス在庫を全スキャン（30秒タイムアウト、失敗しても動作に影響なし）
+  Promise.race([
+    backgroundNegScan(),
+    new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 30000))
+  ]).catch(e => console.warn('ログインスキャン:', e.message));
   // 価格検索の全DBサイズを先読み（価格タブを開く前に完了させる）
   Object.keys(PRICE_DB_MAP).forEach(key => fetchPriceSizes(key));
   // order.htmlからのディープリンク対応

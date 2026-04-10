@@ -553,11 +553,11 @@ function getNegBannerHTML() {
 
 async function negRescan(btn) {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ スキャン中…'; }
-  await backgroundNegScan();
-  if (btn && !NEGATIVE_STOCK_ITEMS.length) {
-    // マイナス在庫が解消された場合
-    refreshNegBanners();
-  }
+  try {
+    await backgroundNegScan();
+  } catch(e) { console.warn('再スキャン失敗:', e); }
+  // スキャン結果に関わらず常にバナーを更新（解消されたら消える、残ってたら最新値で再表示）
+  refreshNegBanners();
 }
 
 function showNegModal() {

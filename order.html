@@ -577,7 +577,7 @@ body{
 
     <!-- パターン（カテゴリ選択後に自動表示） -->
     <div id="f-pattern-wrap" class="field" style="display:none;">
-      <div class="field-label">パターン名</div>
+      <div class="field-label">パターン名 <span>*</span></div>
       <select class="fselect" id="f-pattern" onchange="updateSummary()">
         <option value="">選択してください</option>
       </select>
@@ -700,6 +700,7 @@ body{
   </div>
 
   <button class="btn-submit" id="btn-submit" onclick="submitOrder()">発注を登録する</button>
+  <button onclick="cancelNewOrder()" style="width:100%;margin-top:8px;padding:12px;background:transparent;border:1.5px solid var(--border2);border-radius:10px;font-size:14px;color:var(--muted);cursor:pointer;font-family:inherit;">取り消し</button>
   <div class="feedback" id="form-feedback"></div>
   <div style="height:32px;"></div>
 </div>
@@ -2913,6 +2914,7 @@ async function submitOrder() {
 
   if(!supplier)         { showFeedback('error','仕入先を選択してください'); return; }
   if(!selSize)          { showFeedback('error','タイヤサイズを選択してください'); return; }
+  if(!pattern)          { showFeedback('error','パターン名を選択してください'); return; }
   if(selDBs.size === 0) { showFeedback('error','連携するDBを1つ以上選択してください'); return; }
   if(!duedate && !noukiKakunin) { showFeedback('error','納期予定日を入力するか「納期確認」にチェックしてください'); return; }
 
@@ -3046,6 +3048,12 @@ function resetForm() {
   document.getElementById('form-summary').style.display = 'none';
   selDBs = new Set(Object.keys(DB_MAP));
   document.querySelectorAll('.db-item').forEach(el => el.classList.add('on'));
+}
+
+function cancelNewOrder() {
+  resetForm();
+  hideFeedback();
+  switchTab('pending');
 }
 
 function showFeedback(type, msg) {

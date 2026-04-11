@@ -727,7 +727,11 @@ function launchApp() {
     refreshNegBanners();
     history.replaceState(null, '', location.pathname); // URLパラメータを消す
   }
-  // バックグラウンドでマイナス在庫を全スキャン（30秒タイムアウト、失敗しても動作に影響なし）
+  // ログイン時: 古いキャッシュをクリアしてからスキャン（古い警告が残らない）
+  NEGATIVE_STOCK_ITEMS = [];
+  saveNegStock();
+  refreshNegBanners();
+  // バックグラウンドでスキャン（失敗しても古いデータは表示されない）
   Promise.race([
     backgroundNegScan(),
     new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 30000))

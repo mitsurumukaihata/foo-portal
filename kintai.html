@@ -292,7 +292,8 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 .cal-dow { font-size:10px; color:var(--muted); text-align:center; padding:4px 0; }
 .cal-day { font-size:13px; text-align:center; padding:8px 2px; border-radius:8px; cursor:pointer; position:relative; font-family:'DM Mono',monospace; color:var(--text); transition:all 0.12s; }
 .cal-day:active { transform:scale(0.95); }
-.cal-day.past { color:var(--muted); pointer-events:none; }
+.cal-day.past { color:var(--muted); opacity:0.4; pointer-events:none; }
+.cal-day.past-ok { color:var(--muted); opacity:0.7; }
 .cal-day.empty { pointer-events:none; }
 .cal-day.today { background:var(--s3); font-weight:700; }
 .cal-day.selected { background:var(--accent); color:#fff; font-weight:700; }
@@ -1450,6 +1451,7 @@ function renderCalendar() {
     const iso = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const dateObj = new Date(iso); dateObj.setHours(0,0,0,0);
     const isPast = dateObj < minDate;
+    const isPastOk = !isPast && dateObj < today; // 7日以内の過去（選択可能）
     const isToday = iso === todayISO;
     const isReg = calRegisteredDates.has(iso);
     const isSel = calSelectedDates.has(iso);
@@ -1458,6 +1460,7 @@ function renderCalendar() {
 
     let cls = 'cal-day';
     if (isPast || isOver) cls += ' past';
+    else if (isPastOk) cls += ' past-ok';
     else if (isToday) cls += ' today';
     if (isDel) cls += ' to-delete';
     else if (isSel) cls += ' selected';
@@ -1528,7 +1531,8 @@ function calToggle(iso) {
 }
 
 function calPrev() {
-  const base = new Date(); base.setDate(1);
+  const min7 = new Date(); min7.setDate(min7.getDate() - 7);
+  const base = new Date(min7); base.setDate(1);
   if (calYear === base.getFullYear() && calMonth === base.getMonth()) return;
   calMonth--; if (calMonth < 0) { calMonth=11; calYear--; }
   renderCalendar();

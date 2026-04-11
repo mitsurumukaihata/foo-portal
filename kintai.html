@@ -1396,8 +1396,9 @@ async function fetchRegisteredShiteikyu() {
   const el = document.getElementById('shiteikyu-content');
   el.innerHTML = `<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">登録済みの指定休を確認中…</div></div>`;
   try {
-    // 当月〜翌々月の範囲で取得
-    const startDate = new Date(calYear, calMonth, 1);
+    // 7日前〜翌々月の範囲で取得
+    const now7 = new Date(); now7.setDate(now7.getDate() - 7);
+    const startDate = new Date(Math.min(now7.getTime(), new Date(calYear, calMonth, 1).getTime()));
     const endDate   = new Date(calYear, calMonth + 3, 0);
     const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const res = await notionAPI('POST', `/databases/${KINTAI_DB}/query`, {
@@ -1434,7 +1435,8 @@ function renderCalendar() {
   const today = new Date(); today.setHours(0,0,0,0);
   const todayISO = todayStr();
 
-  // 表示できる範囲（当月〜翌々月）
+  // 表示できる範囲（7日前〜翌々月末）
+  const minDate = new Date(today); minDate.setDate(minDate.getDate() - 7);
   const baseDate = new Date(); baseDate.setDate(1); baseDate.setHours(0,0,0,0);
   const maxDate  = new Date(baseDate); maxDate.setMonth(maxDate.getMonth()+3); maxDate.setDate(0);
 
@@ -1447,7 +1449,7 @@ function renderCalendar() {
   for (let d=1; d<=daysInMonth; d++) {
     const iso = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const dateObj = new Date(iso); dateObj.setHours(0,0,0,0);
-    const isPast = dateObj < today;
+    const isPast = dateObj < minDate;
     const isToday = iso === todayISO;
     const isReg = calRegisteredDates.has(iso);
     const isSel = calSelectedDates.has(iso);
@@ -1472,8 +1474,8 @@ function renderCalendar() {
   else if (newCount > 0) summary = `${newCount}日を新規登録予定`;
   else if (delCount > 0) summary = `${delCount}日を削除予定`;
 
-  // ナビゲーション制限（当月〜翌々月）
-  const baseCal = new Date(); baseCal.setDate(1);
+  // ナビゲーション制限（7日前の月〜翌々月）
+  const baseCal = new Date(minDate); baseCal.setDate(1);
   const isMinMonth = calYear === baseCal.getFullYear() && calMonth === baseCal.getMonth();
   const maxCal = new Date(baseCal); maxCal.setMonth(maxCal.getMonth()+2);
   const isMaxMonth = calYear === maxCal.getFullYear() && calMonth === maxCal.getMonth();

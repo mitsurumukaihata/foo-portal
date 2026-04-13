@@ -665,9 +665,10 @@ async function backgroundNegScan() {
     // 繰越がないDBは直近90日に限定（全件取得を防ぐ）
     const fallbackDate = new Date(Date.now() - 90 * 86400000).toISOString();
     const dateThreshold = kurikoshiDate || fallbackDate;
+    // アプリ本体(fetchAllRecords)と同じフィルタ: 繰越日以降 OR 発注中
+    // ※準備は繰越後のレコードに含まれるので個別取得不要（古い準備を拾うと二重マイナス）
     const filter = { or: [
       { timestamp: 'created_time', created_time: { on_or_after: dateThreshold } },
-      { property: '区分', select: { equals: '準備' } },
       { property: '区分', select: { equals: '発注中' } },
     ]};
     while (true) {

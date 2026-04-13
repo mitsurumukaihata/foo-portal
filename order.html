@@ -476,7 +476,7 @@ body{
 
 <!-- ══ 履歴タブ ══ -->
 <div class="body" id="pane-history" style="display:none;">
-  <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">納入済の発注履歴（最新20件）</div>
+  <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;" id="history-loc-row"></div>
   <div id="history-container">
     <div class="loading-state">読み込み中...</div>
   </div>
@@ -939,10 +939,11 @@ function switchTab(tab) {
 
 // ─── API ──────────────────────────────────────────────────────────────────────
 // notionQuery: foo-common.js の統一関数をラップ
-async function notionQuery(dbId, filter=null, sorts=null) {
+async function notionQuery(dbId, filter=null, sorts=null, startCursor=null) {
   const body = { page_size: 100 };
   if (filter) body.filter = filter;
   if (sorts)  body.sorts  = sorts;
+  if (startCursor) body.start_cursor = startCursor;
   return fooNotionQuery(dbId, body, 15000);
 }
 
@@ -991,8 +992,13 @@ function hasNoPdf(page) {
 // ─── 発注一覧取得 ─────────────────────────────────────────────────────────────
 async function loadOrders() {
   try {
-    const data = await notionQuery(ORDER_DB, null, [{timestamp:'created_time',direction:'descending'}]);
-    orders = data.results || [];
+    orders = [];
+    let cursor = null;
+    do {
+      const data = await notionQuery(ORDER_DB, null, [{timestamp:'created_time',direction:'descending'}], cursor);
+      orders.push(...(data.results || []));
+      cursor = data.has_more ? data.next_cursor : null;
+    } while (cursor);
   } catch(e) {
     orders = [];
     console.error('loadOrders error:', e);
@@ -1027,7 +1033,9 @@ function buildReceiverOptions(supplier) {
   document.getElementById('f-verbal-receiver').innerHTML  = opts;
 }
 
-// ─── 履歴タブ（納入済 最新20件）──────────────────────────────────────────────
+// ─── 履歴タブ（納入済・キャンセル、倉庫別グループ）────────────────────────────
+let historyLocFilter = '全倉庫';
+
 function renderHistory() {
   const el = document.getElementById('history-container');
   el.innerHTML = '<div class="loading-state">読み込み中...</div>';
@@ -1036,15 +1044,62 @@ function renderHistory() {
       el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div>読み込みエラー<br><span style="font-size:11px;word-break:break-all;">${err}</span></div>`;
       return;
     }
-    const done = orders
-      .filter(o => propStr(o,'ステータス') === '納入済')
-      .slice(0, 20);
+    // 納入済 + キャンセルを含む
+    let done = orders
+      .filter(o => {
+        const st = propStr(o,'ステータス');
+        return st === '納入済' || st === 'キャンセル';
+      })
+      .sort((a,b) => {
+        // 最終編集日降順（最新が上）
+        const da = a.last_edited_time || a.created_time || '';
+        const db = b.last_edited_time || b.created_time || '';
+        return db.localeCompare(da);
+      });
+
+    // 倉庫フィルタータグ
+    const locs = ['全倉庫', ...new Set(done.map(o => propStr(o,'納入予定場所') || '未設定').filter(Boolean))];
+    const locRow = document.getElementById('history-loc-row');
+    locRow.innerHTML = locs.map(l =>
+      `<button class="chip${l===historyLocFilter?' on':''}" onclick="filterHistoryLoc('${l}')">${l}</button>`
+    ).join('');
+
+    // 倉庫フィルタ適用
+    if (historyLocFilter !== '全倉庫') {
+      done = done.filter(o => {
+        const loc = propStr(o,'納入予定場所') || '未設定';
+        return loc === historyLocFilter;
+      });
+    }
+
+    // 最新50件に制限
+    done = done.slice(0, 50);
+
     if(!done.length) {
-      el.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div>納入済の履歴はありません</div>';
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div>履歴はありません</div>';
       return;
     }
-    el.innerHTML = done.map(orderCardHTML).join('');
+
+    // 倉庫別グループ分け
+    const groups = new Map();
+    done.forEach(o => {
+      const loc = propStr(o,'納入予定場所') || '未設定';
+      if (!groups.has(loc)) groups.set(loc, []);
+      groups.get(loc).push(o);
+    });
+
+    let html = '';
+    for (const [loc, items] of groups) {
+      html += `<div style="font-size:12px;font-weight:700;color:var(--accent);margin:14px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border2);">${loc}（${items.length}件）</div>`;
+      html += items.map(orderCardHTML).join('');
+    }
+    el.innerHTML = html;
   });
+}
+
+function filterHistoryLoc(loc) {
+  historyLocFilter = loc;
+  renderHistory();
 }
 
 
@@ -2478,6 +2533,7 @@ function openDetail(id) {
   const memo     = propStr(o,'備考欄') || '';
 
   const statuses = ['新規発注','発注済','納入済','キャンセル'];
+  const isHistory = (curStatus === '納入済' || curStatus === 'キャンセル');
   const locOpts  = ['','五日市','志和'].map(l =>
     `<option value="${l}" ${l===curLoc?'selected':''}>${l||'未選択'}</option>`
   ).join('');
@@ -2515,59 +2571,69 @@ function openDetail(id) {
       </div>
     </div>
 
-    <!-- パターン名（編集可能） -->
+    <!-- パターン名 -->
     <div style="margin-bottom:14px;">
       <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:700;">パターン名</div>
-      <select id="detail-pattern"
-        style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border2);
-               background:var(--s2);color:var(--text);font-size:15px;padding:0 12px;font-family:inherit;">
-        ${patternOpts}
-      </select>
+      ${isHistory
+        ? `<div id="detail-pattern" data-value="${pattern}" style="height:44px;line-height:44px;border-radius:10px;background:var(--s2);color:var(--text);font-size:15px;padding:0 12px;">${pattern || '—'}</div>`
+        : `<select id="detail-pattern"
+            style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border2);
+                   background:var(--s2);color:var(--text);font-size:15px;padding:0 12px;font-family:inherit;">
+            ${patternOpts}
+          </select>`}
     </div>
 
-    <!-- 数量（編集可能） -->
+    <!-- 数量 -->
     <div style="margin-bottom:14px;">
       <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:700;">数量</div>
-      <div style="display:flex;align-items:center;gap:0;border:1.5px solid var(--border2);border-radius:10px;overflow:hidden;height:44px;">
-        <button onclick="detailQtyChange(-1)"
-          style="width:50px;height:100%;background:var(--s2);border:none;border-right:1px solid var(--border2);
-                 font-size:20px;color:var(--text);cursor:pointer;flex-shrink:0;">−</button>
-        <div id="detail-qty"
-          style="flex:1;text-align:center;font-size:18px;font-weight:700;color:var(--text);
-                 background:var(--s1);line-height:44px;">${curQty}</div>
-        <button onclick="detailQtyChange(1)"
-          style="width:50px;height:100%;background:var(--s2);border:none;border-left:1px solid var(--border2);
-                 font-size:20px;color:var(--text);cursor:pointer;flex-shrink:0;">＋</button>
-      </div>
+      ${isHistory
+        ? `<div id="detail-qty" style="height:44px;line-height:44px;border-radius:10px;background:var(--s2);color:var(--text);font-size:18px;font-weight:700;padding:0 12px;">${curQty}本</div>`
+        : `<div style="display:flex;align-items:center;gap:0;border:1.5px solid var(--border2);border-radius:10px;overflow:hidden;height:44px;">
+            <button onclick="detailQtyChange(-1)"
+              style="width:50px;height:100%;background:var(--s2);border:none;border-right:1px solid var(--border2);
+                     font-size:20px;color:var(--text);cursor:pointer;flex-shrink:0;">−</button>
+            <div id="detail-qty"
+              style="flex:1;text-align:center;font-size:18px;font-weight:700;color:var(--text);
+                     background:var(--s1);line-height:44px;">${curQty}</div>
+            <button onclick="detailQtyChange(1)"
+              style="width:50px;height:100%;background:var(--s2);border:none;border-left:1px solid var(--border2);
+                     font-size:20px;color:var(--text);cursor:pointer;flex-shrink:0;">＋</button>
+          </div>`}
     </div>
 
-    <!-- 納入予定場所（編集可能） -->
+    <!-- 納入予定場所 -->
     <div style="margin-bottom:14px;">
       <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:700;">納入予定場所</div>
-      <select id="detail-loc"
-        style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border2);
-               background:var(--s2);color:var(--text);font-size:15px;padding:0 12px;font-family:inherit;">
-        ${locOpts}
-      </select>
+      ${isHistory
+        ? `<div id="detail-loc" data-value="${curLoc}" style="height:44px;line-height:44px;border-radius:10px;background:var(--s2);color:var(--text);font-size:15px;padding:0 12px;">${curLoc || '—'}</div>`
+        : `<select id="detail-loc"
+            style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border2);
+                   background:var(--s2);color:var(--text);font-size:15px;padding:0 12px;font-family:inherit;">
+            ${locOpts}
+          </select>`}
     </div>
 
-    <!-- 納期予定日（編集可能） -->
+    <!-- 納期予定日 -->
     <div style="margin-bottom:14px;">
       <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:700;">納期予定日</div>
-      <input id="detail-due" type="date" value="${due}"
-        style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border2);
-               background:var(--s2);color:var(--text);font-size:15px;padding:0 12px;font-family:inherit;">
+      ${isHistory
+        ? `<div style="height:44px;line-height:44px;border-radius:10px;background:var(--s2);color:var(--text);font-size:15px;padding:0 12px;">${due || '—'}</div>`
+        : `<input id="detail-due" type="date" value="${due}"
+            style="width:100%;height:44px;border-radius:10px;border:1.5px solid var(--border2);
+                   background:var(--s2);color:var(--text);font-size:15px;padding:0 12px;font-family:inherit;">`}
     </div>
 
-    <!-- 備考（編集可能） -->
+    <!-- 備考 -->
     <div style="margin-bottom:16px;">
       <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:700;">備考</div>
-      <textarea id="detail-memo" placeholder="備考・特記事項"
-        style="width:100%;min-height:60px;border-radius:10px;border:1.5px solid var(--border2);
-               background:var(--s2);color:var(--text);font-size:14px;padding:10px 12px;font-family:inherit;resize:vertical;">${memo}</textarea>
+      ${isHistory
+        ? `<div style="min-height:40px;border-radius:10px;background:var(--s2);color:var(--text);font-size:14px;padding:10px 12px;">${memo || '—'}</div>`
+        : `<textarea id="detail-memo" placeholder="備考・特記事項"
+            style="width:100%;min-height:60px;border-radius:10px;border:1.5px solid var(--border2);
+                   background:var(--s2);color:var(--text);font-size:14px;padding:10px 12px;font-family:inherit;resize:vertical;">${memo}</textarea>`}
     </div>
 
-    <button class="update-btn" onclick="updateDetail()">更新する</button>`;
+    ${isHistory ? '' : '<button class="update-btn" onclick="updateDetail()">更新する</button>'}`;
 
   document.getElementById('modal-title').textContent = propStr(o,'タイヤサイズ') || 'PO-' + o.id.slice(-8).toUpperCase();
   document.getElementById('modal-body').innerHTML = html;
@@ -2595,6 +2661,15 @@ async function updateDetail() {
   const pattern = document.getElementById('detail-pattern')?.value || '';
   const due     = document.getElementById('detail-due')?.value || '';
   const memo    = document.getElementById('detail-memo')?.value || '';
+
+  // 旧パターン・サイズ・倉庫を保持（在庫DB更新用）
+  const oldPattern = propStr(curOrder, 'パターン') || '';
+  const oldLoc     = propStr(curOrder, '納入予定場所') || '';
+  const size       = propStr(curOrder, 'サイズ') || propStr(curOrder, 'サイズコード') || propStr(curOrder, 'タイヤサイズ') || '';
+  const oldQty     = Number(propStr(curOrder, '数量')) || 0;
+  const patChanged = pattern && oldPattern && pattern !== oldPattern;
+  const locChanged = loc && oldLoc && loc !== oldLoc;
+
   btn.disabled = true; btn.textContent = '更新中...';
   try {
     const props = { 'ステータス': {select:{name: curStatus}} };
@@ -2607,6 +2682,41 @@ async function updateDetail() {
     props['備考欄'] = {rich_text: memo ? [{text:{content: memo}}] : []};
 
     await notionPatch(curOrder.id, props);
+
+    // パターンまたは倉庫が変更された場合、在庫DBの発注中レコードを入れ替え
+    if (patChanged || locChanged) {
+      let stockMsg = '';
+      try {
+        // 旧パターンの発注中レコードを削除
+        const delResult = await fooDeleteStockOrders({
+          size:      size,
+          pattern:   oldPattern,
+          warehouse: oldLoc,
+          qty:       oldQty || undefined,
+        });
+        if (delResult.deleted > 0) {
+          stockMsg = '旧「発注中」' + delResult.deleted + '件削除';
+        }
+      } catch(e) {
+        console.warn('旧発注中レコード削除失敗:', e);
+      }
+      try {
+        // 新パターンで発注中レコードを作成
+        const newQty = qty || oldQty || 1;
+        const newLoc = loc || oldLoc || '';
+        const newPat = pattern || oldPattern || '';
+        if (newLoc && newPat && size) {
+          await fooCreateStockOrdersBatch([{
+            size: size, pattern: newPat, warehouse: newLoc, qty: newQty
+          }]);
+          stockMsg += (stockMsg ? ' → ' : '') + '新「発注中」' + newQty + '本作成';
+        }
+      } catch(e) {
+        console.warn('新発注中レコード作成失敗:', e);
+        stockMsg += ' ⚠️ 新レコード作成失敗';
+      }
+      if (stockMsg) console.log('[updateDetail] 在庫DB:', stockMsg);
+    }
 
     // ローカルも更新
     const idx = orders.findIndex(o => o.id === curOrder.id);

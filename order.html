@@ -1978,7 +1978,7 @@ function renderPending() {
       reRenderPending();
 
       // ── 整合性チェック（バックグラウンド）──
-      checkSyncIntegrity().catch(e => console.warn('整合性チェックエラー:', e));
+      // checkSyncIntegrity().catch(e => console.warn('整合性チェックエラー:', e)); // TODO: ロジック修正後に復活
 
       // ── 本伝待ちボタン ──
       try {

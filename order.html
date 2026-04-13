@@ -2085,8 +2085,19 @@ function renderPendingGrouped(pending) {
         const patQty = items.reduce((s,o) => s + (Number(propStr(o,'数量'))||0), 0);
         html += `<div class="pat-group">
           <div class="pat-header"><span style="color:${pColor};">${pat}</span><span style="margin-left:6px;font-size:10px;color:var(--muted);font-weight:500;">${items.length}件 ${patQty}本</span></div>`;
+        // サイズ別にサブグループ化
+        const bySize = {};
         items.forEach(o => {
-          html += pendingRowHTML(o);
+          const sz = propStr(o,'サイズコード') || propStr(o,'サイズ') || propStr(o,'タイヤサイズ') || '—';
+          if (!bySize[sz]) bySize[sz] = [];
+          bySize[sz].push(o);
+        });
+        Object.entries(bySize).forEach(([sz, sizeItems]) => {
+          if (sizeItems.length > 1) {
+            const szQty = sizeItems.reduce((s,o) => s + (Number(propStr(o,'数量'))||0), 0);
+            html += `<div style="font-size:11px;color:var(--muted);padding:4px 8px 2px;font-weight:600;border-left:2px solid ${pColor}22;margin-left:4px;">${sz}（${sizeItems.length}件 計${szQty}本）</div>`;
+          }
+          sizeItems.forEach(o => { html += pendingRowHTML(o); });
         });
         html += `</div>`;
       });

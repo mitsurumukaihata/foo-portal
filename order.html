@@ -2337,7 +2337,7 @@ async function checkSyncIntegrity() {
     const dbInfo = DB_MAP[key];
     if (!dbInfo) continue;
     try {
-      const res = await notionQuery(dbInfo.id, { property: '区分', select: { equals: '発注中' } }, null, 100);
+      const res = await notionQuery(dbInfo.id, { property: '区分', select: { equals: '発注中' } });
       (res.results || []).forEach(r => {
         if (r.archived) return;
         const sz = r.properties['サイズコード']?.select?.name || '';
@@ -2425,7 +2425,7 @@ async function repairSync() {
       const dbInfo = DB_MAP[key];
       if (!dbInfo) continue;
       try {
-        const res = await notionQuery(dbInfo.id, { property: '区分', select: { equals: '発注中' } }, null, 100);
+        const res = await notionQuery(dbInfo.id, { property: '区分', select: { equals: '発注中' } });
         (res.results || []).forEach(r => {
           if (r.archived) return;
           const sz = r.properties['サイズコード']?.select?.name || '';

@@ -677,7 +677,16 @@ function renderEventBlocks() {
           supportBadge = `<div class="support-badge">+${others}</div>`;
         }
       }
-      block.innerHTML = `<div class="ev-title">${titleLine}</div><div class="ev-detail">${detailParts.join(' / ')}</div>${supportBadge}${ev.state === '完了' ? '<div class="ev-done">✓</div>' : ''}${!isSupport ? '<div class="resize-handle" onmousedown="onResizeStart(event,\''+ev.id+'\')" ontouchstart="onResizeStart(event,\''+ev.id+'\')"></div>' : ''}`;
+      block.innerHTML = `<div class="ev-title">${titleLine}</div><div class="ev-detail">${detailParts.join(' / ')}</div>${supportBadge}${ev.state === '完了' ? '<div class="ev-done">✓</div>' : ''}${!isSupport ? '<div class="resize-handle"></div>' : ''}`;
+
+      // リサイズハンドルにイベント登録（インラインだとstopPropagationが効かない）
+      if (!isSupport) {
+        const handle = block.querySelector('.resize-handle');
+        if (handle) {
+          handle.addEventListener('mousedown', (e) => { e.stopPropagation(); onResizeStart(e, ev.id); });
+          handle.addEventListener('touchstart', (e) => { e.stopPropagation(); onResizeStart(e, ev.id); }, { passive: false });
+        }
+      }
 
       grid.appendChild(block);
     });
@@ -758,11 +767,14 @@ async function onCellDrop(e, workerName, hour) {
 // タッチドラッグ実装
 function onEventTouchStart(e, ev) {
   if (e.touches.length !== 1) return;
-  // リサイズハンドル上ならスキップ
+  // リサイズハンドル上ならスキップ（リサイズ専用ハンドラに任せる）
   if (e.target.classList.contains('resize-handle')) return;
   const touch = e.touches[0];
   const block = e.currentTarget;
   const rect = block.getBoundingClientRect();
+  // ブロックの下端8px以内ならリサイズハンドルとみなしてスキップ
+  if (touch.clientY > rect.bottom - 12) return;
+
   touchDragData = {
     eventId: ev.id,
     block,
@@ -772,10 +784,11 @@ function onEventTouchStart(e, ev) {
     offsetY: touch.clientY - rect.top,
     moved: false,
     longPressTimer: null,
+    dragging: false,
   };
-  // 長押し判定（200ms以上タッチ → ドラッグ開始）
+  // 長押し判定（500ms以上タッチ → ドラッグ開始）
   touchDragData.longPressTimer = setTimeout(() => {
-    if (touchDragData) {
+    if (touchDragData && !touchDragData.moved) {
       touchDragData.dragging = true;
       block.classList.add('dragging');
       block.style.opacity = '0.7';
@@ -783,7 +796,7 @@ function onEventTouchStart(e, ev) {
       // 振動フィードバック
       if (navigator.vibrate) navigator.vibrate(30);
     }
-  }, 200);
+  }, 500);
   document.addEventListener('touchmove', onEventTouchMove, { passive: false });
   document.addEventListener('touchend', onEventTouchEnd);
 }
@@ -793,8 +806,16 @@ function onEventTouchMove(e) {
   const touch = e.touches[0];
   const dx = touch.clientX - touchDragData.startX;
   const dy = touch.clientY - touchDragData.startY;
-  // 5px以上動いたら確実に移動とみなす
-  if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+  // 10px以上動いたら確実に移動とみなす（長押し前ならキャンセル）
+  if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+    if (!touchDragData.dragging) {
+      // 長押し成立前にスクロール → ドラッグキャンセル
+      if (touchDragData.longPressTimer) clearTimeout(touchDragData.longPressTimer);
+      touchDragData = null;
+      document.removeEventListener('touchmove', onEventTouchMove);
+      document.removeEventListener('touchend', onEventTouchEnd);
+      return;
+    }
     touchDragData.moved = true;
   }
   if (!touchDragData.dragging) return;
@@ -1165,7 +1186,9 @@ function updateSyncStatus() {
 }
 
 async function backgroundSync() {
-  // 30秒ごとにeventsだけ再取得
+  // ドラッグ・リサイズ・モーダル表示中はスキップ
+  if (touchDragData || dragData || resizeData) return;
+  if (document.getElementById('edit-modal').classList.contains('open')) return;
   try {
     await loadEvents(fmtDate(currentDate));
     renderEventBlocks();

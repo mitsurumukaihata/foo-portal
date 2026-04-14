@@ -1756,7 +1756,7 @@ function renderStockResult(size, catKey, records) {
   var noStockPatterns = sortedPatterns.filter(function(p) { return !patternHasAny(p); });
 
   // ヘッダーを1回だけ表示（sticky固定）
-  html += '<div id="stock-col-header" style="position:sticky;top:0;z-index:10;background:var(--bg);padding-top:4px;">' + colHeaderHtml + '</div>';
+  html += '</div><div id="stock-col-header" style="position:sticky;top:0;z-index:10;background:var(--bg);padding:4px 20px 0;">' + colHeaderHtml + '</div><div style="padding:0 20px;">';
 
   function renderStockGroup(patterns, groupLabel, groupColor) {
     if (!patterns.length) return;
@@ -1853,7 +1853,7 @@ function renderStockResultAll(size, matching, results) {
   html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><button onclick="renderStockHome()" style="background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:0;">&#8592;</button><div class="screen-label" style="margin:0;">在庫確認</div></div>';
   html += '<div class="screen-title" style="font-family:\'DM Mono\',monospace;font-size:18px;">' + size + '</div>';
   html += '<div style="margin-top:16px;">';
-  html += '<div id="stock-col-header" style="position:sticky;top:0;z-index:10;background:var(--bg);padding-top:4px;">' + colHeaderHtml + '</div>';
+  html += '</div><div id="stock-col-header" style="position:sticky;top:0;z-index:10;background:var(--bg);padding:4px 20px 0;">' + colHeaderHtml + '</div><div style="padding:0 20px;">';
 
   // パターン行を描画するヘルパー（catKey付き）
   function renderPatternRow(p, catKey, stock, prepStock, orderStock) {

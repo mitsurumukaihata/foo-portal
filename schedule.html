@@ -1,0 +1,934 @@
+<!doctype html>
+<html lang="ja" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f0a500">
+<title>📅 予定表 | f.o.o</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #faf9f7;
+  --s1: #ffffff;
+  --s2: #f5f3ef;
+  --s3: #ebe8e2;
+  --text: #1a1814;
+  --muted: #8c8579;
+  --border: #e5e2db;
+  --border2: #d4d0c8;
+  --accent: #f0a500;
+  --accent2: #d48900;
+  --blue: #2563eb;
+  --green: #16a34a;
+  --red: #dc2626;
+  --yellow: #ca8a04;
+  --purple: #9333ea;
+  --brown: #854d0e;
+  --direct: #2563eb;
+  --toyo: #ea580c;
+  --bs: #1e40af;
+  --fuso: #16a34a;
+  --dunlop: #9333ea;
+  --other-moto: #6b7280;
+}
+html[data-theme="dark"] {
+  --bg: #1a1814;
+  --s1: #24211c;
+  --s2: #2e2a24;
+  --s3: #38332b;
+  --text: #f5f3ef;
+  --muted: #a8a196;
+  --border: #38332b;
+  --border2: #4a453c;
+}
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    --bg: #1a1814;
+    --s1: #24211c;
+    --s2: #2e2a24;
+    --s3: #38332b;
+    --text: #f5f3ef;
+    --muted: #a8a196;
+    --border: #38332b;
+    --border2: #4a453c;
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', sans-serif; font-size: 14px; overflow-x: hidden; }
+body { min-height: 100vh; display: flex; flex-direction: column; }
+
+/* ヘッダー */
+.topbar { background: var(--s1); border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; }
+.topbar-title { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+.topbar-title strong { color: var(--text); font-weight: 900; font-size: 14px; margin-left: 6px; }
+.topbar-back { background: var(--s2); border: 1px solid var(--border); color: var(--text); font-size: 12px; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-family: inherit; text-decoration: none; }
+.topbar-back:hover { background: var(--s3); }
+
+/* 日付ナビ */
+.date-nav { background: var(--s1); border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; align-items: center; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.date-nav button { background: var(--s2); border: 1px solid var(--border); color: var(--text); font-size: 13px; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-family: inherit; font-weight: 600; }
+.date-nav button:hover { background: var(--s3); }
+.date-nav .date-main { font-size: 18px; font-weight: 900; color: var(--text); font-family: 'DM Mono', monospace; padding: 0 8px; }
+.date-nav .date-dow { font-size: 11px; color: var(--muted); margin-left: 4px; }
+.date-nav .today-btn { background: var(--accent); color: #fff; border-color: var(--accent); }
+.date-nav input[type="date"] { background: var(--s2); border: 1px solid var(--border); color: var(--text); padding: 7px 10px; border-radius: 8px; font-family: inherit; font-size: 13px; }
+.date-nav .refresh-btn { background: var(--s2); border: 1px solid var(--border); color: var(--muted); font-size: 16px; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+.date-nav .sync-status { font-size: 10px; color: var(--muted); margin-left: 4px; }
+
+/* スケジュールグリッド */
+.schedule-wrap { flex: 1; overflow: auto; position: relative; background: var(--bg); }
+.schedule-grid { display: grid; min-width: 100%; position: relative; }
+.col-header { position: sticky; top: 0; z-index: 10; background: var(--s1); border-bottom: 2px solid var(--border2); padding: 10px 6px; text-align: center; font-size: 13px; font-weight: 900; color: var(--text); border-right: 1px solid var(--border); }
+.col-header.time-col { background: var(--s2); }
+.hour-label { position: sticky; left: 0; z-index: 5; background: var(--s2); border-right: 1px solid var(--border2); border-bottom: 1px solid var(--border); padding: 4px 8px; font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; display: flex; align-items: flex-start; justify-content: flex-end; }
+.cell { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--s1); position: relative; cursor: pointer; transition: background 0.1s; }
+.cell:hover { background: var(--s2); }
+.cell.unavailable { background: repeating-linear-gradient(45deg, var(--s3), var(--s3) 6px, var(--s2) 6px, var(--s2) 12px); cursor: not-allowed; }
+.cell.unavailable:hover { background: repeating-linear-gradient(45deg, var(--s3), var(--s3) 6px, var(--s2) 6px, var(--s2) 12px); }
+
+/* 予定ブロック */
+.event-block {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 11px;
+  color: #fff;
+  overflow: hidden;
+  cursor: grab;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.12);
+  z-index: 2;
+  border: 1px solid rgba(255,255,255,0.2);
+  font-weight: 600;
+  line-height: 1.25;
+}
+.event-block:active { cursor: grabbing; }
+.event-block.dragging { opacity: 0.5; z-index: 20; }
+.event-block .ev-title { font-weight: 900; font-size: 12px; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.event-block .ev-detail { font-size: 10px; opacity: 0.95; margin-top: 1px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.event-block .ev-done { position: absolute; top: 2px; right: 4px; font-size: 12px; }
+.event-block.state-完了 { opacity: 0.7; text-decoration: line-through; }
+.event-block.state-完了 .ev-title { text-decoration: line-through; }
+
+/* 元請け別の色 */
+.event-block.moto-直販 { background: var(--direct); }
+.event-block.moto-TOYO { background: var(--toyo); }
+.event-block.moto-BRIDGESTONE { background: var(--bs); }
+.event-block.moto-ふそう東, .event-block.moto-ふそう西 { background: var(--fuso); }
+.event-block.moto-DUNLOP { background: var(--dunlop); }
+.event-block.moto-その他元請け { background: var(--other-moto); }
+
+/* リサイズハンドル */
+.resize-handle { position: absolute; left: 0; right: 0; bottom: -3px; height: 6px; cursor: ns-resize; z-index: 3; }
+
+/* モーダル */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 9999; display: none; align-items: center; justify-content: center; padding: 16px; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--s1); border-radius: 14px; width: 100%; max-width: 480px; max-height: 92vh; overflow-y: auto; padding: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+.modal h2 { margin: 0 0 12px; font-size: 16px; font-weight: 900; }
+.modal label { display: block; font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 4px; margin-top: 12px; }
+.modal input, .modal select, .modal textarea {
+  width: 100%; padding: 10px 12px; border-radius: 8px; border: 1.5px solid var(--border2);
+  background: var(--s2); color: var(--text); font-size: 14px; font-family: inherit;
+}
+.modal textarea { min-height: 60px; resize: vertical; }
+.modal-row { display: flex; gap: 10px; }
+.modal-row > * { flex: 1; }
+.modal-actions { margin-top: 20px; display: flex; gap: 10px; }
+.modal-actions button { flex: 1; padding: 12px; border-radius: 10px; border: none; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
+.btn-save { background: var(--accent); color: #fff; }
+.btn-save:hover { background: var(--accent2); }
+.btn-cancel { background: var(--s2); color: var(--text); border: 1px solid var(--border) !important; }
+.btn-delete { background: rgba(220,38,38,0.1); color: var(--red); border: 1px solid rgba(220,38,38,0.3) !important; }
+.btn-done { background: var(--green); color: #fff; }
+
+/* 予測候補 */
+.autocomplete { position: relative; }
+.ac-list { position: absolute; top: 100%; left: 0; right: 0; background: var(--s1); border: 1px solid var(--border2); border-radius: 8px; max-height: 180px; overflow-y: auto; z-index: 50; margin-top: 2px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.ac-item { padding: 8px 12px; cursor: pointer; font-size: 13px; border-bottom: 1px solid var(--border); }
+.ac-item:last-child { border-bottom: none; }
+.ac-item:hover { background: var(--s2); }
+.ac-item .ac-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+/* Loading */
+.loading { display: flex; align-items: center; justify-content: center; padding: 60px 20px; color: var(--muted); font-size: 13px; }
+.spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 空状態 */
+.empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; }
+
+/* スマホ対応 */
+@media (max-width: 700px) {
+  .topbar-title strong { font-size: 13px; }
+  .date-nav { gap: 6px; padding: 10px 12px; }
+  .date-nav .date-main { font-size: 15px; }
+  .col-header { font-size: 11px; padding: 8px 4px; }
+  .event-block { font-size: 10px; padding: 3px 4px; }
+  .event-block .ev-title { font-size: 11px; }
+  .event-block .ev-detail { font-size: 9px; -webkit-line-clamp: 1; }
+}
+
+/* フィードバック */
+.feedback { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--green); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 700; z-index: 10000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.feedback.show { opacity: 1; }
+.feedback.error { background: var(--red); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="index.html" class="topbar-back">← ポータル</a>
+  <div class="topbar-title">F.o.o · <strong>予定表</strong></div>
+  <div style="flex:1;"></div>
+  <button onclick="cycleTheme()" id="theme-btn" style="background:var(--s2);border:1px solid var(--border);color:var(--text);font-size:14px;padding:6px 10px;border-radius:20px;cursor:pointer;">🌙</button>
+</div>
+
+<div class="date-nav">
+  <button onclick="changeDate(-1)">← 前日</button>
+  <button class="today-btn" onclick="goToday()">今日</button>
+  <input type="date" id="date-picker" onchange="onDatePickerChange()">
+  <button onclick="changeDate(1)">翌日 →</button>
+  <div class="date-main" id="date-main"></div>
+  <div class="date-dow" id="date-dow"></div>
+  <button class="refresh-btn" onclick="reloadAll()" title="更新">🔄</button>
+  <div class="sync-status" id="sync-status"></div>
+</div>
+
+<div class="schedule-wrap" id="schedule-wrap">
+  <div id="schedule-content"></div>
+</div>
+
+<!-- 予定編集モーダル -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <h2 id="modal-title">新規予定</h2>
+    <label>作業者</label>
+    <select id="f-worker"></select>
+    <div class="modal-row">
+      <div>
+        <label>開始時刻</label>
+        <input type="time" id="f-start" step="1800">
+      </div>
+      <div>
+        <label>終了時刻</label>
+        <input type="time" id="f-end" step="1800">
+      </div>
+    </div>
+    <label>顧客名</label>
+    <div class="autocomplete">
+      <input type="text" id="f-customer" autocomplete="off" placeholder="顧客名を入力">
+      <div class="ac-list" id="ac-customer" style="display:none;"></div>
+    </div>
+    <label>車番</label>
+    <div class="autocomplete">
+      <input type="text" id="f-car" autocomplete="off" placeholder="車番を入力（車両マスタから候補）">
+      <div class="ac-list" id="ac-car" style="display:none;"></div>
+    </div>
+    <label>作業内容（複数選択可）</label>
+    <div id="f-work-chips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+    <div class="modal-row">
+      <div>
+        <label>タイヤサイズ</label>
+        <input type="text" id="f-size" placeholder="例：205/85R16">
+      </div>
+      <div>
+        <label>パターン</label>
+        <input type="text" id="f-pattern" placeholder="例：M634">
+      </div>
+    </div>
+    <div class="modal-row">
+      <div>
+        <label>本数</label>
+        <input type="number" id="f-qty" min="0" placeholder="0">
+      </div>
+      <div>
+        <label>出庫先</label>
+        <input type="text" id="f-dest" placeholder="（任意）">
+      </div>
+    </div>
+    <label>メモ</label>
+    <textarea id="f-memo" placeholder="（任意）"></textarea>
+    <label>状態</label>
+    <select id="f-state">
+      <option value="未完了">未完了</option>
+      <option value="進行中">進行中</option>
+      <option value="完了">完了</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">キャンセル</button>
+      <button class="btn-delete" id="btn-delete" onclick="deleteEvent()" style="display:none;">削除</button>
+      <button class="btn-save" onclick="saveEvent()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="feedback" id="feedback"></div>
+
+<script src="foo-common.js"></script>
+<script>
+// ══════════════════════════════════════════════════════════════════════
+// 設定
+// ══════════════════════════════════════════════════════════════════════
+const SCHEDULE_DB = '342a695f8e8881efbe44fc39adaf0271';
+const KINTAI_DB   = '200a695f8e8880b181d8c77b7dde51b5';
+const CUST_DB     = '1ca8d122be214e3892879932147143c9';
+const VEHICLE_DB  = '16f9f0df45e942069e032715fb2d37b2';
+
+const HOUR_START = 8;
+const HOUR_END = 21;
+const HOUR_HEIGHT = 48; // px per hour
+const TIME_COL_WIDTH = 50;
+
+const WORK_TYPES = ['組替','脱着','タイヤ販売(新品)','タイヤ販売(中古)','タイヤ販売(更生)','バランス','出張(市内)','出張(市外)','f.o.oパック','その他'];
+
+const MOTO_COLORS = {
+  '直販': 'var(--direct)',
+  'TOYO': 'var(--toyo)',
+  'BRIDGESTONE': 'var(--bs)',
+  'ふそう東': 'var(--fuso)',
+  'ふそう西': 'var(--fuso)',
+  'DUNLOP': 'var(--dunlop)',
+  'その他元請け': 'var(--other-moto)',
+};
+
+// 全社員（出勤簿にない人用のフォールバック）
+const ALL_WORKERS = ['大田','矢島','中川','山根','村田','平野','向畑'];
+
+// ══════════════════════════════════════════════════════════════════════
+// 状態
+// ══════════════════════════════════════════════════════════════════════
+let currentDate = new Date();
+currentDate.setHours(0,0,0,0);
+let events = [];
+let workers = []; // { name, start, end, available }
+let customers = []; // 顧客情報DBキャッシュ
+let vehicles = []; // 車両マスタキャッシュ
+let editingEvent = null;
+let selectedWorkTypes = new Set();
+let syncInterval = null;
+
+// ══════════════════════════════════════════════════════════════════════
+// テーマ
+// ══════════════════════════════════════════════════════════════════════
+const THEME_KEY = 'foo_portal_theme';
+function applyTheme(t) {
+  const root = document.documentElement;
+  if (t === 'auto') root.removeAttribute('data-theme');
+  else root.setAttribute('data-theme', t);
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = t === 'dark' ? '☀️' : '🌙';
+}
+function cycleTheme() {
+  const cur = localStorage.getItem(THEME_KEY) || 'auto';
+  const next = cur === 'auto' ? 'dark' : cur === 'dark' ? 'light' : 'auto';
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+}
+applyTheme(localStorage.getItem(THEME_KEY) || 'auto');
+
+// ══════════════════════════════════════════════════════════════════════
+// 日付ユーティリティ
+// ══════════════════════════════════════════════════════════════════════
+function fmtDate(d) {
+  const y = d.getFullYear(), m = (d.getMonth()+1).toString().padStart(2,'0'), day = d.getDate().toString().padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function fmtDateDisp(d) {
+  const m = d.getMonth()+1, day = d.getDate();
+  return `${d.getFullYear()}/${m}/${day}`;
+}
+function dowJa(d) {
+  return ['日','月','火','水','木','金','土'][d.getDay()];
+}
+function numToTime(n) {
+  // 900 → "09:00", 1830 → "18:30"
+  if (n == null) return '';
+  const h = Math.floor(n/100), m = n%100;
+  return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+}
+function numToHour(n) {
+  if (n == null) return null;
+  return Math.floor(n/100) + (n%100)/60;
+}
+function timeToHour(t) {
+  // "09:30" → 9.5
+  if (!t) return null;
+  const [h, m] = t.split(':').map(Number);
+  return h + (m||0)/60;
+}
+function hourToTime(h) {
+  // 9.5 → "09:30"
+  const hh = Math.floor(h), mm = Math.round((h-hh)*60);
+  return `${hh.toString().padStart(2,'0')}:${mm.toString().padStart(2,'0')}`;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// Notion API
+// ══════════════════════════════════════════════════════════════════════
+async function notionQuery(dbId, filter, sorts, startCursor) {
+  const body = { page_size: 100 };
+  if (filter) body.filter = filter;
+  if (sorts) body.sorts = sorts;
+  if (startCursor) body.start_cursor = startCursor;
+  return fooNotionQuery(dbId, body, 15000);
+}
+async function notionCreate(dbId, props) { return fooNotionCreate(dbId, props); }
+async function notionPatch(pageId, props) { return fooNotionPatch(pageId, props); }
+async function notionArchive(pageId) {
+  const r = await fetch('https://notion-proxy.33322666666mm.workers.dev/pages/' + pageId, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ archived: true }),
+  });
+  return r.json();
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// データ取得
+// ══════════════════════════════════════════════════════════════════════
+async function loadWorkers(date) {
+  // 出勤簿から当日の出勤予定者を取得
+  try {
+    const res = await notionQuery(KINTAI_DB, {
+      and: [
+        { property: '日付', date: { equals: date } },
+        { property: '指定休', checkbox: { equals: false } },
+      ]
+    });
+    const records = res.results || [];
+    const workerMap = new Map();
+    records.forEach(r => {
+      const name = r.properties['社員名']?.select?.name;
+      if (!name) return;
+      const syukkin = r.properties['出勤']?.number;
+      const taikin = r.properties['退勤']?.number;
+      const yukyu = r.properties['有給使用']?.checkbox || false;
+      if (!workerMap.has(name)) {
+        workerMap.set(name, { name, start: syukkin, end: taikin, yukyu });
+      }
+    });
+    workers = [...workerMap.values()].sort((a,b) => {
+      const ai = ALL_WORKERS.indexOf(a.name), bi = ALL_WORKERS.indexOf(b.name);
+      return (ai===-1?99:ai) - (bi===-1?99:bi);
+    });
+    // 出勤簿に何もない場合は全員表示（フォールバック）
+    if (workers.length === 0) {
+      workers = ALL_WORKERS.map(n => ({ name: n, start: 900, end: 1800, yukyu: false }));
+    }
+  } catch(e) {
+    console.error('loadWorkers error:', e);
+    workers = ALL_WORKERS.map(n => ({ name: n, start: 900, end: 1800, yukyu: false }));
+  }
+}
+
+async function loadEvents(date) {
+  try {
+    const res = await notionQuery(SCHEDULE_DB, {
+      and: [
+        { property: '開始日時', date: { on_or_after: date + 'T00:00:00+09:00' } },
+        { property: '開始日時', date: { on_or_before: date + 'T23:59:59+09:00' } },
+      ]
+    });
+    events = (res.results || []).map(p => ({
+      id: p.id,
+      title: p.properties['予定タイトル']?.title?.[0]?.plain_text || '',
+      start: p.properties['開始日時']?.date?.start || '',
+      end: p.properties['終了日時']?.date?.start || p.properties['開始日時']?.date?.end || '',
+      worker: p.properties['作業者']?.select?.name || '',
+      customer: p.properties['顧客']?.relation?.[0]?.id || '',
+      customerName: '', // あとで解決
+      car: p.properties['車番']?.rich_text?.[0]?.plain_text || '',
+      workTypes: (p.properties['作業内容']?.multi_select || []).map(m => m.name),
+      size: p.properties['タイヤサイズ']?.rich_text?.[0]?.plain_text || '',
+      pattern: p.properties['パターン']?.rich_text?.[0]?.plain_text || '',
+      qty: p.properties['本数']?.number || null,
+      dest: p.properties['出庫先']?.rich_text?.[0]?.plain_text || '',
+      memo: p.properties['メモ']?.rich_text?.[0]?.plain_text || '',
+      state: p.properties['状態']?.select?.name || '未完了',
+      motoType: p.properties['元請けタイプ']?.select?.name || '直販',
+    }));
+    // 顧客名を解決
+    events.forEach(e => {
+      if (e.customer) {
+        const c = customers.find(c => c.id === e.customer);
+        if (c) e.customerName = c.name;
+      }
+    });
+  } catch(e) {
+    console.error('loadEvents error:', e);
+    events = [];
+  }
+}
+
+async function loadCustomers() {
+  if (customers.length > 0) return;
+  try {
+    let cursor = null;
+    customers = [];
+    do {
+      const res = await notionQuery(CUST_DB, null, null, cursor);
+      (res.results || []).forEach(p => {
+        customers.push({
+          id: p.id,
+          name: p.properties['会社名']?.title?.[0]?.plain_text || '',
+          moto: p.properties['中間管理会社']?.select?.name || '',
+        });
+      });
+      cursor = res.has_more ? res.next_cursor : null;
+    } while (cursor);
+  } catch(e) { console.error('loadCustomers error:', e); }
+}
+
+async function loadVehicles() {
+  if (vehicles.length > 0) return;
+  try {
+    let cursor = null;
+    vehicles = [];
+    do {
+      const res = await notionQuery(VEHICLE_DB, null, null, cursor);
+      (res.results || []).forEach(p => {
+        const car = p.properties['車番']?.title?.[0]?.plain_text || '';
+        if (!car) return;
+        const custId = p.properties['顧客']?.relation?.[0]?.id || '';
+        const size = p.properties['前輪サイズ']?.rich_text?.[0]?.plain_text || '';
+        vehicles.push({ id: p.id, car, custId, size });
+      });
+      cursor = res.has_more ? res.next_cursor : null;
+    } while (cursor);
+  } catch(e) { console.error('loadVehicles error:', e); }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// 描画
+// ══════════════════════════════════════════════════════════════════════
+function updateDateDisp() {
+  document.getElementById('date-main').textContent = fmtDateDisp(currentDate);
+  document.getElementById('date-dow').textContent = '(' + dowJa(currentDate) + ')';
+  document.getElementById('date-picker').value = fmtDate(currentDate);
+}
+
+function renderSchedule() {
+  const el = document.getElementById('schedule-content');
+  if (!workers.length) {
+    el.innerHTML = '<div class="empty">この日は誰も出勤していません</div>';
+    return;
+  }
+
+  const hours = [];
+  for (let h = HOUR_START; h <= HOUR_END; h++) hours.push(h);
+
+  // Grid: 1列(時間) + workers列
+  const cols = workers.length + 1;
+  const colTemplate = `${TIME_COL_WIDTH}px ` + `1fr `.repeat(workers.length);
+  const rowTemplate = `36px ` + `${HOUR_HEIGHT}px `.repeat(hours.length);
+
+  let html = `<div class="schedule-grid" style="grid-template-columns:${colTemplate};grid-template-rows:${rowTemplate};">`;
+
+  // Header row
+  html += `<div class="col-header time-col">時間</div>`;
+  workers.forEach(w => {
+    const sub = w.start != null && w.end != null ? `<div style="font-size:10px;color:var(--muted);font-weight:500;">${numToTime(w.start)}〜${numToTime(w.end)}</div>` : '';
+    html += `<div class="col-header">${w.name}${sub}</div>`;
+  });
+
+  // Hour rows
+  hours.forEach(h => {
+    html += `<div class="hour-label">${h}:00</div>`;
+    workers.forEach((w, wi) => {
+      const isUnavailable = w.yukyu || (w.start != null && h < Math.floor(w.start/100)) || (w.end != null && h >= Math.ceil(w.end/100));
+      const cls = 'cell' + (isUnavailable ? ' unavailable' : '');
+      html += `<div class="${cls}" data-worker="${w.name}" data-hour="${h}" onclick="onCellClick(event,'${w.name}',${h})" ondragover="onCellDragOver(event)" ondrop="onCellDrop(event,'${w.name}',${h})"></div>`;
+    });
+  });
+
+  html += `</div>`;
+  el.innerHTML = html;
+
+  // 予定ブロックを配置
+  setTimeout(() => renderEventBlocks(), 10);
+}
+
+function renderEventBlocks() {
+  const grid = document.querySelector('.schedule-grid');
+  if (!grid) return;
+  // 既存のブロックを削除
+  grid.querySelectorAll('.event-block').forEach(el => el.remove());
+
+  events.forEach(ev => {
+    const wi = workers.findIndex(w => w.name === ev.worker);
+    if (wi < 0) return;
+    const startH = new Date(ev.start).getHours() + new Date(ev.start).getMinutes() / 60;
+    const endH = ev.end ? (new Date(ev.end).getHours() + new Date(ev.end).getMinutes() / 60) : startH + 1;
+    if (endH <= HOUR_START || startH >= HOUR_END + 1) return;
+
+    const top = (startH - HOUR_START) * HOUR_HEIGHT + 36; // 36 = header
+    const height = Math.max(24, (endH - startH) * HOUR_HEIGHT - 4);
+
+    // ワーカー列の位置を計算
+    const cells = grid.querySelectorAll(`.cell[data-worker="${ev.worker}"][data-hour="${HOUR_START}"]`);
+    if (!cells.length) return;
+    const cellRect = cells[0].getBoundingClientRect();
+    const gridRect = grid.getBoundingClientRect();
+    const left = cellRect.left - gridRect.left + 3;
+    const width = cellRect.width - 6;
+
+    const block = document.createElement('div');
+    block.className = 'event-block moto-' + ev.motoType + ' state-' + ev.state;
+    block.style.top = top + 'px';
+    block.style.height = height + 'px';
+    block.style.left = left + 'px';
+    block.style.width = width + 'px';
+    block.draggable = true;
+    block.dataset.eventId = ev.id;
+    block.onclick = (e) => { e.stopPropagation(); openEditModal(ev); };
+    block.ondragstart = (e) => onEventDragStart(e, ev);
+    block.ondragend = (e) => e.target.classList.remove('dragging');
+
+    const titleLine = ev.customerName || ev.customer || '(顧客未設定)';
+    const detailParts = [];
+    if (ev.car) detailParts.push(ev.car);
+    if (ev.workTypes.length) detailParts.push(ev.workTypes.join('+'));
+    if (ev.pattern && ev.size) detailParts.push(ev.pattern + ' ' + ev.size);
+    if (ev.qty) detailParts.push(ev.qty + '本');
+    block.innerHTML = `<div class="ev-title">${titleLine}</div><div class="ev-detail">${detailParts.join(' / ')}</div>${ev.state === '完了' ? '<div class="ev-done">✓</div>' : ''}<div class="resize-handle"></div>`;
+
+    grid.appendChild(block);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// ドラッグ&ドロップ
+// ══════════════════════════════════════════════════════════════════════
+let dragData = null;
+function onEventDragStart(e, ev) {
+  dragData = { eventId: ev.id, originalEvent: ev };
+  e.target.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+function onCellDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+}
+async function onCellDrop(e, workerName, hour) {
+  e.preventDefault();
+  if (!dragData) return;
+  const ev = events.find(x => x.id === dragData.eventId);
+  if (!ev) return;
+
+  // 対象セルが利用不可ならキャンセル
+  const w = workers.find(w => w.name === workerName);
+  if (!w) return;
+  if (w.yukyu) { showFeedback('有給日には予定を入れられません', true); return; }
+  if (w.start != null && hour < Math.floor(w.start/100)) { showFeedback('勤務時間外です', true); return; }
+  if (w.end != null && hour >= Math.ceil(w.end/100)) { showFeedback('勤務時間外です', true); return; }
+
+  // 予定の長さを維持して移動
+  const origStart = new Date(ev.start);
+  const origEnd = new Date(ev.end || ev.start);
+  const durationMs = origEnd - origStart;
+
+  const newStart = new Date(currentDate);
+  newStart.setHours(hour, 0, 0, 0);
+  const newEnd = new Date(newStart.getTime() + (durationMs || 3600000));
+
+  try {
+    await notionPatch(ev.id, {
+      '作業者': { select: { name: workerName } },
+      '開始日時': { date: { start: toIsoLocal(newStart) } },
+      '終了日時': { date: { start: toIsoLocal(newEnd) } },
+    });
+    ev.worker = workerName;
+    ev.start = toIsoLocal(newStart);
+    ev.end = toIsoLocal(newEnd);
+    renderEventBlocks();
+    showFeedback('予定を移動しました');
+  } catch(err) {
+    showFeedback('移動に失敗: ' + err.message, true);
+  }
+  dragData = null;
+}
+
+function toIsoLocal(d) {
+  // JST想定
+  const y = d.getFullYear(), m = (d.getMonth()+1).toString().padStart(2,'0'), day = d.getDate().toString().padStart(2,'0');
+  const hh = d.getHours().toString().padStart(2,'0'), mm = d.getMinutes().toString().padStart(2,'0');
+  return `${y}-${m}-${day}T${hh}:${mm}:00+09:00`;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// モーダル
+// ══════════════════════════════════════════════════════════════════════
+function onCellClick(e, workerName, hour) {
+  // セルをクリック → 新規作成
+  const w = workers.find(w => w.name === workerName);
+  if (w && w.yukyu) { showFeedback('有給日には予定を入れられません', true); return; }
+  if (w && w.start != null && hour < Math.floor(w.start/100)) { showFeedback('勤務時間外です', true); return; }
+  if (w && w.end != null && hour >= Math.ceil(w.end/100)) { showFeedback('勤務時間外です', true); return; }
+
+  openEditModal(null, workerName, hour);
+}
+
+function openEditModal(ev, defaultWorker, defaultHour) {
+  editingEvent = ev;
+  document.getElementById('modal-title').textContent = ev ? '予定を編集' : '新規予定';
+  document.getElementById('btn-delete').style.display = ev ? 'block' : 'none';
+
+  // 作業者セレクト
+  const sel = document.getElementById('f-worker');
+  sel.innerHTML = workers.filter(w => !w.yukyu).map(w =>
+    `<option value="${w.name}">${w.name}</option>`
+  ).join('');
+
+  if (ev) {
+    sel.value = ev.worker;
+    const s = new Date(ev.start), e = new Date(ev.end || ev.start);
+    document.getElementById('f-start').value = `${s.getHours().toString().padStart(2,'0')}:${s.getMinutes().toString().padStart(2,'0')}`;
+    document.getElementById('f-end').value = `${e.getHours().toString().padStart(2,'0')}:${e.getMinutes().toString().padStart(2,'0')}`;
+    document.getElementById('f-customer').value = ev.customerName || '';
+    document.getElementById('f-customer').dataset.id = ev.customer || '';
+    document.getElementById('f-car').value = ev.car;
+    document.getElementById('f-size').value = ev.size;
+    document.getElementById('f-pattern').value = ev.pattern;
+    document.getElementById('f-qty').value = ev.qty || '';
+    document.getElementById('f-dest').value = ev.dest;
+    document.getElementById('f-memo').value = ev.memo;
+    document.getElementById('f-state').value = ev.state;
+    selectedWorkTypes = new Set(ev.workTypes);
+  } else {
+    sel.value = defaultWorker || workers[0]?.name || '';
+    document.getElementById('f-start').value = `${defaultHour.toString().padStart(2,'0')}:00`;
+    document.getElementById('f-end').value = `${(defaultHour+1).toString().padStart(2,'0')}:00`;
+    document.getElementById('f-customer').value = '';
+    document.getElementById('f-customer').dataset.id = '';
+    document.getElementById('f-car').value = '';
+    document.getElementById('f-size').value = '';
+    document.getElementById('f-pattern').value = '';
+    document.getElementById('f-qty').value = '';
+    document.getElementById('f-dest').value = '';
+    document.getElementById('f-memo').value = '';
+    document.getElementById('f-state').value = '未完了';
+    selectedWorkTypes = new Set();
+  }
+  renderWorkTypeChips();
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function renderWorkTypeChips() {
+  const wrap = document.getElementById('f-work-chips');
+  wrap.innerHTML = WORK_TYPES.map(t => {
+    const on = selectedWorkTypes.has(t);
+    return `<button type="button" onclick="toggleWorkType('${t}')" style="padding:6px 12px;border-radius:16px;border:1.5px solid ${on?'var(--accent)':'var(--border2)'};background:${on?'rgba(240,165,0,0.15)':'var(--s2)'};color:${on?'var(--accent)':'var(--text)'};font-size:12px;cursor:pointer;font-family:inherit;font-weight:${on?'700':'500'};">${t}</button>`;
+  }).join('');
+}
+function toggleWorkType(t) {
+  if (selectedWorkTypes.has(t)) selectedWorkTypes.delete(t);
+  else selectedWorkTypes.add(t);
+  renderWorkTypeChips();
+}
+
+function closeModal() {
+  document.getElementById('edit-modal').classList.remove('open');
+  editingEvent = null;
+}
+
+async function saveEvent() {
+  const worker = document.getElementById('f-worker').value;
+  const startT = document.getElementById('f-start').value;
+  const endT = document.getElementById('f-end').value;
+  if (!worker || !startT) { showFeedback('作業者と開始時刻は必須', true); return; }
+
+  const dateStr = fmtDate(currentDate);
+  const startIso = `${dateStr}T${startT}:00+09:00`;
+  const endIso = endT ? `${dateStr}T${endT}:00+09:00` : startIso;
+
+  const customerId = document.getElementById('f-customer').dataset.id || '';
+  const customerName = document.getElementById('f-customer').value || '';
+  const car = document.getElementById('f-car').value || '';
+  const size = document.getElementById('f-size').value || '';
+  const pattern = document.getElementById('f-pattern').value || '';
+  const qty = parseInt(document.getElementById('f-qty').value) || null;
+  const dest = document.getElementById('f-dest').value || '';
+  const memo = document.getElementById('f-memo').value || '';
+  const state = document.getElementById('f-state').value;
+
+  // 元請けタイプ判定
+  let motoType = '直販';
+  if (customerId) {
+    const c = customers.find(c => c.id === customerId);
+    if (c && c.moto) motoType = c.moto;
+  }
+
+  const title = `${customerName || ''}${car ? ' ' + car : ''}${[...selectedWorkTypes].length ? ' ' + [...selectedWorkTypes].join('+') : ''}`.trim() || '(タイトルなし)';
+
+  const props = {
+    '予定タイトル': { title: [{ text: { content: title } }] },
+    '開始日時': { date: { start: startIso } },
+    '終了日時': { date: { start: endIso } },
+    '作業者': { select: { name: worker } },
+    '作業内容': { multi_select: [...selectedWorkTypes].map(t => ({ name: t })) },
+    '車番': { rich_text: [{ text: { content: car } }] },
+    'タイヤサイズ': { rich_text: [{ text: { content: size } }] },
+    'パターン': { rich_text: [{ text: { content: pattern } }] },
+    '本数': { number: qty },
+    '出庫先': { rich_text: [{ text: { content: dest } }] },
+    'メモ': { rich_text: [{ text: { content: memo } }] },
+    '状態': { select: { name: state } },
+    '元請けタイプ': { select: { name: motoType } },
+  };
+  if (customerId) props['顧客'] = { relation: [{ id: customerId }] };
+
+  try {
+    if (editingEvent) {
+      await notionPatch(editingEvent.id, props);
+      showFeedback('更新しました');
+    } else {
+      await notionCreate(SCHEDULE_DB, props);
+      showFeedback('追加しました');
+    }
+    closeModal();
+    await loadEvents(fmtDate(currentDate));
+    renderSchedule();
+  } catch(e) {
+    showFeedback('保存失敗: ' + e.message, true);
+  }
+}
+
+async function deleteEvent() {
+  if (!editingEvent) return;
+  if (!confirm('この予定を削除しますか？')) return;
+  try {
+    await notionArchive(editingEvent.id);
+    showFeedback('削除しました');
+    closeModal();
+    await loadEvents(fmtDate(currentDate));
+    renderSchedule();
+  } catch(e) {
+    showFeedback('削除失敗: ' + e.message, true);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// 顧客名・車番の予測入力
+// ══════════════════════════════════════════════════════════════════════
+function setupAutocomplete() {
+  const custInput = document.getElementById('f-customer');
+  const custList = document.getElementById('ac-customer');
+  custInput.oninput = () => {
+    const q = custInput.value.trim().toLowerCase();
+    if (!q) { custList.style.display = 'none'; return; }
+    const hits = customers.filter(c => c.name.toLowerCase().includes(q)).slice(0, 10);
+    if (!hits.length) { custList.style.display = 'none'; return; }
+    custList.innerHTML = hits.map(c => `<div class="ac-item" onclick="selectCustomer('${c.id}','${c.name.replace(/'/g,"&#39;")}','${c.moto||''}')">${c.name}${c.moto?`<div class="ac-sub">${c.moto}</div>`:''}</div>`).join('');
+    custList.style.display = 'block';
+  };
+  custInput.onblur = () => setTimeout(() => custList.style.display = 'none', 200);
+
+  const carInput = document.getElementById('f-car');
+  const carList = document.getElementById('ac-car');
+  carInput.oninput = () => {
+    const q = carInput.value.trim();
+    if (!q || q.length < 2) { carList.style.display = 'none'; return; }
+    const hits = vehicles.filter(v => v.car.includes(q)).slice(0, 10);
+    if (!hits.length) { carList.style.display = 'none'; return; }
+    carList.innerHTML = hits.map(v => {
+      const c = customers.find(c => c.id === v.custId);
+      const sub = (c?.name || '') + (v.size ? ' / ' + v.size : '');
+      return `<div class="ac-item" onclick="selectVehicle('${v.car}','${v.custId}','${(c?.name||'').replace(/'/g,"&#39;")}','${v.size}')">${v.car}${sub?`<div class="ac-sub">${sub}</div>`:''}</div>`;
+    }).join('');
+    carList.style.display = 'block';
+  };
+  carInput.onblur = () => setTimeout(() => carList.style.display = 'none', 200);
+}
+function selectCustomer(id, name, moto) {
+  document.getElementById('f-customer').value = name;
+  document.getElementById('f-customer').dataset.id = id;
+  document.getElementById('ac-customer').style.display = 'none';
+}
+function selectVehicle(car, custId, custName, size) {
+  document.getElementById('f-car').value = car;
+  if (custId && custName && !document.getElementById('f-customer').value) {
+    document.getElementById('f-customer').value = custName;
+    document.getElementById('f-customer').dataset.id = custId;
+  }
+  if (size && !document.getElementById('f-size').value) {
+    document.getElementById('f-size').value = size;
+  }
+  document.getElementById('ac-car').style.display = 'none';
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// メイン
+// ══════════════════════════════════════════════════════════════════════
+function changeDate(delta) {
+  currentDate.setDate(currentDate.getDate() + delta);
+  updateDateDisp();
+  reloadAll();
+}
+function goToday() {
+  currentDate = new Date();
+  currentDate.setHours(0,0,0,0);
+  updateDateDisp();
+  reloadAll();
+}
+function onDatePickerChange() {
+  const v = document.getElementById('date-picker').value;
+  if (v) {
+    currentDate = new Date(v);
+    currentDate.setHours(0,0,0,0);
+    updateDateDisp();
+    reloadAll();
+  }
+}
+
+async function reloadAll() {
+  const dateStr = fmtDate(currentDate);
+  document.getElementById('schedule-content').innerHTML = '<div class="loading"><div class="spinner"></div>読み込み中…</div>';
+  await Promise.all([
+    loadCustomers(),
+    loadVehicles(),
+    loadWorkers(dateStr),
+  ]);
+  await loadEvents(dateStr);
+  renderSchedule();
+  updateSyncStatus();
+}
+
+function updateSyncStatus() {
+  const now = new Date();
+  document.getElementById('sync-status').textContent = '最終更新 ' + now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+}
+
+async function backgroundSync() {
+  // 30秒ごとにeventsだけ再取得
+  try {
+    await loadEvents(fmtDate(currentDate));
+    renderEventBlocks();
+    updateSyncStatus();
+  } catch(e) { console.warn('sync error:', e); }
+}
+
+function showFeedback(msg, isError) {
+  const el = document.getElementById('feedback');
+  el.textContent = msg;
+  el.classList.toggle('error', !!isError);
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// 初期化
+(async function init() {
+  updateDateDisp();
+  setupAutocomplete();
+  await reloadAll();
+  // 30秒ポーリング
+  syncInterval = setInterval(backgroundSync, 30000);
+  // ウィンドウリサイズで再描画
+  window.addEventListener('resize', () => renderEventBlocks());
+})();
+</script>
+</body>
+</html>

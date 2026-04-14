@@ -391,38 +391,39 @@ async function notionArchive(pageId) {
 // データ取得
 // ══════════════════════════════════════════════════════════════════════
 async function loadWorkers(date) {
-  // 出勤簿から当日の出勤予定者を取得
+  // まず全社員を表示リストに用意（デフォルト9-18時）
+  const defaultWorkers = new Map();
+  ALL_WORKERS.forEach(n => {
+    defaultWorkers.set(n, { name: n, start: 900, end: 1800, yukyu: false, rest: false });
+  });
+
+  // 出勤簿から当日の記録を取得して上書き
   try {
     const res = await notionQuery(KINTAI_DB, {
-      and: [
-        { property: '日付', date: { equals: date } },
-        { property: '指定休', checkbox: { equals: false } },
-      ]
+      property: '日付', date: { equals: date }
     });
     const records = res.results || [];
-    const workerMap = new Map();
     records.forEach(r => {
       const name = r.properties['社員名']?.select?.name;
-      if (!name) return;
+      if (!name || !defaultWorkers.has(name)) return;
       const syukkin = r.properties['出勤']?.number;
       const taikin = r.properties['退勤']?.number;
       const yukyu = r.properties['有給使用']?.checkbox || false;
-      if (!workerMap.has(name)) {
-        workerMap.set(name, { name, start: syukkin, end: taikin, yukyu });
-      }
+      const rest = r.properties['指定休']?.checkbox || false;
+      const entry = defaultWorkers.get(name);
+      if (syukkin != null) entry.start = syukkin;
+      if (taikin != null) entry.end = taikin;
+      entry.yukyu = yukyu;
+      entry.rest = rest;
     });
-    workers = [...workerMap.values()].sort((a,b) => {
-      const ai = ALL_WORKERS.indexOf(a.name), bi = ALL_WORKERS.indexOf(b.name);
-      return (ai===-1?99:ai) - (bi===-1?99:bi);
-    });
-    // 出勤簿に何もない場合は全員表示（フォールバック）
-    if (workers.length === 0) {
-      workers = ALL_WORKERS.map(n => ({ name: n, start: 900, end: 1800, yukyu: false }));
-    }
   } catch(e) {
-    console.error('loadWorkers error:', e);
-    workers = ALL_WORKERS.map(n => ({ name: n, start: 900, end: 1800, yukyu: false }));
+    console.warn('loadWorkers error:', e);
   }
+
+  // 指定休の人は除外、それ以外は全員表示
+  workers = [...defaultWorkers.values()]
+    .filter(w => !w.rest)
+    .sort((a,b) => ALL_WORKERS.indexOf(a.name) - ALL_WORKERS.indexOf(b.name));
 }
 
 async function loadEvents(date) {

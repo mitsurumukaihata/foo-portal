@@ -87,6 +87,7 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
 .cell:hover { background: var(--s2); }
 .cell.unavailable { background: repeating-linear-gradient(45deg, var(--s3), var(--s3) 6px, var(--s2) 6px, var(--s2) 12px); cursor: not-allowed; }
 .cell.unavailable:hover { background: repeating-linear-gradient(45deg, var(--s3), var(--s3) 6px, var(--s2) 6px, var(--s2) 12px); }
+.cell.drop-target { background: rgba(240,165,0,0.2); box-shadow: inset 0 0 0 2px var(--accent); }
 
 /* 予定ブロック */
 .event-block {
@@ -199,8 +200,13 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
   <button onclick="changeDate(1)">翌日 →</button>
   <div class="date-main" id="date-main"></div>
   <div class="date-dow" id="date-dow"></div>
-  <button class="refresh-btn" onclick="zoomOut()" title="縮小">−</button>
-  <button class="refresh-btn" onclick="zoomIn()" title="拡大">＋</button>
+  <span style="font-size:10px;color:var(--muted);margin-left:6px;">縦</span>
+  <button class="refresh-btn" onclick="zoomOut()" title="行を低く">−</button>
+  <button class="refresh-btn" onclick="zoomIn()" title="行を高く">＋</button>
+  <span style="font-size:10px;color:var(--muted);">横</span>
+  <button class="refresh-btn" onclick="narrowerCol()" title="列を狭く">−</button>
+  <button class="refresh-btn" onclick="widerCol()" title="列を広く">＋</button>
+  <button class="refresh-btn" onclick="autoCol()" title="自動幅" style="font-size:10px;padding:6px 8px;">自動</button>
   <button class="refresh-btn" onclick="reloadAll()" title="更新">🔄</button>
   <div class="sync-status" id="sync-status"></div>
 </div>
@@ -293,6 +299,10 @@ let HOUR_HEIGHT = parseInt(localStorage.getItem('foo_sched_zoom') || '48'); // p
 const HOUR_HEIGHT_MIN = 32;
 const HOUR_HEIGHT_MAX = 160;
 const HOUR_HEIGHT_STEP = 16;
+let COL_WIDTH = parseInt(localStorage.getItem('foo_sched_colw') || '0'); // 0 = auto (1fr)
+const COL_WIDTH_MIN = 90;
+const COL_WIDTH_MAX = 320;
+const COL_WIDTH_STEP = 30;
 const TIME_COL_WIDTH = 50;
 
 function zoomIn() {
@@ -303,6 +313,23 @@ function zoomIn() {
 function zoomOut() {
   HOUR_HEIGHT = Math.max(HOUR_HEIGHT_MIN, HOUR_HEIGHT - HOUR_HEIGHT_STEP);
   localStorage.setItem('foo_sched_zoom', HOUR_HEIGHT);
+  renderSchedule();
+}
+function widerCol() {
+  if (COL_WIDTH === 0) COL_WIDTH = 140;
+  COL_WIDTH = Math.min(COL_WIDTH_MAX, COL_WIDTH + COL_WIDTH_STEP);
+  localStorage.setItem('foo_sched_colw', COL_WIDTH);
+  renderSchedule();
+}
+function narrowerCol() {
+  if (COL_WIDTH === 0) COL_WIDTH = 140;
+  COL_WIDTH = Math.max(COL_WIDTH_MIN, COL_WIDTH - COL_WIDTH_STEP);
+  localStorage.setItem('foo_sched_colw', COL_WIDTH);
+  renderSchedule();
+}
+function autoCol() {
+  COL_WIDTH = 0;
+  localStorage.setItem('foo_sched_colw', 0);
   renderSchedule();
 }
 
@@ -553,10 +580,12 @@ function renderSchedule() {
 
   // Grid: 1列(時間) + workers列
   const cols = workers.length + 1;
-  const colTemplate = `${TIME_COL_WIDTH}px ` + `1fr `.repeat(workers.length);
+  const colWStr = COL_WIDTH > 0 ? `${COL_WIDTH}px ` : `1fr `;
+  const colTemplate = `${TIME_COL_WIDTH}px ` + colWStr.repeat(workers.length);
   const rowTemplate = `36px ` + `${HOUR_HEIGHT}px `.repeat(hours.length);
+  const minW = COL_WIDTH > 0 ? `${TIME_COL_WIDTH + COL_WIDTH * workers.length}px` : '100%';
 
-  let html = `<div class="schedule-grid" style="grid-template-columns:${colTemplate};grid-template-rows:${rowTemplate};">`;
+  let html = `<div class="schedule-grid" style="grid-template-columns:${colTemplate};grid-template-rows:${rowTemplate};min-width:${minW};">`;
 
   // Header row
   html += `<div class="col-header time-col">時間</div>`;
@@ -619,10 +648,17 @@ function renderEventBlocks() {
       block.draggable = !isSupport; // 主担当のみドラッグ可
       block.dataset.eventId = ev.id;
       block.dataset.isSupport = isSupport ? '1' : '0';
-      block.onclick = (e) => { e.stopPropagation(); openEditModal(ev); };
+      // PC: クリック / スマホ: タッチで判定（タッチ時はclickしない）
+      block.onclick = (e) => {
+        e.stopPropagation();
+        if (touchDragData) return; // タッチ処理中はclickイベント無視
+        openEditModal(ev);
+      };
       if (!isSupport) {
         block.ondragstart = (e) => onEventDragStart(e, ev);
         block.ondragend = (e) => e.target.classList.remove('dragging');
+        // タッチイベント
+        block.addEventListener('touchstart', (e) => onEventTouchStart(e, ev), { passive: false });
       }
 
       const titleLine = ev.customerName || ev.customer || '(顧客未設定)';
@@ -698,9 +734,11 @@ async function onResizeEnd(e) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-// ドラッグ&ドロップ
+// ドラッグ&ドロップ（PC: HTML5 / スマホ: タッチイベント自前実装）
 // ══════════════════════════════════════════════════════════════════════
 let dragData = null;
+let touchDragData = null;
+
 function onEventDragStart(e, ev) {
   dragData = { eventId: ev.id, originalEvent: ev };
   e.target.classList.add('dragging');
@@ -713,7 +751,108 @@ function onCellDragOver(e) {
 async function onCellDrop(e, workerName, hour) {
   e.preventDefault();
   if (!dragData) return;
-  const ev = events.find(x => x.id === dragData.eventId);
+  await executeMove(dragData.eventId, workerName, hour);
+  dragData = null;
+}
+
+// タッチドラッグ実装
+function onEventTouchStart(e, ev) {
+  if (e.touches.length !== 1) return;
+  // リサイズハンドル上ならスキップ
+  if (e.target.classList.contains('resize-handle')) return;
+  const touch = e.touches[0];
+  const block = e.currentTarget;
+  const rect = block.getBoundingClientRect();
+  touchDragData = {
+    eventId: ev.id,
+    block,
+    startX: touch.clientX,
+    startY: touch.clientY,
+    offsetX: touch.clientX - rect.left,
+    offsetY: touch.clientY - rect.top,
+    moved: false,
+    longPressTimer: null,
+  };
+  // 長押し判定（200ms以上タッチ → ドラッグ開始）
+  touchDragData.longPressTimer = setTimeout(() => {
+    if (touchDragData) {
+      touchDragData.dragging = true;
+      block.classList.add('dragging');
+      block.style.opacity = '0.7';
+      block.style.zIndex = '100';
+      // 振動フィードバック
+      if (navigator.vibrate) navigator.vibrate(30);
+    }
+  }, 200);
+  document.addEventListener('touchmove', onEventTouchMove, { passive: false });
+  document.addEventListener('touchend', onEventTouchEnd);
+}
+
+function onEventTouchMove(e) {
+  if (!touchDragData) return;
+  const touch = e.touches[0];
+  const dx = touch.clientX - touchDragData.startX;
+  const dy = touch.clientY - touchDragData.startY;
+  // 5px以上動いたら確実に移動とみなす
+  if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+    touchDragData.moved = true;
+  }
+  if (!touchDragData.dragging) return;
+  e.preventDefault();
+  // ブロックを指に追従
+  const grid = document.querySelector('.schedule-grid');
+  if (!grid) return;
+  const gridRect = grid.getBoundingClientRect();
+  touchDragData.block.style.left = (touch.clientX - gridRect.left - touchDragData.offsetX) + 'px';
+  touchDragData.block.style.top = (touch.clientY - gridRect.top - touchDragData.offsetY) + 'px';
+  // ドロップ先のセルをハイライト
+  const elemUnder = document.elementFromPoint(touch.clientX, touch.clientY);
+  document.querySelectorAll('.cell.drop-target').forEach(c => c.classList.remove('drop-target'));
+  if (elemUnder && elemUnder.classList.contains('cell') && !elemUnder.classList.contains('unavailable')) {
+    elemUnder.classList.add('drop-target');
+  }
+}
+
+async function onEventTouchEnd(e) {
+  document.removeEventListener('touchmove', onEventTouchMove);
+  document.removeEventListener('touchend', onEventTouchEnd);
+  if (!touchDragData) return;
+  if (touchDragData.longPressTimer) clearTimeout(touchDragData.longPressTimer);
+
+  const wasDragging = touchDragData.dragging;
+  const wasMoved = touchDragData.moved;
+
+  if (touchDragData.block) {
+    touchDragData.block.classList.remove('dragging');
+    touchDragData.block.style.opacity = '';
+    touchDragData.block.style.zIndex = '';
+    touchDragData.block.style.left = '';
+    touchDragData.block.style.top = '';
+  }
+  document.querySelectorAll('.cell.drop-target').forEach(c => c.classList.remove('drop-target'));
+
+  if (wasDragging) {
+    // ドロップ先を判定
+    const touch = e.changedTouches[0];
+    const elemUnder = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (elemUnder && elemUnder.classList.contains('cell') && !elemUnder.classList.contains('unavailable')) {
+      const workerName = elemUnder.getAttribute('data-worker');
+      const hour = parseInt(elemUnder.getAttribute('data-hour'));
+      await executeMove(touchDragData.eventId, workerName, hour);
+    } else {
+      // 元の位置に戻す（再描画）
+      renderEventBlocks();
+    }
+  } else if (!wasMoved) {
+    // タップ扱い → 編集モーダル
+    const ev = events.find(x => x.id === touchDragData.eventId);
+    if (ev) openEditModal(ev);
+  }
+  touchDragData = null;
+}
+
+async function executeMove(eventId, workerName, hour) {
+  const ev = events.find(x => x.id === eventId);
   if (!ev) return;
 
   // 対象セルが利用不可ならキャンセル
@@ -750,7 +889,6 @@ async function onCellDrop(e, workerName, hour) {
   } catch(err) {
     showFeedback('移動に失敗: ' + err.message, true);
   }
-  dragData = null;
 }
 
 function toIsoLocal(d) {

@@ -1822,14 +1822,17 @@ function renderStockResultAll(size, matching, results) {
 
   // 全結果をcatKeyごとにcalcStock
   var allCalcs = {};
+  var allRecordsByCat = {}; // catKey → records
   var totalRecords = 0;
   results.forEach(function(r) {
     allCalcs[r.catKey] = calcStock(r.records, r.catKey);
+    allRecordsByCat[r.catKey] = r.records;
     totalRecords += r.records.length;
-    // タップ用にグローバル変数を更新（最初のcatKeyをデフォルトに）
     if (!_stockCatKey) { _stockCatKey = r.catKey; _stockRecords = r.records; }
   });
   _stockSize = size;
+  // グローバルに保持（タップ時に参照）
+  window._allRecordsByCat = allRecordsByCat;
 
   // カラムヘッダー
   var colHeaderHtml = '';
@@ -1958,9 +1961,10 @@ function onStockTapAll(el) {
   var catKey = el.getAttribute('data-catkey');
   if (catKey) {
     _stockCatKey = catKey;
-    var r = arguments[0]; // 元のresultsからrecordsを探す
-    // catKeyに対応するDB_MAPからrecordsを再取得する必要があるが、
-    // onStockTapは_stockRecordsと_stockCatKeyを使うだけなのでcatKeyを設定すればOK
+    // catKeyに対応するレコードをグローバルから取得
+    if (window._allRecordsByCat && window._allRecordsByCat[catKey]) {
+      _stockRecords = window._allRecordsByCat[catKey];
+    }
   }
   _currentPattern = el.getAttribute('data-pattern');
   var mode = el.getAttribute('data-mode');
@@ -2107,8 +2111,11 @@ function stockHistory(mode) {
   html += rows + limitNote;
   html += '<button class="btn-secondary" id="hist-back2" style="margin-top:16px;">&#8592; 在庫一覧に戻る</button></div>';
   el.innerHTML = html;
-  document.getElementById('hist-back').onclick = function() { renderStockResult(_stockSize, _stockCatKey, _stockRecords); };
-  document.getElementById('hist-back2').onclick = function() { renderStockResult(_stockSize, _stockCatKey, _stockRecords); };
+  var _backFn = window._allRecordsByCat
+    ? function() { var matching = Object.entries(DB_MAP).filter(function(e) { return e[1].sizes.includes(_stockSize); }); var results = matching.filter(function(e) { return window._allRecordsByCat[e[0]]; }).map(function(e) { return { catKey: e[0], records: window._allRecordsByCat[e[0]] }; }); if (results.length > 1) { renderStockResultAll(_stockSize, matching, results); } else { renderStockResult(_stockSize, _stockCatKey, _stockRecords); } }
+    : function() { renderStockResult(_stockSize, _stockCatKey, _stockRecords); };
+  document.getElementById('hist-back').onclick = _backFn;
+  document.getElementById('hist-back2').onclick = _backFn;
 }
 
 // ─── 価格検索ページ ──────────────────────────────────────────────────────────

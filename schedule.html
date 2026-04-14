@@ -147,8 +147,26 @@ html[data-theme="dark"] .event-block.moto-その他元請け  { background: rgba
 }
 
 /* リサイズハンドル */
-.resize-handle { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; cursor: ns-resize; z-index: 3; background: rgba(255,255,255,0.1); border-radius: 0 0 6px 6px; }
-.resize-handle:hover { background: rgba(255,255,255,0.3); }
+.resize-handle {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 18px; /* スマホで掴みやすく */
+  cursor: ns-resize; z-index: 5;
+  display: flex; align-items: flex-end; justify-content: center;
+  touch-action: none;
+}
+.resize-handle::before {
+  content: '';
+  display: block;
+  width: 36px; height: 4px;
+  background: rgba(0,0,0,0.25);
+  border-radius: 2px;
+  margin-bottom: 2px;
+}
+.resize-handle:hover::before { background: rgba(0,0,0,0.45); }
+html[data-theme="dark"] .resize-handle::before { background: rgba(255,255,255,0.35); }
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .resize-handle::before { background: rgba(255,255,255,0.35); }
+}
 
 /* 応援バッジ */
 .event-block.support { opacity: 0.85; border: 2px dashed var(--border2); }
@@ -703,12 +721,12 @@ function renderEventBlocks() {
       }
       block.innerHTML = `<div class="ev-bar"></div><div class="ev-body"><div class="ev-title">${titleLine}</div><div class="ev-detail">${detailParts.join(' / ')}</div></div>${supportBadge}${ev.state === '完了' ? '<div class="ev-done">✓</div>' : ''}${!isSupport ? '<div class="resize-handle"></div>' : ''}`;
 
-      // リサイズハンドルにイベント登録（インラインだとstopPropagationが効かない）
+      // リサイズハンドルにイベント登録（captureフェーズで親より先に発火）
       if (!isSupport) {
         const handle = block.querySelector('.resize-handle');
         if (handle) {
-          handle.addEventListener('mousedown', (e) => { e.stopPropagation(); onResizeStart(e, ev.id); });
-          handle.addEventListener('touchstart', (e) => { e.stopPropagation(); onResizeStart(e, ev.id); }, { passive: false });
+          handle.addEventListener('mousedown', (e) => { e.stopPropagation(); e.preventDefault(); onResizeStart(e, ev.id); }, true);
+          handle.addEventListener('touchstart', (e) => { e.stopPropagation(); e.preventDefault(); onResizeStart(e, ev.id); }, { passive: false, capture: true });
         }
       }
 
@@ -728,6 +746,11 @@ function onResizeStart(e, eventId) {
   if (!ev) return;
   const clientY = e.touches ? e.touches[0].clientY : e.clientY;
   resizeData = { eventId, startY: clientY, originalEnd: new Date(ev.end || ev.start) };
+  // 振動フィードバック
+  if (navigator.vibrate) navigator.vibrate(20);
+  // 該当ブロックをハイライト
+  const block = document.querySelector(`.event-block[data-event-id="${eventId}"]`);
+  if (block) block.style.outline = '3px solid var(--accent)';
   document.addEventListener('mousemove', onResizeMove);
   document.addEventListener('touchmove', onResizeMove, { passive: false });
   document.addEventListener('mouseup', onResizeEnd);
@@ -792,12 +815,12 @@ async function onCellDrop(e, workerName, hour) {
 function onEventTouchStart(e, ev) {
   if (e.touches.length !== 1) return;
   // リサイズハンドル上ならスキップ（リサイズ専用ハンドラに任せる）
-  if (e.target.classList.contains('resize-handle')) return;
+  if (e.target.classList.contains('resize-handle') || e.target.closest('.resize-handle')) return;
   const touch = e.touches[0];
   const block = e.currentTarget;
   const rect = block.getBoundingClientRect();
-  // ブロックの下端8px以内ならリサイズハンドルとみなしてスキップ
-  if (touch.clientY > rect.bottom - 12) return;
+  // ブロックの下端20px以内はリサイズハンドル領域なのでスキップ
+  if (touch.clientY > rect.bottom - 20) return;
 
   touchDragData = {
     eventId: ev.id,

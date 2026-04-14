@@ -821,6 +821,8 @@ function pickSize(s) {
   filterSizes(s);
   const btn = document.getElementById('sz-next');
   if (btn) btn.disabled = false;
+  // 候補タップで即座にステップ1（カテゴリ）へ → 1カテゴリなら自動でステップ2へ
+  goStep(1);
 }
 
 function renderCat(el) {

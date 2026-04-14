@@ -1446,6 +1446,7 @@ function renderPrepEdit(pageId, catKey) {
           </div>
           <div id="prep-error"></div>
           <button class="btn-primary" id="prep-send-btn" onclick="submitPrepToShukko('${pageId}','${catKey}')">出庫に変更する</button>
+          <button class="btn-danger" style="margin-top:8px;" onclick="cancelPrep('${pageId}','${catKey}',${qty})">準備を取消する</button>
           <button class="btn-secondary" onclick="loadPrepList('${catKey}')">← 一覧に戻る</button>
         </div>
       </div>`;
@@ -1533,6 +1534,27 @@ async function submitPrepToShukko(pageId, catKey) {
     const errEl = document.getElementById('prep-error');
     if (errEl) errEl.innerHTML = `<div class="error-box">更新に失敗しました。<br><small>${e.message}</small></div>`;
     if (btn) { btn.disabled = false; btn.textContent = '出庫に変更する'; }
+  }
+}
+
+async function cancelPrep(pageId, catKey, qty) {
+  if (!confirm('この準備タイヤ（' + qty + '本）を取消しますか？\n在庫に戻ります。')) return;
+  const el = document.getElementById('entry-content');
+  try {
+    // 準備レコードをアーカイブ（削除）→ 在庫に戻る
+    await notionAPI('PATCH', `/pages/${pageId}`, { archived: true });
+
+    // マイナス在庫キャッシュを更新
+    const page = await notionAPI('GET', `/pages/${pageId}`).catch(() => null);
+    if (page) {
+      const _size = page.properties['サイズコード']?.select?.name || '';
+      if (_size) refreshNegStockForSize(catKey, _size);
+    }
+
+    el.innerHTML = `<div class="content" style="text-align:center;padding:40px 20px;"><div style="font-size:48px;margin-bottom:16px;">✅</div><div class="screen-title">準備を取消しました</div><div style="font-size:14px;color:var(--muted);margin-bottom:32px;">${qty}本が在庫に戻りました</div><button class="btn-primary" onclick="renderEntry()">入出庫に戻る</button><button class="btn-prep" style="margin-top:8px;" onclick="loadAllPrepList()">📋 準備リストに戻る</button></div>`;
+  } catch(e) {
+    const errEl = document.getElementById('prep-error');
+    if (errEl) errEl.innerHTML = `<div class="error-box">取消に失敗しました。<br><small>${e.message}</small></div>`;
   }
 }
 

@@ -785,8 +785,7 @@ function renderSize(el) {
         <button class="search-clear" onclick="document.getElementById('sz-input').value='';filterSizes('')">✕</button>
       </div>
       <div id="sz-candidates" class="candidates"></div>
-      <button class="btn-primary" id="sz-next" onclick="goStep(1)" disabled>次へ →</button>
-      <div class="prep-divider">準備中タイヤを出庫する</div>
+      <div class="prep-divider" style="margin-top:16px;">準備中タイヤを出庫する</div>
       <div class="prep-cat-grid">${Object.entries(DB_MAP).map(([k, db]) => `<button class="prep-cat-btn" onclick="loadPrepList('${k}')">${db.icon} ${db.name}</button>`).join('')}</div>
       <div class="prep-divider" style="margin-top:8px;">準備中タイヤを確認する</div>
       <button class="btn-prep-list" onclick="loadAllPrepList()">📋 準備中タイヤ一覧</button>
@@ -1154,10 +1153,14 @@ function _updateQtyDisp() {
       return;
     }
 
-    // ─── Enter: ハイライト中の項目を確定 ───
-    if (e.key === 'Enter' && !e.shiftKey && _kbIdx >= 0 && _kbIdx < items.length) {
+    // ─── Enter: ハイライト中の項目を確定（なければ最初の候補） ───
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      items[_kbIdx].click();
+      if (_kbIdx >= 0 && _kbIdx < items.length) {
+        items[_kbIdx].click();
+      } else if (step === 0 && items.length > 0) {
+        items[0].click(); // サイズ入力で候補があれば最初のものを選択
+      }
       return;
     }
   });

@@ -122,7 +122,12 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
 .event-block.moto-その他元請け { background: var(--other-moto); }
 
 /* リサイズハンドル */
-.resize-handle { position: absolute; left: 0; right: 0; bottom: -3px; height: 6px; cursor: ns-resize; z-index: 3; }
+.resize-handle { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; cursor: ns-resize; z-index: 3; background: rgba(255,255,255,0.1); border-radius: 0 0 6px 6px; }
+.resize-handle:hover { background: rgba(255,255,255,0.3); }
+
+/* 応援バッジ */
+.event-block.support { opacity: 0.75; border: 2px dashed rgba(255,255,255,0.6); }
+.support-badge { position: absolute; top: 2px; right: 4px; font-size: 9px; background: rgba(0,0,0,0.35); color: #fff; padding: 1px 5px; border-radius: 8px; font-weight: 700; }
 
 /* モーダル */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 9999; display: none; align-items: center; justify-content: center; padding: 16px; }
@@ -194,6 +199,8 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
   <button onclick="changeDate(1)">翌日 →</button>
   <div class="date-main" id="date-main"></div>
   <div class="date-dow" id="date-dow"></div>
+  <button class="refresh-btn" onclick="zoomOut()" title="縮小">−</button>
+  <button class="refresh-btn" onclick="zoomIn()" title="拡大">＋</button>
   <button class="refresh-btn" onclick="reloadAll()" title="更新">🔄</button>
   <div class="sync-status" id="sync-status"></div>
 </div>
@@ -206,8 +213,10 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
 <div class="modal-overlay" id="edit-modal">
   <div class="modal">
     <h2 id="modal-title">新規予定</h2>
-    <label>作業者</label>
+    <label>主担当者</label>
     <select id="f-worker"></select>
+    <label>応援（複数選択可）</label>
+    <div id="f-supporters" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
     <div class="modal-row">
       <div>
         <label>開始時刻</label>
@@ -280,8 +289,22 @@ const VEHICLE_DB  = '16f9f0df45e942069e032715fb2d37b2';
 
 const HOUR_START = 8;
 const HOUR_END = 21;
-const HOUR_HEIGHT = 48; // px per hour
+let HOUR_HEIGHT = parseInt(localStorage.getItem('foo_sched_zoom') || '48'); // px per hour
+const HOUR_HEIGHT_MIN = 32;
+const HOUR_HEIGHT_MAX = 160;
+const HOUR_HEIGHT_STEP = 16;
 const TIME_COL_WIDTH = 50;
+
+function zoomIn() {
+  HOUR_HEIGHT = Math.min(HOUR_HEIGHT_MAX, HOUR_HEIGHT + HOUR_HEIGHT_STEP);
+  localStorage.setItem('foo_sched_zoom', HOUR_HEIGHT);
+  renderSchedule();
+}
+function zoomOut() {
+  HOUR_HEIGHT = Math.max(HOUR_HEIGHT_MIN, HOUR_HEIGHT - HOUR_HEIGHT_STEP);
+  localStorage.setItem('foo_sched_zoom', HOUR_HEIGHT);
+  renderSchedule();
+}
 
 const WORK_TYPES = ['組替','脱着','タイヤ販売(新品)','タイヤ販売(中古)','タイヤ販売(更生)','バランス','出張(市内)','出張(市外)','f.o.oパック','その他'];
 
@@ -434,12 +457,17 @@ async function loadEvents(date) {
         { property: '開始日時', date: { on_or_before: date + 'T23:59:59+09:00' } },
       ]
     });
-    events = (res.results || []).map(p => ({
+    events = (res.results || []).map(p => {
+      const workersMS = (p.properties['作業者MS']?.multi_select || []).map(m => m.name);
+      const workerSingle = p.properties['作業者']?.select?.name || '';
+      const workerList = workersMS.length > 0 ? workersMS : (workerSingle ? [workerSingle] : []);
+      return {
       id: p.id,
       title: p.properties['予定タイトル']?.title?.[0]?.plain_text || '',
       start: p.properties['開始日時']?.date?.start || '',
       end: p.properties['終了日時']?.date?.start || p.properties['開始日時']?.date?.end || '',
-      worker: p.properties['作業者']?.select?.name || '',
+      workers: workerList,
+      worker: workerList[0] || '', // 主担当（1人目）
       customer: p.properties['顧客']?.relation?.[0]?.id || '',
       customerName: '', // あとで解決
       car: p.properties['車番']?.rich_text?.[0]?.plain_text || '',
@@ -451,7 +479,8 @@ async function loadEvents(date) {
       memo: p.properties['メモ']?.rich_text?.[0]?.plain_text || '',
       state: p.properties['状態']?.select?.name || '未完了',
       motoType: p.properties['元請けタイプ']?.select?.name || '直販',
-    }));
+      };
+    });
     // 顧客名を解決
     events.forEach(e => {
       if (e.customer) {
@@ -556,49 +585,116 @@ function renderSchedule() {
 function renderEventBlocks() {
   const grid = document.querySelector('.schedule-grid');
   if (!grid) return;
-  // 既存のブロックを削除
   grid.querySelectorAll('.event-block').forEach(el => el.remove());
 
   events.forEach(ev => {
-    const wi = workers.findIndex(w => w.name === ev.worker);
-    if (wi < 0) return;
     const startH = new Date(ev.start).getHours() + new Date(ev.start).getMinutes() / 60;
     const endH = ev.end ? (new Date(ev.end).getHours() + new Date(ev.end).getMinutes() / 60) : startH + 1;
     if (endH <= HOUR_START || startH >= HOUR_END + 1) return;
 
-    const top = (startH - HOUR_START) * HOUR_HEIGHT + 36; // 36 = header
+    const top = (startH - HOUR_START) * HOUR_HEIGHT + 36;
     const height = Math.max(24, (endH - startH) * HOUR_HEIGHT - 4);
 
-    // ワーカー列の位置を計算
-    const cells = grid.querySelectorAll(`.cell[data-worker="${ev.worker}"][data-hour="${HOUR_START}"]`);
-    if (!cells.length) return;
-    const cellRect = cells[0].getBoundingClientRect();
     const gridRect = grid.getBoundingClientRect();
-    const left = cellRect.left - gridRect.left + 3;
-    const width = cellRect.width - 6;
+    const wList = ev.workers?.length ? ev.workers : (ev.worker ? [ev.worker] : []);
+    if (!wList.length) return;
 
-    const block = document.createElement('div');
-    block.className = 'event-block moto-' + ev.motoType + ' state-' + ev.state;
-    block.style.top = top + 'px';
-    block.style.height = height + 'px';
-    block.style.left = left + 'px';
-    block.style.width = width + 'px';
-    block.draggable = true;
-    block.dataset.eventId = ev.id;
-    block.onclick = (e) => { e.stopPropagation(); openEditModal(ev); };
-    block.ondragstart = (e) => onEventDragStart(e, ev);
-    block.ondragend = (e) => e.target.classList.remove('dragging');
+    // 各作業者の列にブロックを配置（主担当=1人目、応援=2人目以降）
+    wList.forEach((workerName, idx) => {
+      const wi = workers.findIndex(w => w.name === workerName);
+      if (wi < 0) return;
+      const cells = grid.querySelectorAll(`.cell[data-worker="${workerName}"][data-hour="${HOUR_START}"]`);
+      if (!cells.length) return;
+      const cellRect = cells[0].getBoundingClientRect();
+      const left = cellRect.left - gridRect.left + 3;
+      const width = cellRect.width - 6;
+      const isSupport = idx > 0;
 
-    const titleLine = ev.customerName || ev.customer || '(顧客未設定)';
-    const detailParts = [];
-    if (ev.car) detailParts.push(ev.car);
-    if (ev.workTypes.length) detailParts.push(ev.workTypes.join('+'));
-    if (ev.pattern && ev.size) detailParts.push(ev.pattern + ' ' + ev.size);
-    if (ev.qty) detailParts.push(ev.qty + '本');
-    block.innerHTML = `<div class="ev-title">${titleLine}</div><div class="ev-detail">${detailParts.join(' / ')}</div>${ev.state === '完了' ? '<div class="ev-done">✓</div>' : ''}<div class="resize-handle"></div>`;
+      const block = document.createElement('div');
+      block.className = 'event-block moto-' + ev.motoType + ' state-' + ev.state + (isSupport ? ' support' : '');
+      block.style.top = top + 'px';
+      block.style.height = height + 'px';
+      block.style.left = left + 'px';
+      block.style.width = width + 'px';
+      block.draggable = !isSupport; // 主担当のみドラッグ可
+      block.dataset.eventId = ev.id;
+      block.dataset.isSupport = isSupport ? '1' : '0';
+      block.onclick = (e) => { e.stopPropagation(); openEditModal(ev); };
+      if (!isSupport) {
+        block.ondragstart = (e) => onEventDragStart(e, ev);
+        block.ondragend = (e) => e.target.classList.remove('dragging');
+      }
 
-    grid.appendChild(block);
+      const titleLine = ev.customerName || ev.customer || '(顧客未設定)';
+      const detailParts = [];
+      if (ev.car) detailParts.push(ev.car);
+      if (ev.workTypes.length) detailParts.push(ev.workTypes.join('+'));
+      if (ev.pattern && ev.size) detailParts.push(ev.pattern + ' ' + ev.size);
+      if (ev.qty) detailParts.push(ev.qty + '本');
+      // 応援バッジ
+      let supportBadge = '';
+      if (wList.length > 1) {
+        if (isSupport) {
+          supportBadge = `<div class="support-badge">→ ${wList[0]}応援</div>`;
+        } else {
+          const others = wList.slice(1).join('+');
+          supportBadge = `<div class="support-badge">+${others}</div>`;
+        }
+      }
+      block.innerHTML = `<div class="ev-title">${titleLine}</div><div class="ev-detail">${detailParts.join(' / ')}</div>${supportBadge}${ev.state === '完了' ? '<div class="ev-done">✓</div>' : ''}${!isSupport ? '<div class="resize-handle" onmousedown="onResizeStart(event,\''+ev.id+'\')" ontouchstart="onResizeStart(event,\''+ev.id+'\')"></div>' : ''}`;
+
+      grid.appendChild(block);
+    });
   });
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// 下端ドラッグで時間幅リサイズ
+// ══════════════════════════════════════════════════════════════════════
+let resizeData = null;
+function onResizeStart(e, eventId) {
+  e.stopPropagation();
+  e.preventDefault();
+  const ev = events.find(x => x.id === eventId);
+  if (!ev) return;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  resizeData = { eventId, startY: clientY, originalEnd: new Date(ev.end || ev.start) };
+  document.addEventListener('mousemove', onResizeMove);
+  document.addEventListener('touchmove', onResizeMove, { passive: false });
+  document.addEventListener('mouseup', onResizeEnd);
+  document.addEventListener('touchend', onResizeEnd);
+}
+function onResizeMove(e) {
+  if (!resizeData) return;
+  e.preventDefault();
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const deltaY = clientY - resizeData.startY;
+  const deltaMin = Math.round(deltaY / HOUR_HEIGHT * 60 / 30) * 30; // 30分単位
+  const ev = events.find(x => x.id === resizeData.eventId);
+  if (!ev) return;
+  const newEnd = new Date(resizeData.originalEnd.getTime() + deltaMin * 60000);
+  const startD = new Date(ev.start);
+  if (newEnd <= startD) return;
+  ev.end = toIsoLocal(newEnd);
+  renderEventBlocks();
+}
+async function onResizeEnd(e) {
+  if (!resizeData) return;
+  document.removeEventListener('mousemove', onResizeMove);
+  document.removeEventListener('touchmove', onResizeMove);
+  document.removeEventListener('mouseup', onResizeEnd);
+  document.removeEventListener('touchend', onResizeEnd);
+  const ev = events.find(x => x.id === resizeData.eventId);
+  resizeData = null;
+  if (!ev) return;
+  try {
+    await notionPatch(ev.id, {
+      '終了日時': { date: { start: ev.end } },
+    });
+    showFeedback('時間を変更しました');
+  } catch(err) {
+    showFeedback('変更失敗: ' + err.message, true);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -637,11 +733,15 @@ async function onCellDrop(e, workerName, hour) {
   const newEnd = new Date(newStart.getTime() + (durationMs || 3600000));
 
   try {
+    // 主担当を新しい作業者に差し替え、応援はそのまま
+    const newWorkers = [workerName, ...(ev.workers || []).filter(w => w !== workerName && w !== ev.worker)];
     await notionPatch(ev.id, {
+      '作業者MS': { multi_select: newWorkers.map(n => ({ name: n })) },
       '作業者': { select: { name: workerName } },
       '開始日時': { date: { start: toIsoLocal(newStart) } },
       '終了日時': { date: { start: toIsoLocal(newEnd) } },
     });
+    ev.workers = newWorkers;
     ev.worker = workerName;
     ev.start = toIsoLocal(newStart);
     ev.end = toIsoLocal(newEnd);
@@ -673,6 +773,7 @@ function onCellClick(e, workerName, hour) {
   openEditModal(null, workerName, hour);
 }
 
+let selectedSupporters = new Set();
 function openEditModal(ev, defaultWorker, defaultHour) {
   editingEvent = ev;
   document.getElementById('modal-title').textContent = ev ? '予定を編集' : '新規予定';
@@ -683,9 +784,11 @@ function openEditModal(ev, defaultWorker, defaultHour) {
   sel.innerHTML = workers.filter(w => !w.yukyu).map(w =>
     `<option value="${w.name}">${w.name}</option>`
   ).join('');
+  sel.onchange = () => renderSupporterChips();
 
   if (ev) {
     sel.value = ev.worker;
+    selectedSupporters = new Set((ev.workers || []).slice(1));
     const s = new Date(ev.start), e = new Date(ev.end || ev.start);
     document.getElementById('f-start').value = `${s.getHours().toString().padStart(2,'0')}:${s.getMinutes().toString().padStart(2,'0')}`;
     document.getElementById('f-end').value = `${e.getHours().toString().padStart(2,'0')}:${e.getMinutes().toString().padStart(2,'0')}`;
@@ -713,9 +816,25 @@ function openEditModal(ev, defaultWorker, defaultHour) {
     document.getElementById('f-memo').value = '';
     document.getElementById('f-state').value = '未完了';
     selectedWorkTypes = new Set();
+    selectedSupporters = new Set();
   }
   renderWorkTypeChips();
+  renderSupporterChips();
   document.getElementById('edit-modal').classList.add('open');
+}
+
+function renderSupporterChips() {
+  const wrap = document.getElementById('f-supporters');
+  const main = document.getElementById('f-worker').value;
+  wrap.innerHTML = ALL_WORKERS.filter(n => n !== main).map(n => {
+    const on = selectedSupporters.has(n);
+    return `<button type="button" onclick="toggleSupporter('${n}')" style="padding:6px 12px;border-radius:16px;border:1.5px solid ${on?'var(--green)':'var(--border2)'};background:${on?'rgba(22,163,74,0.15)':'var(--s2)'};color:${on?'var(--green)':'var(--text)'};font-size:12px;cursor:pointer;font-family:inherit;font-weight:${on?'700':'500'};">${n}</button>`;
+  }).join('');
+}
+function toggleSupporter(n) {
+  if (selectedSupporters.has(n)) selectedSupporters.delete(n);
+  else selectedSupporters.add(n);
+  renderSupporterChips();
 }
 
 function renderWorkTypeChips() {
@@ -765,11 +884,15 @@ async function saveEvent() {
 
   const title = `${customerName || ''}${car ? ' ' + car : ''}${[...selectedWorkTypes].length ? ' ' + [...selectedWorkTypes].join('+') : ''}`.trim() || '(タイトルなし)';
 
+  // 主担当 + 応援者
+  const allWorkers = [worker, ...[...selectedSupporters].filter(n => n !== worker)];
+
   const props = {
     '予定タイトル': { title: [{ text: { content: title } }] },
     '開始日時': { date: { start: startIso } },
     '終了日時': { date: { start: endIso } },
     '作業者': { select: { name: worker } },
+    '作業者MS': { multi_select: allWorkers.map(n => ({ name: n })) },
     '作業内容': { multi_select: [...selectedWorkTypes].map(t => ({ name: t })) },
     '車番': { rich_text: [{ text: { content: car } }] },
     'タイヤサイズ': { rich_text: [{ text: { content: size } }] },

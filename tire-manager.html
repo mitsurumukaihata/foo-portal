@@ -1567,12 +1567,13 @@ async function loadStockDataAll(size, matching) {
   const el = document.getElementById('stock-content');
   el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">在庫データを取得中…</div></div>';
   try {
-    // 全該当DBを並列取得
-    const results = await Promise.all(matching.map(async ([catKey, db]) => {
+    // 該当DBを順次取得（レート制限回避）
+    const results = [];
+    for (const [catKey, db] of matching) {
       const kurikoshiDate = await getKurikoshiDate(db.id);
       const records = await fetchAllRecords(db.id, size, kurikoshiDate);
-      return { catKey, records };
-    }));
+      results.push({ catKey, records });
+    }
     renderStockResultAll(size, matching, results);
   } catch(e) {
     el.innerHTML = '<div class="content"><div class="error-box">データの取得に失敗しました。<br>' + e.message + '</div><button class="btn-secondary" onclick="renderStockHome()">← 戻る</button></div>';

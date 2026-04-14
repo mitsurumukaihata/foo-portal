@@ -1895,11 +1895,12 @@ function renderStockResultAll(size, matching, results) {
       return s + WAREHOUSES.reduce(function(ss,w){ return ss+(gp.calc.stock[gp.pattern]?.[w]||0); },0);
     }, 0);
     var grpIcons = {'ノーマル':'🚛','再生':'♻️','スタッドレス':'❄️'};
-    html += '<div style="margin-top:18px;margin-bottom:8px;text-align:center;">';
-    html += '<div style="display:inline-flex;align-items:center;gap:6px;padding:6px 16px;border-radius:20px;background:' + grp.color + ';color:#fff;font-size:13px;font-weight:800;letter-spacing:0.1em;">';
-    html += (grpIcons[grp.label]||'') + '　' + grp.label;
+    html += '<div style="margin-top:16px;margin-bottom:6px;display:flex;align-items:center;gap:8px;">';
+    html += '<div style="display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:16px;background:' + grp.color + ';color:#fff;font-size:12px;font-weight:800;letter-spacing:0.05em;white-space:nowrap;">';
+    html += (grpIcons[grp.label]||'') + ' ' + grp.label;
     html += '</div>';
-    html += '<div style="font-size:10px;color:var(--muted);margin-top:3px;">' + grpPatterns.length + '種 計' + totalQty + '本</div>';
+    html += '<span style="font-size:10px;color:var(--muted);white-space:nowrap;">' + grpPatterns.length + '種 計' + totalQty + '本</span>';
+    html += '<div style="flex:1;height:1px;background:var(--border);"></div>';
     html += '</div>';
 
     // メーカー別サブグループ

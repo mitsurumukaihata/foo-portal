@@ -1552,11 +1552,31 @@ function filterStockSizes(v) {
 function pickStockSize(s) {
   stockState.size = s;
   const matching = Object.entries(DB_MAP).filter(([k, db]) => db.sizes.includes(s));
-  if (matching.length === 1) { loadStockData(s, matching[0][0]); } else { renderStockCatSelect(s, matching); }
+  if (matching.length === 1) { loadStockData(s, matching[0][0]); }
+  else { loadStockDataAll(s, matching); }
 }
-function renderStockCatSelect(size, matching) {
+
+// カテゴリグループ定義
+const CAT_GROUPS = [
+  { label: 'ノーマル',     keys: ['ltl_normal','lts_normal','tt','van','lift'], color: 'var(--accent)' },
+  { label: '再生',         keys: ['rt'], color: 'var(--green)' },
+  { label: 'スタッドレス', keys: ['ltl_studless','lts_studless'], color: 'var(--blue)' },
+];
+
+async function loadStockDataAll(size, matching) {
   const el = document.getElementById('stock-content');
-  el.innerHTML = `<div class="content"><div class="screen-label">在庫確認</div><div class="screen-title">カテゴリーを選択</div><div class="screen-sub">${size}</div><div class="cat-select-grid">${matching.map(([k, db]) => `<div class="cat-sel-btn" onclick="loadStockData('${size}','${k}')"><span class="csb-icon">${db.icon}</span><div class="csb-name">${db.name}</div><div class="csb-sub">${db.sub}</div></div>`).join('')}</div><div style="padding:0 20px;"><button class="btn-secondary" onclick="renderStockHome()">← 戻る</button></div></div>`;
+  el.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">在庫データを取得中…</div></div>';
+  try {
+    // 全該当DBを並列取得
+    const results = await Promise.all(matching.map(async ([catKey, db]) => {
+      const kurikoshiDate = await getKurikoshiDate(db.id);
+      const records = await fetchAllRecords(db.id, size, kurikoshiDate);
+      return { catKey, records };
+    }));
+    renderStockResultAll(size, matching, results);
+  } catch(e) {
+    el.innerHTML = '<div class="content"><div class="error-box">データの取得に失敗しました。<br>' + e.message + '</div><button class="btn-secondary" onclick="renderStockHome()">← 戻る</button></div>';
+  }
 }
 // ── 繰越日を取得（DBから区分="繰越"の最新レコードを探す）──
 async function getKurikoshiDate(dbId) {
@@ -1760,6 +1780,180 @@ function renderStockResult(size, catKey, records) {
   html += '<button class="btn-primary" style="margin-top:16px;" onclick="renderStockHome()">&#128269; 別のサイズを検索</button></div>';
   el.innerHTML = html;
 }
+
+// ── 複数カテゴリ統合表示 ──────────────────────────────────────────────────────
+function renderStockResultAll(size, matching, results) {
+  var el = document.getElementById('stock-content');
+  var MAKER_ORDER = ['TOYO','BRIDGESTONE','DUNLOP','MICHELIN','PIRELLI'];
+  var MAKER_COLOR = {'TOYO':'var(--accent)','BRIDGESTONE':'var(--blue)','DUNLOP':'var(--green)','MICHELIN':'var(--yellow)','PIRELLI':'var(--red)'};
+  var WH_COLS = [
+    { wh: '五日市倉庫', short: '五日市', hasPrep: true, hasOrd: true },
+    { wh: '志和倉庫',   short: '志和',   hasPrep: true, hasOrd: true },
+    { wh: '海田倉庫',   short: '海田',   hasPrep: true, hasOrd: false }
+  ];
+
+  // 全結果をcatKeyごとにcalcStock
+  var allCalcs = {};
+  var totalRecords = 0;
+  results.forEach(function(r) {
+    allCalcs[r.catKey] = calcStock(r.records, r.catKey);
+    totalRecords += r.records.length;
+    // タップ用にグローバル変数を更新（最初のcatKeyをデフォルトに）
+    if (!_stockCatKey) { _stockCatKey = r.catKey; _stockRecords = r.records; }
+  });
+  _stockSize = size;
+
+  // カラムヘッダー
+  var colHeaderHtml = '';
+  colHeaderHtml += '<div style="display:flex;border-bottom:1px solid var(--border);padding-bottom:2px;margin-bottom:2px;">';
+  WH_COLS.forEach(function(wc, i) {
+    var cols = 1 + (wc.hasPrep?1:0) + (wc.hasOrd?1:0);
+    var bl = i > 0 ? 'border-left:1.5px solid var(--border);' : '';
+    colHeaderHtml += '<div style="flex:' + cols + ';text-align:center;' + bl + '"><div style="font-size:10px;font-weight:700;color:var(--text);padding:2px 0;">' + wc.short + '</div></div>';
+  });
+  colHeaderHtml += '</div>';
+  colHeaderHtml += '<div style="display:flex;padding-bottom:4px;border-bottom:0.5px solid var(--border);margin-bottom:4px;">';
+  WH_COLS.forEach(function(wc, i) {
+    var bl = i > 0 ? 'border-left:1.5px solid var(--border);' : '';
+    colHeaderHtml += '<div style="flex:1;text-align:center;' + bl + '"><div style="font-size:9px;color:var(--muted);">在庫</div></div>';
+    if (wc.hasPrep) colHeaderHtml += '<div style="flex:1;text-align:center;"><div style="font-size:9px;color:var(--yellow);">準備</div></div>';
+    if (wc.hasOrd) colHeaderHtml += '<div style="flex:1;text-align:center;"><div style="font-size:9px;color:var(--purple);">発注</div></div>';
+  });
+  colHeaderHtml += '</div>';
+
+  var html = '<div class="content">';
+  html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><button onclick="renderStockHome()" style="background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:0;">&#8592;</button><div class="screen-label" style="margin:0;">在庫確認</div></div>';
+  html += '<div class="screen-title" style="font-family:\'DM Mono\',monospace;font-size:18px;">' + size + '</div>';
+  html += '<div style="margin-top:16px;">';
+  html += '<div id="stock-col-header" style="position:sticky;top:0;z-index:10;background:var(--bg);padding-top:4px;">' + colHeaderHtml + '</div>';
+
+  // パターン行を描画するヘルパー（catKey付き）
+  function renderPatternRow(p, catKey, stock, prepStock, orderStock) {
+    var pe = p.replace(/"/g,'&quot;');
+    var rowHtml = '<div class="stock-row" data-catkey="' + catKey + '"><div class="stock-pattern">' + p + '</div><div class="stock-counts">';
+    WH_COLS.forEach(function(wc, i) {
+      var w = wc.wh;
+      var n = stock[p]?.[w] || 0;
+      var prep = prepStock[p]?.[w] || 0;
+      var ord = orderStock[p]?.[w] || 0;
+      var cls = n > 0 ? 'positive' : (n < 0 ? 'negative' : 'zero');
+      var bl = i > 0 ? 'border-left:1.5px solid var(--border);' : '';
+      rowHtml += '<div class="stock-count" style="cursor:' + (n!==0?'pointer':'default') + ';' + bl + '" ';
+      if (n !== 0) rowHtml += 'data-pattern="' + pe + '" data-catkey="' + catKey + '" data-mode="' + w + '" onclick="onStockTapAll(this)"';
+      rowHtml += '><div class="stock-count-num ' + cls + '" style="font-size:15px;">' + n + '</div></div>';
+      if (wc.hasPrep) {
+        rowHtml += '<div class="stock-count" style="cursor:' + (prep>0?'pointer':'default') + ';" ';
+        if (prep > 0) rowHtml += 'data-pattern="' + pe + '" data-catkey="' + catKey + '" data-mode="準備_' + w + '" onclick="onStockTapAll(this)"';
+        rowHtml += '><div class="stock-count-num ' + (prep>0?'positive':'zero') + '" style="font-size:13px;' + (prep>0?'color:var(--yellow);':'') + '">' + prep + '</div></div>';
+      }
+      if (wc.hasOrd) {
+        rowHtml += '<div class="stock-count" style="cursor:' + (ord>0?'pointer':'default') + ';" ';
+        if (ord > 0) rowHtml += 'data-pattern="' + pe + '" data-catkey="' + catKey + '" data-mode="発注中_' + w + '" onclick="onStockTapAll(this)"';
+        rowHtml += '><div class="stock-count-num ' + (ord>0?'positive':'zero') + '" style="font-size:13px;' + (ord>0?'color:var(--purple);':'') + '">' + ord + '</div></div>';
+      }
+    });
+    rowHtml += '</div></div>';
+    return rowHtml;
+  }
+
+  // カテゴリグループごとに描画
+  var hasAny = false;
+  CAT_GROUPS.forEach(function(grp) {
+    // このグループに該当するcatKey
+    var grpCatKeys = grp.keys.filter(function(k) { return allCalcs[k]; });
+    if (!grpCatKeys.length) return;
+
+    // 全パターンを収集（在庫ありのみ）
+    var grpPatterns = [];
+    grpCatKeys.forEach(function(catKey) {
+      var calc = allCalcs[catKey];
+      var db = DB_MAP[catKey];
+      db.patterns.forEach(function(p) {
+        var total = WAREHOUSES.reduce(function(s,w){ return s+(calc.stock[p]?.[w]||0); },0);
+        var totalPrep = WAREHOUSES.reduce(function(s,w){ return s+(calc.prepStock[p]?.[w]||0); },0);
+        var totalOrd = WAREHOUSES.reduce(function(s,w){ return s+(calc.orderStock[p]?.[w]||0); },0);
+        if (total > 0 || totalPrep > 0 || totalOrd > 0) {
+          grpPatterns.push({ pattern: p, catKey: catKey, calc: calc });
+        }
+      });
+    });
+    if (!grpPatterns.length) return;
+    hasAny = true;
+
+    // メーカー順ソート
+    grpPatterns.sort(function(a, b) {
+      var oA = MAKER_ORDER.indexOf(getMaker(a.pattern)), oB = MAKER_ORDER.indexOf(getMaker(b.pattern));
+      if (oA === -1) oA = 99; if (oB === -1) oB = 99;
+      if (oA !== oB) return oA - oB;
+      var sA = WAREHOUSES.reduce(function(s,w){ return s+(a.calc.stock[a.pattern]?.[w]||0); },0);
+      var sB = WAREHOUSES.reduce(function(s,w){ return s+(b.calc.stock[b.pattern]?.[w]||0); },0);
+      return sB - sA;
+    });
+
+    // グループヘッダー
+    var totalQty = grpPatterns.reduce(function(s, gp) {
+      return s + WAREHOUSES.reduce(function(ss,w){ return ss+(gp.calc.stock[gp.pattern]?.[w]||0); },0);
+    }, 0);
+    html += '<div style="margin-top:14px;margin-bottom:6px;padding:8px 12px;background:rgba(0,0,0,0.04);border-radius:10px;border-left:4px solid ' + grp.color + ';display:flex;align-items:center;justify-content:space-between;">';
+    html += '<span style="font-size:13px;font-weight:800;color:' + grp.color + ';">' + grp.label + '</span>';
+    html += '<span style="font-size:11px;color:var(--muted);">' + grpPatterns.length + '種 計' + totalQty + '本</span>';
+    html += '</div>';
+
+    // メーカー別サブグループ
+    var _lastMaker = null;
+    grpPatterns.forEach(function(gp) {
+      var maker = getMaker(gp.pattern);
+      if (maker !== _lastMaker) {
+        _lastMaker = maker;
+        var mc = MAKER_COLOR[maker] || 'var(--muted)';
+        html += '<div style="margin-top:8px;margin-bottom:2px;padding:3px 6px;background:var(--s2);border-left:3px solid ' + mc + ';border-radius:0 4px 4px 0;"><span style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:' + mc + ';">' + maker + '</span></div>';
+      }
+      html += renderPatternRow(gp.pattern, gp.catKey, gp.calc.stock, gp.calc.prepStock, gp.calc.orderStock);
+    });
+  });
+
+  if (!hasAny) {
+    html += '<div style="text-align:center;padding:32px 0;color:var(--muted);font-size:14px;">このサイズの在庫はありません</div>';
+  }
+
+  html += '</div><div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);">全 ' + totalRecords + ' 件のレコードから計算 &#183; ' + new Date().toLocaleTimeString('ja-JP') + ' 取得</div>';
+  html += '<button class="btn-primary" style="margin-top:16px;" onclick="renderStockHome()">&#128269; 別のサイズを検索</button></div>';
+  el.innerHTML = html;
+}
+
+// 統合表示用のタップハンドラ（catKeyを取得してグローバル変数を更新）
+function onStockTapAll(el) {
+  var catKey = el.getAttribute('data-catkey');
+  if (catKey) {
+    _stockCatKey = catKey;
+    var r = arguments[0]; // 元のresultsからrecordsを探す
+    // catKeyに対応するDB_MAPからrecordsを再取得する必要があるが、
+    // onStockTapは_stockRecordsと_stockCatKeyを使うだけなのでcatKeyを設定すればOK
+  }
+  _currentPattern = el.getAttribute('data-pattern');
+  var mode = el.getAttribute('data-mode');
+  if (mode.indexOf('準備') >= 0 || mode.indexOf('発注中') >= 0) {
+    stockHistory(mode);
+    return;
+  }
+  var pattern = _currentPattern;
+  var size = _stockSize;
+  var warehouse = mode;
+  var whShort = warehouse.replace('倉庫', '');
+  var overlay = document.createElement('div');
+  overlay.id = 'stock-action-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = '<div style="background:var(--s1);border:1px solid var(--border);border-radius:16px;width:100%;max-width:320px;padding:24px 20px 20px;text-align:center;">' +
+    '<div style="font-size:11px;color:var(--muted);margin-bottom:4px;">🚛 ' + DB_MAP[catKey]?.name + '</div>' +
+    '<div style="font-size:15px;font-weight:700;margin-bottom:4px;">' + pattern + '　' + size + '</div>' +
+    '<div style="font-size:12px;color:var(--muted);margin-bottom:16px;">' + whShort + '</div>' +
+    '<div style="display:flex;gap:10px;"><button onclick="stockActionEntry(\'' + size + '\',\'' + catKey + '\',\'' + pattern + '\');document.getElementById(\'stock-action-overlay\').remove();" style="flex:1;padding:12px;border-radius:10px;border:1.5px solid var(--accent);background:rgba(240,165,0,0.1);color:var(--accent);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">入出庫</button>' +
+    '<button onclick="_stockCatKey=\'' + catKey + '\';stockActionHistory(\'' + pattern + '\',\'' + warehouse + '\');document.getElementById(\'stock-action-overlay\').remove();" style="flex:1;padding:12px;border-radius:10px;border:1.5px solid var(--blue);background:rgba(37,99,235,0.1);color:var(--blue);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">履歴</button></div>' +
+    '<button onclick="document.getElementById(\'stock-action-overlay\').remove();" style="margin-top:10px;padding:10px;border-radius:10px;border:none;background:var(--s2);color:var(--muted);font-size:13px;cursor:pointer;width:100%;font-family:inherit;">閉じる</button></div>';
+  document.body.appendChild(overlay);
+}
+
 function onStockTap(el) {
   _currentPattern = el.getAttribute('data-pattern');
   var mode = el.getAttribute('data-mode');

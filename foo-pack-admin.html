@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3d7c4a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="f.o.oパック">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<title>f.o.oパック契約管理 | f.o.o 経理</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg:#0f1a17; --s1:#0a1513; --s2:#152621; --s3:#1c332c;
+  --border:#23453a; --border2:#346354; --text:#eef2ee; --muted:#7a8f85;
+  --accent:#7aa66b; --accent2:#9cc48d; --gold:#c9a227;
+  --navy:#1e3a5f; --green:#0f4c3a; --red:#ef4444; --blue:#3b82f6;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme]) {
+  --bg:#f3f7f1; --s1:#ffffff; --s2:#eaf1e8; --s3:#dde8da;
+  --border:#c8d8c2; --border2:#a8c09e; --text:#0f1a17; --muted:#5e7260;
+  --accent:#3d7c4a; --accent2:#2d5f36; --gold:#b8910d;
+  --navy:#1e3a5f; --green:#0f4c3a; --red:#dc2626; --blue:#2563eb;
+}}
+[data-theme="dark"] {
+  --bg:#0f1a17; --s1:#0a1513; --s2:#152621; --s3:#1c332c;
+  --border:#23453a; --border2:#346354; --text:#eef2ee; --muted:#7a8f85;
+  --accent:#7aa66b; --accent2:#9cc48d; --gold:#c9a227;
+  --navy:#1e3a5f; --green:#0f4c3a; --red:#ef4444; --blue:#3b82f6;
+}
+[data-theme="light"] {
+  --bg:#f3f7f1; --s1:#ffffff; --s2:#eaf1e8; --s3:#dde8da;
+  --border:#c8d8c2; --border2:#a8c09e; --text:#0f1a17; --muted:#5e7260;
+  --accent:#3d7c4a; --accent2:#2d5f36; --gold:#b8910d;
+  --navy:#1e3a5f; --green:#0f4c3a; --red:#dc2626; --blue:#2563eb;
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; max-width:480px; margin:0 auto; padding-bottom:60px; }
+
+@media (min-width: 700px) {
+  body { max-width: 760px; }
+  .header { padding: 22px 28px 16px; }
+  .content { padding: 22px 28px; }
+  .header-title { font-size: 24px; }
+}
+@media (min-width: 1024px) {
+  body { max-width: 1000px; }
+  .content { padding: 28px 36px; }
+  .contract-grid { grid-template-columns: 1fr 1fr; gap: 14px; }
+}
+@media (min-width: 1280px) {
+  body { max-width: 1200px; }
+  .contract-grid { grid-template-columns: 1fr 1fr 1fr; }
+}
+
+/* Header */
+.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:100; }
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+.header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+.header-brand .tag { background:var(--accent); color:#fff; padding:2px 7px; border-radius:10px; font-weight:700; font-size:9px; margin-left:6px; letter-spacing:0.05em; }
+.header-back { font-size:11px; color:var(--muted); text-decoration:none; border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; }
+.header-title { font-size:20px; font-weight:900; letter-spacing:-0.02em; margin-top:4px; }
+.header-title span { color:var(--accent); }
+.header-sub { font-size:11px; color:var(--muted); margin-top:3px; }
+
+/* Content */
+.content { padding:16px 20px 40px; }
+.loading-wrap { text-align:center; padding:60px 20px; }
+.spinner { width:28px; height:28px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 12px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-text { font-size:13px; color:var(--muted); }
+
+/* Denied */
+.denied { padding:60px 20px; text-align:center; }
+.denied-icon { font-size:48px; margin-bottom:16px; }
+.denied-title { font-size:22px; font-weight:900; margin-bottom:8px; }
+.denied-title span { color:var(--red); }
+.denied-msg { font-size:13px; color:var(--muted); line-height:1.7; margin-bottom:28px; }
+.denied-back { display:inline-block; background:var(--accent); border-radius:10px; padding:13px 28px; color:#fff; font-size:14px; font-weight:700; text-decoration:none; }
+
+/* Stats top */
+.stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:18px; }
+.stat-card { background:var(--s2); border:0.5px solid var(--border); border-radius:12px; padding:12px 10px; text-align:center; }
+.stat-val { font-size:18px; font-weight:900; color:var(--accent); font-family:'DM Mono',monospace; }
+.stat-lbl { font-size:10px; color:var(--muted); margin-top:2px; letter-spacing:0.04em; }
+
+/* Filter bar */
+.filter-bar { background:var(--s2); border:0.5px solid var(--border); border-radius:12px; padding:12px; margin-bottom:14px; display:flex; flex-direction:column; gap:10px; }
+.search-box { display:flex; align-items:center; background:var(--s1); border:0.5px solid var(--border); border-radius:10px; padding:8px 12px; gap:8px; }
+.search-box svg { width:16px; height:16px; color:var(--muted); flex-shrink:0; }
+.search-box input { flex:1; background:transparent; border:none; outline:none; color:var(--text); font-size:13px; font-family:inherit; }
+.chip-row { display:flex; flex-wrap:wrap; gap:6px; }
+.chip { background:var(--s1); border:0.5px solid var(--border); border-radius:20px; padding:5px 11px; font-size:11px; color:var(--muted); cursor:pointer; transition:all 0.15s; white-space:nowrap; }
+.chip.active { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700; }
+.chip.cat-TB.active { background:var(--red); border-color:var(--red); }
+.chip.cat-LTL.active { background:var(--blue); border-color:var(--blue); }
+.chip.cat-LTS.active { background:#8b5cf6; border-color:#8b5cf6; }
+.chip.cat-LT.active { background:#ec4899; border-color:#ec4899; }
+
+/* Add button */
+.btn-add { position:fixed; bottom:20px; right:20px; background:var(--accent); color:#fff; width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:30px; font-weight:300; box-shadow:0 4px 14px rgba(122,166,107,0.4); border:none; cursor:pointer; z-index:50; transition:transform 0.15s; }
+.btn-add:active { transform:scale(0.92); }
+
+/* Contract card */
+.contract-grid { display:grid; grid-template-columns:1fr; gap:10px; }
+.contract-card { background:var(--s2); border:0.5px solid var(--border); border-radius:12px; padding:14px 16px; cursor:pointer; transition:border-color 0.15s, transform 0.1s; }
+.contract-card:hover { border-color:var(--accent); }
+.contract-card:active { transform:scale(0.99); }
+.cc-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+.cc-no { font-size:15px; font-weight:900; color:var(--text); font-family:'DM Mono',monospace; }
+.cc-cust { font-size:11px; color:var(--muted); font-weight:700; margin-top:2px; }
+.cc-badge { font-size:9px; padding:3px 8px; border-radius:10px; font-weight:700; letter-spacing:0.03em; white-space:nowrap; }
+.cc-badge.cat-ライト { background:rgba(122,166,107,0.15); color:var(--accent); }
+.cc-badge.cat-TB { background:rgba(239,68,68,0.15); color:var(--red); }
+.cc-badge.cat-LTL { background:rgba(59,130,246,0.15); color:var(--blue); }
+.cc-badge.cat-LTS { background:rgba(139,92,246,0.15); color:#8b5cf6; }
+.cc-badge.cat-LT { background:rgba(236,72,153,0.15); color:#ec4899; }
+.cc-row { display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-size:12px; color:var(--muted); margin-top:4px; }
+.cc-row .label { font-size:10px; text-transform:uppercase; letter-spacing:0.04em; }
+.cc-row .value { font-family:'DM Mono',monospace; font-weight:700; color:var(--text); font-size:13px; }
+.cc-row .value.big { font-size:16px; color:var(--accent2); }
+.cc-period { margin-top:8px; padding-top:8px; border-top:0.5px dashed var(--border); font-size:11px; color:var(--muted); display:flex; justify-content:space-between; }
+.cc-progress { margin-top:6px; height:4px; background:var(--s1); border-radius:2px; overflow:hidden; }
+.cc-progress-bar { height:100%; background:linear-gradient(90deg, var(--accent) 0%, var(--accent2) 100%); transition:width 0.3s; }
+.cc-status { display:inline-block; font-size:9px; padding:2px 7px; border-radius:8px; font-weight:700; margin-left:6px; }
+.cc-status.有効 { background:rgba(122,166,107,0.2); color:var(--accent); }
+.cc-status.満期 { background:rgba(59,130,246,0.2); color:var(--blue); }
+.cc-status.解約 { background:rgba(239,68,68,0.2); color:var(--red); }
+.cc-status.準備中 { background:rgba(122,143,133,0.2); color:var(--muted); }
+
+.empty { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; }
+
+/* Modal */
+.modal-bg { position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); z-index:200; display:none; align-items:flex-start; justify-content:center; padding:20px 12px; overflow-y:auto; }
+.modal-bg.show { display:flex; }
+.modal { background:var(--s1); border:0.5px solid var(--border); border-radius:16px; width:100%; max-width:520px; padding:20px 20px 24px; max-height:calc(100vh - 40px); overflow-y:auto; margin:auto; }
+.modal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; padding-bottom:12px; border-bottom:0.5px solid var(--border); }
+.modal-title { font-size:17px; font-weight:900; }
+.modal-close { background:none; border:none; color:var(--muted); font-size:26px; cursor:pointer; padding:0 8px; line-height:1; }
+.modal-sub { font-size:11px; color:var(--muted); margin-top:-8px; margin-bottom:14px; }
+
+.form-group { margin-bottom:14px; }
+.form-label { font-size:11px; color:var(--muted); letter-spacing:0.04em; text-transform:uppercase; margin-bottom:5px; display:block; font-weight:700; }
+.form-input, .form-select { width:100%; background:var(--s2); border:0.5px solid var(--border); border-radius:8px; padding:10px 12px; color:var(--text); font-size:14px; font-family:inherit; outline:none; }
+.form-input:focus, .form-select:focus { border-color:var(--accent); }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.form-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+.form-hint { font-size:10px; color:var(--muted); margin-top:3px; }
+
+.btn { background:var(--accent); color:#fff; border:none; border-radius:10px; padding:12px 24px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; transition:all 0.15s; }
+.btn:active { transform:scale(0.96); }
+.btn-ghost { background:var(--s2); color:var(--muted); border:0.5px solid var(--border); }
+.btn-danger { background:var(--red); }
+.btn-row { display:flex; gap:10px; margin-top:16px; }
+.btn-row .btn { flex:1; }
+.btn-full { width:100%; }
+
+/* Detail view */
+.detail-hero { background:linear-gradient(135deg, var(--s2), var(--s3)); border:0.5px solid var(--border); border-radius:14px; padding:20px; margin-bottom:16px; }
+.detail-hero .no { font-size:22px; font-weight:900; font-family:'DM Mono',monospace; letter-spacing:-0.02em; }
+.detail-hero .cust { font-size:13px; color:var(--muted); margin-top:4px; }
+.detail-hero .amount-big { font-size:28px; font-weight:900; color:var(--accent); font-family:'DM Mono',monospace; margin-top:10px; }
+.detail-hero .amount-sub { font-size:11px; color:var(--muted); margin-top:2px; }
+
+.detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; background:var(--s2); border:0.5px solid var(--border); border-radius:12px; padding:14px; margin-bottom:14px; }
+.detail-grid .cell { }
+.detail-grid .cell .lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; font-weight:700; }
+.detail-grid .cell .val { font-size:14px; font-weight:700; margin-top:2px; font-family:'DM Mono',monospace; }
+
+.schedule-table { background:var(--s2); border:0.5px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:14px; }
+.schedule-head { padding:12px 14px; border-bottom:0.5px solid var(--border); font-size:12px; font-weight:700; color:var(--muted); display:flex; justify-content:space-between; align-items:center; }
+.schedule-body { max-height:300px; overflow-y:auto; }
+.schedule-row { display:grid; grid-template-columns:32px 1fr 1fr 1fr 1fr; gap:8px; padding:8px 14px; font-size:11px; border-bottom:0.5px solid var(--border); font-family:'DM Mono',monospace; }
+.schedule-row:last-child { border-bottom:none; }
+.schedule-row.header { background:var(--s3); color:var(--muted); font-weight:700; }
+.schedule-row .c-no { color:var(--muted); }
+.schedule-row .c-date { color:var(--muted); font-size:10px; }
+.schedule-row .c-amt { text-align:right; font-weight:700; }
+.schedule-row.final { background:rgba(122,166,107,0.08); }
+
+/* Toast */
+.toast { position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:var(--s1); border:0.5px solid var(--accent); color:var(--text); padding:12px 20px; border-radius:24px; font-size:12px; font-weight:700; box-shadow:0 4px 14px rgba(0,0,0,0.3); z-index:300; opacity:0; transition:opacity 0.25s, transform 0.25s; pointer-events:none; }
+.toast.show { opacity:1; transform:translateX(-50%) translateY(-4px); }
+.toast.err { border-color:var(--red); color:var(--red); }
+</style>
+</head>
+<body>
+
+<!-- ローディング -->
+<div id="loading" class="loading-wrap">
+  <div class="spinner"></div>
+  <div class="loading-text">読み込み中...</div>
+</div>
+
+<!-- 権限エラー -->
+<div id="denied" class="denied" style="display:none;">
+  <div class="denied-icon">🔒</div>
+  <div class="denied-title">権限が<span>ありません</span></div>
+  <div class="denied-msg">f.o.oパック契約管理は経理担当者と<br>向畑 充のみアクセスできます。</div>
+  <a class="denied-back" href="keiri-portal.html">← 経理ポータルへ</a>
+</div>
+
+<!-- メイン -->
+<div id="app" style="display:none;">
+  <div class="header">
+    <div class="header-top">
+      <div class="header-brand">F.o.o · 経理<span class="tag">KEIRI</span></div>
+      <a class="header-back" href="keiri-portal.html">← 経理ポータル</a>
+    </div>
+    <div class="header-title">f.o.o<span>パック契約</span></div>
+    <div class="header-sub">タイヤサブスクリース 契約マスタ</div>
+  </div>
+
+  <div class="content">
+    <!-- 統計サマリ -->
+    <div class="stats" id="stats">
+      <div class="stat-card"><div class="stat-val" id="stat-count">-</div><div class="stat-lbl">契約数</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-monthly">-</div><div class="stat-lbl">月額合計</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-total">-</div><div class="stat-lbl">契約総額</div></div>
+    </div>
+
+    <!-- フィルタ -->
+    <div class="filter-bar">
+      <div class="search-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="search" placeholder="契約番号・得意先で検索">
+      </div>
+      <div class="chip-row">
+        <div class="chip active" data-filter="status" data-value="all">全状態</div>
+        <div class="chip" data-filter="status" data-value="有効">有効</div>
+        <div class="chip" data-filter="status" data-value="満期">満期</div>
+        <div class="chip" data-filter="status" data-value="解約">解約</div>
+        <div class="chip" data-filter="status" data-value="準備中">準備中</div>
+      </div>
+      <div class="chip-row">
+        <div class="chip active" data-filter="cat" data-value="all">全区分</div>
+        <div class="chip cat-ライト" data-filter="cat" data-value="f.o.oパックライト">ライト</div>
+        <div class="chip cat-TB" data-filter="cat" data-value="f.o.oパックTB">TB</div>
+        <div class="chip cat-LTL" data-filter="cat" data-value="f.o.oパックLTL">LTL</div>
+        <div class="chip cat-LTS" data-filter="cat" data-value="f.o.oパックLTS">LTS</div>
+        <div class="chip cat-LT" data-filter="cat" data-value="f.o.oパックLT">LT</div>
+      </div>
+    </div>
+
+    <!-- 契約一覧 -->
+    <div class="contract-grid" id="contract-grid">
+      <div class="loading-wrap"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- 新規追加ボタン -->
+  <button class="btn-add" id="btn-add" title="新規契約">+</button>
+</div>
+
+<!-- 詳細モーダル -->
+<div class="modal-bg" id="detail-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">契約詳細</div>
+      <button class="modal-close" onclick="closeDetail()">×</button>
+    </div>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<!-- 編集モーダル -->
+<div class="modal-bg" id="edit-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="edit-title">新規契約</div>
+      <button class="modal-close" onclick="closeEdit()">×</button>
+    </div>
+    <form id="edit-form">
+      <div class="form-group">
+        <label class="form-label">契約番号 *</label>
+        <input class="form-input" name="contractNo" required placeholder="例: CLO 19-81">
+      </div>
+      <div class="form-group">
+        <label class="form-label">得意先名 *</label>
+        <input class="form-input" name="custName" required placeholder="例: 株式会社CLO">
+      </div>
+      <div class="form-group">
+        <label class="form-label">商品区分 *</label>
+        <select class="form-select" name="category" required>
+          <option value="f.o.oパックライト">f.o.oパックライト</option>
+          <option value="f.o.oパックTB">f.o.oパックTB</option>
+          <option value="f.o.oパックLTL">f.o.oパックLTL</option>
+          <option value="f.o.oパックLTS">f.o.oパックLTS</option>
+          <option value="f.o.oパックLT">f.o.oパックLT</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">タイヤサイズ</label>
+          <input class="form-input" name="tireSize" placeholder="例: 265/70R19.5">
+        </div>
+        <div class="form-group">
+          <label class="form-label">車番</label>
+          <input class="form-input" name="plate" placeholder="例: 広島100わ1234">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">契約日</label>
+          <input class="form-input" type="date" name="contractDate">
+        </div>
+        <div class="form-group">
+          <label class="form-label">期間月数</label>
+          <input class="form-input" type="number" name="months" value="60">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">リース開始日</label>
+          <input class="form-input" type="date" name="leaseStart">
+        </div>
+        <div class="form-group">
+          <label class="form-label">リース終了日</label>
+          <input class="form-input" type="date" name="leaseEnd">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">契約総額 *</label>
+          <input class="form-input" type="number" name="total" required placeholder="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">残価</label>
+          <input class="form-input" type="number" name="residual" value="10000">
+        </div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label">月額税込 *</label>
+          <input class="form-input" type="number" name="monthlyIncl" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">月額消費税</label>
+          <input class="form-input" type="number" name="monthlyTax" placeholder="自動計算">
+        </div>
+        <div class="form-group">
+          <label class="form-label">月額税抜</label>
+          <input class="form-input" type="number" name="monthlyExcl" placeholder="自動計算">
+        </div>
+      </div>
+      <div class="form-hint">※ 月額税込だけ入力すれば税抜/消費税は自動計算します（切り捨て）</div>
+      <div class="form-row-3" style="margin-top:10px;">
+        <div class="form-group">
+          <label class="form-label">最終月税込</label>
+          <input class="form-input" type="number" name="lastIncl" placeholder="月額と同じなら空欄">
+        </div>
+        <div class="form-group">
+          <label class="form-label">最終月消費税</label>
+          <input class="form-input" type="number" name="lastTax">
+        </div>
+        <div class="form-group">
+          <label class="form-label">最終月税抜</label>
+          <input class="form-input" type="number" name="lastExcl">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">状態</label>
+        <select class="form-select" name="status">
+          <option value="有効">有効</option>
+          <option value="準備中">準備中</option>
+          <option value="満期">満期</option>
+          <option value="解約">解約</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">メモ</label>
+        <textarea class="form-input" name="memo" rows="2" style="resize:vertical; font-family:inherit;"></textarea>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-ghost" onclick="closeEdit()">キャンセル</button>
+        <button type="submit" class="btn">保存</button>
+      </div>
+      <div id="edit-delete-wrap" style="margin-top:10px; display:none;">
+        <button type="button" class="btn btn-danger btn-full" onclick="deleteContract()">この契約を削除</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="foo-common.js"></script>
+<script src="foo-swipe.js"></script>
+<script>
+// テーマ同期
+(function(){
+  const t = localStorage.getItem('foo_portal_theme') || 'auto';
+  if (t !== 'auto') document.documentElement.setAttribute('data-theme', t);
+})();
+
+const FOO_DB = '8f7b92b3be4a4ac0832de8b53190c6b5';
+const SESSION_KEY = 'foo_portal_session';
+
+let allContracts = [];
+let filter = { status: 'all', cat: 'all', q: '' };
+let editingId = null;
+
+function loadSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (!d || new Date(d.expires) < new Date()) return null;
+    return d;
+  } catch(e) { return null; }
+}
+
+function isAllowed(s) {
+  if (!s || !s.name) return false;
+  const name = s.name.replace(/\s/g, '');
+  return (s.group === '経理') || (name === '向畑充');
+}
+
+function fmtYen(n) {
+  if (n == null) return '-';
+  return '¥' + Math.round(n).toLocaleString();
+}
+
+function fmtDate(iso) {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+}
+
+function toast(msg, isErr) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isErr ? ' err' : '');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.className = 'toast', 2400);
+}
+
+function calcElapsedMonths(startDate) {
+  if (!startDate) return 0;
+  const start = new Date(startDate);
+  const now = new Date();
+  return Math.max(0, (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()));
+}
+
+// ── Notion I/O ──
+async function fetchAll() {
+  const res = [];
+  let cursor = null;
+  do {
+    const body = { page_size: 100, sorts: [{ timestamp: 'created_time', direction: 'ascending' }] };
+    if (cursor) body.start_cursor = cursor;
+    const r = await fooNotionQuery(FOO_DB, body);
+    res.push(...(r.results || []));
+    cursor = r.has_more ? r.next_cursor : null;
+  } while (cursor);
+  return res.map(p => ({
+    id: p.id,
+    contractNo: p.properties['契約番号']?.title?.[0]?.plain_text || '',
+    custName: p.properties['得意先名']?.rich_text?.[0]?.plain_text || '',
+    category: p.properties['商品区分']?.select?.name || '',
+    tireSize: p.properties['タイヤサイズ']?.rich_text?.[0]?.plain_text || '',
+    plate: p.properties['車番']?.rich_text?.[0]?.plain_text || '',
+    contractDate: p.properties['契約日']?.date?.start || '',
+    leaseStart: p.properties['リース開始日']?.date?.start || '',
+    leaseEnd: p.properties['リース終了日']?.date?.start || '',
+    months: p.properties['期間月数']?.number ?? 60,
+    total: p.properties['契約総額']?.number ?? 0,
+    residual: p.properties['残価']?.number ?? 0,
+    monthlyIncl: p.properties['月額税込']?.number ?? 0,
+    monthlyExcl: p.properties['月額税抜']?.number ?? 0,
+    monthlyTax: p.properties['月額消費税']?.number ?? 0,
+    lastIncl: p.properties['最終月税込']?.number ?? 0,
+    lastExcl: p.properties['最終月税抜']?.number ?? 0,
+    lastTax: p.properties['最終月消費税']?.number ?? 0,
+    status: p.properties['状態']?.select?.name || '有効',
+    memo: p.properties['メモ']?.rich_text?.[0]?.plain_text || '',
+  }));
+}
+
+function buildProps(c) {
+  const p = {
+    '契約番号': { title: [{ text: { content: c.contractNo || '' } }] },
+    '得意先名': { rich_text: [{ text: { content: c.custName || '' } }] },
+    '商品区分': c.category ? { select: { name: c.category } } : { select: null },
+    'タイヤサイズ': { rich_text: [{ text: { content: c.tireSize || '' } }] },
+    '車番': { rich_text: [{ text: { content: c.plate || '' } }] },
+    '期間月数': { number: Number(c.months) || 60 },
+    '契約総額': { number: Number(c.total) || 0 },
+    '残価': { number: Number(c.residual) || 0 },
+    '月額税込': { number: Number(c.monthlyIncl) || 0 },
+    '月額税抜': { number: Number(c.monthlyExcl) || 0 },
+    '月額消費税': { number: Number(c.monthlyTax) || 0 },
+    '最終月税込': { number: Number(c.lastIncl) || 0 },
+    '最終月税抜': { number: Number(c.lastExcl) || 0 },
+    '最終月消費税': { number: Number(c.lastTax) || 0 },
+    '状態': { select: { name: c.status || '有効' } },
+    'メモ': { rich_text: [{ text: { content: c.memo || '' } }] },
+  };
+  p['契約日'] = c.contractDate ? { date: { start: c.contractDate } } : { date: null };
+  p['リース開始日'] = c.leaseStart ? { date: { start: c.leaseStart } } : { date: null };
+  p['リース終了日'] = c.leaseEnd ? { date: { start: c.leaseEnd } } : { date: null };
+  return p;
+}
+
+async function createContract(c) {
+  return fooNotionCreate(FOO_DB, buildProps(c));
+}
+async function updateContract(id, c) {
+  return fooNotionPatch(id, buildProps(c));
+}
+async function archiveContract(id) {
+  // archived は properties ではないので直接 fetch
+  const r = await fetch(`${FOO_WORKER}/pages/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ archived: true }),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// ── Render ──
+function renderStats(contracts) {
+  document.getElementById('stat-count').textContent = contracts.length;
+  const monthly = contracts.filter(c => c.status === '有効').reduce((a, c) => a + (c.monthlyIncl || 0), 0);
+  const total = contracts.filter(c => c.status === '有効').reduce((a, c) => a + (c.total || 0), 0);
+  document.getElementById('stat-monthly').textContent = '¥' + Math.round(monthly / 1000) + 'k';
+  document.getElementById('stat-total').textContent = '¥' + Math.round(total / 10000) + '万';
+}
+
+function catShort(cat) {
+  if (cat === 'f.o.oパックライト') return 'ライト';
+  if (cat === 'f.o.oパックTB') return 'TB';
+  if (cat === 'f.o.oパックLTL') return 'LTL';
+  if (cat === 'f.o.oパックLTS') return 'LTS';
+  if (cat === 'f.o.oパックLT') return 'LT';
+  return cat;
+}
+
+function filterContracts() {
+  const q = filter.q.toLowerCase();
+  return allContracts.filter(c => {
+    if (filter.status !== 'all' && c.status !== filter.status) return false;
+    if (filter.cat !== 'all' && c.category !== filter.cat) return false;
+    if (q) {
+      const hit = (c.contractNo || '').toLowerCase().includes(q)
+               || (c.custName || '').toLowerCase().includes(q)
+               || (c.plate || '').toLowerCase().includes(q)
+               || (c.tireSize || '').toLowerCase().includes(q);
+      if (!hit) return false;
+    }
+    return true;
+  });
+}
+
+function renderList() {
+  const filtered = filterContracts();
+  const grid = document.getElementById('contract-grid');
+  if (filtered.length === 0) {
+    grid.innerHTML = '<div class="empty">該当する契約がありません</div>';
+    return;
+  }
+  grid.innerHTML = filtered.map(c => {
+    const elapsed = calcElapsedMonths(c.leaseStart);
+    const pct = Math.min(100, Math.round((elapsed / (c.months || 60)) * 100));
+    return `
+      <div class="contract-card" onclick="showDetail('${c.id}')">
+        <div class="cc-head">
+          <div>
+            <div class="cc-no">${c.contractNo || '-'}</div>
+            <div class="cc-cust">${c.custName || '-'}${c.plate ? ' · ' + c.plate : ''}</div>
+          </div>
+          <div class="cc-badge cat-${catShort(c.category)}">${catShort(c.category)}</div>
+        </div>
+        <div class="cc-row"><span class="label">月額税込</span><span class="value big">${fmtYen(c.monthlyIncl)}</span></div>
+        <div class="cc-row"><span class="label">契約総額</span><span class="value">${fmtYen(c.total)}</span></div>
+        ${c.tireSize ? `<div class="cc-row"><span class="label">サイズ</span><span class="value" style="font-size:11px;">${c.tireSize}</span></div>` : ''}
+        <div class="cc-period">
+          <span>${fmtDate(c.leaseStart)} 〜 ${fmtDate(c.leaseEnd)}</span>
+          <span>${elapsed}/${c.months}ヶ月 <span class="cc-status ${c.status}">${c.status}</span></span>
+        </div>
+        <div class="cc-progress"><div class="cc-progress-bar" style="width:${pct}%;"></div></div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ── Detail view ──
+function showDetail(id) {
+  const c = allContracts.find(x => x.id === id);
+  if (!c) return;
+  const elapsed = calcElapsedMonths(c.leaseStart);
+  const remaining = Math.max(0, c.months - elapsed);
+  const paidAmount = elapsed * (c.monthlyIncl || 0);
+  const remainAmount = Math.max(0, (c.total || 0) - paidAmount);
+
+  // 60回の支払スケジュール生成
+  let scheduleRows = '';
+  if (c.leaseStart && c.monthlyIncl > 0) {
+    const start = new Date(c.leaseStart);
+    const today = new Date(); today.setDate(1);
+    for (let i = 1; i <= c.months; i++) {
+      const payDate = new Date(start.getFullYear(), start.getMonth() + i - 1, 1);
+      const isLast = i === c.months;
+      const amt = isLast && c.lastIncl ? c.lastIncl : c.monthlyIncl;
+      const tax = isLast && c.lastTax ? c.lastTax : c.monthlyTax;
+      const excl = amt - tax;
+      const isPast = payDate < today;
+      const remBal = Math.max(0, (c.total || 0) - i * (c.monthlyIncl || 0));
+      scheduleRows += `<div class="schedule-row ${isLast ? 'final' : ''}" style="${isPast ? 'opacity:0.6;' : ''}">
+        <div class="c-no">${i}</div>
+        <div class="c-date">${payDate.getFullYear()}/${payDate.getMonth()+1}月末</div>
+        <div class="c-amt">${amt.toLocaleString()}</div>
+        <div class="c-amt" style="color:var(--muted);">${tax.toLocaleString()}</div>
+        <div class="c-amt" style="color:var(--muted);">${excl.toLocaleString()}</div>
+      </div>`;
+    }
+  }
+
+  document.getElementById('detail-content').innerHTML = `
+    <div class="detail-hero">
+      <div class="no">${c.contractNo}</div>
+      <div class="cust">${c.custName}${c.plate ? ' · ' + c.plate : ''}${c.tireSize ? ' · ' + c.tireSize : ''}</div>
+      <div class="amount-big">${fmtYen(c.monthlyIncl)}</div>
+      <div class="amount-sub">月額税込 · ${catShort(c.category)} · <span class="cc-status ${c.status}">${c.status}</span></div>
+    </div>
+    <div class="detail-grid">
+      <div class="cell"><div class="lbl">契約総額</div><div class="val">${fmtYen(c.total)}</div></div>
+      <div class="cell"><div class="lbl">残価</div><div class="val">${fmtYen(c.residual)}</div></div>
+      <div class="cell"><div class="lbl">月額税抜</div><div class="val">${fmtYen(c.monthlyExcl)}</div></div>
+      <div class="cell"><div class="lbl">月額消費税</div><div class="val">${fmtYen(c.monthlyTax)}</div></div>
+      <div class="cell"><div class="lbl">経過月数</div><div class="val">${elapsed}/${c.months}ヶ月</div></div>
+      <div class="cell"><div class="lbl">残月数</div><div class="val">${remaining}ヶ月</div></div>
+      <div class="cell"><div class="lbl">支払済</div><div class="val" style="color:var(--accent);">${fmtYen(paidAmount)}</div></div>
+      <div class="cell"><div class="lbl">残額</div><div class="val" style="color:var(--gold);">${fmtYen(remainAmount)}</div></div>
+      <div class="cell"><div class="lbl">契約日</div><div class="val" style="font-size:12px;">${fmtDate(c.contractDate)}</div></div>
+      <div class="cell"><div class="lbl">リース期間</div><div class="val" style="font-size:11px;">${fmtDate(c.leaseStart)} 〜 ${fmtDate(c.leaseEnd)}</div></div>
+    </div>
+    ${c.memo ? `<div class="detail-grid"><div class="cell" style="grid-column:1/-1;"><div class="lbl">メモ</div><div class="val" style="font-family:inherit; font-weight:400;">${c.memo}</div></div></div>` : ''}
+    ${scheduleRows ? `<div class="schedule-table">
+      <div class="schedule-head">支払スケジュール（全${c.months}回）</div>
+      <div class="schedule-row header"><div>#</div><div>年月</div><div class="c-amt">税込</div><div class="c-amt">税</div><div class="c-amt">税抜</div></div>
+      <div class="schedule-body">${scheduleRows}</div>
+    </div>` : ''}
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="closeDetail()">閉じる</button>
+      <button class="btn" onclick="openEdit('${c.id}')">編集</button>
+    </div>
+  `;
+  const m = document.getElementById('detail-modal');
+  m.classList.add('show');
+  if (typeof fooNavPush === 'function') fooNavPush(closeDetail);
+}
+
+function closeDetail() {
+  document.getElementById('detail-modal').classList.remove('show');
+}
+
+// ── Edit/Create ──
+function openEdit(id) {
+  closeDetail();
+  editingId = id || null;
+  const form = document.getElementById('edit-form');
+  form.reset();
+  document.getElementById('edit-delete-wrap').style.display = id ? 'block' : 'none';
+  document.getElementById('edit-title').textContent = id ? '契約編集' : '新規契約';
+  if (id) {
+    const c = allContracts.find(x => x.id === id);
+    if (c) {
+      form.contractNo.value = c.contractNo || '';
+      form.custName.value = c.custName || '';
+      form.category.value = c.category || 'f.o.oパックライト';
+      form.tireSize.value = c.tireSize || '';
+      form.plate.value = c.plate || '';
+      form.contractDate.value = c.contractDate || '';
+      form.leaseStart.value = c.leaseStart || '';
+      form.leaseEnd.value = c.leaseEnd || '';
+      form.months.value = c.months || 60;
+      form.total.value = c.total || '';
+      form.residual.value = c.residual || 10000;
+      form.monthlyIncl.value = c.monthlyIncl || '';
+      form.monthlyTax.value = c.monthlyTax || '';
+      form.monthlyExcl.value = c.monthlyExcl || '';
+      form.lastIncl.value = c.lastIncl || '';
+      form.lastTax.value = c.lastTax || '';
+      form.lastExcl.value = c.lastExcl || '';
+      form.status.value = c.status || '有効';
+      form.memo.value = c.memo || '';
+    }
+  }
+  const m = document.getElementById('edit-modal');
+  m.classList.add('show');
+  if (typeof fooNavPush === 'function') fooNavPush(closeEdit);
+}
+
+function closeEdit() {
+  document.getElementById('edit-modal').classList.remove('show');
+  editingId = null;
+}
+
+document.getElementById('edit-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const data = {
+    contractNo: form.contractNo.value.trim(),
+    custName: form.custName.value.trim(),
+    category: form.category.value,
+    tireSize: form.tireSize.value.trim(),
+    plate: form.plate.value.trim(),
+    contractDate: form.contractDate.value || null,
+    leaseStart: form.leaseStart.value || null,
+    leaseEnd: form.leaseEnd.value || null,
+    months: Number(form.months.value) || 60,
+    total: Number(form.total.value) || 0,
+    residual: Number(form.residual.value) || 10000,
+    monthlyIncl: Number(form.monthlyIncl.value) || 0,
+    monthlyTax: Number(form.monthlyTax.value) || 0,
+    monthlyExcl: Number(form.monthlyExcl.value) || 0,
+    lastIncl: Number(form.lastIncl.value) || 0,
+    lastTax: Number(form.lastTax.value) || 0,
+    lastExcl: Number(form.lastExcl.value) || 0,
+    status: form.status.value,
+    memo: form.memo.value.trim(),
+  };
+  // 税抜・消費税を自動計算（空なら）
+  if (data.monthlyIncl > 0 && !data.monthlyExcl) {
+    data.monthlyExcl = Math.floor(data.monthlyIncl / 1.1);
+    data.monthlyTax = data.monthlyIncl - data.monthlyExcl;
+  }
+  if (!data.lastIncl) { data.lastIncl = data.monthlyIncl; data.lastExcl = data.monthlyExcl; data.lastTax = data.monthlyTax; }
+  else if (data.lastIncl > 0 && !data.lastExcl) {
+    data.lastExcl = Math.floor(data.lastIncl / 1.1);
+    data.lastTax = data.lastIncl - data.lastExcl;
+  }
+
+  try {
+    if (editingId) {
+      await updateContract(editingId, data);
+      toast('保存しました');
+    } else {
+      await createContract(data);
+      toast('作成しました');
+    }
+    closeEdit();
+    await reload();
+  } catch(err) {
+    toast('保存失敗: ' + err.message, true);
+  }
+});
+
+async function deleteContract() {
+  if (!editingId) return;
+  if (!confirm('この契約をアーカイブします。よろしいですか？')) return;
+  try {
+    await archiveContract(editingId);
+    toast('削除しました');
+    closeEdit();
+    await reload();
+  } catch(err) {
+    toast('削除失敗: ' + err.message, true);
+  }
+}
+
+// 月額税込から自動計算するリアルタイムヒント
+document.querySelector('[name="monthlyIncl"]').addEventListener('input', (e) => {
+  const val = Number(e.target.value) || 0;
+  if (val > 0) {
+    const excl = Math.floor(val / 1.1);
+    const tax = val - excl;
+    document.querySelector('[name="monthlyExcl"]').placeholder = excl.toString();
+    document.querySelector('[name="monthlyTax"]').placeholder = tax.toString();
+  }
+});
+
+// 契約総額から月額候補を提示
+document.querySelector('[name="total"]').addEventListener('input', (e) => {
+  const val = Number(e.target.value) || 0;
+  const months = Number(document.querySelector('[name="months"]').value) || 60;
+  if (val > 0 && months > 0) {
+    const guess = Math.ceil(val / months);
+    document.querySelector('[name="monthlyIncl"]').placeholder = '目安 ' + guess;
+  }
+});
+
+// ── Init ──
+async function reload() {
+  try {
+    allContracts = await fetchAll();
+    renderStats(allContracts);
+    renderList();
+  } catch(err) {
+    document.getElementById('contract-grid').innerHTML = '<div class="empty">読込失敗: ' + err.message + '</div>';
+  }
+}
+
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const key = chip.dataset.filter;
+    const val = chip.dataset.value;
+    document.querySelectorAll(`.chip[data-filter="${key}"]`).forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    filter[key] = val;
+    renderList();
+  });
+});
+document.getElementById('search').addEventListener('input', (e) => {
+  filter.q = e.target.value;
+  renderList();
+});
+document.getElementById('btn-add').addEventListener('click', () => openEdit(null));
+
+async function init() {
+  const s = loadSession();
+  if (!s) { location.href = 'https://mitsurumukaihata.github.io/foo-portal/'; return; }
+  if (!isAllowed(s)) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('denied').style.display = 'block';
+    return;
+  }
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  await reload();
+}
+init();
+</script>
+</body>
+</html>

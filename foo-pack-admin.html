@@ -204,16 +204,16 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 <div id="denied" class="denied" style="display:none;">
   <div class="denied-icon">🔒</div>
   <div class="denied-title">権限が<span>ありません</span></div>
-  <div class="denied-msg">f.o.oパック契約管理は経理担当者と<br>向畑 充のみアクセスできます。</div>
-  <a class="denied-back" href="keiri-portal.html">← 経理ポータルへ</a>
+  <div class="denied-msg">f.o.oパック契約管理は<br>向畑 充と岡崎さんのみアクセスできます。</div>
+  <a class="denied-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ホームへ</a>
 </div>
 
 <!-- メイン -->
 <div id="app" style="display:none;">
   <div class="header">
     <div class="header-top">
-      <div class="header-brand">F.o.o · 経理<span class="tag">KEIRI</span></div>
-      <a class="header-back" href="keiri-portal.html">← 経理ポータル</a>
+      <div class="header-brand">F.o.o · 事務<span class="tag">JIMU</span></div>
+      <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ホーム</a>
     </div>
     <div class="header-title">f.o.o<span>パック契約</span></div>
     <div class="header-sub">タイヤサブスクリース 契約マスタ</div>
@@ -421,7 +421,7 @@ function loadSession() {
 function isAllowed(s) {
   if (!s || !s.name) return false;
   const name = s.name.replace(/\s/g, '');
-  return (s.group === '経理') || (name === '向畑充');
+  return name === '向畑充' || name.includes('岡崎');
 }
 
 function fmtYen(n) {

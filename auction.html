@@ -2565,7 +2565,19 @@ function drawThumb(record, tireImg) {
 
   // 右上バッジ
   var badges = [];
-  if (serial) badges.push(serial.slice(0,4) + '年製');
+  if (serial) {
+    // 複数年対応: "2019×2 2020×4" → "2019/2020年製"
+    var years = [];
+    var ym = serial.match(/\b(19|20)\d{2}\b/g);
+    if (ym) { for (var yi = 0; yi < ym.length; yi++) { if (years.indexOf(ym[yi]) < 0) years.push(ym[yi]); } }
+    // DOT形式 (WWYY) フォールバック
+    if (years.length === 0) {
+      var dm = serial.match(/\d{4}/g);
+      if (dm) { for (var di = 0; di < dm.length; di++) { var yy = parseInt(dm[di].slice(2)); if (yy >= 10 && yy <= 30) { var fy = '20' + dm[di].slice(2); if (years.indexOf(fy) < 0) years.push(fy); } } }
+    }
+    if (years.length > 0) { years.sort(); badges.push(years.join('/') + '年製'); }
+    else badges.push(serial.slice(0,4) + '年製');
+  }
   if (category) badges.push(category);
   if (cond) badges.push(cond);
 

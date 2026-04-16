@@ -2393,6 +2393,12 @@ function openEditForm(id) {
     st('fs-price', price); sv('fs-status', status); st('fs-desc', desc); st('fs-note', note);
   }
 
+  // デバッグ: 値がちゃんとセットされたか確認
+  console.log('[EDIT]', formType, { mgmt, maker, size, pattern, cat, num, tread, serial, cond, storage, price, status });
+  if (formType === 'tire') {
+    console.log('[EDIT] f-mgmt=', document.getElementById('f-mgmt')?.value, 'f-maker=', document.getElementById('f-maker-form')?.value);
+  }
+
   // ボタン表示を「更新」に変更
   const btn = document.getElementById('submit-btn');
   btn.textContent = '更新する';

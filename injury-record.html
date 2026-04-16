@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>負傷記録票 | f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --red: #ef4444;
+  --blue: #3b82f6; --purple: #a855f7; --yellow: #eab308;
+  --pink: #ec4899; --orange: #f97316; --gray: #6b7280;
+  --header-bg: rgba(16,16,21,0.92);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+    --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208; --muted: #a08060;
+    --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --red: #dc2626;
+    --blue: #2563eb; --purple: #9333ea; --yellow: #d97706;
+    --pink: #db2777; --orange: #ea580c; --gray: #6b7280;
+    --header-bg: rgba(255,255,255,0.92);
+  }
+}
+[data-theme="dark"] {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --red: #ef4444;
+  --blue: #3b82f6; --purple: #a855f7; --yellow: #eab308;
+  --pink: #ec4899; --orange: #f97316; --gray: #6b7280;
+  --header-bg: rgba(16,16,21,0.92);
+}
+[data-theme="light"] {
+  --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+  --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208; --muted: #a08060;
+  --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --red: #dc2626;
+  --blue: #2563eb; --purple: #9333ea; --yellow: #d97706;
+  --pink: #db2777; --orange: #ea580c; --gray: #6b7280;
+  --header-bg: rgba(255,255,255,0.92);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; max-width:480px; margin:0 auto; overflow-x:hidden; scrollbar-width:none; }
+body::-webkit-scrollbar { display:none; }
+
+/* ── Header ── */
+.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:100; }
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+.header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+.header-back { font-size:11px; color:var(--muted); text-decoration:none; border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; }
+.header-back:active { opacity:0.6; }
+.header-title { font-size:17px; font-weight:900; letter-spacing:-0.02em; }
+.header-title span { color:var(--accent); }
+
+/* ── Tabs ── */
+.tabs { display:flex; background:var(--s1); border-bottom:0.5px solid var(--border); position:sticky; top:52px; z-index:99; }
+.tab-btn { flex:1; padding:10px 6px 8px; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--muted); font-size:12px; font-weight:500; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; text-align:center; }
+.tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+/* ── Pages ── */
+.page { display:none; padding:0 0 100px; }
+.page.show { display:block; }
+
+/* ── 公表カード ── */
+.pub-card { background:var(--s2); border:1.5px solid var(--border); border-radius:12px; padding:14px 16px; margin:12px 12px 0; }
+.pub-card-date { font-size:10px; color:var(--muted); font-family:'DM Mono',monospace; margin-bottom:6px; }
+.pub-card-body { font-size:13px; line-height:1.7; margin-bottom:8px; }
+.pub-card-label { font-size:10px; color:var(--muted); font-weight:600; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:3px; }
+.pub-card-prevention { background:var(--s3); border-left:3px solid var(--green); padding:8px 12px; border-radius:0 8px 8px 0; font-size:12px; line-height:1.6; margin-top:8px; color:var(--text); }
+.pub-badge { display:inline-block; font-size:9px; font-weight:700; padding:2px 8px; border-radius:20px; margin-bottom:6px; }
+.pub-badge-cut    { background:rgba(239,68,68,0.15); color:var(--red); }
+.pub-badge-bruise { background:rgba(249,115,22,0.15); color:var(--orange); }
+.pub-badge-sprain { background:rgba(234,179,8,0.15); color:var(--yellow); }
+.pub-badge-break  { background:rgba(168,85,247,0.15); color:var(--purple); }
+.pub-badge-burn   { background:rgba(236,72,153,0.15); color:var(--pink); }
+.pub-badge-other  { background:var(--s3); color:var(--muted); }
+
+/* ── 詳細カード（管理者用） ── */
+.adm-card { background:var(--s2); border:1.5px solid var(--border); border-radius:12px; padding:14px 16px; margin:12px 12px 0; cursor:pointer; transition:all 0.2s; }
+.adm-card:active { transform:scale(0.98); }
+.adm-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:6px; }
+.adm-card-name { font-size:14px; font-weight:700; }
+.adm-card-date { font-size:10px; color:var(--muted); font-family:'DM Mono',monospace; white-space:nowrap; }
+.adm-card-meta { font-size:11px; color:var(--muted); }
+.adm-card-meta strong { color:var(--text); font-weight:600; }
+.status-badge { display:inline-block; font-size:9px; font-weight:700; padding:2px 8px; border-radius:20px; }
+.status-wip  { background:rgba(234,179,8,0.15); color:var(--yellow); }
+.status-done { background:rgba(59,130,246,0.15); color:var(--blue); }
+.status-close { background:rgba(34,197,94,0.15); color:var(--green); }
+
+/* ── Buttons ── */
+.btn { padding:8px 14px; border-radius:8px; border:none; font-size:12px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; }
+.btn:active { opacity:0.8; transform:scale(0.97); }
+.btn-accent { background:var(--accent); color:#fff; }
+.btn-red { background:var(--red); color:#fff; }
+.btn-outline { background:var(--s3); border:1px solid var(--border); color:var(--text); }
+.btn-submit { width:100%; padding:14px; border-radius:12px; background:var(--accent); border:none; color:#fff; font-size:15px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; margin-top:8px; }
+.btn-submit:active { opacity:0.8; transform:scale(0.98); }
+.btn-submit:disabled { opacity:0.4; cursor:default; transform:none; }
+
+/* ── Form ── */
+.form-page { padding:14px 16px 100px; }
+.form-section-head { font-size:11px; font-weight:700; color:var(--accent); letter-spacing:0.08em; text-transform:uppercase; margin:18px 0 10px; padding-bottom:6px; border-bottom:0.5px solid var(--border); }
+.form-group { margin-bottom:14px; }
+.form-label { font-size:11px; color:var(--muted); font-weight:600; margin-bottom:5px; display:block; }
+.form-label .req { color:var(--red); margin-left:2px; }
+.form-input { width:100%; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:12px 14px; font-size:14px; color:var(--text); outline:none; font-family:'Noto Sans JP',sans-serif; transition:border-color 0.15s; -webkit-appearance:none; appearance:none; }
+.form-input:focus { border-color:var(--accent); }
+.form-input::placeholder { color:var(--muted); opacity:0.6; }
+select.form-input { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2368687a' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; padding-right:32px; }
+textarea.form-input { min-height:80px; resize:vertical; line-height:1.6; }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.form-check-row { display:flex; align-items:center; gap:8px; padding:10px 14px; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; }
+.form-check-row input[type="checkbox"] { width:18px; height:18px; accent-color:var(--accent); flex-shrink:0; }
+.form-check-row label { font-size:13px; cursor:pointer; }
+
+/* ── Detail overlay ── */
+.detail-overlay { position:fixed; inset:0; background:var(--bg); z-index:200; overflow-y:auto; display:none; }
+.detail-overlay.show { display:block; }
+.detail-header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:201; display:flex; align-items:center; justify-content:space-between; }
+.detail-close { font-size:11px; color:var(--muted); border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; cursor:pointer; background:none; font-family:'Noto Sans JP',sans-serif; }
+.detail-title { font-size:15px; font-weight:900; flex:1; }
+.detail-body { padding:16px; }
+.detail-section { margin-bottom:16px; }
+.detail-label { font-size:10px; color:var(--muted); font-weight:600; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.08em; }
+.detail-value { font-size:13px; line-height:1.7; }
+.detail-value.highlight { background:var(--s2); border-left:3px solid var(--accent); padding:8px 12px; border-radius:0 8px 8px 0; }
+.detail-divider { height:0.5px; background:var(--border); margin:16px 0; }
+.detail-actions { display:flex; gap:8px; padding:0 16px 16px; }
+.private-badge { display:inline-block; font-size:9px; font-weight:700; padding:2px 8px; border-radius:20px; background:rgba(239,68,68,0.12); color:var(--red); margin-left:6px; }
+
+/* ── Toast ── */
+.toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:var(--green); color:#fff; padding:10px 24px; border-radius:10px; font-size:13px; font-weight:700; z-index:500; opacity:0; transition:opacity 0.3s; pointer-events:none; max-width:90%; text-align:center; }
+.toast.show { opacity:1; }
+
+/* ── Loading / Empty ── */
+.loading { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; }
+.spinner { display:inline-block; width:20px; height:20px; border:2px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; margin-bottom:8px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.empty { text-align:center; padding:40px 20px; color:var(--muted); }
+.empty-icon { font-size:32px; margin-bottom:8px; }
+.empty-text { font-size:13px; }
+
+/* ── 公表ページ ヘッダー説明 ── */
+.pub-note { margin:12px 12px 0; padding:10px 14px; background:var(--s2); border:1px solid var(--border); border-radius:10px; font-size:11px; color:var(--muted); line-height:1.6; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="header-brand">F.o.o · 人事</div>
+    <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
+  </div>
+  <div class="header-title">負傷<span>記録票</span></div>
+</div>
+
+<div class="tabs" id="tabs-bar">
+  <button class="tab-btn active" id="tab-pub" onclick="switchTab('pub')">安全情報</button>
+  <button class="tab-btn" id="tab-adm" onclick="switchTab('adm')" style="display:none;">詳細記録</button>
+  <button class="tab-btn" id="tab-new" onclick="switchTab('new')" style="display:none;">＋ 新規記録</button>
+</div>
+
+<!-- ══ 公表一覧（全員） ══ -->
+<div class="page show" id="pane-pub">
+  <div class="pub-note">業務中の負傷事案について、発生状況と再発防止策を共有しています。</div>
+  <div class="loading" id="pub-loading"><div class="spinner"></div><br>読み込み中...</div>
+  <div id="pub-list"></div>
+  <div class="empty" id="pub-empty" style="display:none;">
+    <div class="empty-icon">🏥</div>
+    <div class="empty-text">公表中の記録はありません</div>
+  </div>
+</div>
+
+<!-- ══ 詳細記録一覧（管理者） ══ -->
+<div class="page" id="pane-adm">
+  <div class="loading" id="adm-loading"><div class="spinner"></div><br>読み込み中...</div>
+  <div id="adm-list"></div>
+  <div class="empty" id="adm-empty" style="display:none;">
+    <div class="empty-icon">📋</div>
+    <div class="empty-text">記録はまだありません</div>
+  </div>
+</div>
+
+<!-- ══ 新規記録（管理者） ══ -->
+<div class="page" id="pane-new">
+  <div class="form-page">
+
+    <div class="form-section-head">👤 本人情報</div>
+    <div class="form-group">
+      <label class="form-label">氏名<span class="req">*</span></label>
+      <input class="form-input" id="f-name" type="text" placeholder="例: 山根 祐司">
+    </div>
+    <div class="form-group">
+      <label class="form-label">雇用形態</label>
+      <select class="form-input" id="f-employ">
+        <option value="">選択してください</option>
+        <option>正社員</option>
+        <option>パート</option>
+        <option>アルバイト</option>
+        <option>その他</option>
+      </select>
+    </div>
+
+    <div class="form-section-head">📍 発生状況</div>
+    <div class="form-group">
+      <label class="form-label">発生日時<span class="req">*</span></label>
+      <input class="form-input" id="f-datetime" type="datetime-local">
+    </div>
+    <div class="form-group">
+      <label class="form-label">発生場所<span class="req">*</span></label>
+      <input class="form-input" id="f-place" type="text" placeholder="例: 第二倉庫 タイヤラック前">
+    </div>
+    <div class="form-group">
+      <label class="form-label">作業内容<span class="req">*</span></label>
+      <textarea class="form-input" id="f-work" placeholder="何をしていたか具体的に"></textarea>
+    </div>
+
+    <div class="form-section-head">🩹 ケガの状況</div>
+    <div class="form-group">
+      <label class="form-label">ケガの種類</label>
+      <select class="form-input" id="f-injury-type">
+        <option value="">選択してください</option>
+        <option>切傷</option>
+        <option>打撲</option>
+        <option>捻挫</option>
+        <option>骨折</option>
+        <option>熱傷</option>
+        <option>その他</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">負傷部位</label>
+      <input class="form-input" id="f-part" type="text" placeholder="例: 左手人差し指">
+    </div>
+    <div class="form-group">
+      <label class="form-label">ケガの詳細</label>
+      <textarea class="form-input" id="f-detail" placeholder="どのようにケガをしたか"></textarea>
+    </div>
+
+    <div class="form-section-head">🗣️ 本人・会社確認</div>
+    <div class="form-group">
+      <label class="form-label">本人申告内容（時系列）</label>
+      <textarea class="form-input" id="f-report" placeholder="本人からの聞き取り内容"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">聴取日時</label>
+        <input class="form-input" id="f-hear-date" type="datetime-local">
+      </div>
+      <div class="form-group">
+        <label class="form-label">聴取者</label>
+        <input class="form-input" id="f-hearer" type="text" placeholder="担当者名">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">会社確認内容（上司・同僚等）</label>
+      <textarea class="form-input" id="f-company-check" placeholder="上司・同僚からの聴取内容"></textarea>
+    </div>
+
+    <div class="form-section-head">🏥 受診情報</div>
+    <div class="form-group">
+      <label class="form-label">受診日</label>
+      <input class="form-input" id="f-visit-date" type="date">
+    </div>
+    <div class="form-group">
+      <label class="form-label">医療機関名</label>
+      <input class="form-input" id="f-hospital" type="text" placeholder="例: ○○整形外科">
+    </div>
+    <div class="form-group">
+      <label class="form-label">診断内容</label>
+      <input class="form-input" id="f-diagnosis" type="text" placeholder="例: 左手人差し指 裂傷">
+    </div>
+    <div class="form-group">
+      <label class="form-label">医師の指示</label>
+      <input class="form-input" id="f-doctor-inst" type="text" placeholder="例: 3日間の安静、軽作業可">
+    </div>
+
+    <div class="form-section-head">📅 休業状況</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">休業開始日</label>
+        <input class="form-input" id="f-off-start" type="date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">休業終了日</label>
+        <input class="form-input" id="f-off-end" type="date">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">連続休業日数</label>
+      <input class="form-input" id="f-off-days" type="number" min="0" placeholder="0">
+    </div>
+    <div class="form-group">
+      <div class="form-check-row">
+        <input type="checkbox" id="f-restriction">
+        <label for="f-restriction">就業制限あり</label>
+      </div>
+    </div>
+    <div class="form-group" id="f-restriction-wrap" style="display:none;">
+      <label class="form-label">就業制限内容</label>
+      <input class="form-input" id="f-restriction-detail" type="text" placeholder="例: 重量物の持ち運び禁止">
+    </div>
+
+    <div class="form-section-head">🔄 再発防止・公表用</div>
+    <div class="form-group">
+      <label class="form-label">再発防止措置</label>
+      <textarea class="form-input" id="f-prevention" placeholder="具体的な対策内容"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">公表用 発生状況<span class="req">*</span>　<span style="color:var(--muted);font-weight:400;">全社員に表示されます</span></label>
+      <textarea class="form-input" id="f-pub-situation" placeholder="例: 倉庫内でタイヤ搬送作業中、足元のホースに気づかずに転倒"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">公表用 再発防止策　<span style="color:var(--muted);font-weight:400;">全社員に表示されます</span></label>
+      <textarea class="form-input" id="f-pub-prevention" placeholder="例: 作業前の通路確認を徹底。ホース類は使用後すぐに所定位置に収納する"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">ステータス</label>
+      <select class="form-input" id="f-status">
+        <option value="記録中">記録中</option>
+        <option value="確認済">確認済</option>
+        <option value="完了">完了</option>
+      </select>
+    </div>
+
+    <button class="btn-submit" id="f-submit" onclick="submitRecord()">記録を保存</button>
+  </div>
+</div>
+
+<!-- ══ 詳細オーバーレイ（管理者） ══ -->
+<div class="detail-overlay" id="detail-overlay">
+  <div class="detail-header">
+    <button class="detail-close" onclick="closeDetail()">← 戻る</button>
+    <div class="detail-title" id="detail-title"></div>
+    <span class="status-badge" id="detail-status-badge"></span>
+  </div>
+  <div class="detail-body" id="detail-body"></div>
+  <div class="detail-actions" id="detail-actions"></div>
+</div>
+
+<!-- ══ Toast ══ -->
+<div class="toast" id="toast"></div>
+
+<script>
+const WORKER    = 'https://notion-proxy.33322666666mm.workers.dev';
+const INJURY_DB = '344a695f8e88816c9d8bc74c12379e5c';
+const SESSION_KEY = 'foo_portal_session';
+const THEME_KEY   = 'foo_theme';
+
+let loginUser  = '';
+let isAdmin    = false;   // 🏥 負傷記録票チェックONの人
+let allRecords = [];
+let currentId  = null;
+
+// ─── 初期化 ──────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+
+  const sess = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+  if (!sess || !sess.name) { location.href = 'https://mitsurumukaihata.github.io/foo-portal/'; return; }
+
+  loginUser = sess.name;
+  isAdmin   = !!(sess.apps && sess.apps['injury-record']);
+
+  if (isAdmin) {
+    document.getElementById('tab-adm').style.display = '';
+    document.getElementById('tab-new').style.display = '';
+  }
+
+  document.getElementById('f-restriction').addEventListener('change', e => {
+    document.getElementById('f-restriction-wrap').style.display = e.target.checked ? '' : 'none';
+  });
+
+  loadPub();
+});
+
+// ─── タブ切替 ──────────────────────────────────────────────────────
+function switchTab(t) {
+  ['pub','adm','new'].forEach(k => {
+    document.getElementById('tab-' + k)?.classList.toggle('active', k === t);
+    document.getElementById('pane-' + k)?.classList.toggle('show', k === t);
+  });
+  if (t === 'adm' && allRecords.length === 0) loadAdm();
+}
+
+// ─── Notion API ─────────────────────────────────────────────────────
+async function notionQuery(filter, sorts) {
+  const body = { page_size: 100 };
+  if (filter) body.filter = filter;
+  if (sorts)  body.sorts  = sorts;
+  const r = await fetch(`${WORKER}/databases/${INJURY_DB}/query`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return r.json();
+}
+
+async function notionCreate(props) {
+  const r = await fetch(`${WORKER}/pages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      parent: { database_id: INJURY_DB },
+      properties: props
+    })
+  });
+  return r.json();
+}
+
+async function notionUpdate(pageId, props) {
+  const r = await fetch(`${WORKER}/pages/${pageId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ properties: props })
+  });
+  return r.json();
+}
+
+// ─── ヘルパー ─────────────────────────────────────────────────────
+function txt(props, key) {
+  return props[key]?.rich_text?.[0]?.plain_text || '';
+}
+function dateStr(props, key) {
+  return props[key]?.date?.start || '';
+}
+function fmtDate(s) {
+  if (!s) return '—';
+  return s.replace('T', ' ').slice(0, 16);
+}
+function sel(props, key) {
+  return props[key]?.select?.name || '';
+}
+function injuryBadgeClass(type) {
+  const m = { '切傷':'cut','打撲':'bruise','捻挫':'sprain','骨折':'break','熱傷':'burn' };
+  return 'pub-badge pub-badge-' + (m[type] || 'other');
+}
+function statusBadgeClass(s) {
+  const m = { '記録中':'status-wip','確認済':'status-done','完了':'status-close' };
+  return 'status-badge ' + (m[s] || 'status-wip');
+}
+
+// ─── 公表一覧 ───────────────────────────────────────────────────────
+async function loadPub() {
+  document.getElementById('pub-loading').style.display = '';
+  document.getElementById('pub-list').innerHTML = '';
+  document.getElementById('pub-empty').style.display = 'none';
+
+  // 公表用発生状況が入っているレコードのみ表示
+  const filter = { property: '公表用発生状況', rich_text: { is_not_empty: true } };
+  const sorts  = [{ property: '発生日時', direction: 'descending' }];
+
+  try {
+    const d = await notionQuery(filter, sorts);
+    document.getElementById('pub-loading').style.display = 'none';
+    const results = d.results || [];
+    if (!results.length) { document.getElementById('pub-empty').style.display = ''; return; }
+
+    const html = results.map(r => {
+      const p  = r.properties;
+      const dt = dateStr(p, '発生日時');
+      const situation  = txt(p, '公表用発生状況');
+      const prevention = txt(p, '公表用再発防止策');
+      const injType    = sel(p, 'ケガの種類');
+      const place      = txt(p, '発生場所');
+      return `
+        <div class="pub-card">
+          <div class="pub-card-date">${fmtDate(dt)}${place ? '　📍 ' + place : ''}</div>
+          ${injType ? `<span class="${injuryBadgeClass(injType)}">${injType}</span>` : ''}
+          <div class="pub-card-label">発生状況</div>
+          <div class="pub-card-body">${esc(situation)}</div>
+          ${prevention ? `
+            <div class="pub-card-label">再発防止策</div>
+            <div class="pub-card-prevention">✅ ${esc(prevention)}</div>
+          ` : ''}
+        </div>`;
+    }).join('');
+    document.getElementById('pub-list').innerHTML = html;
+  } catch(e) {
+    document.getElementById('pub-loading').style.display = 'none';
+    document.getElementById('pub-list').innerHTML = '<div class="empty"><div class="empty-text">読み込みに失敗しました</div></div>';
+  }
+}
+
+// ─── 詳細記録一覧（管理者） ─────────────────────────────────────────
+async function loadAdm() {
+  document.getElementById('adm-loading').style.display = '';
+  document.getElementById('adm-list').innerHTML = '';
+  document.getElementById('adm-empty').style.display = 'none';
+
+  const sorts = [{ property: '発生日時', direction: 'descending' }];
+  try {
+    const d = await notionQuery(null, sorts);
+    document.getElementById('adm-loading').style.display = 'none';
+    allRecords = d.results || [];
+    if (!allRecords.length) { document.getElementById('adm-empty').style.display = ''; return; }
+
+    const html = allRecords.map(r => {
+      const p    = r.properties;
+      const name = txt(p, '氏名') || '（氏名未入力）';
+      const dt   = dateStr(p, '発生日時');
+      const type = sel(p, 'ケガの種類');
+      const st   = sel(p, 'ステータス') || '記録中';
+      const place = txt(p, '発生場所');
+      return `
+        <div class="adm-card" onclick="openDetail('${r.id}')">
+          <div class="adm-card-top">
+            <div class="adm-card-name">${esc(name)}</div>
+            <span class="${statusBadgeClass(st)}">${st}</span>
+          </div>
+          <div class="adm-card-meta">
+            ${fmtDate(dt)}${place ? '　📍 ' + esc(place) : ''}${type ? '　' + type : ''}
+          </div>
+        </div>`;
+    }).join('');
+    document.getElementById('adm-list').innerHTML = html;
+  } catch(e) {
+    document.getElementById('adm-loading').style.display = 'none';
+    document.getElementById('adm-list').innerHTML = '<div class="empty"><div class="empty-text">読み込みに失敗しました</div></div>';
+  }
+}
+
+// ─── 詳細オーバーレイ ───────────────────────────────────────────────
+function openDetail(id) {
+  const r = allRecords.find(x => x.id === id);
+  if (!r) return;
+  currentId = id;
+  const p = r.properties;
+
+  const st = sel(p, 'ステータス') || '記録中';
+  document.getElementById('detail-title').textContent = txt(p, '氏名') || '（氏名未入力）';
+  document.getElementById('detail-status-badge').className = statusBadgeClass(st);
+  document.getElementById('detail-status-badge').textContent = st;
+
+  const row = (label, val, highlight) => val ? `
+    <div class="detail-section">
+      <div class="detail-label">${label}</div>
+      <div class="detail-value${highlight ? ' highlight' : ''}">${esc(val)}</div>
+    </div>` : '';
+
+  document.getElementById('detail-body').innerHTML = `
+    <div class="detail-section">
+      <div class="detail-label">氏名 <span class="private-badge">管理者のみ</span></div>
+      <div class="detail-value"><strong>${esc(txt(p,'氏名') || '—')}</strong>　${sel(p,'雇用形態') || ''}</div>
+    </div>
+    ${row('発生日時', fmtDate(dateStr(p,'発生日時')))}
+    ${row('発生場所', txt(p,'発生場所'))}
+    ${row('作業内容', txt(p,'作業内容'))}
+    <div class="detail-divider"></div>
+    ${sel(p,'ケガの種類') ? `<div class="detail-section"><div class="detail-label">ケガの種類</div><div class="detail-value"><span class="${injuryBadgeClass(sel(p,'ケガの種類'))}">${sel(p,'ケガの種類')}</span>　${txt(p,'負傷部位')}</div></div>` : ''}
+    ${row('ケガの詳細', txt(p,'ケガの詳細'))}
+    <div class="detail-divider"></div>
+    ${row('本人申告内容', txt(p,'本人申告内容'), true)}
+    ${row('聴取日時', fmtDate(dateStr(p,'聴取日時')))}
+    ${row('聴取者', txt(p,'聴取者'))}
+    ${row('会社確認内容', txt(p,'会社確認内容'), true)}
+    <div class="detail-divider"></div>
+    ${row('受診日', dateStr(p,'受診日'))}
+    ${row('医療機関名', txt(p,'医療機関名'))}
+    ${row('診断内容', txt(p,'診断内容'))}
+    ${row('医師の指示', txt(p,'医師の指示'))}
+    <div class="detail-divider"></div>
+    ${dateStr(p,'休業開始日') ? `<div class="detail-section"><div class="detail-label">休業期間</div><div class="detail-value">${dateStr(p,'休業開始日')} 〜 ${dateStr(p,'休業終了日') || '未定'}（${p['休業日数']?.number ?? '—'}日）</div></div>` : ''}
+    ${p['就業制限']?.checkbox ? `<div class="detail-section"><div class="detail-label">就業制限</div><div class="detail-value">⚠️ ${esc(txt(p,'就業制限内容') || '内容未記入')}</div></div>` : ''}
+    <div class="detail-divider"></div>
+    ${row('再発防止措置', txt(p,'再発防止措置'))}
+    <div class="detail-section" style="background:var(--s2);border-radius:10px;padding:12px 14px;">
+      <div class="detail-label" style="margin-bottom:8px;">📢 公表用（全社員向け）</div>
+      ${row('発生状況', txt(p,'公表用発生状況'))}
+      ${row('再発防止策', txt(p,'公表用再発防止策'))}
+    </div>
+  `;
+
+  document.getElementById('detail-actions').innerHTML = `
+    <button class="btn btn-outline" onclick="editStatus('${id}')">ステータス変更</button>
+    <button class="btn btn-red" onclick="deleteRecord('${id}')">削除</button>
+  `;
+
+  document.getElementById('detail-overlay').classList.add('show');
+}
+
+function closeDetail() {
+  document.getElementById('detail-overlay').classList.remove('show');
+  currentId = null;
+}
+
+// ─── ステータス変更 ────────────────────────────────────────────────
+async function editStatus(id) {
+  const choices = ['記録中','確認済','完了'];
+  const r = allRecords.find(x => x.id === id);
+  const cur = sel(r?.properties, 'ステータス') || '記録中';
+  const next = choices[(choices.indexOf(cur) + 1) % choices.length];
+  if (!confirm(`ステータスを「${cur}」→「${next}」に変更しますか？`)) return;
+  await notionUpdate(id, { 'ステータス': { select: { name: next } } });
+  showToast(`ステータスを「${next}」に変更しました`);
+  closeDetail();
+  allRecords = [];
+  loadAdm();
+}
+
+// ─── 削除 ────────────────────────────────────────────────────────
+async function deleteRecord(id) {
+  if (!confirm('この記録を削除しますか？')) return;
+  await fetch(`${WORKER}/pages/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ archived: true })
+  });
+  showToast('削除しました');
+  closeDetail();
+  allRecords = [];
+  loadAdm();
+  loadPub();
+}
+
+// ─── 新規保存 ──────────────────────────────────────────────────────
+async function submitRecord() {
+  const name    = document.getElementById('f-name').value.trim();
+  const dt      = document.getElementById('f-datetime').value;
+  const place   = document.getElementById('f-place').value.trim();
+  const work    = document.getElementById('f-work').value.trim();
+  const pubSit  = document.getElementById('f-pub-situation').value.trim();
+
+  if (!name || !dt || !place || !work || !pubSit) {
+    showToast('必須項目を入力してください', true); return;
+  }
+
+  const btn = document.getElementById('f-submit');
+  btn.disabled = true; btn.textContent = '保存中...';
+
+  const recordNo = 'INJ-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + Date.now().toString().slice(-4);
+
+  const props = {
+    '記録番号':      { title: [{ text: { content: recordNo } }] },
+    '氏名':          { rich_text: [{ text: { content: name } }] },
+    '雇用形態':      { select: document.getElementById('f-employ').value ? { name: document.getElementById('f-employ').value } : null },
+    '発生日時':      { date: { start: dt } },
+    '発生場所':      { rich_text: [{ text: { content: place } }] },
+    '作業内容':      { rich_text: [{ text: { content: work } }] },
+    '公表用発生状況':{ rich_text: [{ text: { content: pubSit } }] },
+    'ステータス':    { select: { name: document.getElementById('f-status').value } },
+  };
+
+  const fields = [
+    ['f-injury-type','ケガの種類','select'],
+    ['f-part','負傷部位','text'],
+    ['f-detail','ケガの詳細','text'],
+    ['f-report','本人申告内容','text'],
+    ['f-hearer','聴取者','text'],
+    ['f-company-check','会社確認内容','text'],
+    ['f-hospital','医療機関名','text'],
+    ['f-diagnosis','診断内容','text'],
+    ['f-doctor-inst','医師の指示','text'],
+    ['f-restriction-detail','就業制限内容','text'],
+    ['f-prevention','再発防止措置','text'],
+    ['f-pub-prevention','公表用再発防止策','text'],
+  ];
+  fields.forEach(([fid, key, type]) => {
+    const val = document.getElementById(fid)?.value?.trim();
+    if (!val) return;
+    if (type === 'select') props[key] = { select: { name: val } };
+    else props[key] = { rich_text: [{ text: { content: val } }] };
+  });
+
+  const dateFields = [
+    ['f-hear-date','聴取日時'],
+    ['f-visit-date','受診日'],
+    ['f-off-start','休業開始日'],
+    ['f-off-end','休業終了日'],
+  ];
+  dateFields.forEach(([fid, key]) => {
+    const val = document.getElementById(fid)?.value;
+    if (val) props[key] = { date: { start: val } };
+  });
+
+  const days = document.getElementById('f-off-days').value;
+  if (days) props['休業日数'] = { number: parseInt(days) };
+  props['就業制限'] = { checkbox: document.getElementById('f-restriction').checked };
+
+  try {
+    await notionCreate(props);
+    showToast('記録を保存しました');
+    // フォームリセット
+    document.querySelectorAll('#pane-new .form-input').forEach(el => {
+      if (el.type === 'checkbox') el.checked = false;
+      else el.value = '';
+    });
+    document.getElementById('f-restriction-wrap').style.display = 'none';
+    allRecords = [];
+    switchTab('adm');
+    loadAdm();
+    loadPub();
+  } catch(e) {
+    showToast('保存に失敗しました', true);
+  } finally {
+    btn.disabled = false; btn.textContent = '記録を保存';
+  }
+}
+
+// ─── ユーティリティ ────────────────────────────────────────────────
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function showToast(msg, err) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = err ? 'var(--red)' : 'var(--green)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+<script src="foo-swipe.js"></script>
+</body>
+</html>

@@ -2153,11 +2153,15 @@ function stockHistory(mode) {
     var kubun = props['区分']?.select?.name || '―';
     var dest = props['出庫先']?.rich_text?.[0]?.plain_text || '―';
     var qty = (props['数量']?.number !== undefined) ? props['数量'].number : '―';
+    var memo = props['メモ']?.rich_text?.[0]?.plain_text || '';
     var creator = props['作成者']?.select?.name || '―';
     var date = r.created_time ? new Date(r.created_time).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}) : '―';
     var kColor = KCOLORS[kubun] || 'var(--muted)';
     var cName = creator.split('\u3000')[0];
-    return '<div style="border-bottom:1px solid var(--border);padding:10px 0;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><span style="font-size:11px;color:var(--muted);">' + date + '</span><span style="font-size:10px;color:' + kColor + ';border:1px solid ' + kColor + ';border-radius:4px;padding:1px 6px;">' + kubun + '</span></div><div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:13px;color:var(--text);flex:1;">' + dest + '</span><span style="font-size:16px;font-weight:700;color:var(--accent);font-family:\'DM Mono\',monospace;margin:0 12px;">' + qty + '本</span><span style="font-size:11px;color:var(--muted);">' + cName + '</span></div></div>';
+    var pid = r.id;
+    var clickable = kubunMode === '準備' ? ' cursor:pointer;' : '';
+    var onclick = kubunMode === '準備' ? ' onclick="openPrepEdit(\'' + pid + '\',' + qty + ',\'' + dest.replace(/'/g,"\\'") + '\',\'' + memo.replace(/'/g,"\\'") + '\')"' : '';
+    return '<div id="prep-row-' + pid.slice(0,8) + '" style="border-bottom:1px solid var(--border);padding:10px 0;' + clickable + '"' + onclick + '><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><span style="font-size:11px;color:var(--muted);">' + date + '</span><span style="font-size:10px;color:' + kColor + ';border:1px solid ' + kColor + ';border-radius:4px;padding:1px 6px;">' + kubun + '</span></div><div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:13px;color:var(--text);flex:1;">' + dest + '</span><span style="font-size:16px;font-weight:700;color:var(--accent);font-family:\'DM Mono\',monospace;margin:0 12px;">' + qty + '本</span><span style="font-size:11px;color:var(--muted);">' + cName + '</span></div>' + (kubunMode === '準備' ? '<div style="font-size:10px;color:var(--muted);margin-top:2px;">タップで編集</div>' : '') + '</div>';
   }).join('');
   var limitNote = (mode !== '準備' && mode !== '発注中') ? '<div style="font-size:11px;color:var(--muted);margin-top:8px;">最新10件表示</div>' : '';
   var html = '<div class="content">';
@@ -2172,6 +2176,59 @@ function stockHistory(mode) {
     : function() { renderStockResult(_stockSize, _stockCatKey, _stockRecords); };
   document.getElementById('hist-back').onclick = _backFn;
   document.getElementById('hist-back2').onclick = _backFn;
+}
+
+// ─── 準備レコード編集 ──────────────────────────────────────────────────────────
+function openPrepEdit(pageId, qty, dest, memo) {
+  var rowEl = document.getElementById('prep-row-' + pageId.slice(0,8));
+  if (!rowEl) return;
+  rowEl.onclick = null;
+  rowEl.style.cursor = 'default';
+  rowEl.innerHTML = '<div style="background:var(--s2);border:1px solid var(--yellow);border-radius:10px;padding:12px;">' +
+    '<div style="font-size:11px;color:var(--yellow);font-weight:700;margin-bottom:8px;">✏️ 準備を編集</div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:8px;">' +
+      '<div style="flex:1;"><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px;">数量</label>' +
+        '<input id="pe-qty-' + pageId.slice(0,8) + '" type="number" value="' + qty + '" min="1" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:16px;font-weight:700;font-family:DM Mono,monospace;"></div>' +
+      '<div style="flex:2;"><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px;">出庫先</label>' +
+        '<input id="pe-dest-' + pageId.slice(0,8) + '" type="text" value="' + dest.replace(/"/g,'&quot;') + '" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:13px;"></div>' +
+    '</div>' +
+    '<div style="margin-bottom:10px;"><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px;">メモ</label>' +
+      '<input id="pe-memo-' + pageId.slice(0,8) + '" type="text" value="' + memo.replace(/"/g,'&quot;') + '" placeholder="メモ（任意）" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:13px;"></div>' +
+    '<div style="display:flex;gap:8px;">' +
+      '<button onclick="savePrepEdit(\'' + pageId + '\')" style="flex:1;padding:10px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">更新</button>' +
+      '<button onclick="cancelPrepEdit(\'' + pageId + '\',' + qty + ',\'' + dest.replace(/'/g,"\\'") + '\')" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--s2);color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit;">キャンセル</button>' +
+    '</div>' +
+  '</div>';
+}
+
+async function savePrepEdit(pageId) {
+  var short = pageId.slice(0,8);
+  var qtyEl = document.getElementById('pe-qty-' + short);
+  var destEl = document.getElementById('pe-dest-' + short);
+  var memoEl = document.getElementById('pe-memo-' + short);
+  if (!qtyEl) return;
+  var newQty = parseInt(qtyEl.value) || 0;
+  var newDest = destEl ? destEl.value.trim() : '';
+  var newMemo = memoEl ? memoEl.value.trim() : '';
+  if (newQty <= 0) { alert('数量は1以上を入力してください'); return; }
+  try {
+    var props = { '数量': { number: newQty } };
+    if (newDest !== undefined) props['出庫先'] = { rich_text: [{ text: { content: newDest } }] };
+    if (newMemo !== undefined) props['メモ'] = { rich_text: [{ text: { content: newMemo } }] };
+    await notionAPI('PATCH', '/pages/' + pageId, { properties: props });
+    showToast('更新しました');
+    // 在庫確認を再読み込み
+    var s = _stockSize;
+    if (s) { renderStockSearch(); document.getElementById('stock-search').value = s; stockSearch(s); }
+  } catch(e) {
+    alert('更新失敗: ' + e.message);
+  }
+}
+
+function cancelPrepEdit(pageId, origQty, origDest) {
+  // 元の準備一覧に戻る（stockHistoryを再実行）
+  var s = _stockSize;
+  if (s) { renderStockSearch(); document.getElementById('stock-search').value = s; stockSearch(s); }
 }
 
 // ─── 価格検索ページ ──────────────────────────────────────────────────────────

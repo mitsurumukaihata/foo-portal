@@ -120,7 +120,8 @@ function fooGetKijunDbInfo(categoryName) {
 const FOO_KUBUN_SIGN = {
   '入庫':1, '移動入庫':1, '返品（倉庫へ）':1, '返品':1,
   '出庫':-1, '準備':-1, '移動出庫':-1, '返品（メーカーへ）':-1,
-  '発注中':0, '繰越':1,
+  '繰越':1,
+  // '発注中' は在庫DBから廃止（発注管理DBが単一ソース）
 };
 
 const FOO_WAREHOUSES = ['五日市倉庫','志和倉庫'];
@@ -277,7 +278,73 @@ function fooDetectDbKeys(sizeStr, patternStr) {
 // ══════════════════════════════════════════════════════════════════════
 
 /**
- * 在庫DBに「発注中」レコードを1件作成
+ * 発注管理DBから「発注済」レコードを取得し、パターン+サイズ+倉庫でグルーピングして返す
+ * ※ 在庫DBの「発注中」廃止に伴い、発注中の単一ソースとして使用
+ * @param {string} [pattern] - パターン名フィルタ（省略時は全パターン）
+ * @param {string} [size]    - サイズフィルタ（省略時は全サイズ）
+ * @param {string} [warehouse] - 倉庫フィルタ（省略時は全倉庫）
+ * @returns {Promise<Map<string, number>>} キー="パターン|サイズ|倉庫" → 合計本数
+ */
+async function fooGetPendingOrders(pattern, size, warehouse) {
+  const filter = { property: 'ステータス', select: { equals: '発注済' } };
+  const andFilters = [filter];
+  if (pattern) andFilters.push({ property: 'パターン', select: { equals: pattern } });
+  if (size)    andFilters.push({ property: 'サイズ', select: { equals: size } });
+  if (warehouse) {
+    const wh = fooWarehouseFull(warehouse);
+    andFilters.push({ property: '納入予定場所', select: { equals: wh } });
+  }
+  const queryFilter = andFilters.length === 1 ? andFilters[0] : { and: andFilters };
+
+  const result = new Map();
+  let cursor = null;
+  do {
+    const body = { filter: queryFilter, page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    const r = await fooNotionQuery(FOO_HACCHU_DB, body);
+    for (const p of (r.results || [])) {
+      const pt = p.properties['パターン']?.select?.name || '';
+      const sz = p.properties['サイズ']?.select?.name || '';
+      const wh = p.properties['納入予定場所']?.select?.name || '';
+      const qty = p.properties['数量']?.number || 0;
+      const key = `${pt}|${sz}|${wh}`;
+      result.set(key, (result.get(key) || 0) + qty);
+    }
+    cursor = r.has_more ? r.next_cursor : null;
+  } while (cursor);
+  return result;
+}
+
+/**
+ * 発注管理DBから特定サイズの発注済レコードを配列で返す（tire-manager の発注中表示用）
+ * @param {string} size - サイズコード
+ * @returns {Promise<Array>} 発注済レコードの配列
+ */
+async function fooGetPendingOrdersBySize(size) {
+  const filter = { and: [
+    { property: 'ステータス', select: { equals: '発注済' } },
+    { property: 'サイズ', select: { equals: size } },
+  ]};
+  const results = [];
+  let cursor = null;
+  do {
+    const body = { filter, page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    const r = await fooNotionQuery(FOO_HACCHU_DB, body);
+    results.push(...(r.results || []));
+    cursor = r.has_more ? r.next_cursor : null;
+  } while (cursor);
+  return results;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// 【廃止】在庫DB「発注中」レコード管理
+// ※ 発注管理DBに統合済み。以下の関数は互換性のため残すがno-op化
+// ══════════════════════════════════════════════════════════════════════
+
+/**
+ * 【廃止】在庫DBに「発注中」レコードを1件作成
+ * ※ 発注管理DBに統合済みのため、何もせずにダミーオブジェクトを返す
  * @param {object} params
  * @param {string} params.category    - カテゴリ名（例: 'LTS　ノーマル'）※ categoryかdbKeyどちらか必須
  * @param {string} [params.dbKey]     - DB短縮キー（例: 'lts_normal'）
@@ -290,33 +357,9 @@ function fooDetectDbKeys(sizeStr, patternStr) {
  * @returns {Promise<object>} 作成されたページ
  */
 async function fooCreateStockOrder(params) {
-  // DB情報の取得
-  let dbInfo;
-  if (params.category) {
-    dbInfo = FOO_STOCK_DB_MAP[params.category];
-  } else if (params.dbKey) {
-    dbInfo = FOO_DB_BY_KEY[params.dbKey];
-  }
-  if (!dbInfo) throw new Error('DB不明: ' + (params.category || params.dbKey));
-
-  const wh = fooWarehouseFull(params.warehouse || '');
-  const creator = params.creator || '自動取込';
-  const title = `${params.size} ${params.pattern} 発注中${wh ? ' ' + wh : ''}`;
-
-  const props = {
-    'タイトル':     { title: [{ text: { content: title } }] },
-    'サイズコード': { select: { name: params.size } },
-    'パターン名':   { select: { name: params.pattern } },
-    '区分':         { select: { name: '発注中' } },
-    '数量':         { number: params.qty },
-    '作成者':       { select: { name: creator } },
-  };
-  if (wh) props[dbInfo.wField] = { select: { name: wh } };
-  if (params.memo) {
-    props['メモ'] = { rich_text: [{ text: { content: params.memo } }] };
-  }
-
-  return fooNotionCreate(dbInfo.stockId, props);
+  // 【廃止】発注管理DBに統合済み。互換性のためダミーを返す
+  console.log('[廃止] fooCreateStockOrder は発注管理DB統合により無効化されました');
+  return { id: 'noop', object: 'page' };
 }
 
 /**
@@ -325,23 +368,9 @@ async function fooCreateStockOrder(params) {
  * @returns {Promise<{ok:number, errors:string[]}>}
  */
 async function fooCreateStockOrdersBatch(items) {
-  const errors = [];
-  const tasks = items.map(async item => {
-    try {
-      return await fooCreateStockOrder(item);
-    } catch (e1) {
-      // 1回リトライ（1秒待機）
-      try {
-        await new Promise(r => setTimeout(r, 1000));
-        return await fooCreateStockOrder(item);
-      } catch (e2) {
-        errors.push(`${item.pattern} ${item.size}: ${e2.message}`);
-        return null;
-      }
-    }
-  });
-  await Promise.all(tasks);
-  return { ok: items.length - errors.length, errors };
+  // 【廃止】発注管理DBに統合済み。互換性のためダミーを返す
+  console.log('[廃止] fooCreateStockOrdersBatch は発注管理DB統合により無効化されました');
+  return { ok: items.length, errors: [] };
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -358,59 +387,9 @@ async function fooCreateStockOrdersBatch(items) {
  * @returns {Promise<{deleted:number, errors:string[]}>}
  */
 async function fooDeleteStockOrders(params) {
-  const dbKeys = fooDetectDbKeys(params.size, params.pattern);
-  if (!dbKeys.length) return { deleted: 0, errors: ['該当DBが見つかりません: ' + params.size + ' ' + params.pattern] };
-
-  const wh = params.warehouse ? fooWarehouseFull(params.warehouse) : null;
-  let deleted = 0;
-  const errors = [];
-
-  for (const key of dbKeys) {
-    const dbInfo = FOO_DB_BY_KEY[key];
-    if (!dbInfo) continue;
-
-    // 区分=発注中 & サイズコード一致 でクエリ
-    const filter = {
-      and: [
-        { property: '区分', select: { equals: '発注中' } },
-        { property: 'サイズコード', select: { equals: params.size } },
-      ]
-    };
-    // パターン名フィルタ
-    if (params.pattern) {
-      filter.and.push({ property: 'パターン名', select: { equals: params.pattern } });
-    }
-    // 倉庫フィルタ
-    if (wh && dbInfo.wField) {
-      filter.and.push({ property: dbInfo.wField, select: { equals: wh } });
-    }
-    // 数量フィルタ：qty指定時は「その数量のレコードのみ」に絞り込む
-    // （同一サイズ・パターン・倉庫の別注文のレコードを誤削除しないため）
-    if (params.qty) {
-      filter.and.push({ property: '数量', number: { equals: params.qty } });
-    }
-
-    try {
-      const res = await fooNotionQuery(dbInfo.stockId, { filter, page_size: 100 });
-      const pages = (res.results || []).filter(p => !p.archived);
-
-      // qty指定あり→1件のみ削除（1注文=1レコードの原則）、なし→全件削除
-      const targets = params.qty ? pages.slice(0, 1) : pages;
-
-      for (const page of targets) {
-        try {
-          await fooNotionRequest('PATCH', '/pages/' + page.id, { archived: true });
-          deleted++;
-        } catch (e) {
-          errors.push('アーカイブ失敗(' + page.id + '): ' + e.message);
-        }
-      }
-    } catch (e) {
-      errors.push('クエリ失敗(' + key + '): ' + e.message);
-    }
-  }
-
-  return { deleted, errors };
+  // 【廃止】発注管理DBに統合済み。互換性のためダミーを返す
+  console.log('[廃止] fooDeleteStockOrders は発注管理DB統合により無効化されました');
+  return { deleted: 0, errors: [] };
 }
 
 // ══════════════════════════════════════════════════════════════════════

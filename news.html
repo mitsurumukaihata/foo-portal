@@ -37,7 +37,7 @@ body::-webkit-scrollbar{display:none;}
 .header-title{font-size:17px;font-weight:900;letter-spacing:-0.02em;}
 .header-title span{color:var(--accent);}
 
-/* Tab rows */
+/* Tab bar */
 .tabs{display:flex;flex-wrap:wrap;gap:6px;padding:10px 16px;background:var(--s1);border-bottom:.5px solid var(--border);}
 .tab-btn{position:relative;padding:7px 12px;background:var(--s2);border:1.5px solid var(--border);border-radius:20px;color:var(--muted);font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;text-align:center;transition:all .15s;display:flex;align-items:center;gap:4px;white-space:nowrap;}
 .tab-btn:active{transform:scale(0.97);}
@@ -45,23 +45,52 @@ body::-webkit-scrollbar{display:none;}
 .tab-btn .tab-icon{font-size:14px;}
 .tab-badge-new{position:absolute;top:-4px;right:-4px;width:16px;height:16px;background:var(--red);color:#fff;font-size:8px;font-weight:700;border-radius:50%;display:flex;align-items:center;justify-content:center;display:none;}
 .tab-badge-new.show{display:flex;}
+/* 日付別タブを目立たせる */
+.tab-btn.date-tab-btn{color:var(--accent);border-color:rgba(240,165,0,0.4);background:rgba(240,165,0,0.06);}
+.tab-btn.date-tab-btn.active{background:rgba(240,165,0,0.14);border-color:var(--accent);}
 
 /* Content */
 .page-content{display:none;padding:12px 16px 80px;}
 .page-content.active{display:block;}
 
-/* Category description */
-.cat-desc{font-size:12px;color:var(--muted);line-height:1.6;padding:12px 14px;background:var(--s2);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;}
+/* ── 日付別ビュー ── */
+.date-section{margin-bottom:20px;}
+.date-section-header{
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:14px;font-weight:900;color:var(--text);
+  padding:12px 2px 8px;
+  border-bottom:2px solid var(--accent);
+  margin-bottom:8px;letter-spacing:-0.01em;
+}
+.date-count{
+  font-size:11px;font-weight:600;color:var(--muted);
+  background:var(--s3);border-radius:10px;padding:2px 10px;
+}
+.cat-pill{
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:10px;font-weight:700;padding:3px 8px;
+  border-radius:10px;background:var(--s3);color:var(--muted);
+  white-space:nowrap;flex-shrink:0;
+}
+.news-card-top{
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  margin-bottom:5px;
+}
+.unread-dot{
+  display:inline-block;width:7px;height:7px;
+  background:var(--red);border-radius:50%;flex-shrink:0;margin-left:auto;
+}
 
 /* Article card */
 .news-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:all .15s;}
 .news-card:active{background:var(--s3);transform:scale(0.98);}
 .news-title{font-size:14px;font-weight:700;line-height:1.5;margin-bottom:4px;}
 .news-date{font-size:11px;color:var(--muted);}
-.news-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px;}
+.news-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px;white-space:nowrap;}
 .badge-critical{background:rgba(239,68,68,0.15);color:var(--red);}
 .badge-warning{background:rgba(234,179,8,0.15);color:var(--yellow);}
 .badge-info{background:rgba(59,130,246,0.15);color:var(--blue);}
+.badge-report{background:rgba(168,85,247,0.15);color:var(--purple);}
 
 /* Viewer */
 .viewer{position:fixed;inset:0;z-index:200;background:var(--bg);display:none;flex-direction:column;}
@@ -103,7 +132,6 @@ body::-webkit-scrollbar{display:none;}
 </div>
 
 <div class="tabs" id="tab-bar"></div>
-
 <div id="pages-container"></div>
 
 <!-- Article viewer -->
@@ -148,68 +176,269 @@ let loginUser = '';
   } catch(e) { location.href = 'index.html'; }
 })();
 
+/* ── 権限チェック（スペース差異を吸収） ── */
+function normName(n) { return (n || '').replace(/[\s\u3000\u00a0]/g, ''); }
+function isOwner() { return normName(loginUser) === '向畑充'; }
+function isKeiri() { return ['向畑充', '向畑綾花'].indexOf(normName(loginUser)) >= 0; }
+
 /* ── ニュースDB ── */
 const NEWS_DB_ID = '7e3fdea7165d41b1918c5d25f15e7c36';
+
 const ALL_CATEGORIES = [
-  { key: 'tire',       icon: '🛞', name: 'タイヤ',       filter: '🛞 タイヤ' },
-  { key: 'unsou',      icon: '🚚', name: '運送',         filter: '🚚 運送' },
-  { key: 'dealer',     icon: '🚛', name: 'ディーラー',   filter: '🚛 ディーラー' },
-  { key: 'subsidy',    icon: '💴', name: '経営・助成金', filter: '💴 経営・助成金', keiriOnly: true },
-  { key: 'hiroshima',  icon: '📈', name: '広島経済',     filter: '📈 広島経済' },
-  { key: 'maintenance',icon: '🔧', name: '自動車整備',   filter: '🔧 自動車整備' },
-  { key: 'logistics',  icon: '🌍', name: '物流DX',       filter: '🌍 物流DX' },
-  { key: 'sns',        icon: '📱', name: 'SNSマーケ',    filter: '📱 SNSマーケ' },
-  { key: 'indeed',     icon: '📊', name: 'Indeed',       filter: '📊 Indeed', ownerOnly: true },
+  { key: 'tire',        icon: '🛞', name: 'タイヤ',       filter: '🛞 タイヤ' },
+  { key: 'unsou',       icon: '🚚', name: '運送',         filter: '🚚 運送' },
+  { key: 'dealer',      icon: '🚛', name: 'ディーラー',   filter: '🚛 ディーラー' },
+  { key: 'subsidy',     icon: '💴', name: '経営・助成金', filter: '💴 経営・助成金', keiriOnly: true },
+  { key: 'hiroshima',   icon: '📈', name: '広島経済',     filter: '📈 広島経済' },
+  { key: 'maintenance', icon: '🔧', name: '自動車整備',   filter: '🔧 自動車整備' },
+  { key: 'logistics',   icon: '🌍', name: '物流DX',       filter: '🌍 物流DX' },
+  { key: 'sns',         icon: '📱', name: 'SNSマーケ',    filter: '📱 SNSマーケ' },
+  { key: 'indeed',      icon: '📊', name: 'Indeed',       filter: '📊 Indeed',       ownerOnly: true },
+  { key: 'ai_celeb',    icon: '💬', name: 'AI著名人発言', filter: '💬 AI著名人発言', ownerOnly: true },
+  { key: 'ai_trend',    icon: '🌐', name: 'AIトレンド',   filter: '🌐 AIトレンド',   ownerOnly: true },
 ];
-// Indeed: 向畑充のみ / 経営・助成金: 向畑充+向畑綾花のみ / 他: 全社員
-const OWNER_NAMES = ['向畑 充', '向畑充'];
-const KEIRI_NAMES = ['向畑 充', '向畑充', '向畑 綾花', '向畑綾花'];
-const CATEGORIES = ALL_CATEGORIES.filter(function(cat) {
-  if (cat.ownerOnly) return OWNER_NAMES.indexOf(loginUser) >= 0;
-  if (cat.keiriOnly) return KEIRI_NAMES.indexOf(loginUser) >= 0;
+// Indeed・AI著名人発言・AIトレンド: 向畑充のみ / 経営・助成金: 向畑充+向畑綾花のみ / 他: 全社員
+
+/* 日付別タブ（先頭に追加） */
+const DATE_TAB = { key: 'date', icon: '🗓️', name: '日付別', isDateView: true };
+
+/* 権限でフィルタ済みカテゴリ一覧 */
+const CAT_TABS = ALL_CATEGORIES.filter(function(cat) {
+  if (cat.ownerOnly) return isOwner();
+  if (cat.keiriOnly) return isKeiri();
   return true;
 });
 
+/* 全タブ = 日付別 + カテゴリ */
+const TABS = [DATE_TAB].concat(CAT_TABS);
+
 let currentTab = 0;
-const articleCache = {}; // category -> [{id, title, date, importance}]
-const contentCache = {}; // pageId -> html
+const articleCache = {}; // catFilter → [{id,title,date,importance,isRead}]
+const contentCache = {}; // pageId → html
+let dateViewLoaded = false;
+let dateViewArticles = []; // merged/sorted for date view
 
 /* ── Render tabs ── */
 function renderTabs() {
   var bar = document.getElementById('tab-bar');
-  bar.innerHTML = CATEGORIES.map(function(cat, i) {
-    return '<button class="tab-btn' + (i === currentTab ? ' active' : '') + '" id="tab-' + cat.key + '" onclick="switchNewsTab(' + i + ')">'
-      + '<span class="tab-icon">' + cat.icon + '</span>' + cat.name
-      + '<span class="tab-badge-new" id="badge-' + cat.key + '"></span>'
+  bar.innerHTML = TABS.map(function(tab, i) {
+    var extra = tab.isDateView ? ' date-tab-btn' : '';
+    return '<button class="tab-btn' + (i === currentTab ? ' active' : '') + extra + '" id="tab-' + tab.key + '" onclick="switchNewsTab(' + i + ')">'
+      + '<span class="tab-icon">' + tab.icon + '</span>' + tab.name
+      + '<span class="tab-badge-new" id="badge-' + tab.key + '"></span>'
       + '</button>';
   }).join('');
 
   var container = document.getElementById('pages-container');
-  container.innerHTML = CATEGORIES.map(function(cat, i) {
-    return '<div class="page-content' + (i === currentTab ? ' active' : '') + '" id="page-' + cat.key + '">'
+  container.innerHTML = TABS.map(function(tab, i) {
+    return '<div class="page-content' + (i === currentTab ? ' active' : '') + '" id="page-' + tab.key + '">'
       + '<div class="loading"><div class="spinner"></div><br>読み込み中...</div>'
       + '</div>';
   }).join('');
 
-  // 全カテゴリの未読数をチェック
   checkAllBadges();
 }
 
+/* ── Tab switch ── */
 function switchNewsTab(idx) {
   currentTab = idx;
   document.querySelectorAll('.tab-btn').forEach(function(b, i) { b.classList.toggle('active', i === idx); });
   document.querySelectorAll('.page-content').forEach(function(p, i) { p.classList.toggle('active', i === idx); });
-  // バッジはタブを開いただけでは消さない（記事を開いて既読になったら消える）
-  loadCategory(idx);
+  var tab = TABS[idx];
+  if (tab.isDateView) {
+    loadDateView();
+  } else {
+    var catIdx = idx - 1; // DATE_TABが先頭なのでオフセット
+    loadCategory(catIdx);
+  }
 }
 
-/* ── Check unread badges for all categories（向畑さんのみ） ── */
-async function checkAllBadges() {
-  // バッジ機能は向畑さんのみ
-  if (OWNER_NAMES.indexOf(loginUser) < 0) return;
+/* ── 日付別ビュー：全カテゴリを並行ロード ── */
+async function loadDateView() {
+  if (dateViewLoaded) { renderDateView(); return; }
+  const el = document.getElementById('page-date');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div><br>全カテゴリ読み込み中...</div>';
 
-  for (var i = 0; i < CATEGORIES.length; i++) {
-    var cat = CATEGORIES[i];
+  // 未キャッシュのカテゴリを並行フェッチ
+  await Promise.all(CAT_TABS.map(function(cat) {
+    if (articleCache[cat.filter]) return Promise.resolve();
+    return notionPost('/databases/' + NEWS_DB_ID + '/query', {
+      filter: { property: 'カテゴリ', select: { equals: cat.filter } },
+      sorts: [{ timestamp: 'created_time', direction: 'descending' }],
+      page_size: 30,
+    }).then(function(data) {
+      var arts = (data.results || []).map(function(p) {
+        var readers = (p.properties['確認者'] && p.properties['確認者'].multi_select || []).map(function(s){ return s.name; });
+        return {
+          id: p.id,
+          title: (p.properties['タイトル'] && p.properties['タイトル'].title && p.properties['タイトル'].title[0] && p.properties['タイトル'].title[0].plain_text) || '（無題）',
+          date: (p.properties['日付'] && p.properties['日付'].date && p.properties['日付'].date.start) || '',
+          importance: (p.properties['重要度'] && p.properties['重要度'].select && p.properties['重要度'].select.name) || '',
+          isRead: readers.indexOf(loginUser) >= 0,
+        };
+      });
+      arts.sort(function(a, b){ return (b.date || '').localeCompare(a.date || ''); });
+      articleCache[cat.filter] = arts;
+    }).catch(function(){ /* silent */ });
+  }));
+
+  // 全カテゴリの記事をマージ（カテゴリ情報付加）
+  var merged = [];
+  CAT_TABS.forEach(function(cat) {
+    (articleCache[cat.filter] || []).forEach(function(a) {
+      merged.push({
+        id: a.id, title: a.title, date: a.date,
+        importance: a.importance, isRead: a.isRead,
+        catKey: cat.key, catIcon: cat.icon, catName: cat.name, catFilter: cat.filter,
+      });
+    });
+  });
+
+  // 日付降順 → 重要度昇順でソート
+  function impPriority(s) {
+    if (s.indexOf('緊急') >= 0)   return 0;
+    if (s.indexOf('要注意') >= 0) return 1;
+    if (s.indexOf('レポート') >= 0) return 2;
+    return 3;
+  }
+  merged.sort(function(a, b) {
+    var dc = (b.date || '').localeCompare(a.date || '');
+    if (dc !== 0) return dc;
+    return impPriority(a.importance) - impPriority(b.importance);
+  });
+
+  dateViewArticles = merged;
+  dateViewLoaded = true;
+  renderDateView();
+}
+
+/* ── 日付別ビュー：レンダリング ── */
+function renderDateView() {
+  var el = document.getElementById('page-date');
+  if (!dateViewArticles.length) {
+    el.innerHTML = '<div class="empty-msg">ニュースはまだありません</div>';
+    return;
+  }
+
+  // 日付ごとにグループ化
+  var groups = {}, dateOrder = [];
+  dateViewArticles.forEach(function(art) {
+    var d = art.date || '（日付なし）';
+    if (!groups[d]) { groups[d] = []; dateOrder.push(d); }
+    groups[d].push(art);
+  });
+
+  var DAYS = ['日','月','火','水','木','金','土'];
+  var html = '';
+
+  dateOrder.forEach(function(dateStr) {
+    var arts = groups[dateStr];
+
+    // 日付ヘッダー整形
+    var label = dateStr;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      var d = new Date(dateStr + 'T00:00:00');
+      label = (d.getMonth() + 1) + '/' + d.getDate() + '（' + DAYS[d.getDay()] + '）';
+    }
+
+    html += '<div class="date-section">';
+    html += '<div class="date-section-header"><span>' + label + '</span><span class="date-count">' + arts.length + '件</span></div>';
+
+    arts.forEach(function(art) {
+      var badgeClass, badgeText;
+      if (art.importance.indexOf('緊急') >= 0)    { badgeClass = 'badge-critical'; badgeText = '緊急'; }
+      else if (art.importance.indexOf('要注意') >= 0) { badgeClass = 'badge-warning';  badgeText = '要注意'; }
+      else if (art.importance.indexOf('レポート') >= 0){ badgeClass = 'badge-report';   badgeText = 'レポート'; }
+      else                                          { badgeClass = 'badge-info';      badgeText = '参考情報'; }
+
+      var unreadDot  = (!art.isRead && isOwner()) ? '<span class="unread-dot"></span>' : '';
+      var borderStyle = !art.isRead ? 'border-left:3px solid var(--accent);' : '';
+
+      html += '<div class="news-card" style="' + borderStyle + '" onclick="openArticle(\'' + art.id + '\',\'' + escAttr(art.title) + '\',\'' + art.catKey + '\')">';
+      html += '<div class="news-card-top">';
+      html += '<span class="cat-pill">' + art.catIcon + ' ' + art.catName + '</span>';
+      html += '<span class="news-badge ' + badgeClass + '">' + badgeText + '</span>';
+      html += unreadDot;
+      html += '</div>';
+      html += '<div class="news-title">' + esc(art.title) + '</div>';
+      html += '</div>';
+    });
+
+    html += '</div>';
+  });
+
+  el.innerHTML = html;
+}
+
+/* ── カテゴリ別ビュー：ロード ── */
+async function loadCategory(catIdx) {
+  if (catIdx < 0 || catIdx >= CAT_TABS.length) return;
+  const cat = CAT_TABS[catIdx];
+  if (articleCache[cat.filter]) { renderArticleList(catIdx); return; }
+
+  const el = document.getElementById('page-' + cat.key);
+  el.innerHTML = '<div class="loading"><div class="spinner"></div><br>読み込み中...</div>';
+
+  try {
+    const data = await notionPost('/databases/' + NEWS_DB_ID + '/query', {
+      filter: { property: 'カテゴリ', select: { equals: cat.filter } },
+      sorts: [{ timestamp: 'created_time', direction: 'descending' }],
+      page_size: 30,
+    });
+    const articles = (data.results || []).map(p => {
+      var readers = (p.properties['確認者']?.multi_select || []).map(s => s.name);
+      return {
+        id: p.id,
+        title: p.properties['タイトル']?.title?.[0]?.plain_text || '（無題）',
+        date: p.properties['日付']?.date?.start || '',
+        importance: p.properties['重要度']?.select?.name || '',
+        isRead: readers.indexOf(loginUser) >= 0,
+      };
+    });
+    articles.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    articleCache[cat.filter] = articles;
+    renderArticleList(catIdx);
+  } catch (e) {
+    el.innerHTML = `<div class="empty-msg">読み込みに失敗しました<br><small>${e.message}</small></div>`;
+  }
+}
+
+/* ── カテゴリ別ビュー：レンダリング ── */
+function renderArticleList(catIdx) {
+  const cat = CAT_TABS[catIdx];
+  const el = document.getElementById('page-' + cat.key);
+  const articles = articleCache[cat.filter] || [];
+
+  if (!articles.length) {
+    el.innerHTML = '<div class="empty-msg">ニュースはまだありません</div>';
+    return;
+  }
+
+  el.innerHTML = articles.map(art => {
+    let badge = '';
+    if (art.importance.includes('緊急'))    badge = '<span class="news-badge badge-critical">緊急</span>';
+    else if (art.importance.includes('要注意'))  badge = '<span class="news-badge badge-warning">要注意</span>';
+    else if (art.importance.includes('レポート')) badge = '<span class="news-badge badge-report">レポート</span>';
+    else badge = '<span class="news-badge badge-info">参考情報</span>';
+
+    const dateStr = art.date ? art.date.replace(/-/g, '/') : '';
+    var unreadMark = (!art.isRead && isOwner()) ? '<span style="display:inline-block;width:8px;height:8px;background:var(--red);border-radius:50%;margin-right:6px;flex-shrink:0;"></span>' : '';
+
+    return `<div class="news-card" onclick="openArticle('${art.id}','${escAttr(art.title)}','${cat.key}')" style="${!art.isRead ? 'border-left:3px solid var(--accent);' : ''}">
+      <div class="news-title" style="display:flex;align-items:flex-start;">${unreadMark}<span>${esc(art.title)}</span>${badge}</div>
+      ${dateStr ? `<div class="news-date">${dateStr}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+/* ── 全カテゴリのバッジチェック（向畑さんのみ） ── */
+async function checkAllBadges() {
+  if (!isOwner()) return;
+
+  let anyUnread = false;
+
+  for (var i = 0; i < CAT_TABS.length; i++) {
+    var cat = CAT_TABS[i];
     try {
       var data = await notionPost('/databases/' + NEWS_DB_ID + '/query', {
         filter: {
@@ -225,15 +454,23 @@ async function checkAllBadges() {
       if (badge && count > 0) {
         badge.textContent = '!';
         badge.classList.add('show');
+        anyUnread = true;
       }
     } catch(e) { /* silent */ }
   }
+
+  // 日付別タブのバッジ（いずれかに未読があれば表示）
+  var dateBadge = document.getElementById('badge-date');
+  if (dateBadge && anyUnread) {
+    dateBadge.textContent = '!';
+    dateBadge.classList.add('show');
+  }
 }
 
-/* ── 記事既読後にバッジを再チェック ── */
+/* ── 記事既読後にバッジ再チェック ── */
 async function refreshBadgeForCategory(catKey) {
-  if (OWNER_NAMES.indexOf(loginUser) < 0) return;
-  var cat = CATEGORIES.find(function(c) { return c.key === catKey; });
+  if (!isOwner()) return;
+  var cat = CAT_TABS.find(function(c) { return c.key === catKey; });
   if (!cat) return;
   try {
     var data = await notionPost('/databases/' + NEWS_DB_ID + '/query', {
@@ -245,13 +482,21 @@ async function refreshBadgeForCategory(catKey) {
       },
       page_size: 1,
     });
-    var badge = document.getElementById('badge-' + cat.key);
+    var badge = document.getElementById('badge-' + catKey);
     if (badge) {
-      if ((data.results || []).length > 0) {
-        badge.classList.add('show');
-      } else {
-        badge.classList.remove('show');
-      }
+      if ((data.results || []).length > 0) badge.classList.add('show');
+      else badge.classList.remove('show');
+    }
+    // 日付別バッジも再確認
+    var anyUnread = false;
+    CAT_TABS.forEach(function(c) {
+      var b = document.getElementById('badge-' + c.key);
+      if (b && b.classList.contains('show')) anyUnread = true;
+    });
+    var dateBadge = document.getElementById('badge-date');
+    if (dateBadge) {
+      if (anyUnread) dateBadge.classList.add('show');
+      else dateBadge.classList.remove('show');
     }
   } catch(e) { /* silent */ }
 }
@@ -262,7 +507,6 @@ async function notionGet(path) {
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return r.json();
 }
-
 async function notionPost(path, body) {
   const r = await fetch(WORKER + path, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -271,76 +515,19 @@ async function notionPost(path, body) {
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return r.json();
 }
-
-/* ── Load category from DB ── */
-async function loadCategory(idx) {
-  const cat = CATEGORIES[idx];
-  if (articleCache[cat.filter]) { renderArticleList(idx); return; }
-
-  const el = document.getElementById('page-' + cat.key);
-  el.innerHTML = '<div class="loading"><div class="spinner"></div><br>読み込み中...</div>';
-
-  try {
-    const data = await notionPost('/databases/' + NEWS_DB_ID + '/query', {
-      filter: { property: 'カテゴリ', select: { equals: cat.filter } },
-      sorts: [{ timestamp: 'created_time', direction: 'descending' }],
-      page_size: 30,
-    });
-
-    const articles = (data.results || []).map(p => {
-      var readers = (p.properties['確認者']?.multi_select || []).map(s => s.name);
-      return {
-        id: p.id,
-        title: p.properties['タイトル']?.title?.[0]?.plain_text || '（無題）',
-        date: p.properties['日付']?.date?.start || '',
-        importance: p.properties['重要度']?.select?.name || '',
-        isRead: readers.indexOf(loginUser) >= 0,
-      };
-    });
-
-    // 日付降順でソート（プロキシ側のソートが文字化けする場合の保険）
-    articles.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-
-    articleCache[cat.filter] = articles;
-    renderArticleList(idx);
-  } catch (e) {
-    el.innerHTML = `<div class="empty-msg">読み込みに失敗しました<br><small>${e.message}</small></div>`;
-  }
+async function notionPatch(path, body) {
+  const r = await fetch(WORKER + path, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
 }
 
-/* ── Render article list ── */
-function renderArticleList(idx) {
-  const cat = CATEGORIES[idx];
-  const el = document.getElementById('page-' + cat.key);
-  const articles = articleCache[cat.filter] || [];
-
-  if (!articles.length) {
-    el.innerHTML = '<div class="empty-msg">ニュースはまだありません</div>';
-    return;
-  }
-
-  el.innerHTML = articles.map(art => {
-    let badge = '';
-    if (art.importance.includes('緊急')) badge = '<span class="news-badge badge-critical">緊急</span>';
-    else if (art.importance.includes('要注意')) badge = '<span class="news-badge badge-warning">要注意</span>';
-    else if (art.importance.includes('レポート')) badge = '<span class="news-badge" style="background:rgba(168,85,247,0.15);color:var(--purple);">レポート</span>';
-    else badge = '<span class="news-badge badge-info">参考情報</span>';
-
-    const dateStr = art.date ? art.date.replace(/-/g, '/') : '';
-
-    var unreadMark = (!art.isRead && OWNER_NAMES.indexOf(loginUser) >= 0) ? '<span style="display:inline-block;width:8px;height:8px;background:var(--red);border-radius:50%;margin-right:6px;flex-shrink:0;"></span>' : '';
-
-    return `<div class="news-card" onclick="openArticle('${art.id}','${escAttr(art.title)}')" style="${!art.isRead ? 'border-left:3px solid var(--accent);' : ''}">
-      <div class="news-title" style="display:flex;align-items:flex-start;">${unreadMark}<span>${esc(art.title)}</span>${badge}</div>
-      ${dateStr ? `<div class="news-date">${dateStr}</div>` : ''}
-    </div>`;
-  }).join('');
-}
-
-/* ── Open article ── */
-async function openArticle(pageId, title) {
-  const viewer = document.getElementById('viewer');
-  const vTitle = document.getElementById('viewer-title');
+/* ── 記事を開く（catKey = バッジ更新先カテゴリ） ── */
+async function openArticle(pageId, title, catKey) {
+  const viewer  = document.getElementById('viewer');
+  const vTitle  = document.getElementById('viewer-title');
   const vContent = document.getElementById('viewer-content');
 
   vTitle.textContent = title;
@@ -368,10 +555,32 @@ async function openArticle(pageId, title) {
     contentCache[pageId] = html;
     vContent.innerHTML = html;
 
-    // 確認者に自分を追加（既読マーク）→ バッジ再チェック
+    // 既読マーク
     await markAsRead(pageId);
-    var cat = CATEGORIES[currentTab];
-    if (cat) refreshBadgeForCategory(cat.key);
+    if (catKey) refreshBadgeForCategory(catKey);
+
+    // 日付別ビューの既読状態をキャッシュに反映
+    if (dateViewLoaded) {
+      var dvArt = dateViewArticles.find(function(a){ return a.id === pageId; });
+      if (dvArt) dvArt.isRead = true;
+    }
+    // articleCacheの既読状態を更新
+    CAT_TABS.forEach(function(cat) {
+      var cached = articleCache[cat.filter];
+      if (cached) {
+        var found = cached.find(function(a){ return a.id === pageId; });
+        if (found) found.isRead = true;
+      }
+    });
+    // 日付別ビューが表示中なら再描画
+    if (TABS[currentTab] && TABS[currentTab].isDateView) {
+      renderDateView();
+    } else {
+      // カテゴリビューも再描画
+      var catIdx = currentTab - 1;
+      if (catIdx >= 0 && catIdx < CAT_TABS.length) renderArticleList(catIdx);
+    }
+
   } catch (e) {
     vContent.innerHTML = `<div style="color:var(--red);padding:20px;">読み込みエラー: ${e.message}</div>`;
   }
@@ -391,16 +600,16 @@ function blocksToHTML(blocks) {
       html += inList === 'bulleted' ? '</ul>' : '</ol>';
       inList = null;
     }
-    if (type === 'heading_1') html += '<h1>' + rt2html(block.heading_1.rich_text) + '</h1>';
+    if      (type === 'heading_1') html += '<h1>' + rt2html(block.heading_1.rich_text) + '</h1>';
     else if (type === 'heading_2') html += '<h2>' + rt2html(block.heading_2.rich_text) + '</h2>';
     else if (type === 'heading_3') html += '<h3>' + rt2html(block.heading_3.rich_text) + '</h3>';
     else if (type === 'paragraph') { const t = rt2html(block.paragraph.rich_text); if (t.trim()) html += '<p>' + t + '</p>'; }
     else if (type === 'bulleted_list_item') { if (inList !== 'bulleted') { html += '<ul>'; inList = 'bulleted'; } html += '<li>' + rt2html(block.bulleted_list_item.rich_text) + '</li>'; }
     else if (type === 'numbered_list_item') { if (inList !== 'numbered') { html += '<ol>'; inList = 'numbered'; } html += '<li>' + rt2html(block.numbered_list_item.rich_text) + '</li>'; }
     else if (type === 'divider') html += '<hr>';
-    else if (type === 'quote') html += '<blockquote>' + rt2html(block.quote.rich_text) + '</blockquote>';
+    else if (type === 'quote')   html += '<blockquote>' + rt2html(block.quote.rich_text) + '</blockquote>';
     else if (type === 'callout') { const icon = block.callout.icon?.emoji || ''; html += '<blockquote>' + icon + ' ' + rt2html(block.callout.rich_text) + '</blockquote>'; }
-    else if (type === 'toggle') html += '<details style="margin:8px 0;"><summary style="cursor:pointer;font-weight:700;color:var(--accent);">' + rt2html(block.toggle.rich_text) + '</summary><div style="padding:8px 0 8px 16px;font-size:13px;color:var(--muted);">(折りたたみ内容はNotion上で確認)</div></details>';
+    else if (type === 'toggle')  html += '<details style="margin:8px 0;"><summary style="cursor:pointer;font-weight:700;color:var(--accent);">' + rt2html(block.toggle.rich_text) + '</summary><div style="padding:8px 0 8px 16px;font-size:13px;color:var(--muted);">(折りたたみ内容はNotion上で確認)</div></details>';
   }
   if (inList) html += inList === 'bulleted' ? '</ul>' : '</ol>';
   return html || '<p style="color:var(--muted);">（内容はNotionで確認してください）</p>';
@@ -411,49 +620,36 @@ function rt2html(rts) {
   return rts.map(rt => {
     let t = esc(rt.plain_text || '');
     if (rt.annotations) {
-      if (rt.annotations.bold) t = '<strong>' + t + '</strong>';
-      if (rt.annotations.italic) t = '<em>' + t + '</em>';
+      if (rt.annotations.bold)          t = '<strong>' + t + '</strong>';
+      if (rt.annotations.italic)        t = '<em>' + t + '</em>';
       if (rt.annotations.strikethrough) t = '<s>' + t + '</s>';
-      if (rt.annotations.underline) t = '<u>' + t + '</u>';
-      if (rt.annotations.code) t = '<code style="background:var(--s3);padding:1px 5px;border-radius:3px;font-size:12px;">' + t + '</code>';
+      if (rt.annotations.underline)     t = '<u>' + t + '</u>';
+      if (rt.annotations.code)          t = '<code style="background:var(--s3);padding:1px 5px;border-radius:3px;font-size:12px;">' + t + '</code>';
     }
     if (rt.href) t = '<a href="' + rt.href + '" target="_blank">' + t + '</a>';
     return t;
   }).join('');
 }
 
-function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function escAttr(s) { return s.replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s) { return String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 
 /* ── 既読マーク ── */
 async function markAsRead(pageId) {
   try {
-    // まず現在の確認者を取得
-    const page = await notionGet('/pages/' + pageId);
+    const page    = await notionGet('/pages/' + pageId);
     const current = (page.properties?.['確認者']?.multi_select || []).map(s => s.name);
-    if (current.includes(loginUser)) return; // 既に確認済み
+    if (current.includes(loginUser)) return;
     current.push(loginUser);
     await notionPatch('/pages/' + pageId, {
-      properties: {
-        '確認者': { multi_select: current.map(n => ({ name: n })) }
-      }
+      properties: { '確認者': { multi_select: current.map(n => ({ name: n })) } }
     });
   } catch(e) { /* silent */ }
 }
 
-/* ── notionPost for PATCH ── */
-async function notionPatch(path, body) {
-  const r = await fetch(WORKER + path, {
-    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  return r.json();
-}
-
-/* ── Init ── */
+/* ── 初期化：日付別ビューから開始 ── */
 renderTabs();
-loadCategory(0);
+loadDateView();
 </script>
 <script src="foo-swipe.js"></script>
 </body>

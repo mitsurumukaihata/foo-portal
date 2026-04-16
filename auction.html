@@ -631,6 +631,7 @@ select.sep-input { appearance: none; -webkit-appearance: none;
         <button class="submit-btn" id="submit-btn" onclick="submitForm()" style="margin-top:0;flex:1;">Notionに登録</button>
         <button class="submit-btn" onclick="openThumbFromForm()" style="margin-top:0;flex:1;background:#2dd4bf;">📷 サムネ生成</button>
       </div>
+      <button class="submit-btn" id="cancel-edit-btn" onclick="cancelEdit()" style="display:none;margin-top:6px;background:#555;color:#fff;">✕ 編集をキャンセル</button>
       <div class="form-msg" id="form-msg"></div>
     </div>
   </div>
@@ -682,6 +683,7 @@ select.sep-input { appearance: none; -webkit-appearance: none;
       <div class="detail-grid" id="detail-grid"></div>
       <div class="chip-row" id="detail-chips"></div>
       <button class="btn-sheet" onclick="openSheet()">得意先向けシートを表示 →</button>
+      <button class="btn-change-from-detail" id="detail-edit-btn" style="display:none;background:var(--amber);color:#000;margin-bottom:6px;">✏️ 編集する</button>
       <button class="btn-change-from-detail" id="detail-change-btn">ステータスを変更する</button>
     </div>
   </div>
@@ -1268,6 +1270,15 @@ function openDetail(id) {
     openChange(id, mgmt, status);
   };
 
+  // 編集ボタン（未掲載のみ表示）
+  const editBtn = document.getElementById('detail-edit-btn');
+  if (status === '未掲載') {
+    editBtn.style.display = '';
+    editBtn.onclick = () => { closeModal('modal-detail'); openEditForm(id); };
+  } else {
+    editBtn.style.display = 'none';
+  }
+
   document.getElementById('modal-detail').style.display = 'flex';
 }
 
@@ -1474,8 +1485,47 @@ async function submitForm() {
 
   const btn = document.getElementById('submit-btn');
   btn.disabled = true;
-  btn.textContent = '登録中…';
+  btn.textContent = editingPageId ? '更新中…' : '登録中…';
   showFormMsg('');
+
+  // 編集モード: PATCHで更新
+  if (editingPageId) {
+    const titleText = [maker, size, pattern].filter(Boolean).join(' ');
+    const props = {
+      '名前':          { title: [{ text: { content: titleText } }] },
+      '管理番号':       { rich_text: [{ text: { content: mgmt } }] },
+      'サイズ（正式）':  { rich_text: [{ text: { content: size } }] },
+      'パターン':       { rich_text: [{ text: { content: pattern } }] },
+      '残溝':          { rich_text: [{ text: { content: tread || '' } }] },
+      'セリアル':       { rich_text: [{ text: { content: serial || '' } }] },
+      '保管場所詳細':   { rich_text: [{ text: { content: storDet || '' } }] },
+      '備考欄':        { rich_text: [{ text: { content: note || '' } }] },
+      '商品説明':       { rich_text: [{ text: { content: desc || '' } }] },
+      'ホイール付き？':  { checkbox: wheel === '__YES__' },
+    };
+    if (maker)   props['メーカー']         = { select: { name: maker } };
+    if (cat)     props['カテゴリ']         = { select: { name: cat } };
+    if (num)     props['本数']             = { select: { name: num } };
+    if (newcar)  props['新車外し？']       = { select: { name: newcar } };
+    if (cond)    props['状態タイヤ（選択）'] = { select: { name: cond } };
+    if (truck)   props['トラック？']       = { select: { name: truck } };
+    if (storage) props['保管場所']         = { select: { name: storage } };
+    if (status)  props['進捗']             = { select: { name: status } };
+    if (price)   props['値段']             = { number: parseFloat(price) };
+    try {
+      await notionPatch(editingPageId, props);
+      showFormMsg('✅ 更新しました！');
+      showToast('更新しました');
+      cancelEdit();
+      await loadAllRecords();
+    } catch(e) {
+      showFormMsg('更新エラー: ' + e.message, true);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Notionに登録';
+    }
+    return;
+  }
 
   // ── 固定文：管理番号の頭文字で自動判定 ──────────────────
   const FIXED_T = `<!-- 固定文（テンプレ本文）: 720幅を強制的に中央寄せ + セクション間に余白行 -->
@@ -2275,6 +2325,88 @@ async function markAsPosted(pageId) {
   } catch(e) {
     showToast('更新エラー: ' + e.message, true);
   }
+}
+
+// ===== 編集モード（詳細画面から新規登録フォームにデータをプリフィル） =====
+var editingPageId = null; // 編集中のページID（nullなら新規作成モード）
+
+function openEditForm(id) {
+  const rec = allRecords.find(r => r.id === id);
+  if (!rec) return;
+  editingPageId = id;
+
+  const mgmt    = p(rec, '管理番号') || '';
+  const prefix  = mgmt ? mgmt[0].toUpperCase() : 'T';
+  const maker   = p(rec, 'メーカー') || '';
+  const size    = p(rec, 'サイズ（正式）') || p(rec, '名前') || '';
+  const pattern = p(rec, 'パターン') || '';
+  const num     = p(rec, '本数') || '';
+  const tread   = p(rec, '残溝') || '';
+  const serial  = p(rec, 'セリアル') || '';
+  const storage = p(rec, '保管場所') || '';
+  const storDet = p(rec, '保管場所詳細') || '';
+  const newcar  = p(rec, '新車外し？') || '';
+  const cond    = p(rec, '状態タイヤ（選択）') || '';
+  const truck   = p(rec, 'トラック？') || '';
+  const isWheel = p(rec, 'ホイール付き？') === true;
+  const price   = p(rec, '値段') || '';
+  const status  = p(rec, '進捗') || '';
+  const cat     = p(rec, 'カテゴリ') || '';
+  const desc    = p(rec, '商品説明') || '';
+  const note    = p(rec, '備考欄') || '';
+
+  // フォームタイプ判定
+  let formType = 'tire';
+  if (prefix === 'S') formType = 's';
+  else if (prefix === 'K') formType = 'k';
+  else if (isWheel) formType = 'wheel';
+
+  // タブ切替 → フォームタイプ切替
+  switchTab('form');
+  switchFormType(formType);
+  resetForm();
+
+  // セレクトボックスのvalueをセット
+  function sv(id, val) { const el = document.getElementById(id); if (el && val) { el.value = val; } }
+  function st(id, val) { const el = document.getElementById(id); if (el) el.value = val || ''; }
+
+  if (formType === 'tire') {
+    st('f-mgmt', mgmt); sv('f-maker-form', maker); st('f-size', size); st('f-pattern', pattern);
+    sv('f-cat-form', cat); sv('f-num', num); st('f-tread', tread); st('f-serial', serial);
+    sv('f-newcar', newcar); sv('f-cond', cond); sv('f-truck', truck);
+    sv('f-storage', storage); st('f-storage-detail', storDet);
+    st('f-price', price); sv('f-status', status); st('f-desc', desc); st('f-note', note);
+  } else if (formType === 'wheel') {
+    st('fw-mgmt', mgmt); sv('fw-maker', maker); st('fw-size', size); st('fw-pattern', pattern);
+    sv('fw-cat', cat); sv('fw-num', num); st('fw-tread', tread); st('fw-serial', serial);
+    sv('fw-cond', cond); sv('fw-truck', truck);
+    sv('fw-storage', storage); st('fw-storage-detail', storDet);
+    st('fw-price', price); sv('fw-status', status); st('fw-desc', desc); st('fw-note', note);
+  } else if (formType === 'k') {
+    st('fk-mgmt', mgmt); st('fk-name', size);
+    sv('fk-storage', storage); st('fk-storage-detail', storDet);
+    st('fk-price', price); sv('fk-status', status); st('fk-desc', desc); st('fk-note', note);
+  } else if (formType === 's') {
+    st('fs-mgmt', mgmt); st('fs-name', size); st('fs-maker', maker);
+    sv('fs-cat', cat); sv('fs-cond', cond); sv('fs-num', num);
+    sv('fs-storage', storage); st('fs-storage-detail', storDet);
+    st('fs-price', price); sv('fs-status', status); st('fs-desc', desc); st('fs-note', note);
+  }
+
+  // ボタン表示を「更新」に変更
+  const btn = document.getElementById('submit-btn');
+  btn.textContent = '更新する';
+  document.getElementById('cancel-edit-btn').style.display = '';
+  showFormMsg('📝 編集モード：' + mgmt);
+}
+
+function cancelEdit() {
+  editingPageId = null;
+  resetForm();
+  const btn = document.getElementById('submit-btn');
+  btn.textContent = 'Notionに登録';
+  document.getElementById('cancel-edit-btn').style.display = 'none';
+  showFormMsg('');
 }
 
 function resetForm() {

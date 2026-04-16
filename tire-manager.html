@@ -2463,20 +2463,26 @@ window.onload = () => {
 // 発注管理DBから発注済レコードを取得（発注中統合用）
 const HACCHU_DB = '202a695f8e8880aa92f6f38d9b47b537';
 async function fooGetPendingOrdersBySize(size) {
-  const filter = { and: [
-    { property: 'ステータス', select: { equals: '発注済' } },
-    { property: 'サイズ', select: { equals: size } },
-  ]};
-  const results = [];
-  let cursor = null;
-  do {
-    const body = { filter, page_size: 100 };
-    if (cursor) body.start_cursor = cursor;
-    const r = await notionAPI('POST', '/databases/' + HACCHU_DB + '/query', body);
-    results.push(...(r.results || []));
-    cursor = r.has_more ? r.next_cursor : null;
-  } while (cursor);
-  return results;
+  try {
+    const filter = { and: [
+      { property: 'ステータス', select: { equals: '発注済' } },
+      { property: 'サイズ', select: { equals: size } },
+    ]};
+    const results = [];
+    let cursor = null;
+    do {
+      const body = { filter, page_size: 100 };
+      if (cursor) body.start_cursor = cursor;
+      const r = await notionAPI('POST', '/databases/' + HACCHU_DB + '/query', body);
+      results.push(...(r.results || []));
+      cursor = r.has_more ? r.next_cursor : null;
+    } while (cursor);
+    return results;
+  } catch(e) {
+    // サイズが発注管理DBのselectオプションに存在しない場合はvalidation_error → 空配列を返す
+    console.log('[発注中] サイズ未登録のため0件:', size, e.message?.slice(0, 80));
+    return [];
+  }
 }
 
 async function notionAPI(method, path, body) {

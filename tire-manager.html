@@ -1701,7 +1701,8 @@ function renderStockResult(size, catKey, records, pendingOrders) {
   if (pendingOrders) {
     pendingOrders.forEach(function(p) {
       var pt = p.properties['パターン']?.select?.name || '';
-      var wh = p.properties['納入予定場所']?.select?.name || '五日市倉庫';
+      var whRaw = p.properties['納入予定場所']?.select?.name || '五日市';
+      var wh = whRaw.endsWith('倉庫') ? whRaw : whRaw + '倉庫';
       var qty = p.properties['数量']?.number || 0;
       if (!pt) return;
       if (!orderStock[pt]) orderStock[pt] = {};
@@ -1835,7 +1836,8 @@ function renderStockResultAll(size, matching, results, pendingOrders) {
   if (pendingOrders) {
     pendingOrders.forEach(function(p) {
       var pt = p.properties['パターン']?.select?.name || '';
-      var wh = p.properties['納入予定場所']?.select?.name || '五日市倉庫';
+      var whRaw = p.properties['納入予定場所']?.select?.name || '五日市';
+      var wh = whRaw.endsWith('倉庫') ? whRaw : whRaw + '倉庫';
       var qty = p.properties['数量']?.number || 0;
       if (!pt) return;
       if (!globalOrderStock[pt]) globalOrderStock[pt] = {};

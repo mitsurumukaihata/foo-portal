@@ -68,6 +68,26 @@ body::-webkit-scrollbar { display:none; }
 .rec-btn:active { transform:scale(0.95); }
 .rec-btn-inner { width:44px; height:44px; border-radius:50%; background:var(--red); transition:all 0.2s; }
 .rec-btn.recording .rec-btn-inner { border-radius:6px; width:32px; height:32px; }
+.mt-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+.mt-btn { background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:12px 8px; cursor:pointer; transition:all 0.15s; display:flex; flex-direction:column; align-items:center; gap:4px; font-family:inherit; color:var(--text); }
+.mt-btn:hover { background:var(--s3); border-color:var(--accent); }
+.mt-btn:active { transform:scale(0.97); }
+.mt-emoji { font-size:24px; line-height:1; }
+.mt-name { font-size:13px; font-weight:700; }
+.mt-perm { font-size:10px; color:var(--muted); }
+.participant-chk-row { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; background:var(--s2); margin-bottom:4px; cursor:pointer; }
+.participant-chk-row:hover { background:var(--s3); }
+.participant-chk-row input { width:18px; height:18px; accent-color:var(--accent); cursor:pointer; }
+.participant-name { flex:1; font-size:14px; }
+.participant-badge { font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; }
+.pb-会長 { background:rgba(168,85,247,0.15); color:#a855f7; }
+.pb-管理者 { background:rgba(239,68,68,0.15); color:#ef4444; }
+.pb-部長 { background:rgba(161,98,7,0.15); color:#ca8a04; }
+.pb-リーダー { background:rgba(107,114,128,0.15); color:#6b7280; }
+.pb-事務 { background:rgba(59,130,246,0.15); color:#3b82f6; }
+.pb-経理 { background:rgba(234,179,8,0.15); color:#eab308; }
+.pb-SNSオークション { background:rgba(249,115,22,0.15); color:#f97316; }
+.pb-一般 { background:rgba(34,197,94,0.15); color:#22c55e; }
 .rec-btn.recording { animation:pulse-ring 1.5s ease-in-out infinite; }
 .rec-label { margin-top:14px; font-size:13px; color:var(--muted); font-weight:500; }
 
@@ -203,7 +223,7 @@ body::-webkit-scrollbar { display:none; }
   <div id="restore-area"></div>
   <div id="speech-warning"></div>
   <div class="rec-area">
-    <button class="rec-btn" id="btn-record" onclick="startRecording()">
+    <button class="rec-btn" id="btn-record" onclick="showMeetingTypeScreen()">
       <div class="rec-btn-inner"></div>
     </button>
     <div class="rec-label">タップして録音開始</div>
@@ -211,6 +231,73 @@ body::-webkit-scrollbar { display:none; }
   <div class="history-header">最近の録音</div>
   <div id="history-list">
     <div class="empty-state">読み込み中...</div>
+  </div>
+</div>
+
+<!-- Screen: Meeting Type Select -->
+<div class="screen" id="screen-meeting-type">
+  <div style="padding:16px;">
+    <div style="font-size:20px;font-weight:700;margin-bottom:6px;">🎙️ 会議タイプを選択</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">会議の種類によって閲覧できる人が変わります</div>
+
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;color:var(--muted);margin:14px 0 8px;">👥 対社員</div>
+    <div class="mt-grid">
+      <button class="mt-btn" data-type="全体会議" data-cat="対社員" data-perm="全員" onclick="selectMeetingType(this)">
+        <div class="mt-emoji">🌐</div>
+        <div class="mt-name">全体会議</div>
+        <div class="mt-perm">全員が閲覧可</div>
+      </button>
+      <button class="mt-btn" data-type="チーム会議" data-cat="対社員" data-perm="参加者のみ" onclick="selectMeetingType(this)">
+        <div class="mt-emoji">👥</div>
+        <div class="mt-name">チーム会議</div>
+        <div class="mt-perm">参加者＋役職</div>
+      </button>
+      <button class="mt-btn" data-type="個人メモ" data-cat="対社員" data-perm="録音者のみ" onclick="selectMeetingType(this)">
+        <div class="mt-emoji">📝</div>
+        <div class="mt-name">個人メモ</div>
+        <div class="mt-perm">録音者のみ</div>
+      </button>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;color:var(--muted);margin:18px 0 8px;">👔 対役職者</div>
+    <div class="mt-grid">
+      <button class="mt-btn" data-type="部長会" data-cat="対役職者" data-perm="部長まで" onclick="selectMeetingType(this)">
+        <div class="mt-emoji">👔</div>
+        <div class="mt-name">部長会</div>
+        <div class="mt-perm">部長以上</div>
+      </button>
+      <button class="mt-btn" data-type="リーダー会" data-cat="対役職者" data-perm="リーダーまで" onclick="selectMeetingType(this)">
+        <div class="mt-emoji">🧑‍💼</div>
+        <div class="mt-name">リーダー会</div>
+        <div class="mt-perm">リーダー以上</div>
+      </button>
+      <button class="mt-btn" data-type="1ON1" data-cat="対役職者" data-perm="部長まで" onclick="selectMeetingType(this)">
+        <div class="mt-emoji">🔒</div>
+        <div class="mt-name">1ON1</div>
+        <div class="mt-perm">参加者＋部長</div>
+      </button>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;color:var(--muted);margin:18px 0 8px;">🤝 対顧客</div>
+    <div class="mt-grid">
+      <button class="mt-btn" data-type="取引先会議" data-cat="対顧客" data-perm="営業・経営" onclick="selectMeetingType(this)">
+        <div class="mt-emoji">🤝</div>
+        <div class="mt-name">取引先会議</div>
+        <div class="mt-perm">営業・経営</div>
+      </button>
+      <button class="mt-btn" data-type="電話対応" data-cat="対顧客" data-perm="営業・経営" onclick="selectMeetingType(this)">
+        <div class="mt-emoji">📞</div>
+        <div class="mt-name">電話対応</div>
+        <div class="mt-perm">営業・経営</div>
+      </button>
+      <button class="mt-btn" data-type="その他" data-cat="対社員" data-perm="参加者のみ" onclick="selectMeetingType(this)">
+        <div class="mt-emoji">❓</div>
+        <div class="mt-name">その他</div>
+        <div class="mt-perm">参加者のみ</div>
+      </button>
+    </div>
+
+    <button onclick="showScreen('screen-idle')" style="width:100%;margin-top:20px;background:var(--s3);border:1px solid var(--border);color:var(--muted);padding:12px;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit;">キャンセル</button>
   </div>
 </div>
 
@@ -269,12 +356,31 @@ body::-webkit-scrollbar { display:none; }
     <button class="expand-btn" id="btn-expand" onclick="toggleTranscript()">全文を表示</button>
   </div>
   <div class="result-section">
+    <div class="result-section-title">会議タイプ</div>
+    <div id="result-meeting-type" style="font-size:14px;font-weight:700;color:var(--accent);padding:8px 10px;background:var(--s2);border-radius:8px;"></div>
+    <div id="result-permission-info" style="font-size:11px;color:var(--muted);margin-top:4px;"></div>
+  </div>
+  <div class="result-section">
     <div class="result-section-title">会議タイトル</div>
     <input class="meeting-title-input" id="input-title" placeholder="例: 週次定例会議">
   </div>
   <div class="result-section">
-    <div class="result-section-title">参加者</div>
-    <input class="participants-input" id="input-participants" placeholder="例: 田中, 鈴木, 佐藤">
+    <div class="result-section-title">参加者（社員マスタから選択）</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">AI推定されたメンバーに初期チェックが入っています。確認・修正してください。</div>
+    <div id="participant-checklist" style="max-height:240px;overflow-y:auto;padding:4px;border:1px solid var(--border);border-radius:8px;background:var(--s1);">
+      <div style="text-align:center;padding:12px;color:var(--muted);font-size:12px;">社員マスタ読み込み中...</div>
+    </div>
+  </div>
+  <div class="result-section">
+    <div class="result-section-title">外部参加者（得意先担当者など）</div>
+    <input class="participants-input" id="input-external" placeholder="例: TOYOジャパン 田中さん, CLO 山田さん">
+  </div>
+  <div class="result-section" id="customer-relation-section" style="display:none;">
+    <div class="result-section-title">関連得意先</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">取引先会議・電話対応で関係する得意先を選択（複数可）</div>
+    <input id="customer-search" placeholder="得意先名を入力して検索..." style="width:100%;padding:8px 10px;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;margin-bottom:8px;" oninput="filterCustomers(this.value)">
+    <div id="customer-search-results" style="max-height:160px;overflow-y:auto;padding:4px;background:var(--s1);border:1px solid var(--border);border-radius:8px;display:none;"></div>
+    <div id="customer-selected-list" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;"></div>
   </div>
   <button class="btn-save" id="btn-save" onclick="saveToNotion()">Notionに保存</button>
   <button class="btn-save" style="background:var(--s3);color:var(--text);border:1px solid var(--border);margin-top:8px;" onclick="backToIdle()">戻る</button>
@@ -343,6 +449,13 @@ var lastVisibleTime = 0;
 var aiResult = null;         // { summary, actionItems, participants }
 var audioChunks = [];        // Whisper送信用の音声データ（MediaRecorderチャンク）
 var audioMimeType = 'audio/webm';
+var meetingType = '';        // 会議タイプ（全体会議/チーム会議/個人メモ/部長会/リーダー会/1ON1/取引先会議/電話対応/その他）
+var meetingCategory = '';    // 大分類（対社員/対役職者/対顧客）
+var meetingPermission = '';  // 閲覧権限（全員/部長まで/リーダーまで/参加者のみ/録音者のみ/営業・経営）
+var selectedParticipantIds = [];  // 参加者（社員ページID の配列）
+var selectedCustomerIds = [];     // 関連得意先（得意先ページID の配列）
+var employeeCache = null;    // 社員マスタキャッシュ [{ id, name, group }]
+var customerCache = null;    // 得意先マスタキャッシュ [{ id, name }]
 var DIM_DELAY = 60000;       // 60 seconds
 var AUTOSAVE_DELAY = 300000; // 5 minutes
 var speechSupported = true;
@@ -363,6 +476,89 @@ function showScreen(id) {
   }
   var target = document.getElementById(id);
   if (target) target.classList.add('show');
+}
+
+/* ── 会議タイプ選択 ── */
+function showMeetingTypeScreen() {
+  // 前回選択をクリア
+  meetingType = '';
+  meetingCategory = '';
+  meetingPermission = '';
+  selectedParticipantIds = [];
+  selectedCustomerIds = [];
+  showScreen('screen-meeting-type');
+}
+
+function selectMeetingType(btn) {
+  meetingType = btn.dataset.type;
+  meetingCategory = btn.dataset.cat;
+  meetingPermission = btn.dataset.perm;
+  console.log('[MeetingType] selected:', meetingType, meetingCategory, meetingPermission);
+  // そのまま録音開始
+  startRecording();
+}
+
+/* ── 社員マスタの取得（キャッシュ付き） ── */
+async function loadEmployees() {
+  if (employeeCache) return employeeCache;
+  try {
+    var r = await fetch(WORKER + '/databases/08c5405729794337886b3565352ef96a/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filter: { property: '在籍', select: { equals: '在籍中' } },
+        page_size: 100,
+      }),
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var data = await r.json();
+    employeeCache = (data.results || []).map(function(p) {
+      return {
+        id: p.id,
+        name: (p.properties['氏名'] && p.properties['氏名'].title && p.properties['氏名'].title[0] ? p.properties['氏名'].title[0].plain_text : ''),
+        group: (p.properties['アプリグループ'] && p.properties['アプリグループ'].select ? p.properties['アプリグループ'].select.name : ''),
+        order: (p.properties['表示順'] && typeof p.properties['表示順'].number === 'number' ? p.properties['表示順'].number : 999),
+      };
+    }).filter(function(e) { return e.name; });
+    employeeCache.sort(function(a, b) { return a.order - b.order || a.name.localeCompare(b.name); });
+    return employeeCache;
+  } catch(e) {
+    console.error('社員マスタ取得失敗:', e);
+    return [];
+  }
+}
+
+/* ── 得意先マスタの取得（取引先会議のみ使用） ── */
+async function loadCustomers() {
+  if (customerCache) return customerCache;
+  try {
+    var all = [];
+    var cursor = null;
+    do {
+      var body = { page_size: 100 };
+      if (cursor) body.start_cursor = cursor;
+      var r = await fetch(WORKER + '/databases/f632f512f12d49b2b11f2b3e45c70aec/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      var data = await r.json();
+      all = all.concat((data.results || []).map(function(p) {
+        return {
+          id: p.id,
+          name: (p.properties['得意先名'] && p.properties['得意先名'].title && p.properties['得意先名'].title[0] ? p.properties['得意先名'].title[0].plain_text : '')
+             || (p.properties['名前'] && p.properties['名前'].title && p.properties['名前'].title[0] ? p.properties['名前'].title[0].plain_text : ''),
+        };
+      }).filter(function(c) { return c.name; }));
+      cursor = data.has_more ? data.next_cursor : null;
+    } while (cursor);
+    customerCache = all;
+    return customerCache;
+  } catch(e) {
+    console.error('得意先マスタ取得失敗:', e);
+    return [];
+  }
 }
 
 /* ── Timer formatting ── */
@@ -895,7 +1091,7 @@ async function aiSummarize(text) {
 }
 
 /* ── Show result screen ── */
-function showResultScreen(fullText) {
+async function showResultScreen(fullText) {
   showScreen('screen-result');
 
   // Summary
@@ -925,19 +1121,135 @@ function showResultScreen(fullText) {
   var expandBtn = document.getElementById('btn-expand');
   if (expandBtn) expandBtn.textContent = '全文を表示';
 
-  // Title suggestion
+  // 会議タイプ表示
+  var typeEl = document.getElementById('result-meeting-type');
+  var permEl = document.getElementById('result-permission-info');
+  if (typeEl) typeEl.textContent = meetingCategory + '  /  ' + meetingType;
+  if (permEl) permEl.textContent = '🔒 閲覧権限: ' + meetingPermission;
+
+  // Title suggestion（会議タイプ込みで自動生成）
   var titleInput = document.getElementById('input-title');
   var now = new Date();
-  var defaultTitle = (now.getMonth() + 1) + '/' + now.getDate() + ' 会議録音';
-  titleInput.value = defaultTitle;
+  var dateStr = now.getFullYear() + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + String(now.getDate()).padStart(2, '0');
+  titleInput.value = dateStr + ' ' + (meetingType || '会議録音');
 
-  // Participants
-  var participantsInput = document.getElementById('input-participants');
-  if (aiResult && aiResult.participants && aiResult.participants.length > 0) {
-    participantsInput.value = aiResult.participants.join(', ');
-  } else {
-    participantsInput.value = '';
+  // External participants（AI推定から外部参加者っぽいものを入れる: 現状は空で）
+  var extInput = document.getElementById('input-external');
+  if (extInput) extInput.value = '';
+
+  // 関連得意先セクション表示（取引先会議・電話対応のみ）
+  var custSection = document.getElementById('customer-relation-section');
+  if (custSection) {
+    if (meetingType === '取引先会議' || meetingType === '電話対応') {
+      custSection.style.display = '';
+      // 得意先マスタをロード（裏で）
+      loadCustomers();
+    } else {
+      custSection.style.display = 'none';
+    }
   }
+
+  // 参加者チェックリスト（社員マスタから読込）
+  await renderParticipantChecklist();
+}
+
+/* ── 参加者チェックリストを描画 ── */
+async function renderParticipantChecklist() {
+  var container = document.getElementById('participant-checklist');
+  if (!container) return;
+  container.innerHTML = '<div style="text-align:center;padding:12px;color:var(--muted);font-size:12px;">社員マスタ読み込み中...</div>';
+
+  var employees = await loadEmployees();
+  if (!employees.length) {
+    container.innerHTML = '<div style="text-align:center;padding:12px;color:var(--muted);font-size:12px;">社員マスタの読み込みに失敗しました。外部参加者欄に手入力してください。</div>';
+    return;
+  }
+
+  // AI推定の参加者名を正規化（半角/全角スペース吸収）
+  var aiNames = [];
+  if (aiResult && aiResult.participants && aiResult.participants.length) {
+    aiNames = aiResult.participants.map(function(n) { return String(n).replace(/[\s\u3000]+/g, ''); });
+  }
+  // 録音者も自動チェック
+  var loginName = (loginUser || '').replace(/[\s\u3000]+/g, '');
+
+  // 初期選択IDを決定
+  selectedParticipantIds = [];
+  var html = '';
+  for (var i = 0; i < employees.length; i++) {
+    var emp = employees[i];
+    var normalName = emp.name.replace(/[\s\u3000]+/g, '');
+    var isChecked = false;
+    if (normalName === loginName) isChecked = true;  // 録音者
+    for (var j = 0; j < aiNames.length; j++) {
+      if (normalName.indexOf(aiNames[j]) >= 0 || aiNames[j].indexOf(normalName) >= 0) {
+        isChecked = true;
+        break;
+      }
+    }
+    if (isChecked) selectedParticipantIds.push(emp.id);
+    var badgeCls = 'pb-' + (emp.group || '一般').replace(/\//g, '').replace(/[^a-zA-Z0-9\u3000-\u9fff]/g, '');
+    html += '<label class="participant-chk-row">' +
+      '<input type="checkbox" value="' + emp.id + '" ' + (isChecked ? 'checked' : '') + ' onchange="toggleParticipant(this)">' +
+      '<span class="participant-name">' + escHtml(emp.name) + '</span>' +
+      (emp.group ? '<span class="participant-badge ' + badgeCls + '">' + escHtml(emp.group) + '</span>' : '') +
+      '</label>';
+  }
+  container.innerHTML = html;
+}
+
+function toggleParticipant(cb) {
+  var id = cb.value;
+  if (cb.checked) {
+    if (selectedParticipantIds.indexOf(id) < 0) selectedParticipantIds.push(id);
+  } else {
+    selectedParticipantIds = selectedParticipantIds.filter(function(x) { return x !== id; });
+  }
+}
+
+/* ── 得意先検索（取引先会議・電話対応のみ） ── */
+function filterCustomers(query) {
+  var resultsEl = document.getElementById('customer-search-results');
+  if (!resultsEl) return;
+  var q = (query || '').trim();
+  if (!q) { resultsEl.style.display = 'none'; resultsEl.innerHTML = ''; return; }
+  var list = customerCache || [];
+  var hits = list.filter(function(c) { return c.name.indexOf(q) >= 0; }).slice(0, 20);
+  if (!hits.length) {
+    resultsEl.innerHTML = '<div style="padding:8px;color:var(--muted);font-size:12px;">該当なし</div>';
+    resultsEl.style.display = 'block';
+    return;
+  }
+  resultsEl.innerHTML = hits.map(function(c) {
+    return '<div style="padding:8px 10px;font-size:13px;cursor:pointer;border-bottom:0.5px solid var(--border);" onclick="addCustomer(\'' + c.id + '\', ' + JSON.stringify(c.name).replace(/"/g, '&quot;') + ')">' + escHtml(c.name) + '</div>';
+  }).join('');
+  resultsEl.style.display = 'block';
+}
+
+function addCustomer(id, name) {
+  if (selectedCustomerIds.indexOf(id) < 0) {
+    selectedCustomerIds.push(id);
+  }
+  renderSelectedCustomers();
+  document.getElementById('customer-search').value = '';
+  document.getElementById('customer-search-results').style.display = 'none';
+}
+
+function removeCustomer(id) {
+  selectedCustomerIds = selectedCustomerIds.filter(function(x) { return x !== id; });
+  renderSelectedCustomers();
+}
+
+function renderSelectedCustomers() {
+  var el = document.getElementById('customer-selected-list');
+  if (!el) return;
+  var list = customerCache || [];
+  var selected = list.filter(function(c) { return selectedCustomerIds.indexOf(c.id) >= 0; });
+  el.innerHTML = selected.map(function(c) {
+    return '<span style="display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;padding:4px 10px;border-radius:20px;font-size:12px;">' +
+      escHtml(c.name) +
+      '<span style="cursor:pointer;font-weight:700;" onclick="removeCustomer(\'' + c.id + '\')">×</span></span>';
+  }).join('');
 }
 
 function toggleTranscript() {
@@ -959,7 +1271,8 @@ async function saveToNotion() {
   btn.textContent = '保存中...';
 
   var title = document.getElementById('input-title').value.trim() || '会議録音';
-  var participants = document.getElementById('input-participants').value.trim();
+  var externalEl = document.getElementById('input-external');
+  var externalText = externalEl ? externalEl.value.trim() : '';
   var fullText = getFullTranscriptText();
   var elapsed = getElapsedMs();
   var durationStr = formatTime(elapsed);
@@ -972,22 +1285,44 @@ async function saveToNotion() {
   // Build properties for Notion
   var now = new Date();
   var jstIso = new Date(now.getTime() + 9 * 60 * 60 * 1000).toISOString().replace('Z', '+09:00');
+  // 録音時間の正しい計算: elapsed (ms) を分に変換
+  var durationMin = Math.max(1, Math.round(elapsed / 60000));
   var props = {
     'タイトル': { title: [{ text: { content: title } }] },
     '日時': { date: { start: jstIso } },
     '録音者': { select: { name: loginUser } },
-    '録音時間': { number: Math.round(elapsedSeconds / 60) || 1 },
+    '録音時間': { number: durationMin },
     'ステータス': { select: { name: '完了' } },
   };
 
-  if (participants) {
-    props['参加者'] = { rich_text: [{ text: { content: participants } }] };
+  // 会議タイプ・大分類・閲覧権限（タイプ未選択の場合はその他扱い）
+  if (meetingType) props['会議タイプ'] = { select: { name: meetingType } };
+  if (meetingCategory) props['大分類'] = { select: { name: meetingCategory } };
+  if (meetingPermission) props['閲覧権限'] = { select: { name: meetingPermission } };
+
+  // 参加者（relation）
+  if (selectedParticipantIds.length > 0) {
+    props['参加者'] = { relation: selectedParticipantIds.map(function(id) { return { id: id }; }) };
   }
+
+  // 外部参加者（rich_text）
+  if (externalText) {
+    props['外部参加者'] = { rich_text: [{ text: { content: externalText.substring(0, 2000) } }] };
+  }
+
+  // 関連得意先（relation）
+  if (selectedCustomerIds.length > 0) {
+    props['関連得意先'] = { relation: selectedCustomerIds.map(function(id) { return { id: id }; }) };
+  }
+
   if (summaryText) {
     props['要約'] = { rich_text: [{ text: { content: summaryText.substring(0, 2000) } }] };
   }
   if (actionText) {
-    props['アクション'] = { rich_text: [{ text: { content: actionText.substring(0, 2000) } }] };
+    props['アクションアイテム'] = { rich_text: [{ text: { content: actionText.substring(0, 2000) } }] };
+  }
+  if (fullText) {
+    props['文字起こし'] = { rich_text: [{ text: { content: fullText.substring(0, 2000) } }] };
   }
 
   try {
@@ -1071,6 +1406,12 @@ function backToIdle() {
   transcriptParts = [];
   interimText = '';
   aiResult = null;
+  audioChunks = [];
+  meetingType = '';
+  meetingCategory = '';
+  meetingPermission = '';
+  selectedParticipantIds = [];
+  selectedCustomerIds = [];
   document.getElementById('timer').textContent = '00:00';
   loadHistory();
 }

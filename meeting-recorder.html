@@ -326,17 +326,55 @@ body::-webkit-scrollbar { display:none; }
   </div>
 </div>
 
-<!-- Screen: Processing -->
+<!-- Screen: Processing (Whisper文字起こし中) -->
 <div class="screen" id="screen-processing">
   <div class="processing-area">
+    <div class="processing-step" id="step-transcribe">
+      <div class="spinner"></div>
+      <span id="step-transcribe-label">🎙️ Whisperで文字起こし中...</span>
+    </div>
     <div class="processing-step" id="step-summarize">
       <div class="spinner"></div>
-      <span>🎙️ 文字起こし + 要約中...（音声の長さの1/3〜1/10程度）</span>
+      <span>🤖 Claudeで要約中...</span>
     </div>
     <div class="processing-step" id="step-save">
       <div class="spinner"></div>
       <span>結果を表示中...</span>
     </div>
+  </div>
+</div>
+
+<!-- Screen: Participants Confirm (要約前に参加者を確定) -->
+<div class="screen" id="screen-participants">
+  <div style="padding:16px;">
+    <div style="font-size:20px;font-weight:700;margin-bottom:4px;">👥 参加者を確認</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5;">
+      参加者を確定してから要約すると、誰が何を言ったかが正確に整理されます。<br>
+      AIが推定したメンバーに初期チェックが入っています。
+    </div>
+
+    <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;">📝 文字起こしプレビュー（冒頭部分）</div>
+      <div id="transcribe-preview" style="font-size:13px;line-height:1.6;max-height:120px;overflow-y:auto;color:var(--text);"></div>
+    </div>
+
+    <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;">👥 参加者（社員マスタから選択）</div>
+    <div id="participant-checklist-pre" style="max-height:260px;overflow-y:auto;padding:4px;border:1px solid var(--border);border-radius:8px;background:var(--s1);margin-bottom:10px;">
+      <div style="text-align:center;padding:12px;color:var(--muted);font-size:12px;">社員マスタ読み込み中...</div>
+    </div>
+
+    <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;">✈️ 外部参加者（得意先担当者など）</div>
+    <input id="input-external-pre" placeholder="例: TOYOジャパン 田中さん, CLO 山田さん"
+      style="width:100%;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;margin-bottom:16px;">
+
+    <button id="btn-confirm-participants" onclick="confirmParticipantsAndSummarize()"
+      style="width:100%;background:var(--accent);border:none;border-radius:10px;padding:14px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">
+      ✨ この参加者で要約を生成する
+    </button>
+    <button onclick="skipParticipantsAndSummarize()"
+      style="width:100%;margin-top:8px;background:var(--s3);border:1px solid var(--border);color:var(--muted);padding:10px;border-radius:10px;font-size:13px;cursor:pointer;font-family:inherit;">
+      スキップ（参加者情報なしで要約）
+    </button>
   </div>
 </div>
 
@@ -953,25 +991,165 @@ function discardRecording() {
   backToIdle();
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   処理フロー（参加者を要約前に確定する2段階方式）
+   1. proceedWithSummary()
+      - Whisperで文字起こし
+      - 社員マスタをロード
+      - 参加者確認画面(screen-participants) を表示
+   2. confirmParticipantsAndSummarize()
+      - 参加者情報を含めてClaude APIで要約
+      - 結果画面を表示
+   ═══════════════════════════════════════════════════════════════ */
+
+var pendingTranscribeText = '';  // 要約前に一時保存する文字起こし結果
+
 async function proceedWithSummary() {
   showScreen('screen-processing');
   resetProcessingSteps();
 
   // Step 1: Whisper で音声を文字起こし
-  setStepActive('step-summarize');
+  setStepActive('step-transcribe');
   var fullText = '';
   try {
     fullText = await whisperTranscribe();
-    // transcriptParts を Whisper結果で上書き（結果画面で表示するため）
     transcriptParts = fullText ? [{ text: fullText, timestamp: Date.now() }] : [];
+    pendingTranscribeText = fullText;
   } catch(e) {
     console.error('Whisper failed:', e);
     showToast('文字起こしに失敗しました: ' + (e.message || e));
-    // フォールバック：transcriptParts に既存の文字があればそれを使う
     fullText = getFullTranscriptText();
+    pendingTranscribeText = fullText;
+  }
+  setStepDone('step-transcribe');
+
+  // 文字起こしが空なら参加者確認スキップで直接要約へ（データがないので）
+  if (!fullText) {
+    await runSummarizeStep('');
+    await showResultScreen('');
+    return;
   }
 
-  // Step 2: AI summarize（Claude APIで要約）
+  // 裏で社員マスタのロードと参加者AI推定を先行実行
+  // ただしClaude要約はまだ走らせない（これは参加者確定後）
+  try {
+    aiResult = await aiSummarize(fullText);  // 参加者推定のための軽い要約（後で上書きされる）
+  } catch(e) {
+    console.warn('初回AI推定失敗:', e);
+    aiResult = null;
+  }
+
+  // 参加者確認画面を表示
+  await showParticipantsScreen(fullText);
+}
+
+async function showParticipantsScreen(fullText) {
+  showScreen('screen-participants');
+
+  // 文字起こしプレビュー（冒頭500文字）
+  var previewEl = document.getElementById('transcribe-preview');
+  if (previewEl) {
+    var preview = fullText.length > 500 ? fullText.substring(0, 500) + '...' : fullText;
+    previewEl.textContent = preview || '(文字起こしが取得できませんでした)';
+  }
+
+  // 参加者チェックリスト描画（事前画面用、IDが違う）
+  await renderParticipantChecklistPre();
+}
+
+async function renderParticipantChecklistPre() {
+  var container = document.getElementById('participant-checklist-pre');
+  if (!container) return;
+  container.innerHTML = '<div style="text-align:center;padding:12px;color:var(--muted);font-size:12px;">社員マスタ読み込み中...</div>';
+
+  var employees = await loadEmployees();
+  if (!employees.length) {
+    container.innerHTML = '<div style="text-align:center;padding:12px;color:var(--muted);font-size:12px;">社員マスタの読み込みに失敗しました。外部参加者欄に手入力してください。</div>';
+    return;
+  }
+
+  var aiNames = [];
+  if (aiResult && aiResult.participants && aiResult.participants.length) {
+    aiNames = aiResult.participants.map(function(n) { return String(n).replace(/[\s\u3000]+/g, ''); });
+  }
+  var loginName = (loginUser || '').replace(/[\s\u3000]+/g, '');
+
+  selectedParticipantIds = [];
+  var html = '';
+  for (var i = 0; i < employees.length; i++) {
+    var emp = employees[i];
+    var normalName = emp.name.replace(/[\s\u3000]+/g, '');
+    var isChecked = false;
+    if (normalName === loginName) isChecked = true;
+    for (var j = 0; j < aiNames.length; j++) {
+      if (normalName.indexOf(aiNames[j]) >= 0 || aiNames[j].indexOf(normalName) >= 0) {
+        isChecked = true;
+        break;
+      }
+    }
+    if (isChecked) selectedParticipantIds.push(emp.id);
+    var badgeCls = 'pb-' + (emp.group || '一般').replace(/\//g, '').replace(/[^a-zA-Z0-9\u3000-\u9fff]/g, '');
+    html += '<label class="participant-chk-row">' +
+      '<input type="checkbox" value="' + emp.id + '" ' + (isChecked ? 'checked' : '') + ' onchange="toggleParticipantPre(this)">' +
+      '<span class="participant-name">' + escHtml(emp.name) + '</span>' +
+      (emp.group ? '<span class="participant-badge ' + badgeCls + '">' + escHtml(emp.group) + '</span>' : '') +
+      '</label>';
+  }
+  container.innerHTML = html;
+}
+
+function toggleParticipantPre(cb) {
+  var id = cb.value;
+  if (cb.checked) {
+    if (selectedParticipantIds.indexOf(id) < 0) selectedParticipantIds.push(id);
+  } else {
+    selectedParticipantIds = selectedParticipantIds.filter(function(x) { return x !== id; });
+  }
+}
+
+async function confirmParticipantsAndSummarize() {
+  var btn = document.getElementById('btn-confirm-participants');
+  if (btn) { btn.disabled = true; btn.textContent = '要約中...'; }
+
+  // 外部参加者を一時的に保持（結果画面の入力欄にも反映）
+  var extEl = document.getElementById('input-external-pre');
+  var externalText = extEl ? extEl.value.trim() : '';
+
+  // 参加者情報を含めて再度要約（高品質版）
+  var fullText = pendingTranscribeText;
+  showScreen('screen-processing');
+  resetProcessingSteps();
+  setStepDone('step-transcribe');  // 既に完了
+  await runSummarizeStep(fullText);
+
+  setStepActive('step-save');
+  await sleep(300);
+  setStepDone('step-save');
+
+  // 結果画面に遷移（事前に選んだ参加者・外部参加者を持ち越す）
+  await showResultScreen(fullText);
+  // 結果画面の外部参加者欄にも反映
+  var extInResult = document.getElementById('input-external');
+  if (extInResult && externalText) extInResult.value = externalText;
+
+  if (btn) { btn.disabled = false; btn.textContent = '✨ この参加者で要約を生成する'; }
+}
+
+async function skipParticipantsAndSummarize() {
+  // 参加者情報なしで要約（aiResultは既に軽い要約済み）
+  var fullText = pendingTranscribeText;
+  showScreen('screen-processing');
+  resetProcessingSteps();
+  setStepDone('step-transcribe');
+  setStepDone('step-summarize');  // 既に初回要約済み
+  setStepActive('step-save');
+  await sleep(300);
+  setStepDone('step-save');
+  await showResultScreen(fullText);
+}
+
+async function runSummarizeStep(fullText) {
+  setStepActive('step-summarize');
   try {
     if (fullText) {
       aiResult = await aiSummarize(fullText);
@@ -980,17 +1158,9 @@ async function proceedWithSummary() {
     }
   } catch(e) {
     console.warn('AI summarize failed:', e);
-    aiResult = null;
+    // aiResult は保持（初回のものを使う）
   }
   setStepDone('step-summarize');
-
-  // Step 3: Prepare display
-  setStepActive('step-save');
-  await sleep(300);
-  setStepDone('step-save');
-
-  // Show result
-  showResultScreen(fullText);
 }
 
 /* ── Whisper で音声をテキスト化 ── */
@@ -1069,11 +1239,22 @@ async function aiSummarize(text) {
   var controller = new AbortController();
   var timer = setTimeout(function(){ controller.abort(); }, 30000);
 
+  // 参加者情報を文字起こしの先頭に入れることで、Claudeが誰が誰か理解できる
+  var textToSend = text;
+  if (selectedParticipantIds.length > 0 && employeeCache && employeeCache.length > 0) {
+    var selectedNames = employeeCache
+      .filter(function(e) { return selectedParticipantIds.indexOf(e.id) >= 0; })
+      .map(function(e) { return e.name + '（' + (e.group || '') + '）'; });
+    if (selectedNames.length) {
+      textToSend = '【この会議の参加者】\n' + selectedNames.join('、') + '\n\n【会議タイプ】' + (meetingType || '不明') + '\n\n【文字起こし】\n' + text;
+    }
+  }
+
   try {
     var r = await fetch(WORKER + '/ai/summarize', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: text, lang: 'ja' }),
+      body: JSON.stringify({ text: textToSend, lang: 'ja' }),
       signal: controller.signal,
     });
     clearTimeout(timer);

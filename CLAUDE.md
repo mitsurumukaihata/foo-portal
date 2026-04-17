@@ -53,6 +53,27 @@ git push  # push は自動（毎回確認しない）
 - 日付見出しは `# YYYY/M/D` 形式で統一
 - 同じ日の作業は既存の日付セクションに追記する
 
+## ⚠️ よくあるエラー早見表（詳細は ~/.claude/CLAUDE.md）
+
+| エラー | 対処 |
+|---|---|
+| `Could not find database with ID` | collection ID ではなくページID（ハイフンあり32桁）を使う |
+| `Make sure pages are shared with integration` | DB本体を開いて「コネクト」→「タイヤアプリv2」追加 |
+| `xxx is expected to be select/rich_text` | DBスキーマの型を確認。しきい値DB(SNAPSHOT_DB)はパターン名/サイズコードが rich_text |
+| `Notion-Version` 送信で503 | Worker経由ではヘッダーは `Content-Type` のみ |
+| 日本語プロパティ名のsortsで文字化け | `{timestamp:'created_time'}` を使う |
+
+## 📦 フィールド型の特殊ケース（ハマり頻発）
+- **在庫DB `メモ`**: ltl_normal のみ select型 / 他は rich_text型
+- **しきい値DB（SNAPSHOT_DB）**: `Name`(title) / `パターン名`(rich_text) / `サイズコード`(rich_text) / `カテゴリ`(select) / `倉庫`(select) / `しきい値`(number)
+- **発注管理DB `サイズコード`**: rich_text
+- **在庫DB（LTL TBノーマル系）**: `パターン名`=select / `サイズコード`=select
+
+## 🛠️ GitHub 手動更新Tips（Claudeに依頼せずユーザーが直接更新する時）
+- ブラウザの翻訳機能をOFFにする（ONだと日本語ファイル名が化ける）
+- 鉛筆エディタでコピペが最も確実
+- 「Add file → Upload files」は非推奨
+
 ## 🔧 移行スクリプト運用
 
 `scripts/sales-migration/` の主要スクリプト:

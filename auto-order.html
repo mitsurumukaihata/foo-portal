@@ -2130,48 +2130,62 @@ async function saveThresholdChanges() {
   var btn = document.getElementById('th-save-changes-btn');
   if (btn) { btn.disabled = true; btn.textContent = '保存中…'; }
   var ok = 0, err = 0;
+  var errorDetails = [];
   for (var key of Object.keys(thPendingChanges)) {
     var newVal = thPendingChanges[key];
     var snap = snapshotCache[key];
     try {
       if (snap && snap.pageId) {
         // 既存レコードを更新
-        await notionAPI('PATCH', '/pages/' + snap.pageId, {
+        var r1 = await notionAPI('PATCH', '/pages/' + snap.pageId, {
           properties: { 'しきい値': { number: newVal } }
         });
+        if (r1 && r1.object === 'error') throw new Error(r1.message || 'PATCH error');
         snap.threshold = newVal;
         ok++;
       } else {
-        // 新規レコード作成（未設定だった倉庫）
+        // 新規レコード作成（SNAPSHOT_DBに統一）
+        // しきい値DBスキーマ: Name(title), カテゴリ(select), パターン名(rich_text),
+        //                    サイズコード(rich_text), 倉庫(select), しきい値(number)
         var parts = key.split('|');
         var cat = parts[0], pattern = parts[1], size = parts[2], warehouse = parts[3];
-        var dbInfo = CAT_DB_MAP[cat];
-        if (!dbInfo || !dbInfo.kijunId) { err++; continue; }
-        var title = pattern + ' ' + size + ' ' + warehouse;
+        var title = pattern + '|' + size + '|' + warehouse;
         var props = {
-          'タイトル': { title: [{ text: { content: title } }] },
-          'パターン名': { select: { name: pattern } },
-          'サイズコード': { select: { name: size } },
-          'しきい値': { number: newVal }
+          'Name':       { title: [{ text: { content: title } }] },
+          'カテゴリ':   { select: { name: cat } },
+          'パターン名': { rich_text: [{ text: { content: pattern } }] },
+          'サイズコード': { rich_text: [{ text: { content: size } }] },
+          '倉庫':       { select: { name: warehouse } },
+          'しきい値':   { number: newVal }
         };
-        if (warehouse) props['倉庫'] = { select: { name: warehouse } };
         var res = await notionAPI('POST', '/pages', {
-          parent: { database_id: dbInfo.kijunId },
+          parent: { database_id: SNAPSHOT_DB },
           properties: props
         });
-        // キャッシュ更新
-        snapshotCache[key] = { pageId: res.id, threshold: newVal, baseline: 0 };
+        if (res && res.object === 'error') throw new Error(res.message || 'POST error');
+        snapshotCache[key] = { pageId: res.id, threshold: newVal, stock: 0 };
         ok++;
       }
     } catch(e) {
       console.error('しきい値保存エラー:', key, e);
+      errorDetails.push(key + ': ' + (e.message || e));
       err++;
     }
   }
   thPendingChanges = {};
   if (btn) {
-    btn.textContent = err > 0 ? '⚠️ ' + ok + '件保存 / ' + err + '件エラー' : '✅ ' + ok + '件保存しました';
-    setTimeout(function() { btn.style.display = 'none'; }, 3000);
+    if (err > 0) {
+      btn.textContent = '⚠️ ' + ok + '件保存 / ' + err + '件エラー';
+      btn.disabled = false;
+      // エラー詳細をコンソール＆アラート表示
+      console.error('エラー詳細:\n' + errorDetails.join('\n'));
+      if (errorDetails.length <= 3) {
+        alert('保存エラー:\n' + errorDetails.join('\n\n'));
+      }
+    } else {
+      btn.textContent = '✅ ' + ok + '件保存しました';
+      setTimeout(function() { btn.style.display = 'none'; }, 3000);
+    }
   }
 }
 

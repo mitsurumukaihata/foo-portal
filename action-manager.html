@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>アクション管理 | f.o.o</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f0a500">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+:root {
+  --accent: #f0a500;
+  --accent2: #e07000;
+  --red: #ef4444;
+  --yellow: #eab308;
+  --green: #22c55e;
+  --blue: #3b82f6;
+  --purple: #a855f7;
+  --bg: #1a1a18;
+  --s1: #242420;
+  --s2: #2d2d28;
+  --s3: #3a3a35;
+  --border: rgba(255,255,255,0.08);
+  --text: #f0ece4;
+  --muted: #9e9a90;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #fdf6ee;
+    --s1: #fff;
+    --s2: #f5f0e8;
+    --s3: #ebe5d9;
+    --border: rgba(0,0,0,0.08);
+    --text: #1a1612;
+    --muted: #6b6560;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 60px; }
+.app-header { position: sticky; top: 0; z-index: 100; background: var(--bg); border-bottom: 0.5px solid var(--border); padding: 14px 16px 10px; display: flex; align-items: center; gap: 10px; }
+.header-icon { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.header-titles { flex: 1; }
+.header-title { font-size: 16px; font-weight: 600; }
+.header-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.portal-back-btn { font-size: 12px; color: var(--muted); background: var(--s2); border: 0.5px solid var(--border); padding: 6px 12px; border-radius: 20px; text-decoration: none; }
+.refresh-btn { font-size: 14px; background: var(--s2); border: 0.5px solid var(--border); padding: 6px 10px; border-radius: 20px; cursor: pointer; color: var(--muted); font-family: inherit; }
+.refresh-btn:active { transform: scale(0.95); }
+
+.tab-bar { display: flex; gap: 4px; padding: 10px 12px; overflow-x: auto; background: var(--bg); border-bottom: 0.5px solid var(--border); }
+.tab-chip { flex-shrink: 0; padding: 7px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 0.5px solid var(--border); background: var(--s2); color: var(--muted); cursor: pointer; white-space: nowrap; font-family: inherit; }
+.tab-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.summary-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 10px 12px; }
+.sum-card { background: var(--s2); border: 0.5px solid var(--border); border-radius: 10px; padding: 8px; text-align: center; cursor: pointer; }
+.sum-card.active { border-color: var(--accent); background: rgba(240,165,0,0.12); }
+.sum-val { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+.sum-lab { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.sum-val.red { color: var(--red); }
+.sum-val.blue { color: var(--blue); }
+.sum-val.green { color: var(--green); }
+.sum-val.yellow { color: var(--yellow); }
+
+.filter-row { padding: 6px 12px; display: flex; gap: 6px; overflow-x: auto; background: var(--bg); }
+.filter-chip { flex-shrink: 0; padding: 4px 10px; border-radius: 14px; font-size: 11px; border: 0.5px solid var(--border); background: var(--s2); color: var(--muted); cursor: pointer; white-space: nowrap; font-family: inherit; }
+.filter-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.action-list { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.action-card { background: var(--s2); border: 0.5px solid var(--border); border-radius: 10px; padding: 12px; }
+.action-card.overdue { border-left: 3px solid var(--red); }
+.action-card.soon { border-left: 3px solid var(--yellow); }
+.action-card.done { opacity: 0.6; }
+.ac-header { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; align-items: flex-start; }
+.ac-content { font-size: 14px; font-weight: 500; color: var(--text); flex: 1; line-height: 1.5; word-break: break-word; }
+.ac-pri { font-size: 11px; padding: 2px 6px; border-radius: 10px; background: var(--s3); flex-shrink: 0; }
+.ac-meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+.ac-meta > span { background: var(--s1); padding: 2px 8px; border-radius: 10px; display: inline-flex; align-items: center; gap: 4px; }
+.ac-meta .deadline-overdue { background: rgba(239,68,68,0.15); color: var(--red); font-weight: 600; }
+.ac-meta .deadline-soon { background: rgba(234,179,8,0.15); color: var(--yellow); }
+.ac-actions { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+.st-btn { flex: 1; min-width: 60px; padding: 6px 8px; border-radius: 8px; border: 0.5px solid var(--border); background: var(--s1); color: var(--muted); font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.st-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(240,165,0,0.1); }
+.st-btn:hover { background: var(--s3); }
+
+.empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; }
+.loader { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
+.loader::before { content: '⏳'; display: block; font-size: 32px; margin-bottom: 8px; }
+
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--s3); color: var(--text); padding: 10px 20px; border-radius: 20px; font-size: 13px; transition: transform 0.25s; z-index: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+.modal-ov { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 600; display: none; align-items: flex-end; justify-content: center; }
+.modal-ov.show { display: flex; }
+.modal { background: var(--s1); border-radius: 16px 16px 0 0; padding: 16px; width: 100%; max-width: 480px; max-height: 80vh; overflow-y: auto; }
+.modal-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+.modal textarea { width: 100%; min-height: 60px; background: var(--s2); border: 1px solid var(--border); border-radius: 8px; padding: 8px; color: var(--text); font-size: 13px; font-family: inherit; resize: vertical; }
+.btn-primary { width: 100%; padding: 12px; border: none; border-radius: 10px; background: var(--accent); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 10px; }
+.btn-secondary { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--s2); color: var(--muted); font-size: 13px; cursor: pointer; font-family: inherit; margin-top: 6px; }
+
+@media (min-width: 700px) {
+  .summary-cards { max-width: 600px; margin: 0 auto; }
+  .tab-bar, .filter-row, .action-list { max-width: 800px; margin-left: auto; margin-right: auto; }
+}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="header-icon">✅</div>
+  <div class="header-titles">
+    <div class="header-title">アクション管理</div>
+    <div class="header-sub" id="header-sub">PDCA振り返り</div>
+  </div>
+  <button class="refresh-btn" onclick="loadActions()">🔄</button>
+  <a href="index.html" class="portal-back-btn">← ポータル</a>
+</div>
+
+<!-- サマリーカード -->
+<div class="summary-cards">
+  <div class="sum-card" id="sum-all" onclick="filterBy('all',this)">
+    <div class="sum-val" id="sum-all-val">-</div>
+    <div class="sum-lab">全件</div>
+  </div>
+  <div class="sum-card" id="sum-open" onclick="filterBy('open',this)">
+    <div class="sum-val blue" id="sum-open-val">-</div>
+    <div class="sum-lab">未完了</div>
+  </div>
+  <div class="sum-card" id="sum-overdue" onclick="filterBy('overdue',this)">
+    <div class="sum-val red" id="sum-overdue-val">-</div>
+    <div class="sum-lab">期限超過</div>
+  </div>
+  <div class="sum-card" id="sum-done" onclick="filterBy('done',this)">
+    <div class="sum-val green" id="sum-done-val">-</div>
+    <div class="sum-lab">完了</div>
+  </div>
+</div>
+
+<!-- 担当者フィルター -->
+<div class="filter-row" id="assignee-filter"></div>
+
+<!-- カテゴリタブ -->
+<div class="tab-bar">
+  <button class="tab-chip active" onclick="filterCat('all',this)">全カテゴリ</button>
+  <button class="tab-chip" onclick="filterCat('対社員',this)">👥 対社員</button>
+  <button class="tab-chip" onclick="filterCat('対役職者',this)">👔 対役職者</button>
+  <button class="tab-chip" onclick="filterCat('対顧客',this)">🤝 対顧客</button>
+</div>
+
+<div id="list-container">
+  <div class="loader">読み込み中...</div>
+</div>
+
+<!-- 振り返りコメント モーダル -->
+<div class="modal-ov" id="review-modal" onclick="closeReview(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title">振り返りコメント</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px;" id="review-target"></div>
+    <textarea id="review-comment" placeholder="次回会議で話す内容・進捗・課題など..."></textarea>
+    <button class="btn-primary" onclick="saveReview()">保存</button>
+    <button class="btn-secondary" onclick="closeReview()">キャンセル</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="foo-common.js"></script>
+<script>
+const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
+const ACTION_DB = 'bf697864953d4bb3be6c2cfbbc88bb4a';
+const EMPLOYEE_DB = '08c5405729794337886b3565352ef96a';
+const SESSION_KEY = 'foo_portal_session';
+
+let loginUser = '';
+let actions = [];
+let employees = [];
+let filter = { status: 'open', category: 'all', assigneeId: 'all' };
+let editingActionId = null;
+
+// Auth
+(function(){
+  try {
+    var s = JSON.parse(localStorage.getItem(SESSION_KEY));
+    if (!s || !s.name || new Date(s.expires) < new Date()) { location.href = 'index.html'; return; }
+    loginUser = s.name;
+  } catch(e) { location.href = 'index.html'; }
+})();
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 2500);
+}
+
+async function notionAPI(path, method, body) {
+  const opts = { method: method || 'GET', headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(WORKER + '/' + path, opts);
+  const text = await r.text();
+  let data;
+  try { data = JSON.parse(text); } catch(e) { throw new Error('parse: ' + text.slice(0,100)); }
+  if (data.object === 'error') throw new Error(data.message || 'notion error');
+  return data;
+}
+
+async function loadEmployees() {
+  const data = await notionAPI('databases/' + EMPLOYEE_DB + '/query', 'POST', {
+    filter: { property: '在籍', select: { equals: '在籍中' } },
+    page_size: 100,
+  });
+  employees = (data.results || []).map(function(p) {
+    return {
+      id: p.id,
+      name: p.properties['氏名']?.title?.[0]?.plain_text || '',
+      group: p.properties['アプリグループ']?.select?.name || '',
+      order: p.properties['表示順']?.number || 999,
+    };
+  }).filter(function(e) { return e.name; });
+  employees.sort(function(a, b) { return a.order - b.order; });
+}
+
+async function loadActions() {
+  document.getElementById('list-container').innerHTML = '<div class="loader">読み込み中...</div>';
+  try {
+    const data = await notionAPI('databases/' + ACTION_DB + '/query', 'POST', {
+      sorts: [{ property: '期限', direction: 'ascending' }],
+      page_size: 100,
+    });
+    actions = (data.results || []).map(function(p) {
+      return {
+        id: p.id,
+        content: p.properties['内容']?.title?.[0]?.plain_text || '',
+        assignees: (p.properties['担当者']?.relation || []).map(function(r) { return r.id; }),
+        deadline: p.properties['期限']?.date?.start || '',
+        status: p.properties['ステータス']?.select?.name || '未着手',
+        priority: p.properties['優先度']?.select?.name || '',
+        category: p.properties['大分類']?.select?.name || '',
+        meetingId: (p.properties['元会議']?.relation?.[0]?.id) || '',
+        review: p.properties['振り返りコメント']?.rich_text?.[0]?.plain_text || '',
+        completedAt: p.properties['完了日']?.date?.start || '',
+        updatedAt: p.properties['更新日']?.last_edited_time || '',
+      };
+    });
+    renderSummary();
+    renderAssigneeFilter();
+    renderList();
+  } catch(e) {
+    console.error(e);
+    document.getElementById('list-container').innerHTML = '<div class="empty">読み込みエラー: ' + (e.message || e) + '</div>';
+  }
+}
+
+function renderSummary() {
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var all = actions.length;
+  var open = actions.filter(function(a) { return a.status !== '完了' && a.status !== 'ボツ'; }).length;
+  var overdue = actions.filter(function(a) {
+    if (a.status === '完了' || a.status === 'ボツ') return false;
+    if (!a.deadline) return false;
+    return new Date(a.deadline) < today;
+  }).length;
+  var done = actions.filter(function(a) { return a.status === '完了'; }).length;
+  document.getElementById('sum-all-val').textContent = all;
+  document.getElementById('sum-open-val').textContent = open;
+  document.getElementById('sum-overdue-val').textContent = overdue;
+  document.getElementById('sum-done-val').textContent = done;
+  ['all','open','overdue','done'].forEach(function(k) {
+    document.getElementById('sum-' + k).classList.toggle('active', filter.status === k);
+  });
+}
+
+function renderAssigneeFilter() {
+  var container = document.getElementById('assignee-filter');
+  // 担当者IDごとの件数集計
+  var counts = {};
+  for (var i = 0; i < actions.length; i++) {
+    var aIds = actions[i].assignees || [];
+    for (var j = 0; j < aIds.length; j++) {
+      counts[aIds[j]] = (counts[aIds[j]] || 0) + 1;
+    }
+  }
+  var html = '<button class="filter-chip' + (filter.assigneeId === 'all' ? ' active' : '') + '" onclick="filterAssignee(\'all\',this)">👥 全員</button>';
+  employees.forEach(function(e) {
+    var c = counts[e.id] || 0;
+    if (c === 0) return;
+    html += '<button class="filter-chip' + (filter.assigneeId === e.id ? ' active' : '') + '" onclick="filterAssignee(\'' + e.id + '\',this)">' + e.name + ' (' + c + ')</button>';
+  });
+  container.innerHTML = html;
+}
+
+function filterBy(status, el) {
+  filter.status = status;
+  document.querySelectorAll('.sum-card').forEach(function(c) { c.classList.remove('active'); });
+  el.classList.add('active');
+  renderList();
+  renderSummary();
+}
+
+function filterCat(cat, el) {
+  filter.category = cat;
+  document.querySelectorAll('.tab-chip').forEach(function(c) { c.classList.remove('active'); });
+  el.classList.add('active');
+  renderList();
+}
+
+function filterAssignee(id, el) {
+  filter.assigneeId = id;
+  document.querySelectorAll('#assignee-filter .filter-chip').forEach(function(c) { c.classList.remove('active'); });
+  el.classList.add('active');
+  renderList();
+}
+
+function renderList() {
+  var container = document.getElementById('list-container');
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var soon = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000);
+
+  var filtered = actions.filter(function(a) {
+    // status フィルター
+    if (filter.status === 'open' && (a.status === '完了' || a.status === 'ボツ')) return false;
+    if (filter.status === 'done' && a.status !== '完了') return false;
+    if (filter.status === 'overdue') {
+      if (a.status === '完了' || a.status === 'ボツ') return false;
+      if (!a.deadline) return false;
+      if (new Date(a.deadline) >= today) return false;
+    }
+    // category フィルター
+    if (filter.category !== 'all' && a.category !== filter.category) return false;
+    // assignee フィルター
+    if (filter.assigneeId !== 'all' && a.assignees.indexOf(filter.assigneeId) < 0) return false;
+    return true;
+  });
+
+  if (!filtered.length) {
+    container.innerHTML = '<div class="empty">🎉 該当するアクションはありません</div>';
+    return;
+  }
+
+  var html = '<div class="action-list">';
+  filtered.forEach(function(a) {
+    var names = a.assignees.map(function(id) {
+      var e = employees.find(function(x) { return x.id === id; });
+      return e ? e.name : '?';
+    }).join('・');
+    var isOverdue = a.deadline && a.status !== '完了' && a.status !== 'ボツ' && new Date(a.deadline) < today;
+    var isSoon = a.deadline && a.status !== '完了' && a.status !== 'ボツ' && new Date(a.deadline) >= today && new Date(a.deadline) < soon;
+    var classes = 'action-card' + (isOverdue ? ' overdue' : isSoon ? ' soon' : '') + (a.status === '完了' ? ' done' : '');
+    var deadlineClass = isOverdue ? 'deadline-overdue' : isSoon ? 'deadline-soon' : '';
+    var deadlineText = a.deadline ? '📅 ' + a.deadline.replace(/-/g, '/') + (isOverdue ? ' ⚠️ 期限超過' : isSoon ? ' ⏰ 近日' : '') : '期限なし';
+
+    html += '<div class="' + classes + '">';
+    html += '<div class="ac-header">';
+    html += '<div class="ac-content">' + esc(a.content) + '</div>';
+    if (a.priority) html += '<div class="ac-pri">' + a.priority + '</div>';
+    html += '</div>';
+    html += '<div class="ac-meta">';
+    if (names) html += '<span>👤 ' + esc(names) + '</span>';
+    html += '<span class="' + deadlineClass + '">' + deadlineText + '</span>';
+    if (a.category) html += '<span>' + (a.category === '対社員' ? '👥' : a.category === '対役職者' ? '👔' : '🤝') + ' ' + a.category + '</span>';
+    if (a.review) html += '<span style="background:rgba(59,130,246,0.15);color:var(--blue);">💬 振り返りあり</span>';
+    html += '</div>';
+    html += '<div class="ac-actions">';
+    ['未着手', '進行中', '完了', '継続', 'ボツ'].forEach(function(st) {
+      var active = (a.status === st) ? ' active' : '';
+      html += '<button class="st-btn' + active + '" onclick="updateStatus(\'' + a.id + '\',\'' + st + '\')">' + st + '</button>';
+    });
+    html += '<button class="st-btn" onclick="openReview(\'' + a.id + '\')" title="振り返りコメント">💬</button>';
+    html += '</div></div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+async function updateStatus(id, status) {
+  var a = actions.find(function(x) { return x.id === id; });
+  if (!a) return;
+  try {
+    var props = { 'ステータス': { select: { name: status } } };
+    if (status === '完了') {
+      props['完了日'] = { date: { start: new Date().toISOString().slice(0, 10) } };
+    }
+    await notionAPI('pages/' + id, 'PATCH', { properties: props });
+    a.status = status;
+    if (status === '完了') a.completedAt = new Date().toISOString().slice(0, 10);
+    renderList();
+    renderSummary();
+    showToast('ステータスを「' + status + '」に変更しました');
+  } catch(e) {
+    showToast('更新失敗: ' + (e.message || e));
+  }
+}
+
+function openReview(id) {
+  editingActionId = id;
+  var a = actions.find(function(x) { return x.id === id; });
+  if (!a) return;
+  document.getElementById('review-target').textContent = a.content;
+  document.getElementById('review-comment').value = a.review || '';
+  document.getElementById('review-modal').classList.add('show');
+}
+
+function closeReview(e) {
+  if (e && e.target !== document.getElementById('review-modal') && e.type !== 'click') return;
+  document.getElementById('review-modal').classList.remove('show');
+  editingActionId = null;
+}
+
+async function saveReview() {
+  if (!editingActionId) return;
+  var comment = document.getElementById('review-comment').value.trim();
+  try {
+    await notionAPI('pages/' + editingActionId, 'PATCH', {
+      properties: { '振り返りコメント': { rich_text: comment ? [{ text: { content: comment } }] : [] } }
+    });
+    var a = actions.find(function(x) { return x.id === editingActionId; });
+    if (a) a.review = comment;
+    closeReview();
+    renderList();
+    showToast('振り返りコメントを保存しました');
+  } catch(e) {
+    showToast('保存失敗: ' + (e.message || e));
+  }
+}
+
+function esc(s) {
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// 初期化
+(async function() {
+  await loadEmployees();
+  await loadActions();
+})();
+</script>
+</body>
+</html>

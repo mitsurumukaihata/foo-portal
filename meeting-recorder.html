@@ -392,8 +392,12 @@ body::-webkit-scrollbar { display:none; }
     <div class="result-summary" id="result-summary"></div>
   </div>
   <div class="result-section">
-    <div class="result-section-title">アクションアイテム</div>
-    <ul class="result-actions" id="result-actions"></ul>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <div class="result-section-title" style="margin:0;">✅ アクション項目</div>
+      <button type="button" onclick="addEmptyAction()" style="font-size:11px;background:var(--accent);color:#fff;border:none;border-radius:12px;padding:4px 10px;cursor:pointer;font-family:inherit;font-weight:700;">＋ 追加</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">担当者・期限・優先度を設定して保存します（アクション項目DBに自動登録）</div>
+    <div id="action-items-editor" style="display:flex;flex-direction:column;gap:8px;"></div>
   </div>
   <div class="result-section">
     <div class="result-section-title">全文書き起こし</div>
@@ -507,6 +511,8 @@ var selectedParticipantIds = [];  // 参加者（社員ページID の配列）
 var selectedCustomerIds = [];     // 関連得意先（得意先ページID の配列）
 var employeeCache = null;    // 社員マスタキャッシュ [{ id, name, group }]
 var customerCache = null;    // 得意先マスタキャッシュ [{ id, name }]
+var actionItemsEdit = [];    // 編集中のアクション [{ content, assigneeId, deadline, priority }]
+var ACTION_DB = 'bf697864953d4bb3be6c2cfbbc88bb4a';  // ✅ アクション項目DB
 var DIM_DELAY = 60000;       // 60 seconds
 var AUTOSAVE_DELAY = 300000; // 5 minutes
 var speechSupported = true;
@@ -1126,6 +1132,114 @@ function toggleParticipantPre(cb) {
   }
 }
 
+/* ── アクション項目のパース & エディタ ── */
+// AIが返したアクション文字列から「担当者」「期限」をざっくり抽出
+function parseActionText(raw) {
+  var text = String(raw || '').trim();
+  var assigneeId = null;
+  var deadline = '';
+
+  // 担当者抽出: 社員マスタの名前がテキスト内にあれば設定
+  if (employeeCache && employeeCache.length) {
+    var bestMatch = null;
+    for (var i = 0; i < employeeCache.length; i++) {
+      var emp = employeeCache[i];
+      var lastName = (emp.name.split(/[\s\u3000]+/)[0] || '').trim();
+      if (lastName && text.indexOf(lastName) >= 0) {
+        bestMatch = emp;
+        break;
+      }
+      if (emp.name && text.indexOf(emp.name) >= 0) {
+        bestMatch = emp;
+        break;
+      }
+    }
+    if (bestMatch) assigneeId = bestMatch.id;
+  }
+
+  // 期限抽出: YYYY/MM/DD, YYYY-MM-DD, MM/DD, 「来週まで」「5月15日まで」等
+  var now = new Date();
+  var Y = now.getFullYear();
+  var deadlineMatch = text.match(/(\d{4})[-\/年](\d{1,2})[-\/月](\d{1,2})/);
+  if (deadlineMatch) {
+    deadline = deadlineMatch[1] + '-' + String(deadlineMatch[2]).padStart(2, '0') + '-' + String(deadlineMatch[3]).padStart(2, '0');
+  } else {
+    var mdMatch = text.match(/(\d{1,2})[-\/月](\d{1,2})/);
+    if (mdMatch) {
+      deadline = Y + '-' + String(mdMatch[1]).padStart(2, '0') + '-' + String(mdMatch[2]).padStart(2, '0');
+    } else if (/来週/.test(text)) {
+      var nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      deadline = nextWeek.toISOString().slice(0, 10);
+    } else if (/今週/.test(text)) {
+      var daysToFri = (5 - now.getDay() + 7) % 7 || 7;
+      var friday = new Date(now.getTime() + daysToFri * 24 * 60 * 60 * 1000);
+      deadline = friday.toISOString().slice(0, 10);
+    } else if (/明日/.test(text)) {
+      var tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      deadline = tomorrow.toISOString().slice(0, 10);
+    } else if (/来月/.test(text)) {
+      var nm = new Date(Y, now.getMonth() + 1, now.getDate());
+      deadline = nm.toISOString().slice(0, 10);
+    }
+  }
+
+  return { content: text, assigneeId: assigneeId, deadline: deadline };
+}
+
+function renderActionEditor() {
+  var el = document.getElementById('action-items-editor');
+  if (!el) return;
+  if (!actionItemsEdit.length) {
+    el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px;background:var(--s2);border-radius:8px;">アクション項目なし（＋ 追加 ボタンで手動追加できます）</div>';
+    return;
+  }
+  var empOpts = '<option value="">-- 担当者 --</option>';
+  if (employeeCache) {
+    for (var i = 0; i < employeeCache.length; i++) {
+      var emp = employeeCache[i];
+      empOpts += '<option value="' + emp.id + '">' + escHtml(emp.name) + (emp.group ? '（' + escHtml(emp.group) + '）' : '') + '</option>';
+    }
+  }
+  var html = '';
+  for (var j = 0; j < actionItemsEdit.length; j++) {
+    var a = actionItemsEdit[j];
+    html += '<div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px;">';
+    html += '<textarea onchange="updateAction(' + j + ',\'content\',this.value)" placeholder="アクション内容..." style="width:100%;min-height:48px;background:var(--s1);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-size:13px;font-family:inherit;resize:vertical;margin-bottom:6px;">' + escHtml(a.content) + '</textarea>';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr auto auto;gap:6px;align-items:center;">';
+    // 担当者
+    html += '<select onchange="updateAction(' + j + ',\'assigneeId\',this.value)" style="background:var(--s1);border:1px solid var(--border);border-radius:6px;padding:6px;color:var(--text);font-size:12px;font-family:inherit;">';
+    html += empOpts.replace('value="' + (a.assigneeId || '') + '"', 'value="' + (a.assigneeId || '') + '" selected');
+    html += '</select>';
+    // 期限
+    html += '<input type="date" value="' + escHtml(a.deadline) + '" onchange="updateAction(' + j + ',\'deadline\',this.value)" style="background:var(--s1);border:1px solid var(--border);border-radius:6px;padding:6px;color:var(--text);font-size:12px;font-family:inherit;">';
+    // 優先度
+    html += '<select onchange="updateAction(' + j + ',\'priority\',this.value)" style="background:var(--s1);border:1px solid var(--border);border-radius:6px;padding:6px;color:var(--text);font-size:12px;font-family:inherit;">';
+    var priOpts = ['🔴 高', '🟡 中', '🟢 低'];
+    for (var k = 0; k < priOpts.length; k++) {
+      html += '<option value="' + priOpts[k] + '"' + (priOpts[k] === a.priority ? ' selected' : '') + '>' + priOpts[k] + '</option>';
+    }
+    html += '</select>';
+    // 削除
+    html += '<button onclick="removeAction(' + j + ')" style="background:var(--red);color:#fff;border:none;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px;font-family:inherit;">削除</button>';
+    html += '</div></div>';
+  }
+  el.innerHTML = html;
+}
+
+function updateAction(i, key, val) {
+  if (actionItemsEdit[i]) actionItemsEdit[i][key] = val;
+}
+
+function removeAction(i) {
+  actionItemsEdit.splice(i, 1);
+  renderActionEditor();
+}
+
+function addEmptyAction() {
+  actionItemsEdit.push({ content: '', assigneeId: null, deadline: '', priority: '🟡 中' });
+  renderActionEditor();
+}
+
 /* ── 参加者確認画面: 全員チェック・全解除・AI推定に戻す ── */
 function selectAllParticipantsPre() {
   if (!employeeCache) return;
@@ -1335,17 +1449,21 @@ async function showResultScreen(fullText) {
     summaryEl.innerHTML = '<span style="color:var(--muted)">要約の生成に失敗しました。手動で保存できます。</span>';
   }
 
-  // Action items
-  var actionsEl = document.getElementById('result-actions');
+  // Action items（編集可能形式に変換）
+  actionItemsEdit = [];
   if (aiResult && aiResult.actionItems && aiResult.actionItems.length > 0) {
-    var html = '';
     for (var i = 0; i < aiResult.actionItems.length; i++) {
-      html += '<li>' + escHtml(aiResult.actionItems[i]) + '</li>';
+      var raw = aiResult.actionItems[i];
+      var parsed = parseActionText(raw);
+      actionItemsEdit.push({
+        content: parsed.content,
+        assigneeId: parsed.assigneeId,
+        deadline: parsed.deadline,
+        priority: '🟡 中',  // デフォルト
+      });
     }
-    actionsEl.innerHTML = html;
-  } else {
-    actionsEl.innerHTML = '<li style="color:var(--muted)">なし</li>';
   }
+  renderActionEditor();
 
   // Transcript
   var transcriptEl = document.getElementById('result-transcript');
@@ -1553,10 +1671,39 @@ async function saveToNotion() {
       }
     }
 
+    // ── アクション項目DBに自動登録 ──
+    var actionOk = 0, actionErr = 0;
+    for (var ai = 0; ai < actionItemsEdit.length; ai++) {
+      var a = actionItemsEdit[ai];
+      if (!a.content || !a.content.trim()) continue;
+      try {
+        var actionProps = {
+          '内容': { title: [{ text: { content: a.content.substring(0, 2000) } }] },
+          'ステータス': { select: { name: '未着手' } },
+          '元会議': { relation: [{ id: pageId }] },
+        };
+        if (a.assigneeId) actionProps['担当者'] = { relation: [{ id: a.assigneeId }] };
+        if (a.deadline) actionProps['期限'] = { date: { start: a.deadline } };
+        if (a.priority) actionProps['優先度'] = { select: { name: a.priority } };
+        if (meetingCategory) actionProps['大分類'] = { select: { name: meetingCategory } };
+        if (selectedCustomerIds.length > 0) {
+          actionProps['関連得意先'] = { relation: selectedCustomerIds.map(function(id) { return { id: id }; }) };
+        }
+        await fooNotionCreate(ACTION_DB, actionProps);
+        actionOk++;
+      } catch(e) {
+        console.error('アクション保存エラー:', e);
+        actionErr++;
+      }
+    }
+
     // Clear autosave
     localStorage.removeItem(AUTOSAVE_KEY);
 
-    showToast('Notionに保存しました');
+    var msg = 'Notionに保存しました';
+    if (actionOk > 0) msg += '（アクション' + actionOk + '件登録）';
+    if (actionErr > 0) msg += ' ⚠️ アクション' + actionErr + '件失敗';
+    showToast(msg);
     backToIdle();
   } catch(e) {
     console.error('Save error:', e);

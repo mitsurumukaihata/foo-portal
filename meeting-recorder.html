@@ -358,7 +358,14 @@ body::-webkit-scrollbar { display:none; }
       <div id="transcribe-preview" style="font-size:13px;line-height:1.6;max-height:120px;overflow-y:auto;color:var(--text);"></div>
     </div>
 
-    <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;">👥 参加者（社員マスタから選択）</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);">👥 参加者（社員マスタから選択）</div>
+      <div style="display:flex;gap:4px;">
+        <button type="button" onclick="selectAllParticipantsPre()" style="font-size:10px;background:var(--accent);color:#fff;border:none;border-radius:12px;padding:4px 10px;cursor:pointer;font-family:inherit;font-weight:700;">全員</button>
+        <button type="button" onclick="clearAllParticipantsPre()" style="font-size:10px;background:var(--s3);color:var(--muted);border:1px solid var(--border);border-radius:12px;padding:4px 10px;cursor:pointer;font-family:inherit;">全解除</button>
+        <button type="button" onclick="resetToAIParticipantsPre()" style="font-size:10px;background:var(--s3);color:var(--muted);border:1px solid var(--border);border-radius:12px;padding:4px 10px;cursor:pointer;font-family:inherit;">AI推定に戻す</button>
+      </div>
+    </div>
     <div id="participant-checklist-pre" style="max-height:260px;overflow-y:auto;padding:4px;border:1px solid var(--border);border-radius:8px;background:var(--s1);margin-bottom:10px;">
       <div style="text-align:center;padding:12px;color:var(--muted);font-size:12px;">社員マスタ読み込み中...</div>
     </div>
@@ -403,7 +410,13 @@ body::-webkit-scrollbar { display:none; }
     <input class="meeting-title-input" id="input-title" placeholder="例: 週次定例会議">
   </div>
   <div class="result-section">
-    <div class="result-section-title">参加者（社員マスタから選択）</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <div class="result-section-title" style="margin:0;">参加者（社員マスタから選択）</div>
+      <div style="display:flex;gap:4px;">
+        <button type="button" onclick="selectAllParticipants()" style="font-size:10px;background:var(--accent);color:#fff;border:none;border-radius:12px;padding:4px 10px;cursor:pointer;font-family:inherit;font-weight:700;">全員</button>
+        <button type="button" onclick="clearAllParticipants()" style="font-size:10px;background:var(--s3);color:var(--muted);border:1px solid var(--border);border-radius:12px;padding:4px 10px;cursor:pointer;font-family:inherit;">全解除</button>
+      </div>
+    </div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">AI推定されたメンバーに初期チェックが入っています。確認・修正してください。</div>
     <div id="participant-checklist" style="max-height:240px;overflow-y:auto;padding:4px;border:1px solid var(--border);border-radius:8px;background:var(--s1);">
       <div style="text-align:center;padding:12px;color:var(--muted);font-size:12px;">社員マスタ読み込み中...</div>
@@ -1073,6 +1086,8 @@ async function renderParticipantChecklistPre() {
     aiNames = aiResult.participants.map(function(n) { return String(n).replace(/[\s\u3000]+/g, ''); });
   }
   var loginName = (loginUser || '').replace(/[\s\u3000]+/g, '');
+  // 全体会議なら最初から全員チェック
+  var isAllHands = (meetingType === '全体会議');
 
   selectedParticipantIds = [];
   var html = '';
@@ -1080,11 +1095,15 @@ async function renderParticipantChecklistPre() {
     var emp = employees[i];
     var normalName = emp.name.replace(/[\s\u3000]+/g, '');
     var isChecked = false;
-    if (normalName === loginName) isChecked = true;
-    for (var j = 0; j < aiNames.length; j++) {
-      if (normalName.indexOf(aiNames[j]) >= 0 || aiNames[j].indexOf(normalName) >= 0) {
-        isChecked = true;
-        break;
+    if (isAllHands) {
+      isChecked = true;  // 全体会議は自動で全員チェック
+    } else {
+      if (normalName === loginName) isChecked = true;  // 録音者
+      for (var j = 0; j < aiNames.length; j++) {
+        if (normalName.indexOf(aiNames[j]) >= 0 || aiNames[j].indexOf(normalName) >= 0) {
+          isChecked = true;
+          break;
+        }
       }
     }
     if (isChecked) selectedParticipantIds.push(emp.id);
@@ -1105,6 +1124,39 @@ function toggleParticipantPre(cb) {
   } else {
     selectedParticipantIds = selectedParticipantIds.filter(function(x) { return x !== id; });
   }
+}
+
+/* ── 参加者確認画面: 全員チェック・全解除・AI推定に戻す ── */
+function selectAllParticipantsPre() {
+  if (!employeeCache) return;
+  selectedParticipantIds = employeeCache.map(function(e) { return e.id; });
+  var boxes = document.querySelectorAll('#participant-checklist-pre input[type=checkbox]');
+  for (var i = 0; i < boxes.length; i++) boxes[i].checked = true;
+}
+
+function clearAllParticipantsPre() {
+  selectedParticipantIds = [];
+  var boxes = document.querySelectorAll('#participant-checklist-pre input[type=checkbox]');
+  for (var i = 0; i < boxes.length; i++) boxes[i].checked = false;
+}
+
+function resetToAIParticipantsPre() {
+  // renderParticipantChecklistPre を再実行してAI推定の初期状態に戻す
+  renderParticipantChecklistPre();
+}
+
+/* ── 結果画面: 全員チェック・全解除 ── */
+function selectAllParticipants() {
+  if (!employeeCache) return;
+  selectedParticipantIds = employeeCache.map(function(e) { return e.id; });
+  var boxes = document.querySelectorAll('#participant-checklist input[type=checkbox]');
+  for (var i = 0; i < boxes.length; i++) boxes[i].checked = true;
+}
+
+function clearAllParticipants() {
+  selectedParticipantIds = [];
+  var boxes = document.querySelectorAll('#participant-checklist input[type=checkbox]');
+  for (var i = 0; i < boxes.length; i++) boxes[i].checked = false;
 }
 
 async function confirmParticipantsAndSummarize() {
@@ -1334,41 +1386,23 @@ async function showResultScreen(fullText) {
   await renderParticipantChecklist();
 }
 
-/* ── 参加者チェックリストを描画 ── */
+/* ── 参加者チェックリストを描画（結果画面） ── */
 async function renderParticipantChecklist() {
   var container = document.getElementById('participant-checklist');
   if (!container) return;
-  container.innerHTML = '<div style="text-align:center;padding:12px;color:var(--muted);font-size:12px;">社員マスタ読み込み中...</div>';
 
+  // 事前画面 (screen-participants) で既に selectedParticipantIds が確定済みのはず
+  // → その選択状態を保持したまま描画する
   var employees = await loadEmployees();
   if (!employees.length) {
     container.innerHTML = '<div style="text-align:center;padding:12px;color:var(--muted);font-size:12px;">社員マスタの読み込みに失敗しました。外部参加者欄に手入力してください。</div>';
     return;
   }
 
-  // AI推定の参加者名を正規化（半角/全角スペース吸収）
-  var aiNames = [];
-  if (aiResult && aiResult.participants && aiResult.participants.length) {
-    aiNames = aiResult.participants.map(function(n) { return String(n).replace(/[\s\u3000]+/g, ''); });
-  }
-  // 録音者も自動チェック
-  var loginName = (loginUser || '').replace(/[\s\u3000]+/g, '');
-
-  // 初期選択IDを決定
-  selectedParticipantIds = [];
   var html = '';
   for (var i = 0; i < employees.length; i++) {
     var emp = employees[i];
-    var normalName = emp.name.replace(/[\s\u3000]+/g, '');
-    var isChecked = false;
-    if (normalName === loginName) isChecked = true;  // 録音者
-    for (var j = 0; j < aiNames.length; j++) {
-      if (normalName.indexOf(aiNames[j]) >= 0 || aiNames[j].indexOf(normalName) >= 0) {
-        isChecked = true;
-        break;
-      }
-    }
-    if (isChecked) selectedParticipantIds.push(emp.id);
+    var isChecked = selectedParticipantIds.indexOf(emp.id) >= 0;
     var badgeCls = 'pb-' + (emp.group || '一般').replace(/\//g, '').replace(/[^a-zA-Z0-9\u3000-\u9fff]/g, '');
     html += '<label class="participant-chk-row">' +
       '<input type="checkbox" value="' + emp.id + '" ' + (isChecked ? 'checked' : '') + ' onchange="toggleParticipant(this)">' +

@@ -180,11 +180,11 @@ let currentTab = 'all';          // 'all' | 'exec' | 'individual'
 let currentType = 'all';         // 会議タイプ絞り込み（サブフィルター）
 let currentPersonKey = 'all';    // 個別会議タブの「人」絞り込み
 
-// タブ定義: 各タブが受け持つ会議タイプ
+// タブ定義: 各タブが受け持つ会議タイプ（社内限定化により取引先会議・電話対応は削除）
 const TAB_DEFS = {
-  all:        { label: '🌐 全体会議',   types: ['全体会議', '部門会議'] },
+  all:        { label: '🌐 全体会議',   types: ['全体会議', 'チーム会議'] },
   exec:       { label: '👔 役職者会議', types: ['部長会', 'リーダー会'] },
-  individual: { label: '🔒 個別会議',   types: ['1ON1', '打ち合わせ', '商談', '来客対応', 'その他'] },
+  individual: { label: '🔒 個別会議',   types: ['1ON1', '個人メモ', 'その他'] },
 };
 
 // アプリグループの階層（数字が大きいほど上位）
@@ -414,9 +414,9 @@ function renderPersonFilter() {
     return;
   }
 
-  // 個別会議タブで canView 通過したものから相手名を集約
+  // 個別会議タブで canView 通過したものから相手名を集約（社内限定化により得意先は対象外）
   const allowedTypes = TAB_DEFS.individual.types;
-  const personCount = {};    // { "矢島 明和": 3, "山田商事": 1, ... }
+  const personCount = {};    // { "👤矢島 明和": 3, "✉田中社長": 1, ... }
   allRecordings.filter(canView).forEach(function(r) {
     if (allowedTypes.indexOf(r.type) < 0) return;
     // 参加者社員（自分を除く）
@@ -424,11 +424,6 @@ function renderPersonFilter() {
       if (pid === loginId) return;
       const nm = allEmployees[pid] && allEmployees[pid].name;
       if (nm) personCount['👤' + nm] = (personCount['👤' + nm] || 0) + 1;
-    });
-    // 関連得意先
-    r.customers.forEach(function(cid) {
-      const nm = allCustomers[cid] && allCustomers[cid].name;
-      if (nm) personCount['🏢' + nm] = (personCount['🏢' + nm] || 0) + 1;
     });
     // 外部参加者（手入力テキスト）
     if (r.externalParticipants) {
@@ -449,7 +444,7 @@ function renderPersonFilter() {
   let html = '<button class="filter-chip' + (currentPersonKey === 'all' ? ' active' : '') + '" onclick="setPerson(\'all\',this)">👥 全員</button>';
   keys.forEach(function(pk) {
     const label = pk.slice(1);  // prefix除去
-    const prefix = pk.charAt(0); // 👤/🏢/✉
+    const prefix = pk.charAt(0); // 👤/✉
     const active = (pk === currentPersonKey) ? ' active' : '';
     html += '<button class="filter-chip' + active + '" onclick="setPerson(\'' + esc(pk) + '\',this)">' + prefix + ' ' + esc(label) + ' (' + personCount[pk] + ')</button>';
   });
@@ -489,11 +484,6 @@ function recMatchesPerson(rec, personKey) {
   if (prefix === '👤') {
     return rec.participants.some(function(pid) {
       return (allEmployees[pid] && allEmployees[pid].name) === name;
-    });
-  }
-  if (prefix === '🏢') {
-    return rec.customers.some(function(cid) {
-      return (allCustomers[cid] && allCustomers[cid].name) === name;
     });
   }
   if (prefix === '✉') {
@@ -589,14 +579,12 @@ function renderList(list) {
 function typeEmoji(t) {
   switch(t) {
     case '全体会議': return '🌐';
-    case '部門会議': return '👥';
+    case 'チーム会議': return '👥';
     case '部長会': return '👔';
     case 'リーダー会': return '🧑‍💼';
     case '1ON1': return '🔒';
-    case '打ち合わせ': return '💬';
-    case '商談': return '🤝';
-    case '来客対応': return '📞';
-    case 'その他': return '📝';
+    case '個人メモ': return '📝';
+    case 'その他': return '❓';
     default: return '🎙️';
   }
 }

@@ -278,23 +278,16 @@ body::-webkit-scrollbar { display:none; }
       </button>
     </div>
 
-    <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;color:var(--muted);margin:18px 0 8px;">🤝 対顧客</div>
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;color:var(--muted);margin:18px 0 8px;">📝 その他</div>
     <div class="mt-grid">
-      <button class="mt-btn" data-type="取引先会議" data-cat="対顧客" data-perm="営業・経営" onclick="selectMeetingType(this)">
-        <div class="mt-emoji">🤝</div>
-        <div class="mt-name">取引先会議</div>
-        <div class="mt-perm">営業・経営</div>
-      </button>
-      <button class="mt-btn" data-type="電話対応" data-cat="対顧客" data-perm="営業・経営" onclick="selectMeetingType(this)">
-        <div class="mt-emoji">📞</div>
-        <div class="mt-name">電話対応</div>
-        <div class="mt-perm">営業・経営</div>
-      </button>
       <button class="mt-btn" data-type="その他" data-cat="対社員" data-perm="参加者のみ" onclick="selectMeetingType(this)">
         <div class="mt-emoji">❓</div>
         <div class="mt-name">その他</div>
         <div class="mt-perm">参加者のみ</div>
       </button>
+    </div>
+    <div style="margin-top:14px;padding:10px 12px;background:var(--s2);border:1px dashed var(--border);border-radius:10px;font-size:11px;color:var(--muted);line-height:1.6;">
+      💡 顧客との商談・電話対応は<strong>将来の営業グループ用アプリ</strong>で管理予定のため、現在は社内会議のみ対応しています。
     </div>
 
     <button onclick="showScreen('screen-idle')" style="width:100%;margin-top:20px;background:var(--s3);border:1px solid var(--border);color:var(--muted);padding:12px;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit;">キャンセル</button>
@@ -1489,16 +1482,10 @@ async function showResultScreen(fullText) {
   if (extInput) extInput.value = '';
 
   // 関連得意先セクション表示（取引先会議・電話対応のみ）
+  // 関連得意先セクションは社内限定化により常時非表示（将来の営業グループ用に温存）
   var custSection = document.getElementById('customer-relation-section');
-  if (custSection) {
-    if (meetingType === '取引先会議' || meetingType === '電話対応') {
-      custSection.style.display = '';
-      // 得意先マスタをロード（裏で）
-      loadCustomers();
-    } else {
-      custSection.style.display = 'none';
-    }
-  }
+  if (custSection) custSection.style.display = 'none';
+  selectedCustomerIds = [];
 
   // 参加者チェックリスト（社員マスタから読込）
   await renderParticipantChecklist();

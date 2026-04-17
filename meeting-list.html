@@ -111,6 +111,27 @@ body { font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif; background: var
 .transcript-body { margin-top: 8px; padding: 10px; background: var(--s2); border-radius: 8px; font-size: 12px; line-height: 1.7; display: none; white-space: pre-wrap; }
 .transcript-body.show { display: block; }
 
+/* 操作ボタン */
+.op-btn { display: block; width: 100%; padding: 11px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; border: 1px solid var(--border); text-align: center; text-decoration: none; box-sizing: border-box; }
+.op-btn.op-add { background: rgba(34,197,94,0.12); color: var(--green); border-color: rgba(34,197,94,0.3); }
+.op-btn.op-ai { background: rgba(168,85,247,0.12); color: var(--purple); border-color: rgba(168,85,247,0.3); }
+.op-btn.op-notion { background: var(--s2); color: var(--accent); }
+.op-btn.op-delete { background: rgba(239,68,68,0.08); color: var(--red); border-color: rgba(239,68,68,0.25); }
+.op-btn:active { transform: scale(0.98); }
+
+/* アクション追加モーダル */
+.add-ov { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 700; display: none; align-items: center; justify-content: center; padding: 20px; }
+.add-ov.show { display: flex; }
+.add-box { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 18px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+.add-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+.add-label { font-size: 11px; font-weight: 700; color: var(--muted); margin: 10px 0 5px; letter-spacing: 0.04em; }
+.add-input, .add-textarea, .add-select { width: 100%; padding: 9px 11px; background: var(--s2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; font-family: inherit; }
+.add-textarea { min-height: 70px; resize: vertical; }
+.add-btns { display: flex; gap: 8px; margin-top: 16px; }
+.add-btns button { flex: 1; padding: 11px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; border: 1px solid var(--border); }
+.add-btns .btn-save { background: var(--accent); border-color: var(--accent); color: #fff; }
+.add-btns .btn-cancel { background: var(--s2); color: var(--muted); }
+
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--s3); color: var(--text); padding: 10px 20px; border-radius: 20px; font-size: 13px; transition: transform 0.25s; z-index: 700; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
 .toast.show { transform: translateX(-50%) translateY(0); }
 
@@ -154,6 +175,30 @@ body { font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif; background: var
   <div class="detail" onclick="event.stopPropagation()">
     <button class="detail-close" onclick="closeDetail()">✕</button>
     <div id="detail-content"></div>
+  </div>
+</div>
+
+<!-- アクション追加モーダル -->
+<div class="add-ov" id="add-ov" onclick="closeAddActionModal(event)">
+  <div class="add-box" onclick="event.stopPropagation()">
+    <div class="add-title">➕ アクション（タスク）を追加</div>
+    <div class="add-label">内容 *</div>
+    <textarea class="add-textarea" id="add-content" placeholder="例: 5/1までに新パターン発注リストを作成"></textarea>
+    <div class="add-label">担当者</div>
+    <select class="add-select" id="add-assignee"><option value="">-- 選択しない --</option></select>
+    <div class="add-label">期限</div>
+    <input class="add-input" id="add-deadline" type="date">
+    <div class="add-label">優先度</div>
+    <select class="add-select" id="add-priority">
+      <option value="">-- なし --</option>
+      <option value="高">🔴 高</option>
+      <option value="中">🟡 中</option>
+      <option value="低">🟢 低</option>
+    </select>
+    <div class="add-btns">
+      <button class="btn-cancel" onclick="closeAddActionModal()">キャンセル</button>
+      <button class="btn-save" id="add-save-btn" onclick="saveNewAction()">保存</button>
+    </div>
   </div>
 </div>
 
@@ -680,8 +725,26 @@ function openDetail(id) {
     html += '</div>';
   }
 
-  // Notionで開く
-  html += '<div style="margin-top:16px;"><a href="https://www.notion.so/' + r.id.replace(/-/g, '') + '" target="_blank" style="display:block;text-align:center;padding:10px;background:var(--s2);border:1px solid var(--border);border-radius:10px;color:var(--accent);text-decoration:none;font-size:13px;">📗 Notionで開く</a></div>';
+  // 操作ボタン群
+  const rank = GROUP_RANK[loginGroup] || 0;
+  const isRecorder = r.recorder === loginUser;
+  const canDelete = isRecorder || rank >= 90;  // 録音者 or 管理者以上
+  // 誰でも「アクション追加」「再AI抽出」は可能（参加者全員で気づいたタスクを育てる）
+
+  html += '<div class="detail-sec" style="border-bottom:none;">';
+  html += '<div class="detail-sec-title">🛠 操作</div>';
+  html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+  html += '<button class="op-btn op-add" onclick="openAddActionModal(\'' + r.id + '\')">➕ アクション（タスク）を追加</button>';
+  if (r.transcribe) {
+    html += '<button class="op-btn op-ai" onclick="reExtractActions(\'' + r.id + '\')">🤖 文字起こしから AI で再抽出</button>';
+  }
+  html += '<a class="op-btn op-notion" href="https://www.notion.so/' + r.id.replace(/-/g, '') + '" target="_blank">📗 Notionで開く（本文編集）</a>';
+  if (canDelete) {
+    html += '<button class="op-btn op-delete" onclick="deleteRecording(\'' + r.id + '\')">🗑️ この会議録音を削除</button>';
+  } else {
+    html += '<div style="font-size:11px;color:var(--muted);padding:6px 10px;">💡 削除は録音者または管理者のみ可能です</div>';
+  }
+  html += '</div></div>';
 
   document.getElementById('detail-content').innerHTML = html;
   document.getElementById('detail-ov').classList.add('show');
@@ -707,6 +770,173 @@ function esc(s) {
   var d = document.createElement('div');
   d.textContent = s || '';
   return d.innerHTML;
+}
+
+/* ════════════════════════════════════════
+   操作: アクション追加モーダル
+   ═══════════════════════════════════════ */
+var addActionTargetMeetingId = '';
+
+function openAddActionModal(meetingId) {
+  addActionTargetMeetingId = meetingId;
+  // 担当者セレクトを社員リストで埋める（氏名順）
+  var sel = document.getElementById('add-assignee');
+  var emps = Object.values(allEmployees).filter(function(e){ return e.name; });
+  emps.sort(function(a,b){ return a.name.localeCompare(b.name, 'ja'); });
+  sel.innerHTML = '<option value="">-- 選択しない --</option>' +
+    emps.map(function(e){ return '<option value="'+e.id+'">'+esc(e.name)+'</option>'; }).join('');
+  // デフォルト: 自分
+  if (loginId) sel.value = loginId;
+  document.getElementById('add-content').value = '';
+  document.getElementById('add-deadline').value = '';
+  document.getElementById('add-priority').value = '';
+  document.getElementById('add-ov').classList.add('show');
+  setTimeout(function(){ document.getElementById('add-content').focus(); }, 50);
+}
+
+function closeAddActionModal(e) {
+  if (e && e.target !== document.getElementById('add-ov') && e.type === 'click') return;
+  document.getElementById('add-ov').classList.remove('show');
+}
+
+async function saveNewAction() {
+  var content = (document.getElementById('add-content').value || '').trim();
+  if (!content) { showToast('内容を入力してください'); return; }
+  var assigneeId = document.getElementById('add-assignee').value;
+  var deadline = document.getElementById('add-deadline').value;
+  var priority = document.getElementById('add-priority').value;
+
+  var btn = document.getElementById('add-save-btn');
+  btn.disabled = true;
+  btn.textContent = '保存中...';
+
+  try {
+    var props = {
+      '内容': { title: [{ text: { content: content.substring(0, 2000) } }] },
+      'ステータス': { select: { name: '未着手' } },
+      '元会議': { relation: [{ id: addActionTargetMeetingId }] },
+    };
+    if (assigneeId) props['担当者'] = { relation: [{ id: assigneeId }] };
+    if (deadline) props['期限'] = { date: { start: deadline } };
+    if (priority) props['優先度'] = { select: { name: priority } };
+
+    await notionAPI('pages', 'POST', {
+      parent: { database_id: ACTION_DB },
+      properties: props,
+    });
+    showToast('✅ アクションを追加しました');
+    closeAddActionModal();
+    await loadActions();
+    openDetail(addActionTargetMeetingId);  // 詳細モーダルを開き直して反映
+  } catch(e) {
+    console.error(e);
+    showToast('❌ 保存失敗: ' + (e.message || e));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '保存';
+  }
+}
+
+/* ════════════════════════════════════════
+   操作: 文字起こしから AI でアクションを再抽出
+   ═══════════════════════════════════════ */
+async function reExtractActions(meetingId) {
+  var r = allRecordings.find(function(x){ return x.id === meetingId; });
+  if (!r) return;
+  if (!r.transcribe) { showToast('文字起こしがありません'); return; }
+  if (!confirm('文字起こしから AI でアクション（タスク）を再抽出します。\n既存のアクションには影響しません（追加のみ）。\n\n続行しますか？')) return;
+
+  showToast('🤖 AI抽出中...');
+  try {
+    // 参加者名で前置きして /ai/summarize に投げる（Claudeは要約に"## アクション"セクションを含めて返す想定）
+    var partNames = r.participants.map(function(id){ return (allEmployees[id]&&allEmployees[id].name) || ''; }).filter(Boolean);
+    var preamble = '【タスクのみ抽出】以下の会議からアクション（タスク）だけを「- 内容 [担当:氏名] [期限:YYYY-MM-DD]」形式で箇条書きしてください。要約や概要は不要です。\n';
+    if (partNames.length) preamble += '【参加者】' + partNames.join('、') + '\n';
+    preamble += '【会議タイプ】' + (r.type || '不明') + '\n\n【文字起こし】\n';
+
+    var res = await fetch(WORKER + '/ai/summarize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: preamble + r.transcribe, lang: 'ja' }),
+    });
+    var text = await res.text();
+    var data;
+    try { data = JSON.parse(text); } catch(e) { throw new Error('AI応答パース失敗'); }
+
+    // 応答から "- " 行を抽出
+    var raw = (data.summary || data.text || '').toString();
+    var actions = [];
+    raw.split('\n').forEach(function(ln){
+      var m = ln.match(/^\s*[\-\*\・\▪]\s*(.+)/);
+      if (m) {
+        var body = m[1].trim();
+        if (body.length > 2) actions.push({ content: body });
+      }
+    });
+
+    if (!actions.length) { showToast('❕ アクションは抽出されませんでした'); return; }
+
+    // プレビュー → 承認してから登録
+    var preview = actions.map(function(a,i){ return (i+1)+'. '+a.content; }).join('\n');
+    if (!confirm('以下のアクションを追加します:\n\n' + preview + '\n\nよろしいですか？')) return;
+
+    var ok = 0, err = 0;
+    for (var i = 0; i < actions.length; i++) {
+      var a = actions[i];
+      if (!a.content) continue;
+      try {
+        await notionAPI('pages', 'POST', {
+          parent: { database_id: ACTION_DB },
+          properties: {
+            '内容': { title: [{ text: { content: a.content.substring(0, 2000) } }] },
+            'ステータス': { select: { name: '未着手' } },
+            '元会議': { relation: [{ id: meetingId }] },
+          },
+        });
+        ok++;
+      } catch(e){ console.error(e); err++; }
+    }
+    showToast('✅ ' + ok + '件追加' + (err ? ' / ❌' + err + '件失敗' : ''));
+    await loadActions();
+    openDetail(meetingId);
+  } catch(e) {
+    console.error(e);
+    showToast('❌ AI抽出失敗: ' + (e.message || e));
+  }
+}
+
+/* ════════════════════════════════════════
+   操作: 会議録音を削除（録音者 or 管理者以上）
+   ═══════════════════════════════════════ */
+async function deleteRecording(meetingId) {
+  var r = allRecordings.find(function(x){ return x.id === meetingId; });
+  if (!r) return;
+
+  // 二段階確認
+  var msg1 = '⚠️ 会議録音を削除します\n\n'
+           + '「' + r.title + '」\n\n'
+           + '・会議録音レコードは Notion のゴミ箱に移動します（30日以内なら復元可）\n'
+           + '・紐付いているアクション項目は削除されません（元会議リレーションは残ります）\n\n'
+           + '続行しますか？';
+  if (!confirm(msg1)) return;
+
+  var typed = prompt('最終確認のため「削除」と入力してください:');
+  if (typed !== '削除') { showToast('キャンセルしました'); return; }
+
+  try {
+    // Notion: archived: true で削除（ゴミ箱移動）
+    await notionAPI('pages/' + meetingId, 'PATCH', { archived: true });
+    showToast('🗑️ 削除しました');
+    closeDetail();
+    await loadRecordings();
+    renderTabs();
+    renderTypeFilter();
+    renderPersonFilter();
+    applyFilters();
+  } catch(e) {
+    console.error(e);
+    showToast('❌ 削除失敗: ' + (e.message || e));
+  }
 }
 
 // 初期化

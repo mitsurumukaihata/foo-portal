@@ -2543,8 +2543,12 @@ function openDetail(id) {
   const recv     = propStr(o,'受注者') || '';
   const memo     = propStr(o,'備考欄') || '';
 
-  const statuses = ['新規発注','発注済','納入済','キャンセル'];
+  // 納入済は在庫反映が必要なので入庫ボタン経由のみ。ここからは除外（案C）
+  // ただし既に納入済のレコードを閲覧する履歴モードでは表示する
   const isHistory = (curStatus === '納入済' || curStatus === 'キャンセル');
+  const statuses = isHistory
+    ? ['新規発注','発注済','納入済','キャンセル']
+    : ['新規発注','発注済','キャンセル'];
   const locOpts  = ['','五日市','志和'].map(l =>
     `<option value="${l}" ${l===curLoc?'selected':''}>${l||'未選択'}</option>`
   ).join('');
@@ -2580,6 +2584,9 @@ function openDetail(id) {
       <div class="status-row">
         ${statuses.map(s => `<button class="status-btn${s===curStatus?' '+STATUS_BTN[s]:''}" onclick="selectStatus('${s}',this)">${s}</button>`).join('')}
       </div>
+      ${isHistory ? '' : `<div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;">
+        💡 納入済にするには一覧の <strong style="color:#22c55e;">📦 入庫ボタン</strong> を押してください（在庫DBに入庫レコードが作成されます）
+      </div>`}
     </div>
 
     <!-- パターン名 -->
@@ -2666,6 +2673,12 @@ function selectStatus(s, btn) {
 
 async function updateDetail() {
   if(!curOrder || !curStatus) return;
+  // 安全装置: 納入済は必ず入庫ボタン経由にする（在庫DBへの入庫レコード作成が必要なため）
+  const oldStatus = propStr(curOrder, 'ステータス') || '';
+  if (curStatus === '納入済' && oldStatus !== '納入済') {
+    alert('❌ 納入済にするには一覧の「📦 入庫」ボタンから登録してください。\n（在庫DBに入庫レコードを作成する必要があります）');
+    return;
+  }
   const btn     = document.querySelector('.update-btn');
   const qty     = parseInt(document.getElementById('detail-qty')?.textContent) || null;
   const loc     = document.getElementById('detail-loc')?.value || '';

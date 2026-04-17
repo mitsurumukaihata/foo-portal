@@ -1851,7 +1851,7 @@ function switchTab(tab) {
 
 // カテゴリ別パターンマスター（しきい値設定の予測候補用）
 const CAT_PATTERNS = {
-  'LTL TB　ノーマル':    ['M646','M676','M125','M317','M323','M319','M320','M619','M626','M888','M899','M801','M746','R225','R241','G539','SP680','SP122','XJE4'],
+  'LTL TB　ノーマル':    ['M646','M676','M125','M170','M317','M323','M319','M320','M619','M626','M888','M899','M801','M746','R225','R241','G539','SP680','SP122','XJE4'],
   'LTL TB　スタッドレス':['M929','M919','M966','M920','M939','W910','W900S','W911','W970','W999','SP001','SP081','SP088','XDW'],
   'LTS　ノーマル':       ['M634','M135','M134e','M131','M319','M804','R207','SPLT50','SPLT21','SPLT22'],
   'LTS　スタッドレス':   ['M935','M937','M934','LV01','W989','LT01'],
@@ -1987,6 +1987,21 @@ function onThViewInput(v) {
   dd.style.display = 'block';
 }
 
+// カテゴリの表示順（ノーマル系 → スタッドレス系 → 再生系）
+const CAT_DISPLAY_ORDER = [
+  'LTL TB　ノーマル', 'LTS　ノーマル', 'T/T チューブタイプ', 'バン', 'リフト',
+  'LTL TB　スタッドレス', 'LTS　スタッドレス',
+  'RT 再生'
+];
+// メーカーの表示順
+const MAKER_DISPLAY_ORDER = ['TOYO', 'BRIDGESTONE', 'DUNLOP', 'MICHELIN', 'PIRELLI'];
+const MAKER_DISPLAY_COLOR = {
+  'TOYO': 'var(--accent)', 'BRIDGESTONE': '#3b82f6', 'BS': '#3b82f6',
+  'DUNLOP': 'var(--green,#22c55e)', 'MICHELIN': '#eab308', 'PIRELLI': '#ef4444'
+};
+// guessMakerは 'BS' を返すので 'BRIDGESTONE' に正規化するヘルパ
+function normalizeMaker(m) { return m === 'BS' ? 'BRIDGESTONE' : m; }
+
 function thViewPickSize(size) {
   const inp = document.getElementById('th-view-input');
   if (inp) inp.value = size;
@@ -1994,30 +2009,43 @@ function thViewPickSize(size) {
 
   if (!snapshotCache) { document.getElementById('th-view-results').innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0;">読み込み中…</div>'; return; }
 
-  // このサイズのスナップショットレコードを全件抽出
-  const matches = Object.entries(snapshotCache).filter(([key]) => {
-    const [,,sz] = key.split('|');
-    // 全角・半角スペース正規化して比較
-    return sz.replace(/[　 ]/g,' ') === size.replace(/[　 ]/g,' ');
+  // サイズの正規化比較用
+  const normSize = size.replace(/[　 ]/g, ' ');
+
+  // このサイズをサポートする全カテゴリ × 全パターン × 2倉庫 を展開
+  // 既存の snapshotCache にあるキーは値をセット、未登録は 0 で初期化
+  const byCatPattern = {};  // { cat: { pattern: { 五日市倉庫: {key, val}, 志和倉庫: {key, val} } } }
+  CAT_DISPLAY_ORDER.forEach(cat => {
+    const sizes = CAT_SIZES[cat] || [];
+    // このサイズをサポートするカテゴリか
+    const supported = sizes.some(s => s.replace(/[　 ]/g, ' ') === normSize);
+    if (!supported) return;
+    const patterns = CAT_PATTERNS[cat] || [];
+    byCatPattern[cat] = {};
+    patterns.forEach(pattern => {
+      byCatPattern[cat][pattern] = {};
+      ['五日市倉庫', '志和倉庫'].forEach(wh => {
+        // 既存キーを探す（サイズの全角/半角表記揺れ対応）
+        const candidateKeys = Object.keys(snapshotCache).filter(k => {
+          const [c, p, sz, w] = k.split('|');
+          return c === cat && p === pattern && w === wh
+            && sz.replace(/[　 ]/g, ' ') === normSize;
+        });
+        const key = candidateKeys[0] || `${cat}|${pattern}|${size}|${wh}`;
+        if (!snapshotCache[key]) snapshotCache[key] = { pageId: null, threshold: 0, baseline: 0 };
+        byCatPattern[cat][pattern][wh] = {
+          key, val: snapshotCache[key].threshold || 0
+        };
+      });
+    });
   });
 
-  if (!matches.length) {
-    document.getElementById('th-view-results').innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0;">このサイズのレコードが見つかりません</div>';
+  if (Object.keys(byCatPattern).length === 0) {
+    document.getElementById('th-view-results').innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0;">このサイズをサポートするカテゴリがありません</div>';
     return;
   }
 
-  // パターン別にグルーピング
-  const byPattern = {};
-  matches.forEach(([key, snap]) => {
-    const [cat, pattern, sz, wh] = key.split('|');
-    const nSz = normalizeSize(sz);
-    const pKey = `${cat}|${pattern}|${nSz}`;
-    if (!byPattern[pKey]) byPattern[pKey] = { cat, pattern, size: nSz, items: {} };
-    byPattern[pKey].items[wh] = { key, snap };
-  });
-
   thPendingChanges = {}; // リセット
-  var html = '<div style="font-size:10px;color:var(--muted);margin-bottom:6px;">' + size + ' のしきい値</div>';
 
   function whEditor(whName, whColor, key, val) {
     var safeId = keyToSafeId(key);
@@ -2030,31 +2058,53 @@ function thViewPickSize(size) {
       + '</div></div>';
   }
 
-  Object.values(byPattern).forEach(function(g) {
-    var itsuka = g.items['五日市倉庫'];
-    var shiwa  = g.items['志和倉庫'];
-    // 未設定でも編集可能にする（キーを生成）
-    var itsukaKey = itsuka ? itsuka.key : (g.cat + '|' + g.pattern + '|' + g.size + '|五日市倉庫');
-    var shiwaKey  = shiwa ? shiwa.key : (g.cat + '|' + g.pattern + '|' + g.size + '|志和倉庫');
-    var itsukaVal = itsuka ? (itsuka.snap.threshold || 0) : 0;
-    var shiwaVal  = shiwa ? (shiwa.snap.threshold || 0) : 0;
-    // 未設定キーのスナップショットキャッシュにダミーを入れておく（changeThresholdで参照するため）
-    if (!snapshotCache[itsukaKey]) snapshotCache[itsukaKey] = { pageId: null, threshold: 0, baseline: 0 };
-    if (!snapshotCache[shiwaKey]) snapshotCache[shiwaKey] = { pageId: null, threshold: 0, baseline: 0 };
+  var html = '<div style="font-size:10px;color:var(--muted);margin-bottom:8px;">' + size + ' のしきい値（カテゴリ → メーカー順）</div>';
 
-    html += '<div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:9px 10px;margin-bottom:6px;">';
-    html += '<div style="background:var(--s3);border-radius:7px;padding:7px 10px;margin-bottom:8px;">';
-    html += '<div style="display:flex;align-items:baseline;gap:8px;">';
-    html += '<span style="font-size:13px;font-weight:700;font-family:\'DM Mono\',monospace;color:var(--text);">' + g.pattern + '</span>';
-    html += '<span style="font-size:13px;font-weight:700;font-family:\'DM Mono\',monospace;color:var(--text);">' + g.size + '</span>';
+  // カテゴリごとに表示
+  CAT_DISPLAY_ORDER.forEach(cat => {
+    if (!byCatPattern[cat]) return;
+    // カテゴリヘッダー
+    html += '<div style="margin-top:14px;margin-bottom:6px;padding:6px 10px;background:rgba(240,165,0,0.08);border-radius:8px;border-left:3px solid var(--accent);">';
+    html += '<span style="font-size:12px;font-weight:800;color:var(--accent);">' + cat + '</span>';
     html += '</div>';
-    html += '<div style="font-size:10px;color:var(--muted);margin-top:2px;">' + g.cat + '</div>';
-    html += '</div>';
-    html += '<div style="display:flex;gap:8px;">';
-    html += whEditor('五日市倉庫', 'var(--green)', itsukaKey, itsukaVal);
-    html += whEditor('志和倉庫', 'var(--blue)', shiwaKey, shiwaVal);
-    html += '</div></div>';
+
+    // メーカー順にパターンをソート
+    const patterns = Object.keys(byCatPattern[cat]);
+    patterns.sort((a, b) => {
+      const mA = normalizeMaker(guessMaker(a));
+      const mB = normalizeMaker(guessMaker(b));
+      const oA = MAKER_DISPLAY_ORDER.indexOf(mA); const iA = oA === -1 ? 99 : oA;
+      const oB = MAKER_DISPLAY_ORDER.indexOf(mB); const iB = oB === -1 ? 99 : oB;
+      if (iA !== iB) return iA - iB;
+      return a.localeCompare(b);
+    });
+
+    let lastMaker = null;
+    patterns.forEach(pattern => {
+      const maker = normalizeMaker(guessMaker(pattern));
+      if (maker !== lastMaker) {
+        lastMaker = maker;
+        const mc = MAKER_DISPLAY_COLOR[maker] || 'var(--muted)';
+        html += '<div style="margin-top:8px;margin-bottom:4px;padding:3px 8px;background:var(--s2);border-left:3px solid ' + mc + ';border-radius:0 4px 4px 0;">';
+        html += '<span style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:' + mc + ';">' + maker + '</span>';
+        html += '</div>';
+      }
+      const warehouses = byCatPattern[cat][pattern];
+      const itsuka = warehouses['五日市倉庫'];
+      const shiwa = warehouses['志和倉庫'];
+
+      html += '<div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:9px 10px;margin-bottom:6px;">';
+      html += '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;padding:4px 8px;background:var(--s3);border-radius:7px;">';
+      html += '<span style="font-size:13px;font-weight:700;font-family:\'DM Mono\',monospace;color:var(--text);">' + pattern + '</span>';
+      html += '<span style="font-size:13px;font-weight:700;font-family:\'DM Mono\',monospace;color:var(--text);">' + size + '</span>';
+      html += '</div>';
+      html += '<div style="display:flex;gap:8px;">';
+      html += whEditor('五日市倉庫', 'var(--green,#22c55e)', itsuka.key, itsuka.val);
+      html += whEditor('志和倉庫', '#3b82f6', shiwa.key, shiwa.val);
+      html += '</div></div>';
+    });
   });
+
   html += '<button id="th-save-changes-btn" onclick="saveThresholdChanges()" style="display:none;width:100%;margin-top:12px;background:var(--accent);border:none;border-radius:10px;padding:13px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">💾 変更を登録する</button>';
   document.getElementById('th-view-results').innerHTML = html;
 }

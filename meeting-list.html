@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>会議録音一覧 | f.o.o</title>
+<title>会議内容 | f.o.o</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#f0a500">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -45,7 +45,9 @@ body { font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif; background: var
 .portal-back-btn { font-size: 12px; color: var(--muted); background: var(--s2); border: 0.5px solid var(--border); padding: 6px 12px; border-radius: 20px; text-decoration: none; }
 .refresh-btn { font-size: 14px; background: var(--s2); border: 0.5px solid var(--border); padding: 6px 10px; border-radius: 20px; cursor: pointer; color: var(--muted); font-family: inherit; }
 
-.tab-main { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; padding: 12px; background: var(--bg); border-bottom: 0.5px solid var(--border); }
+.tab-main { display: grid; gap: 6px; padding: 12px; background: var(--bg); border-bottom: 0.5px solid var(--border); }
+.tab-main.cols-2 { grid-template-columns: 1fr 1fr; }
+.tab-main.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
 .tab-chip { padding: 10px 8px; border-radius: 10px; font-size: 12px; font-weight: 700; border: 1px solid var(--border); background: var(--s2); color: var(--muted); cursor: pointer; text-align: center; font-family: inherit; }
 .tab-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 .tab-count { font-size: 10px; opacity: 0.8; margin-top: 2px; }
@@ -122,32 +124,22 @@ body { font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif; background: var
 <body>
 
 <div class="app-header">
-  <div class="header-icon">📚</div>
+  <div class="header-icon">📣</div>
   <div class="header-titles">
-    <div class="header-title">会議録音一覧</div>
+    <div class="header-title">会議内容</div>
     <div class="header-sub">過去の録音・要約・アクション振り返り</div>
   </div>
   <button class="refresh-btn" onclick="loadAll()">🔄</button>
   <a href="index.html" class="portal-back-btn">← ポータル</a>
 </div>
 
-<!-- 大分類タブ -->
-<div class="tab-main">
-  <button class="tab-chip active" id="tab-対社員" onclick="setCategory('対社員',this)">
-    👥 対社員
-    <div class="tab-count" id="count-対社員">-</div>
-  </button>
-  <button class="tab-chip" id="tab-対役職者" onclick="setCategory('対役職者',this)">
-    👔 対役職者
-    <div class="tab-count" id="count-対役職者">-</div>
-  </button>
-  <button class="tab-chip" id="tab-対顧客" onclick="setCategory('対顧客',this)">
-    🤝 対顧客
-    <div class="tab-count" id="count-対顧客">-</div>
-  </button>
-</div>
+<!-- メインタブ（ログインユーザーにより2 or 3タブ） -->
+<div class="tab-main" id="tab-main"></div>
 
-<!-- 会議タイプフィルター -->
+<!-- 個別会議タブ時の「人で絞る」ボタン群 -->
+<div class="filter-row" id="person-filter" style="display:none;"></div>
+
+<!-- 会議タイプサブフィルター -->
 <div class="filter-row" id="type-filter"></div>
 
 <!-- 検索 -->
@@ -184,15 +176,15 @@ let allRecordings = [];
 let allActions = [];
 let allEmployees = {};
 let allCustomers = {};
-let currentCategory = '対社員';
-let currentType = 'all';
+let currentTab = 'all';          // 'all' | 'exec' | 'individual'
+let currentType = 'all';         // 会議タイプ絞り込み（サブフィルター）
+let currentPersonKey = 'all';    // 個別会議タブの「人」絞り込み
 
-// タイプ→大分類のマップ
-const TYPE_TO_CAT = {
-  '全体会議': '対社員', 'チーム会議': '対社員', '個人メモ': '対社員',
-  '部長会': '対役職者', 'リーダー会': '対役職者', '1ON1': '対役職者',
-  '取引先会議': '対顧客', '電話対応': '対顧客',
-  'その他': '対社員'
+// タブ定義: 各タブが受け持つ会議タイプ
+const TAB_DEFS = {
+  all:        { label: '🌐 全体会議',   types: ['全体会議', '部門会議'] },
+  exec:       { label: '👔 役職者会議', types: ['部長会', 'リーダー会'] },
+  individual: { label: '🔒 個別会議',   types: ['1ON1', '打ち合わせ', '商談', '来客対応', 'その他'] },
 };
 
 // アプリグループの階層（数字が大きいほど上位）
@@ -200,6 +192,19 @@ const GROUP_RANK = {
   '会長': 100, '管理者': 90, '部長': 70, 'リーダー': 50,
   '事務': 40, '経理': 40, 'SNS/オークション': 40, '一般': 10, '': 0
 };
+
+// 役職者判定（3タブ表示する対象）
+function isExecutiveUser() {
+  return (GROUP_RANK[loginGroup] || 0) >= 70;
+}
+
+// 会議タイプ → どのタブに属するか
+function tabOfType(type) {
+  for (const key in TAB_DEFS) {
+    if (TAB_DEFS[key].types.indexOf(type) >= 0) return key;
+  }
+  return 'individual'; // 未定義タイプは個別扱い
+}
 
 // Auth
 (function(){
@@ -313,8 +318,9 @@ async function loadAll() {
   try {
     await loadEmployees();
     await Promise.all([loadCustomers(), loadRecordings(), loadActions()]);
-    renderCounts();
+    renderTabs();          // ← ログインユーザーの役職に応じて 2 or 3 タブを描画
     renderTypeFilter();
+    renderPersonFilter();
     applyFilters();
   } catch(e) {
     console.error(e);
@@ -345,55 +351,166 @@ function canView(rec) {
   return false;
 }
 
-function renderCounts() {
+/* ── タブ描画（ログインユーザーが役職者なら3タブ、そうでなければ2タブ） ── */
+function renderTabs() {
+  const exec = isExecutiveUser();
+  const tabKeys = exec ? ['all', 'exec', 'individual'] : ['all', 'individual'];
   const visible = allRecordings.filter(canView);
-  const byCat = { '対社員': 0, '対役職者': 0, '対顧客': 0 };
+  const counts = { all: 0, exec: 0, individual: 0 };
   visible.forEach(function(r) {
-    if (byCat[r.category] !== undefined) byCat[r.category]++;
+    const k = tabOfType(r.type);
+    if (counts[k] !== undefined) counts[k]++;
   });
-  Object.keys(byCat).forEach(function(c) {
-    var el = document.getElementById('count-' + c);
-    if (el) el.textContent = byCat[c];
+
+  const container = document.getElementById('tab-main');
+  container.className = 'tab-main cols-' + tabKeys.length;
+  let html = '';
+  tabKeys.forEach(function(k) {
+    const active = (k === currentTab) ? ' active' : '';
+    html += '<button class="tab-chip' + active + '" onclick="setTab(\'' + k + '\',this)">'
+         + esc(TAB_DEFS[k].label)
+         + '<div class="tab-count">' + counts[k] + '</div>'
+         + '</button>';
   });
+  container.innerHTML = html;
+
+  // 役職者以外が exec タブ選択中になっていたら all へ戻す
+  if (!exec && currentTab === 'exec') currentTab = 'all';
 }
 
+/* ── 会議タイプサブフィルター（現タブ内の types のみ） ── */
 function renderTypeFilter() {
-  var typesInCat = {};
+  const allowedTypes = TAB_DEFS[currentTab].types;
+  const typeCount = {};
   allRecordings.filter(canView).forEach(function(r) {
-    if (r.category === currentCategory && r.type) {
-      typesInCat[r.type] = (typesInCat[r.type] || 0) + 1;
+    if (allowedTypes.indexOf(r.type) >= 0) {
+      typeCount[r.type] = (typeCount[r.type] || 0) + 1;
     }
   });
-  var container = document.getElementById('type-filter');
-  var html = '<button class="filter-chip active" onclick="setType(\'all\',this)">全て</button>';
-  Object.keys(typesInCat).forEach(function(t) {
-    html += '<button class="filter-chip" onclick="setType(\'' + t + '\',this)">' + t + ' (' + typesInCat[t] + ')</button>';
+  const container = document.getElementById('type-filter');
+  const types = Object.keys(typeCount);
+
+  // タイプが1種類以下なら非表示
+  if (types.length <= 1) {
+    container.innerHTML = '';
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = '';
+  let html = '<button class="filter-chip' + (currentType === 'all' ? ' active' : '') + '" onclick="setType(\'all\',this)">全て</button>';
+  types.forEach(function(t) {
+    const active = (t === currentType) ? ' active' : '';
+    html += '<button class="filter-chip' + active + '" onclick="setType(\'' + esc(t) + '\',this)">' + esc(t) + ' (' + typeCount[t] + ')</button>';
   });
   container.innerHTML = html;
 }
 
-function setCategory(cat, el) {
-  currentCategory = cat;
+/* ── 個別会議タブ専用: 「人で絞る」ボタン群 ── */
+function renderPersonFilter() {
+  const container = document.getElementById('person-filter');
+  if (currentTab !== 'individual') {
+    container.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+
+  // 個別会議タブで canView 通過したものから相手名を集約
+  const allowedTypes = TAB_DEFS.individual.types;
+  const personCount = {};    // { "矢島 明和": 3, "山田商事": 1, ... }
+  allRecordings.filter(canView).forEach(function(r) {
+    if (allowedTypes.indexOf(r.type) < 0) return;
+    // 参加者社員（自分を除く）
+    r.participants.forEach(function(pid) {
+      if (pid === loginId) return;
+      const nm = allEmployees[pid] && allEmployees[pid].name;
+      if (nm) personCount['👤' + nm] = (personCount['👤' + nm] || 0) + 1;
+    });
+    // 関連得意先
+    r.customers.forEach(function(cid) {
+      const nm = allCustomers[cid] && allCustomers[cid].name;
+      if (nm) personCount['🏢' + nm] = (personCount['🏢' + nm] || 0) + 1;
+    });
+    // 外部参加者（手入力テキスト）
+    if (r.externalParticipants) {
+      r.externalParticipants.split(/[,、\n]/).forEach(function(p) {
+        const nm = p.trim();
+        if (nm) personCount['✉' + nm] = (personCount['✉' + nm] || 0) + 1;
+      });
+    }
+  });
+
+  const keys = Object.keys(personCount).sort(function(a, b) { return personCount[b] - personCount[a]; });
+  if (!keys.length) {
+    container.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+  container.style.display = '';
+  let html = '<button class="filter-chip' + (currentPersonKey === 'all' ? ' active' : '') + '" onclick="setPerson(\'all\',this)">👥 全員</button>';
+  keys.forEach(function(pk) {
+    const label = pk.slice(1);  // prefix除去
+    const prefix = pk.charAt(0); // 👤/🏢/✉
+    const active = (pk === currentPersonKey) ? ' active' : '';
+    html += '<button class="filter-chip' + active + '" onclick="setPerson(\'' + esc(pk) + '\',this)">' + prefix + ' ' + esc(label) + ' (' + personCount[pk] + ')</button>';
+  });
+  container.innerHTML = html;
+}
+
+function setTab(tab, el) {
+  currentTab = tab;
   currentType = 'all';
+  currentPersonKey = 'all';
   document.querySelectorAll('.tab-main .tab-chip').forEach(function(c) { c.classList.remove('active'); });
-  el.classList.add('active');
+  if (el) el.classList.add('active');
   renderTypeFilter();
+  renderPersonFilter();
   applyFilters();
 }
 
 function setType(t, el) {
   currentType = t;
   document.querySelectorAll('#type-filter .filter-chip').forEach(function(c) { c.classList.remove('active'); });
-  el.classList.add('active');
+  if (el) el.classList.add('active');
   applyFilters();
+}
+
+function setPerson(pk, el) {
+  currentPersonKey = pk;
+  document.querySelectorAll('#person-filter .filter-chip').forEach(function(c) { c.classList.remove('active'); });
+  if (el) el.classList.add('active');
+  applyFilters();
+}
+
+/* ── レコードが指定「人キー」に該当するか判定 ── */
+function recMatchesPerson(rec, personKey) {
+  if (personKey === 'all') return true;
+  const prefix = personKey.charAt(0);
+  const name = personKey.slice(1);
+  if (prefix === '👤') {
+    return rec.participants.some(function(pid) {
+      return (allEmployees[pid] && allEmployees[pid].name) === name;
+    });
+  }
+  if (prefix === '🏢') {
+    return rec.customers.some(function(cid) {
+      return (allCustomers[cid] && allCustomers[cid].name) === name;
+    });
+  }
+  if (prefix === '✉') {
+    if (!rec.externalParticipants) return false;
+    return rec.externalParticipants.split(/[,、\n]/).map(function(s){return s.trim();}).indexOf(name) >= 0;
+  }
+  return false;
 }
 
 function applyFilters() {
   const q = (document.getElementById('search-input').value || '').trim().toLowerCase();
+  const allowedTypes = TAB_DEFS[currentTab].types;
   const filtered = allRecordings.filter(function(r) {
     if (!canView(r)) return false;
-    if (r.category !== currentCategory) return false;
+    if (allowedTypes.indexOf(r.type) < 0) return false;
     if (currentType !== 'all' && r.type !== currentType) return false;
+    if (currentTab === 'individual' && !recMatchesPerson(r, currentPersonKey)) return false;
     if (q) {
       const participantNames = r.participants.map(function(id) {
         return (allEmployees[id] && allEmployees[id].name) || '';
@@ -472,13 +589,14 @@ function renderList(list) {
 function typeEmoji(t) {
   switch(t) {
     case '全体会議': return '🌐';
-    case 'チーム会議': return '👥';
-    case '個人メモ': return '📝';
+    case '部門会議': return '👥';
     case '部長会': return '👔';
     case 'リーダー会': return '🧑‍💼';
     case '1ON1': return '🔒';
-    case '取引先会議': return '🤝';
-    case '電話対応': return '📞';
+    case '打ち合わせ': return '💬';
+    case '商談': return '🤝';
+    case '来客対応': return '📞';
+    case 'その他': return '📝';
     default: return '🎙️';
   }
 }
@@ -505,7 +623,7 @@ function openDetail(id) {
 
   let html = '';
   html += '<div class="detail-head">';
-  html += '<div class="detail-type">' + typeEmoji(r.type) + ' ' + esc(r.type || '会議') + ' / ' + esc(r.category || '') + '</div>';
+  html += '<div class="detail-type">' + typeEmoji(r.type) + ' ' + esc(r.type || '会議') + '</div>';
   html += '<div class="detail-title">' + esc(r.title) + '</div>';
   html += '<div class="detail-date">' + (r.datetime ? new Date(r.datetime).toLocaleString('ja-JP') : '') + (r.duration ? ' · ' + r.duration + '分' : '') + '</div>';
   html += '</div>';

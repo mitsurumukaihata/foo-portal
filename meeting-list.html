@@ -907,18 +907,38 @@ async function reExtractActions(meetingId) {
     var data;
     try { data = JSON.parse(text); } catch(e) { throw new Error('AI応答パース失敗'); }
 
-    // 応答から "- " 行を抽出
-    var raw = (data.summary || data.text || '').toString();
+    // 応答からアクションを抽出
+    // Worker の /ai/summarize は以下の構造で返す:
+    //   { summary: "200字要約", actionItems: ["内容1", "内容2"], participants: [...] }
+    // なので actionItems 配列を優先して見る。
+    // フォールバックで summary・text からも "- " 行を拾う。
     var actions = [];
+    if (Array.isArray(data.actionItems) && data.actionItems.length > 0) {
+      data.actionItems.forEach(function(item) {
+        var content = (typeof item === 'string') ? item : (item && item.content) || '';
+        content = content.trim();
+        if (content.length > 2) actions.push({ content: content });
+      });
+    }
+    // 念のため summary からも "- " 行を追加で拾う（Claudeが両方に書く場合あり）
+    var raw = (data.summary || data.text || '').toString();
     raw.split('\n').forEach(function(ln){
       var m = ln.match(/^\s*[\-\*\・\▪]\s*(.+)/);
       if (m) {
         var body = m[1].trim();
-        if (body.length > 2) actions.push({ content: body });
+        if (body.length > 2) {
+          // 重複チェック（actionItemsと同じ内容はスキップ）
+          var dup = actions.some(function(a){ return a.content === body; });
+          if (!dup) actions.push({ content: body });
+        }
       }
     });
 
-    if (!actions.length) { showToast('❕ アクションは抽出されませんでした'); return; }
+    if (!actions.length) {
+      showToast('❕ アクションは抽出されませんでした（AI応答にタスクが含まれていません）');
+      console.log('[reExtract] AI raw response:', data);
+      return;
+    }
 
     // プレビュー → 承認してから登録
     var preview = actions.map(function(a,i){ return (i+1)+'. '+a.content; }).join('\n');

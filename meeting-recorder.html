@@ -304,6 +304,17 @@ body::-webkit-scrollbar { display:none; }
       「思考整理」がデフォルトです（迷ったらそれでOK）。
     </div>
 
+    <!-- 💬 相手の情報（任意・AI要約に活用） -->
+    <div style="margin:12px 0 20px; padding:14px; background:var(--s2); border-radius:12px; border:1px dashed var(--border);">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px;">💬 誰と話す？<span style="font-weight:400;color:var(--muted);font-size:11px;">（任意）</span></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5;">
+        入力するとAI要約が相手文脈で整理されます。後で編集も可。
+      </div>
+      <input id="counterpart-name" placeholder="名前（例: 田中さん・山田社長）" style="width:100%;padding:9px 11px;background:var(--s1);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;margin-bottom:8px;">
+      <input id="counterpart-company" placeholder="会社・所属（例: TOYOタイヤジャパン広島）" style="width:100%;padding:9px 11px;background:var(--s1);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;margin-bottom:8px;">
+      <input id="counterpart-role" placeholder="役職・関係（例: 営業担当・顧問税理士）" style="width:100%;padding:9px 11px;background:var(--s1);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;">
+    </div>
+
     <div class="mt-grid" style="grid-template-columns:1fr;">
       <button class="mt-btn" data-scene="思考整理・アイデアメモ" onclick="selectMeetingScene(this)">
         <div class="mt-emoji">💭</div>
@@ -557,6 +568,7 @@ var audioChunks = [];        // Whisper送信用の音声データ（MediaRecord
 var audioMimeType = 'audio/webm';
 var meetingType = '';        // 会議タイプ（全体会議/チーム会議/個人メモ/部長会/リーダー会/1ON1/取引先会議/電話対応/その他）
 var meetingScene = '';       // 個人メモ時のシーン（思考整理/経営者/メーカー/業者/顧客/その他）
+var meetingCounterpart = ''; // 個人メモ時の相手情報（名前・会社・役職の組み合わせ、録音前に入力）
 var meetingCategory = '';    // 大分類（対社員/対役職者/対顧客）
 var meetingPermission = '';  // 閲覧権限（全員/部長まで/リーダーまで/参加者のみ/録音者のみ/営業・経営）
 var selectedParticipantIds = [];  // 参加者（社員ページID の配列）
@@ -607,10 +619,19 @@ function showMeetingTypeScreen() {
   // 前回選択をクリア
   meetingType = '';
   meetingScene = '';
+  meetingCounterpart = '';
   meetingCategory = '';
   meetingPermission = '';
   selectedParticipantIds = [];
   selectedCustomerIds = [];
+  // シーン画面の相手入力欄もクリア
+  try {
+    var inputs = ['counterpart-name', 'counterpart-company', 'counterpart-role'];
+    inputs.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+  } catch(e) {}
   showScreen('screen-meeting-type');
 }
 
@@ -633,7 +654,18 @@ function selectMeetingType(btn) {
 /* ── 個人メモのシーン選択 ── */
 function selectMeetingScene(btn) {
   meetingScene = btn.dataset.scene;
-  console.log('[MeetingScene] selected:', meetingScene);
+
+  // 相手の情報を組み立て（名前 / 会社 / 役職 の順）
+  var name = (document.getElementById('counterpart-name')?.value || '').trim();
+  var company = (document.getElementById('counterpart-company')?.value || '').trim();
+  var role = (document.getElementById('counterpart-role')?.value || '').trim();
+  var parts = [];
+  if (name) parts.push(name);
+  if (company) parts.push(company);
+  if (role) parts.push(role);
+  meetingCounterpart = parts.join(' / ');
+
+  console.log('[MeetingScene] selected:', meetingScene, 'counterpart:', meetingCounterpart);
   // 録音開始
   startRecording();
 }
@@ -1705,13 +1737,25 @@ async function aiSummarize(text) {
 
   // 参加者情報を文字起こしの先頭に入れることで、Claudeが誰が誰か理解できる
   var textToSend = text;
+  var contextParts = [];
+  // 社員参加者
   if (selectedParticipantIds.length > 0 && employeeCache && employeeCache.length > 0) {
     var selectedNames = employeeCache
       .filter(function(e) { return selectedParticipantIds.indexOf(e.id) >= 0; })
       .map(function(e) { return e.name + '（' + (e.group || '') + '）'; });
     if (selectedNames.length) {
-      textToSend = '【この会議の参加者】\n' + selectedNames.join('、') + '\n\n【会議タイプ】' + (meetingType || '不明') + '\n\n【文字起こし】\n' + text;
+      contextParts.push('【この会議の参加者】\n' + selectedNames.join('、'));
     }
+  }
+  // 個人メモ時の相手情報（録音前に入力されたもの）
+  if (meetingCounterpart) {
+    contextParts.push('【会話の相手】\n' + meetingCounterpart);
+  }
+  if (meetingType) contextParts.push('【会議タイプ】' + meetingType);
+  if (meetingScene) contextParts.push('【シーン】' + meetingScene);
+
+  if (contextParts.length > 0) {
+    textToSend = contextParts.join('\n\n') + '\n\n【文字起こし】\n' + text;
   }
 
   var fetchPromise = fetch(WORKER + '/ai/summarize', {
@@ -1813,15 +1857,23 @@ async function showResultScreen(fullText) {
   if (typeEl) typeEl.textContent = meetingCategory + '  /  ' + meetingType;
   if (permEl) permEl.textContent = '🔒 閲覧権限: ' + meetingPermission;
 
-  // Title suggestion（会議タイプ込みで自動生成）
+  // Title suggestion（会議タイプ + 相手情報込みで自動生成）
   var titleInput = document.getElementById('input-title');
   var now = new Date();
   var dateStr = now.getFullYear() + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + String(now.getDate()).padStart(2, '0');
-  titleInput.value = dateStr + ' ' + (meetingType || '会議録音');
+  // 相手名がある場合は最初の「氏名」部分だけ抽出してタイトルに含める
+  var shortCounterpart = '';
+  if (meetingCounterpart) {
+    shortCounterpart = meetingCounterpart.split(' / ')[0] || '';
+  }
+  var titleLabel = meetingType || '会議録音';
+  if (meetingScene && meetingType === '個人メモ') titleLabel = meetingScene;
+  if (shortCounterpart) titleLabel += ' - ' + shortCounterpart;
+  titleInput.value = dateStr + ' ' + titleLabel;
 
-  // External participants（AI推定から外部参加者っぽいものを入れる: 現状は空で）
+  // External participants に相手情報を事前入力（録音前に入力した情報をそのまま）
   var extInput = document.getElementById('input-external');
-  if (extInput) extInput.value = '';
+  if (extInput) extInput.value = meetingCounterpart || '';
 
   // 関連得意先セクション表示（取引先会議・電話対応のみ）
   // 関連得意先セクションは社内限定化により常時非表示（将来の営業グループ用に温存）

@@ -335,6 +335,16 @@ body::-webkit-scrollbar { display:none; }
       <div class="spinner"></div>
       <span>結果を表示中...</span>
     </div>
+    <!-- 30秒以上待たされた場合の救済ボタン -->
+    <div id="processing-skip-area" style="display:none; margin-top:32px; padding:16px; background:var(--s2); border-radius:12px; text-align:center;">
+      <div style="font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:12px;">
+        ⏳ 要約に時間がかかっています。<br>
+        スキップして次へ進むこともできます（要約は後から「🤖 再AI抽出」ボタンで再生成可能です）。
+      </div>
+      <button onclick="skipStuckSummarize()" style="background:var(--accent); color:#fff; border:none; border-radius:10px; padding:12px 24px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;">
+        ⏭ スキップして結果画面へ
+      </button>
+    </div>
   </div>
 </div>
 
@@ -520,6 +530,7 @@ function showToast(msg) {
 }
 
 /* ── Screen switching ── */
+var skipButtonTimer = null;
 function showScreen(id) {
   var screens = document.querySelectorAll('.screen');
   for (var i = 0; i < screens.length; i++) {
@@ -527,6 +538,20 @@ function showScreen(id) {
   }
   var target = document.getElementById(id);
   if (target) target.classList.add('show');
+
+  // screen-processing 表示時: 30秒後にスキップボタンを自動表示
+  var skipArea = document.getElementById('processing-skip-area');
+  if (skipArea) {
+    if (skipButtonTimer) { clearTimeout(skipButtonTimer); skipButtonTimer = null; }
+    if (id === 'screen-processing') {
+      skipArea.style.display = 'none';
+      skipButtonTimer = setTimeout(function(){
+        skipArea.style.display = '';
+      }, 30000);
+    } else {
+      skipArea.style.display = 'none';
+    }
+  }
 }
 
 /* ── 会議タイプ選択 ── */
@@ -1422,10 +1447,13 @@ function getFullTranscriptText() {
   return parts.join('\n');
 }
 
-/* ── AI Summarization ── */
+/* ── AI Summarization ──
+   Promise.race で「どんな状況でも60秒で必ずタイムアウトする」強制防御。
+   AbortController だけでは環境によって効かないケースがあるので二重化。 */
+var summarizeAbortResolvers = [];  // スキップボタンから要約を強制終了するためのresolver群
+
 async function aiSummarize(text) {
   var controller = new AbortController();
-  var timer = setTimeout(function(){ controller.abort(); }, 30000);
 
   // 参加者情報を文字起こしの先頭に入れることで、Claudeが誰が誰か理解できる
   var textToSend = text;
@@ -1438,25 +1466,54 @@ async function aiSummarize(text) {
     }
   }
 
-  try {
-    var r = await fetch(WORKER + '/ai/summarize', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: textToSend, lang: 'ja' }),
-      signal: controller.signal,
-    });
-    clearTimeout(timer);
+  var fetchPromise = fetch(WORKER + '/ai/summarize', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: textToSend, lang: 'ja' }),
+    signal: controller.signal,
+  }).then(function(r) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    var data = await r.json();
+    return r.json();
+  }).then(function(data) {
     return {
       summary: data.summary || '',
       actionItems: data.actionItems || data.action_items || [],
       participants: data.participants || [],
     };
-  } catch(e) {
-    clearTimeout(timer);
-    throw e;
+  });
+
+  // タイムアウトPromise（60秒）
+  var timeoutPromise = new Promise(function(_, reject) {
+    setTimeout(function() {
+      try { controller.abort(); } catch(_) {}
+      reject(new Error('要約タイムアウト（60秒）'));
+    }, 60000);
+  });
+
+  // スキップボタンから強制中断できるPromise
+  var skipPromise = new Promise(function(_, reject) {
+    summarizeAbortResolvers.push(function() {
+      try { controller.abort(); } catch(_) {}
+      reject(new Error('ユーザーによりスキップ'));
+    });
+  });
+
+  try {
+    return await Promise.race([fetchPromise, timeoutPromise, skipPromise]);
+  } finally {
+    summarizeAbortResolvers = [];  // クリア
   }
+}
+
+/* スキップボタンから呼ばれる関数：進行中の要約を打ち切り、結果画面へ進める */
+function skipStuckSummarize() {
+  console.log('[skipStuckSummarize] user pressed skip');
+  // 進行中のaiSummarize Promise を中断
+  summarizeAbortResolvers.forEach(function(fn){ try { fn(); } catch(_) {} });
+  summarizeAbortResolvers = [];
+  // スキップUIを隠す
+  var skipArea = document.getElementById('processing-skip-area');
+  if (skipArea) skipArea.style.display = 'none';
 }
 
 /* ── Show result screen ── */

@@ -1124,6 +1124,21 @@ async function proceedWithSummary() {
   await showParticipantsScreen(fullText);
 }
 
+/* ── 長文を Notion rich_text の複数 chunk に分割（1要素あたり2000字制限対策） ── */
+function buildRichTextChunks(text, maxChunks) {
+  if (!text) return [{ text: { content: '' } }];
+  var chunks = [];
+  var remaining = text;
+  var limit = 2000;
+  // Notion rich_text 配列は最大100要素まで（全体200,000字まで格納可能）
+  var max = maxChunks || 100;
+  while (remaining.length > 0 && chunks.length < max) {
+    chunks.push({ text: { content: remaining.slice(0, limit) } });
+    remaining = remaining.slice(limit);
+  }
+  return chunks;
+}
+
 /* ── Notionページ更新ヘルパー（PATCH） ── */
 async function fooNotionUpdate(pageId, properties) {
   var r = await fetch(WORKER + '/pages/' + pageId, {
@@ -1150,7 +1165,7 @@ async function createDraftNotionRecord(fullText) {
     '日時': { date: { start: jstIso } },
     '録音者': { select: { name: loginUser } },
     'ステータス': { select: { name: '要約中' } },  // 既存select: 録音中/文字起こし中/要約中/完了/エラー
-    '文字起こし': { rich_text: [{ text: { content: fullText.substring(0, 2000) } }] },
+    '文字起こし': { rich_text: buildRichTextChunks(fullText) },
   };
   if (meetingType) props['会議タイプ'] = { select: { name: meetingType } };
   if (meetingCategory) props['大分類'] = { select: { name: meetingCategory } };
@@ -1771,7 +1786,7 @@ async function saveToNotion() {
 
   // 外部参加者（rich_text）
   if (externalText) {
-    props['外部参加者'] = { rich_text: [{ text: { content: externalText.substring(0, 2000) } }] };
+    props['外部参加者'] = { rich_text: buildRichTextChunks(externalText) };
   }
 
   // 関連得意先（relation）
@@ -1780,13 +1795,13 @@ async function saveToNotion() {
   }
 
   if (summaryText) {
-    props['要約'] = { rich_text: [{ text: { content: summaryText.substring(0, 2000) } }] };
+    props['要約'] = { rich_text: buildRichTextChunks(summaryText) };
   }
   if (actionText) {
-    props['アクションアイテム'] = { rich_text: [{ text: { content: actionText.substring(0, 2000) } }] };
+    props['アクションアイテム'] = { rich_text: buildRichTextChunks(actionText) };
   }
   if (fullText) {
-    props['文字起こし'] = { rich_text: [{ text: { content: fullText.substring(0, 2000) } }] };
+    props['文字起こし'] = { rich_text: buildRichTextChunks(fullText) };
   }
 
   try {

@@ -310,6 +310,17 @@ async function loadCustomers() {
   } while (cursor);
 }
 
+// Notion rich_text配列の全chunkを結合して完全なテキストを取得
+// （rich_text[0]だけ読むと長文は2000字以降が切り捨てられるため）
+function joinRichText(richArr) {
+  if (!Array.isArray(richArr)) return '';
+  var out = '';
+  for (var i = 0; i < richArr.length; i++) {
+    out += (richArr[i].plain_text || richArr[i].text?.content || '');
+  }
+  return out;
+}
+
 async function loadRecordings() {
   let all = [];
   let cursor = null;
@@ -334,12 +345,12 @@ async function loadRecordings() {
       permission: pr['閲覧権限']?.select?.name || '全員',
       recorder: pr['録音者']?.select?.name || '',
       participants: (pr['参加者']?.relation || []).map(function(r) { return r.id; }),
-      externalParticipants: pr['外部参加者']?.rich_text?.[0]?.plain_text || '',
+      externalParticipants: joinRichText(pr['外部参加者']?.rich_text),
       customers: (pr['関連得意先']?.relation || []).map(function(r) { return r.id; }),
       datetime: pr['日時']?.date?.start || '',
       duration: pr['録音時間']?.number || 0,
-      summary: pr['要約']?.rich_text?.[0]?.plain_text || '',
-      transcribe: pr['文字起こし']?.rich_text?.[0]?.plain_text || '',
+      summary: joinRichText(pr['要約']?.rich_text),
+      transcribe: joinRichText(pr['文字起こし']?.rich_text),
       actions: (pr['関連アクション']?.relation || []).map(function(r) { return r.id; }),
       createdAt: p.created_time,
     };

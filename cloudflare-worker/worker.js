@@ -13,11 +13,97 @@ var worker_default = {
     if (url.pathname === "/ai/summarize" && request.method === "POST") {
       try {
         const rawBody = await request.text();
-        const { text: text2, lang } = JSON.parse(rawBody);
+        const { text: text2, lang, scene, meetingType } = JSON.parse(rawBody);
         if (!text2) return new Response(JSON.stringify({ error: "text is required" }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
         const apiKey = env.ANTHROPIC_API_KEY;
         if (!apiKey) return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
-        const systemPrompt = '\u3042\u306A\u305F\u306F\u4F1A\u8B70\u306E\u8B70\u4E8B\u9332\u3092\u6574\u7406\u3059\u308B\u30A2\u30B7\u30B9\u30BF\u30F3\u30C8\u3067\u3059\u3002\u4EE5\u4E0B\u306E\u6587\u5B57\u8D77\u3053\u3057\u30C6\u30AD\u30B9\u30C8\u304B\u3089\u3001JSON\u3067\u56DE\u7B54\u3057\u3066\u304F\u3060\u3055\u3044:\n{\n  "summary": "\u4F1A\u8B70\u306E\u8981\u7D04\uFF08200\u6587\u5B57\u4EE5\u5185\uFF09",\n  "actionItems": ["\u30A2\u30AF\u30B7\u30E7\u30F3\u30A2\u30A4\u30C6\u30E01", "\u30A2\u30AF\u30B7\u30E7\u30F3\u30A2\u30A4\u30C6\u30E02"],\n  "participants": ["\u8B58\u5225\u3067\u304D\u305F\u53C2\u52A0\u8005\u540D1"]\n}\n- \u8981\u7D04\u306F\u91CD\u8981\u306A\u30DD\u30A4\u30F3\u30C8\u3092\u7C21\u6F54\u306B\n- \u30A2\u30AF\u30B7\u30E7\u30F3\u30A2\u30A4\u30C6\u30E0\u306F\u300C\u8AB0\u304C\u300D\u300C\u4F55\u3092\u300D\u300C\u3044\u3064\u307E\u3067\u306B\u300D\u306E\u5F62\u5F0F\n- \u53C2\u52A0\u8005\u540D\u304C\u8B58\u5225\u3067\u304D\u306A\u3044\u5834\u5408\u306F\u7A7A\u914D\u5217\n- \u5FC5\u305A\u6709\u52B9\u306AJSON\u306E\u307F\u3092\u8FD4\u3059\u3053\u3068';
+
+        // シーン別システムプロンプト（個人メモの詳細分類）
+        const PROMPTS = {
+          "default": `あなたは会議の議事録を整理するアシスタントです。以下の文字起こしテキストから、JSONで回答してください:
+{
+  "summary": "会議の要約（200文字以内）",
+  "actionItems": ["アクションアイテム1", "アクションアイテム2"],
+  "participants": ["識別できた参加者名1"]
+}
+- 要約は重要なポイントを簡潔に
+- アクションアイテムは「誰が」「何を」「いつまでに」の形式
+- 参加者名が識別できない場合は空配列
+- 必ず有効なJSONのみを返すこと`,
+
+          "思考整理・アイデアメモ": `あなたは経営者の思考整理をサポートするアシスタントです。向畑充（タイヤマネージャー有限会社・広島・出張トラックタイヤ交換業）の個人メモ音声から、以下をJSONで抽出:
+{
+  "summary": "考えていたテーマと結論を200字以内で",
+  "actionItems": ["向畑さん本人が次にやる具体的な一手"],
+  "key_insights": ["新しい気づき・疑問・アイデアのタネ"],
+  "participants": []
+}
+- 他人を巻き込むタスクではなく、自分自身の次の一手を優先
+- 迷いや疑問もそのまま拾う（結論が出てなくてOK）
+- 必ず有効なJSONのみを返すこと`,
+
+          "経営者仲間との雑談": `あなたは経営者同士の雑談を整理するアシスタントです。向畑充（タイヤ会社経営・広島）が他社の経営者と話した内容からJSONで抽出:
+{
+  "summary": "話の全体像を200字（テーマ・立場・結論）",
+  "actionItems": ["向畑さんが試したい・調べたいこと"],
+  "counterpart_wisdom": ["相手から聞いた知恵・事例・経営判断"],
+  "industry_trends": ["業界動向・景気の話"],
+  "participants": ["相手の名前・会社名（わかる範囲）"]
+}
+- 相手の会社名・業種もわかる範囲で記録
+- 「いい話だった」ではなく「何がいい話だったか」を具体的に
+- 必ず有効なJSONのみを返すこと`,
+
+          "タイヤメーカー担当者との会話": `あなたはタイヤ業界の営業情報を整理するアシスタントです。向畑充（TOYO・BRIDGESTONE・DUNLOP等の二次代理店・広島）が、タイヤメーカー担当者と話した内容からJSONで抽出:
+{
+  "summary": "今回の訪問・電話の要点200字",
+  "new_products": ["新製品・発売予定の銘柄・サイズ"],
+  "price_changes": ["価格改定・値上げ・キャンペーン情報"],
+  "supply_info": ["納期・欠品・生産状況"],
+  "competitor_info": ["他メーカーの動向・競合情報"],
+  "actionItems": ["次回連絡事項・発注検討・社内展開"],
+  "next_contact": "次回訪問/連絡予定日があれば",
+  "participants": ["担当者名・メーカー名"]
+}
+タイヤ業界固有の銘柄（M170, RTM626, M646, W999, SP122, V03e 等）・サイズ（11R22.5, 225/80R17.5, 205/85R16 等）・メーカー名（TOYO, BRIDGESTONE, DUNLOP, YOKOHAMA, MICHELIN, PIRELLI）は正確に拾ってください。必ず有効なJSONのみを返すこと。`,
+
+          "仕入先・出入り業者との会話": `あなたは仕入先対応の記録を整理するアシスタントです。向畑充（タイヤ会社経営・広島）が、出入り業者や仕入先と話した内容からJSONで抽出:
+{
+  "summary": "商談・会話の要点200字",
+  "proposals": ["先方からの提案内容"],
+  "quotes": ["見積・価格・数量"],
+  "quality_delivery": ["納期・品質・信頼性の情報"],
+  "new_services": ["新サービス・新製品情報"],
+  "concerns": ["問題点・クレーム・懸念事項"],
+  "actionItems": ["社内検討事項・返答期限・発注判断"],
+  "participants": ["担当者名・業者名"]
+}
+必ず有効なJSONのみを返すこと。`,
+
+          "顧客（運送会社等）との雑談": `あなたはBtoB営業の顧客情報を整理するアシスタントです。向畑充（出張トラックタイヤ交換業・広島）が、顧客（運送会社・建機レンタル業・建設業等）と話した内容からJSONで抽出:
+{
+  "summary": "会話の要点200字",
+  "customer_status": ["顧客の景気・事業状況"],
+  "customer_needs": ["困りごと・ニーズ・要望"],
+  "proposal_seeds": ["次回提案できそうなネタ"],
+  "fleet_changes": ["車両台数の変化・買い替え計画"],
+  "actionItems": ["次回フォロー・見積準備・提案書作成"],
+  "participants": ["担当者名・会社名"]
+}
+顧客例: CLO, イドム, ふそう東/西, 高宮運送, K&M, シンヨー運輸, テイクス, 西尾レントオール, アクティオ, 太陽建機, リョーキ等。必ず有効なJSONのみを返すこと。`,
+
+          "その他": `あなたは会話の記録を整理するアシスタントです。向畑充（タイヤ会社経営・広島）の音声メモから、以下をJSONで抽出:
+{
+  "summary": "会話の要点200字",
+  "actionItems": ["次にやるべきこと"],
+  "key_points": ["重要だと思われるポイント"],
+  "participants": ["識別できた相手の名前"]
+}
+必ず有効なJSONのみを返すこと。`,
+        };
+
+        // シーン名から該当するプロンプトを選ぶ。なければデフォルト。
+        const systemPrompt = PROMPTS[scene] || PROMPTS["default"];
         const res2 = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },

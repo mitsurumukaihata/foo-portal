@@ -295,6 +295,52 @@ body::-webkit-scrollbar { display:none; }
   </div>
 </div>
 
+<!-- Screen: Meeting Scene (個人メモ選択後のシーン選択) -->
+<div class="screen" id="screen-meeting-scene">
+  <div style="padding:16px;">
+    <div style="font-size:20px;font-weight:700;margin-bottom:6px;">📝 個人メモ — シーンを選択</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6;">
+      誰との会話かに応じて、要約の切り口が変わります。<br>
+      「思考整理」がデフォルトです（迷ったらそれでOK）。
+    </div>
+
+    <div class="mt-grid" style="grid-template-columns:1fr;">
+      <button class="mt-btn" data-scene="思考整理・アイデアメモ" onclick="selectMeetingScene(this)">
+        <div class="mt-emoji">💭</div>
+        <div class="mt-name">思考整理・アイデアメモ</div>
+        <div class="mt-perm">自分の次の一手・気づき・疑問を整理</div>
+      </button>
+      <button class="mt-btn" data-scene="経営者仲間との雑談" onclick="selectMeetingScene(this)">
+        <div class="mt-emoji">👔</div>
+        <div class="mt-name">経営者仲間との雑談</div>
+        <div class="mt-perm">相手から学んだ知恵・業界動向・試したいこと</div>
+      </button>
+      <button class="mt-btn" data-scene="タイヤメーカー担当者との会話" onclick="selectMeetingScene(this)">
+        <div class="mt-emoji">🏭</div>
+        <div class="mt-name">タイヤメーカー担当者との会話</div>
+        <div class="mt-perm">新製品・値上げ・納期・競合情報</div>
+      </button>
+      <button class="mt-btn" data-scene="仕入先・出入り業者との会話" onclick="selectMeetingScene(this)">
+        <div class="mt-emoji">🔧</div>
+        <div class="mt-name">仕入先・出入り業者との会話</div>
+        <div class="mt-perm">提案・見積・納期・社内検討事項</div>
+      </button>
+      <button class="mt-btn" data-scene="顧客（運送会社等）との雑談" onclick="selectMeetingScene(this)">
+        <div class="mt-emoji">📞</div>
+        <div class="mt-name">顧客（運送会社等）との雑談</div>
+        <div class="mt-perm">顧客状況・ニーズ・次回提案ネタ</div>
+      </button>
+      <button class="mt-btn" data-scene="その他" onclick="selectMeetingScene(this)">
+        <div class="mt-emoji">❓</div>
+        <div class="mt-name">その他</div>
+        <div class="mt-perm">上記に当てはまらない個人メモ</div>
+      </button>
+    </div>
+
+    <button onclick="showMeetingTypeScreen()" style="width:100%;margin-top:20px;background:var(--s3);border:1px solid var(--border);color:var(--muted);padding:12px;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit;">← 会議タイプ選択に戻る</button>
+  </div>
+</div>
+
 <!-- Screen: Recording -->
 <div class="screen" id="screen-recording">
   <div class="timer" id="timer">00:00</div>
@@ -509,6 +555,7 @@ var aiResult = null;         // { summary, actionItems, participants }
 var audioChunks = [];        // Whisper送信用の音声データ（MediaRecorderチャンク）
 var audioMimeType = 'audio/webm';
 var meetingType = '';        // 会議タイプ（全体会議/チーム会議/個人メモ/部長会/リーダー会/1ON1/取引先会議/電話対応/その他）
+var meetingScene = '';       // 個人メモ時のシーン（思考整理/経営者/メーカー/業者/顧客/その他）
 var meetingCategory = '';    // 大分類（対社員/対役職者/対顧客）
 var meetingPermission = '';  // 閲覧権限（全員/部長まで/リーダーまで/参加者のみ/録音者のみ/営業・経営）
 var selectedParticipantIds = [];  // 参加者（社員ページID の配列）
@@ -558,6 +605,7 @@ function showScreen(id) {
 function showMeetingTypeScreen() {
   // 前回選択をクリア
   meetingType = '';
+  meetingScene = '';
   meetingCategory = '';
   meetingPermission = '';
   selectedParticipantIds = [];
@@ -570,7 +618,22 @@ function selectMeetingType(btn) {
   meetingCategory = btn.dataset.cat;
   meetingPermission = btn.dataset.perm;
   console.log('[MeetingType] selected:', meetingType, meetingCategory, meetingPermission);
-  // そのまま録音開始
+
+  // 個人メモの場合はシーン選択画面へ遷移（AI要約プロンプトを相手別に切り替えるため）
+  if (meetingType === '個人メモ') {
+    showScreen('screen-meeting-scene');
+    return;
+  }
+
+  // それ以外はそのまま録音開始
+  startRecording();
+}
+
+/* ── 個人メモのシーン選択 ── */
+function selectMeetingScene(btn) {
+  meetingScene = btn.dataset.scene;
+  console.log('[MeetingScene] selected:', meetingScene);
+  // 録音開始
   startRecording();
 }
 
@@ -1168,6 +1231,7 @@ async function createDraftNotionRecord(fullText) {
     '文字起こし': { rich_text: buildRichTextChunks(fullText) },
   };
   if (meetingType) props['会議タイプ'] = { select: { name: meetingType } };
+  if (meetingScene) props['シーン'] = { select: { name: meetingScene } };
   if (meetingCategory) props['大分類'] = { select: { name: meetingCategory } };
   if (meetingPermission) props['閲覧権限'] = { select: { name: meetingPermission } };
 
@@ -1542,7 +1606,12 @@ async function aiSummarize(text) {
   var fetchPromise = fetch(WORKER + '/ai/summarize', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: textToSend, lang: 'ja' }),
+    body: JSON.stringify({
+      text: textToSend,
+      lang: 'ja',
+      meetingType: meetingType || '',
+      scene: (meetingType === '個人メモ' ? (meetingScene || '思考整理・アイデアメモ') : ''),
+    }),
     signal: controller.signal,
   }).then(function(r) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -1776,6 +1845,7 @@ async function saveToNotion() {
 
   // 会議タイプ・大分類・閲覧権限（タイプ未選択の場合はその他扱い）
   if (meetingType) props['会議タイプ'] = { select: { name: meetingType } };
+  if (meetingScene) props['シーン'] = { select: { name: meetingScene } };
   if (meetingCategory) props['大分類'] = { select: { name: meetingCategory } };
   if (meetingPermission) props['閲覧権限'] = { select: { name: meetingPermission } };
 

@@ -342,6 +342,7 @@ async function loadRecordings() {
       title: pr['タイトル']?.title?.[0]?.plain_text || '（無題）',
       category: pr['大分類']?.select?.name || '',
       type: pr['会議タイプ']?.select?.name || '',
+      scene: pr['シーン']?.select?.name || '',
       permission: pr['閲覧権限']?.select?.name || '全員',
       recorder: pr['録音者']?.select?.name || '',
       participants: (pr['参加者']?.relation || []).map(function(r) { return r.id; }),
@@ -668,7 +669,7 @@ function openDetail(id) {
 
   let html = '';
   html += '<div class="detail-head">';
-  html += '<div class="detail-type">' + typeEmoji(r.type) + ' ' + esc(r.type || '会議') + '</div>';
+  html += '<div class="detail-type">' + typeEmoji(r.type) + ' ' + esc(r.type || '会議') + (r.scene ? ' · ' + esc(r.scene) : '') + '</div>';
   html += '<div class="detail-title">' + esc(r.title) + '</div>';
   html += '<div class="detail-date">' + (r.datetime ? new Date(r.datetime).toLocaleString('ja-JP') : '') + (r.duration ? ' · ' + r.duration + '分' : '') + '</div>';
   html += '</div>';

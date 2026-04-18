@@ -950,50 +950,72 @@ function togglePause() {
 
 /* ── Stop recording ── */
 function stopRecording() {
+  console.log('[stopRecording] called');
   isRecording = false;
   isPaused = false;
 
   // Stop media
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-    try { mediaRecorder.stop(); } catch(e) {}
-  }
-  if (audioStream) {
-    audioStream.getTracks().forEach(function(t){ t.stop(); });
-    audioStream = null;
-  }
+  try {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+  } catch(e) { console.warn('[stopRecording] mediaRecorder.stop failed:', e); }
+
+  try {
+    if (audioStream) {
+      audioStream.getTracks().forEach(function(t){ t.stop(); });
+      audioStream = null;
+    }
+  } catch(e) { console.warn('[stopRecording] audioStream stop failed:', e); }
 
   // Stop speech
-  stopSpeechRecognition();
+  try { stopSpeechRecognition(); } catch(e) {}
 
   // Stop wake lock
-  releaseWakeLock();
+  try { releaseWakeLock(); } catch(e) {}
 
   // Stop timers
-  clearInterval(timerInterval);
-  clearTimeout(dimTimeout);
-  clearInterval(autosaveInterval);
+  try { clearInterval(timerInterval); } catch(e) {}
+  try { clearTimeout(dimTimeout); } catch(e) {}
+  try { clearInterval(autosaveInterval); } catch(e) {}
 
   // Dismiss overlays
-  dismissDim();
-  document.getElementById('interrupt-overlay').classList.remove('show');
-  document.getElementById('btn-record').classList.remove('recording');
+  try { dismissDim(); } catch(e) {}
+  try {
+    var iov = document.getElementById('interrupt-overlay');
+    if (iov) iov.classList.remove('show');
+  } catch(e) {}
+  try {
+    var btnRec = document.getElementById('btn-record');
+    if (btnRec) btnRec.classList.remove('recording');
+  } catch(e) {}
 
-  // Process
-  processAndShowResult();
+  // Process（何があっても確認画面に遷移する）
+  try {
+    processAndShowResult();
+  } catch(e) {
+    console.error('[stopRecording] processAndShowResult failed:', e);
+    // 最低限の遷移だけは保証
+    try { showScreen('screen-confirm'); } catch(_) {}
+  }
 }
 
 /* ── Show confirm screen after recording stops ── */
 function processAndShowResult() {
   var fullText = getFullTranscriptText();
-  var mins = Math.floor(elapsedSeconds / 60);
-  var secs = elapsedSeconds % 60;
+  // 録音経過時間を正しく計算（getElapsedMs() を使用、未定義変数 elapsedSeconds は過去の名残バグ）
+  var totalSec = Math.floor(getElapsedMs() / 1000);
+  var mins = Math.floor(totalSec / 60);
+  var secs = totalSec % 60;
   var infoEl = document.getElementById('confirm-info');
 
+  var text = '録音時間: ' + mins + '分' + secs + '秒';
   if (!fullText.trim()) {
-    infoEl.textContent = '録音時間: ' + mins + '分' + secs + '秒　※文字起こしがありません';
+    text += '　※ライブ文字起こしなし（停止後にWhisperで一括処理）';
   } else {
-    infoEl.textContent = '録音時間: ' + mins + '分' + secs + '秒　文字数: ' + fullText.length + '文字';
+    text += '　文字数: ' + fullText.length + '文字';
   }
+  if (infoEl) infoEl.textContent = text;
   showScreen('screen-confirm');
 }
 

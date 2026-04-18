@@ -1070,6 +1070,9 @@ function discardRecording() {
 
 var pendingTranscribeText = '';  // 要約前に一時保存する文字起こし結果
 
+/* ── ドラフトレコードのページID（Whisper直後にNotionに作成、後でPATCH更新） ── */
+var draftNotionPageId = '';
+
 async function proceedWithSummary() {
   showScreen('screen-processing');
   resetProcessingSteps();
@@ -1089,6 +1092,18 @@ async function proceedWithSummary() {
   }
   setStepDone('step-transcribe');
 
+  // 🔒 データ損失防止: Whisper成功直後にNotionに「ドラフト」レコードを即作成
+  // これで Claude要約で止まっても・アプリを閉じても 文字起こしは失われない
+  if (fullText) {
+    try {
+      draftNotionPageId = await createDraftNotionRecord(fullText);
+      console.log('[Draft] Created Notion draft record:', draftNotionPageId);
+    } catch(e) {
+      console.error('[Draft] ドラフト保存失敗:', e);
+      showToast('⚠️ 文字起こしの下書き保存に失敗（要約は続行します）');
+    }
+  }
+
   // 文字起こしが空なら参加者確認スキップで直接要約へ（データがないので）
   if (!fullText) {
     await runSummarizeStep('');
@@ -1107,6 +1122,49 @@ async function proceedWithSummary() {
 
   // 参加者確認画面を表示
   await showParticipantsScreen(fullText);
+}
+
+/* ── Notionページ更新ヘルパー（PATCH） ── */
+async function fooNotionUpdate(pageId, properties) {
+  var r = await fetch(WORKER + '/pages/' + pageId, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ properties: properties }),
+  });
+  if (!r.ok) {
+    var errText = await r.text();
+    throw new Error('Update failed: ' + r.status + ' ' + errText.slice(0, 200));
+  }
+  return await r.json();
+}
+
+/* ── Whisper成功直後にNotionにドラフトレコードを作成（データ損失防止） ── */
+async function createDraftNotionRecord(fullText) {
+  var now = new Date();
+  var jstIso = new Date(now.getTime() + 9 * 60 * 60 * 1000).toISOString().replace('Z', '+09:00');
+  var draftTitle = now.getFullYear() + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + String(now.getDate()).padStart(2, '0')
+                 + ' ' + (meetingType || '会議録音') + '（要約中）';
+
+  var props = {
+    'タイトル': { title: [{ text: { content: draftTitle } }] },
+    '日時': { date: { start: jstIso } },
+    '録音者': { select: { name: loginUser } },
+    'ステータス': { select: { name: '要約中' } },  // 既存select: 録音中/文字起こし中/要約中/完了/エラー
+    '文字起こし': { rich_text: [{ text: { content: fullText.substring(0, 2000) } }] },
+  };
+  if (meetingType) props['会議タイプ'] = { select: { name: meetingType } };
+  if (meetingCategory) props['大分類'] = { select: { name: meetingCategory } };
+  if (meetingPermission) props['閲覧権限'] = { select: { name: meetingPermission } };
+
+  var page = await fooNotionCreate(RECORDING_DB, props);
+  // 全文を本文ブロックにも保存（2000字制限を超える部分をカバー）
+  try {
+    if (fullText.length > 0) {
+      var blocks = buildTextBlocks(fullText);
+      if (blocks.length > 0) await appendBlocks(page.id, blocks);
+    }
+  } catch(e) { console.warn('[Draft] blocks failed:', e); }
+  return page.id;
 }
 
 async function showParticipantsScreen(fullText) {
@@ -1732,15 +1790,22 @@ async function saveToNotion() {
   }
 
   try {
-    // Create page
-    var page = await fooNotionCreate(RECORDING_DB, props);
-    var pageId = page.id;
-
-    // If transcript is long, add as page body blocks
-    if (fullText.length > 0) {
-      var blocks = buildTextBlocks(fullText);
-      if (blocks.length > 0) {
-        await appendBlocks(pageId, blocks);
+    // 📝 既にドラフトがあればPATCH更新、なければ新規作成
+    var pageId;
+    if (draftNotionPageId) {
+      console.log('[Save] Updating existing draft:', draftNotionPageId);
+      // ステータスを「完了」に上書き、下書きタイトルを正式タイトルに
+      props['ステータス'] = { select: { name: '完了' } };
+      await fooNotionUpdate(draftNotionPageId, props);
+      pageId = draftNotionPageId;
+      draftNotionPageId = '';  // クリア（次回の録音用）
+    } else {
+      var page = await fooNotionCreate(RECORDING_DB, props);
+      pageId = page.id;
+      // 本文ブロックにも文字起こし全文を入れる（初回作成時のみ）
+      if (fullText.length > 0) {
+        var blocks = buildTextBlocks(fullText);
+        if (blocks.length > 0) await appendBlocks(pageId, blocks);
       }
     }
 

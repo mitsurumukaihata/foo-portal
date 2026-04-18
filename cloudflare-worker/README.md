@@ -29,8 +29,10 @@ https://notion-proxy.33322666666mm.workers.dev
 
 ## モデル名の注意
 - `claude-3-5-haiku-latest` は2026年時点で404を返すので使用不可
-- 現在は `claude-haiku-4-5` を使用（自動で最新のHaiku 4.5系）
-- 将来モデル変更時は24行目の `model: "claude-haiku-4-5"` を書き換え
+- 現在は **`claude-sonnet-4-6`**（Sonnet 4.6、2026/2/17リリース、$3/$15 per MTok、1M context）
+- 将来モデル変更時は24行目の `model: "claude-sonnet-4-6"` を書き換え
+- コスト目安: 30分会議1回あたり約6円、月100回で約600円
 
 ## 履歴
-- 2026/04/18: `claude-3-5-haiku-latest` → `claude-haiku-4-5` に変更（404対策）
+- 2026/04/18 ①: `claude-3-5-haiku-latest` → `claude-haiku-4-5` に変更（404対策）
+- 2026/04/18 ②: `claude-haiku-4-5` → `claude-sonnet-4-6` に変更（精度優先で統一）

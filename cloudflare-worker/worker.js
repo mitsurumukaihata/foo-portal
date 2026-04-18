@@ -21,7 +21,7 @@ var worker_default = {
         const res2 = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-          body: JSON.stringify({ model: "claude-haiku-4-5", max_tokens: 2048, system: systemPrompt, messages: [{ role: "user", content: "\u4EE5\u4E0B\u306E\u4F1A\u8B70\u306E\u6587\u5B57\u8D77\u3053\u3057\u3092\u8981\u7D04\u3057\u3066\u304F\u3060\u3055\u3044:\n\n" + text2.slice(0, 5e4) }] })
+          body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 2048, system: systemPrompt, messages: [{ role: "user", content: "\u4EE5\u4E0B\u306E\u4F1A\u8B70\u306E\u6587\u5B57\u8D77\u3053\u3057\u3092\u8981\u7D04\u3057\u3066\u304F\u3060\u3055\u3044:\n\n" + text2.slice(0, 5e4) }] })
         });
         if (!res2.ok) {
           const errText = await res2.text();

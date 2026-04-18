@@ -847,21 +847,51 @@ async function reExtractActions(meetingId) {
   var r = allRecordings.find(function(x){ return x.id === meetingId; });
   if (!r) return;
   if (!r.transcribe) { showToast('文字起こしがありません'); return; }
-  if (!confirm('文字起こしから AI でアクション（タスク）を再抽出します。\n既存のアクションには影響しません（追加のみ）。\n\n続行しますか？')) return;
+  if (!confirm('文字起こしから AI でアクション（タスク）を再抽出します。\n既存のアクションには影響しません（追加のみ）。\n\n最大90秒かかることがあります。続行しますか？')) return;
 
-  showToast('🤖 AI抽出中...');
+  // 処理中の常時表示トースト（スピナー付き・キャンセル可）
+  var processingEl = document.createElement('div');
+  processingEl.id = 'reextract-processing';
+  processingEl.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--s3);color:var(--text);padding:12px 20px;border-radius:20px;font-size:13px;z-index:800;box-shadow:0 4px 12px rgba(0,0,0,0.3);display:flex;align-items:center;gap:10px;';
+  processingEl.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid var(--muted);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;"></span>🤖 AI抽出中... <span id="reextract-timer" style="color:var(--muted);">0秒</span>';
+  // スピンアニメを一度だけ定義
+  if (!document.getElementById('reextract-spin-style')) {
+    var styleEl = document.createElement('style');
+    styleEl.id = 'reextract-spin-style';
+    styleEl.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+    document.head.appendChild(styleEl);
+  }
+  document.body.appendChild(processingEl);
+  var startTime = Date.now();
+  var timerInterval = setInterval(function() {
+    var sec = Math.floor((Date.now() - startTime) / 1000);
+    var timerEl = document.getElementById('reextract-timer');
+    if (timerEl) timerEl.textContent = sec + '秒';
+  }, 1000);
+
   try {
-    // 参加者名で前置きして /ai/summarize に投げる（Claudeは要約に"## アクション"セクションを含めて返す想定）
+    // 参加者名で前置きして /ai/summarize に投げる
     var partNames = r.participants.map(function(id){ return (allEmployees[id]&&allEmployees[id].name) || ''; }).filter(Boolean);
     var preamble = '【タスクのみ抽出】以下の会議からアクション（タスク）だけを「- 内容 [担当:氏名] [期限:YYYY-MM-DD]」形式で箇条書きしてください。要約や概要は不要です。\n';
     if (partNames.length) preamble += '【参加者】' + partNames.join('、') + '\n';
     preamble += '【会議タイプ】' + (r.type || '不明') + '\n\n【文字起こし】\n';
 
-    var res = await fetch(WORKER + '/ai/summarize', {
+    // 🔒 90秒タイムアウト（Promise.raceで確実に）
+    var controller = new AbortController();
+    var fetchPromise = fetch(WORKER + '/ai/summarize', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: preamble + r.transcribe, lang: 'ja' }),
+      signal: controller.signal,
     });
+    var timeoutPromise = new Promise(function(_, reject) {
+      setTimeout(function() {
+        try { controller.abort(); } catch(_) {}
+        reject(new Error('タイムアウト（90秒）'));
+      }, 90000);
+    });
+    var res = await Promise.race([fetchPromise, timeoutPromise]);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     var text = await res.text();
     var data;
     try { data = JSON.parse(text); } catch(e) { throw new Error('AI応答パース失敗'); }
@@ -905,6 +935,11 @@ async function reExtractActions(meetingId) {
   } catch(e) {
     console.error(e);
     showToast('❌ AI抽出失敗: ' + (e.message || e));
+  } finally {
+    // 処理中スピナーを確実に消す（成功/失敗/タイムアウトすべて）
+    clearInterval(timerInterval);
+    var proc = document.getElementById('reextract-processing');
+    if (proc) proc.remove();
   }
 }
 

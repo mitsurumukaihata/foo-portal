@@ -207,9 +207,8 @@ function canViewAction(action) {
   if (perm === '部長まで') return rank >= 70 || isParticipant || isRecorder;
   if (perm === 'リーダーまで') return rank >= 50 || isParticipant || isRecorder;
   if (perm === '営業・経営') {
-    if (rank >= 70) return true;
-    if (loginGroup === '事務' || loginGroup === 'SNS/オークション') return true;
-    return isParticipant || isRecorder;
+    // 管理者(rank>=90)は既に上でtrue、残りは録音者のみ閲覧可
+    return isRecorder;
   }
   return false;
 }

@@ -279,11 +279,14 @@ async function notionAPI(path, method, body) {
 }
 
 async function loadEmployees() {
+  // 全社員を取得（過去会議の参加者名を引くため除外者も含める）。
+  // 新規アクションの担当者候補だけは excludeFromMeeting を見てフィルタする。
   const data = await notionAPI('databases/' + EMPLOYEE_DB + '/query', 'POST', { page_size: 100 });
   (data.results || []).forEach(function(p) {
     const name = p.properties['氏名']?.title?.[0]?.plain_text || '';
     const group = p.properties['アプリグループ']?.select?.name || '';
-    allEmployees[p.id] = { id: p.id, name: name, group: group };
+    const excludeFromMeeting = p.properties['会議参加対象外']?.checkbox === true;
+    allEmployees[p.id] = { id: p.id, name: name, group: group, excludeFromMeeting: excludeFromMeeting };
     // 自分のアプリグループ・IDを判定
     if (name === loginUser) {
       loginGroup = group;
@@ -779,9 +782,9 @@ var addActionTargetMeetingId = '';
 
 function openAddActionModal(meetingId) {
   addActionTargetMeetingId = meetingId;
-  // 担当者セレクトを社員リストで埋める（氏名順）
+  // 担当者セレクトを社員リストで埋める（氏名順）。会議参加対象外の社員は候補から除外。
   var sel = document.getElementById('add-assignee');
-  var emps = Object.values(allEmployees).filter(function(e){ return e.name; });
+  var emps = Object.values(allEmployees).filter(function(e){ return e.name && !e.excludeFromMeeting; });
   emps.sort(function(a,b){ return a.name.localeCompare(b.name, 'ja'); });
   sel.innerHTML = '<option value="">-- 選択しない --</option>' +
     emps.map(function(e){ return '<option value="'+e.id+'">'+esc(e.name)+'</option>'; }).join('');

@@ -549,7 +549,8 @@ function selectMeetingType(btn) {
   startRecording();
 }
 
-/* ── 社員マスタの取得（キャッシュ付き） ── */
+/* ── 社員マスタの取得（キャッシュ付き）
+     「会議参加対象外」がONの社員は除外（例: 向畑綾花・向畑武司） ── */
 async function loadEmployees() {
   if (employeeCache) return employeeCache;
   try {
@@ -557,7 +558,12 @@ async function loadEmployees() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        filter: { property: '在籍', select: { equals: '在籍中' } },
+        filter: {
+          and: [
+            { property: '在籍', select: { equals: '在籍中' } },
+            { property: '会議参加対象外', checkbox: { equals: false } },
+          ],
+        },
         page_size: 100,
       }),
     });

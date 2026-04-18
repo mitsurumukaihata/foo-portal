@@ -13,7 +13,7 @@ var worker_default = {
     if (url.pathname === "/ai/summarize" && request.method === "POST") {
       try {
         const rawBody = await request.text();
-        const { text: text2, lang, scene, meetingType } = JSON.parse(rawBody);
+        const { text: text2, lang, scene, meetingType, dictionary } = JSON.parse(rawBody);
         if (!text2) return new Response(JSON.stringify({ error: "text is required" }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
         const apiKey = env.ANTHROPIC_API_KEY;
         if (!apiKey) return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
@@ -103,7 +103,17 @@ var worker_default = {
         };
 
         // シーン名から該当するプロンプトを選ぶ。なければデフォルト。
-        const systemPrompt = PROMPTS[scene] || PROMPTS["default"];
+        let systemPrompt = PROMPTS[scene] || PROMPTS["default"];
+
+        // 用語集が渡されたら system prompt に挿入（Claudeが固有名詞を正確に扱えるよう）
+        if (dictionary && typeof dictionary === 'string' && dictionary.trim().length > 0) {
+          systemPrompt += `\n\n【弊社の用語集（これらは固有名詞として正確に扱うこと）】\n${dictionary.trim()}`;
+        }
+
+        // 全プロンプトに「不明な用語があれば unknown_terms 配列で返す」指示を追加
+        systemPrompt += `\n\n【追加指示】レスポンスJSONに以下を必ず含めてください:
+  "unknown_terms": ["聞き慣れない固有名詞・略語・人名・会社名・銘柄名を最大10個まで。明らかに一般用語のものは除く"]
+日常会話的な単語や明確に既知の用語は含めないこと。本当に意味やスペルが不明で、向畑さんに確認したい用語だけ。`;
         const res2 = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
@@ -122,8 +132,10 @@ var worker_default = {
         try {
           parsed = JSON.parse(resultText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim());
         } catch (e) {
-          parsed = { summary: resultText.slice(0, 200), actionItems: [], participants: [] };
+          parsed = { summary: resultText.slice(0, 200), actionItems: [], participants: [], unknown_terms: [] };
         }
+        // 確実に unknown_terms が配列で返るように
+        if (!Array.isArray(parsed.unknown_terms)) parsed.unknown_terms = [];
         return new Response(JSON.stringify(parsed), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
       } catch (e) {
         return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });

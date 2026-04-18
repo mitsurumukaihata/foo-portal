@@ -519,6 +519,7 @@ body::-webkit-scrollbar { display:none; }
 
 var WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
 var RECORDING_DB = 'c470904f1e624056b675dc080420cc1d';
+var DICTIONARY_DB = '2a0de92c-ce90-4c83-a26a-9358986b9914';  // 📖 用語集DB（REST API用）
 var SESSION_KEY = 'foo_portal_session';
 var THEME_KEY = 'foo_portal_theme';
 var AUTOSAVE_KEY = 'foo_meeting_recorder_autosave';
@@ -704,6 +705,112 @@ async function loadCustomers() {
     console.error('得意先マスタ取得失敗:', e);
     return [];
   }
+}
+
+/* ── 用語集の取得（キャッシュ付き）──
+   「使用中」ステータスの用語のみ取得。AIプロンプトに投入される。 */
+var dictionaryCache = null;
+async function loadDictionary() {
+  if (dictionaryCache) return dictionaryCache;
+  try {
+    var all = [];
+    var cursor = null;
+    do {
+      var body = {
+        filter: { property: 'AI使用状況', select: { equals: '使用中' } },
+        page_size: 100,
+      };
+      if (cursor) body.start_cursor = cursor;
+      var r = await fetch(WORKER + '/databases/' + DICTIONARY_DB + '/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      var data = await r.json();
+      all = all.concat((data.results || []).map(function(p) {
+        var pr = p.properties;
+        return {
+          id: p.id,
+          term: (pr['用語']?.title?.[0]?.plain_text) || '',
+          category: pr['カテゴリ']?.select?.name || '',
+          reading: (pr['読み方']?.rich_text?.[0]?.plain_text) || '',
+          meaning: (pr['意味・説明']?.rich_text?.[0]?.plain_text) || '',
+        };
+      }).filter(function(d) { return d.term; }));
+      cursor = data.has_more ? data.next_cursor : null;
+    } while (cursor);
+    dictionaryCache = all;
+    console.log('[Dictionary] loaded:', all.length, 'terms');
+    return dictionaryCache;
+  } catch(e) {
+    console.warn('[Dictionary] 取得失敗:', e);
+    return [];
+  }
+}
+
+/* 用語集をWhisper prompt用の文字列に変換（単語を列挙） */
+function buildWhisperPrompt(dict) {
+  // タイヤ業界のデフォルト固有名詞
+  var base = 'タイヤ、TOYO、BRIDGESTONE、DUNLOP、ミシュラン、PIRELLI、YOKOHAMA、スタッドレス、ノーマル、再生、五日市倉庫、志和倉庫、海田倉庫、f.o.o、向畑、矢島、大田、中川、平野、山根、村田、岡崎、藤井、納品書、請求書、得意先';
+  if (!dict || !dict.length) return base;
+  var terms = dict.map(function(d) { return d.term + (d.reading ? '（' + d.reading + '）' : ''); }).join('、');
+  return base + '、' + terms;
+}
+
+/* 用語集をClaude system prompt用の文字列に変換（用語 + 意味） */
+function buildClaudeDictionary(dict) {
+  if (!dict || !dict.length) return '';
+  return dict.map(function(d) {
+    var line = '- ' + d.term;
+    if (d.reading) line += '（読み: ' + d.reading + '）';
+    if (d.category) line += ' [' + d.category + ']';
+    if (d.meaning) line += ' — ' + d.meaning;
+    return line;
+  }).join('\n');
+}
+
+/* unknown_terms を用語集DBに「学習中」で自動登録（既存用語はスキップ） */
+async function registerUnknownTerms(unknownTerms, meetingPageId) {
+  if (!Array.isArray(unknownTerms) || unknownTerms.length === 0) return 0;
+  // 既存の用語集を取得して重複チェック（使用中・学習中・除外すべて）
+  var existingTerms = [];
+  try {
+    var r = await fetch(WORKER + '/databases/' + DICTIONARY_DB + '/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ page_size: 100 }),
+    });
+    if (r.ok) {
+      var data = await r.json();
+      existingTerms = (data.results || []).map(function(p) {
+        return (p.properties['用語']?.title?.[0]?.plain_text) || '';
+      }).filter(Boolean);
+    }
+  } catch(e) { console.warn('[Dictionary] 既存取得失敗（重複チェックスキップ）:', e); }
+
+  var added = 0;
+  for (var i = 0; i < unknownTerms.length; i++) {
+    var term = String(unknownTerms[i] || '').trim();
+    if (!term || term.length < 2 || term.length > 40) continue;
+    // 既存スキップ
+    if (existingTerms.indexOf(term) >= 0) continue;
+    try {
+      var props = {
+        '用語': { title: [{ text: { content: term } }] },
+        'AI使用状況': { select: { name: '学習中' } },
+      };
+      if (meetingPageId) props['出典会議'] = { relation: [{ id: meetingPageId }] };
+      await fooNotionCreate(DICTIONARY_DB, props);
+      added++;
+    } catch(e) {
+      console.warn('[Dictionary] 登録失敗:', term, e);
+    }
+  }
+  if (added > 0) {
+    console.log('[Dictionary] 新規登録:', added, '件（学習中ステータス）');
+  }
+  return added;
 }
 
 /* ── Timer formatting ── */
@@ -1140,6 +1247,9 @@ async function proceedWithSummary() {
   showScreen('screen-processing');
   resetProcessingSteps();
 
+  // 用語集を先行ロード（Whisper prompt と Claude system prompt の両方で使う）
+  try { await loadDictionary(); } catch(e) { console.warn('[Dictionary] load failed (continuing):', e); }
+
   // Step 1: Whisper で音声を文字起こし
   setStepActive('step-transcribe');
   var fullText = '';
@@ -1531,7 +1641,8 @@ async function whisperTranscribe() {
   form.append('language', 'ja');
   form.append('model', 'whisper-large-v3');
   // タイヤ業界の固有名詞ヒント（精度向上）
-  form.append('prompt', 'タイヤ、TOYO、BRIDGESTONE、DUNLOP、ミシュラン、PIRELLI、YOKOHAMA、スタッドレス、ノーマル、再生、五日市倉庫、志和倉庫、海田倉庫、f.o.o、向畑、矢島、大田、中川、平野、山根、村田、岡崎、藤井、納品書、請求書、得意先、CLO、ふそう、イドム、アオイ産業、シンヨー運輸');
+  // 用語集から動的に Whisper prompt を構築（デフォルト + DB登録の用語）
+  form.append('prompt', buildWhisperPrompt(dictionaryCache || []));
   var controller = new AbortController();
   var timer = setTimeout(function(){ controller.abort(); }, 120000); // 2分タイムアウト
   try {
@@ -1611,6 +1722,7 @@ async function aiSummarize(text) {
       lang: 'ja',
       meetingType: meetingType || '',
       scene: (meetingType === '個人メモ' ? (meetingScene || '思考整理・アイデアメモ') : ''),
+      dictionary: buildClaudeDictionary(dictionaryCache || []),
     }),
     signal: controller.signal,
   }).then(function(r) {
@@ -1621,6 +1733,8 @@ async function aiSummarize(text) {
       summary: data.summary || '',
       actionItems: data.actionItems || data.action_items || [],
       participants: data.participants || [],
+      unknown_terms: Array.isArray(data.unknown_terms) ? data.unknown_terms : [],
+      raw: data,  // シーン別追加フィールド（new_products等）も保持
     };
   });
 
@@ -1923,9 +2037,18 @@ async function saveToNotion() {
     // Clear autosave
     localStorage.removeItem(AUTOSAVE_KEY);
 
+    // 📖 unknown_terms を用語集DBに自動登録（学習中ステータスで）
+    var dictAdded = 0;
+    try {
+      if (aiResult && aiResult.unknown_terms && aiResult.unknown_terms.length > 0) {
+        dictAdded = await registerUnknownTerms(aiResult.unknown_terms, pageId);
+      }
+    } catch(e) { console.warn('[Dictionary] 自動登録エラー（保存自体は成功）:', e); }
+
     var msg = 'Notionに保存しました';
     if (actionOk > 0) msg += '（アクション' + actionOk + '件登録）';
     if (actionErr > 0) msg += ' ⚠️ アクション' + actionErr + '件失敗';
+    if (dictAdded > 0) msg += ' / 📖 用語集に' + dictAdded + '件追加';
     showToast(msg);
     backToIdle();
   } catch(e) {

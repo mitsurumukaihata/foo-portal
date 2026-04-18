@@ -138,11 +138,16 @@ body { font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif; background: var
 <div class="filter-row" id="assignee-filter"></div>
 
 <!-- カテゴリタブ -->
-<div class="tab-bar">
+<div class="tab-bar" style="overflow-x:auto;">
   <button class="tab-chip active" onclick="filterCat('all',this)">全カテゴリ</button>
   <button class="tab-chip" onclick="filterCat('対社員',this)">👥 対社員</button>
   <button class="tab-chip" onclick="filterCat('対役職者',this)">👔 対役職者</button>
   <button class="tab-chip" onclick="filterCat('対顧客',this)">🤝 対顧客</button>
+  <button class="tab-chip" onclick="filterCat('メーカー連携',this)">🏭 メーカー連携</button>
+  <button class="tab-chip" onclick="filterCat('仕入先対応',this)">🔧 仕入先対応</button>
+  <button class="tab-chip" onclick="filterCat('経営判断',this)">💼 経営判断</button>
+  <button class="tab-chip" onclick="filterCat('個人思考',this)">💭 個人思考</button>
+  <button class="tab-chip" onclick="filterCat('その他',this)">📝 その他</button>
 </div>
 
 <div id="list-container">
@@ -159,6 +164,48 @@ body { font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif; background: var
     <button class="btn-secondary" onclick="closeReview()">キャンセル</button>
   </div>
 </div>
+
+<!-- 編集モーダル -->
+<div class="modal-ov" id="edit-modal" onclick="closeEdit(event)">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:480px;">
+    <div class="modal-title">✏️ アクション編集</div>
+    <div class="edit-label">内容 *</div>
+    <textarea id="edit-content" placeholder="アクションの内容" style="min-height:70px;"></textarea>
+    <div class="edit-label">担当者</div>
+    <select id="edit-assignee" class="edit-select"><option value="">-- 選択しない --</option></select>
+    <div class="edit-label">期限</div>
+    <input id="edit-deadline" type="date" class="edit-input">
+    <div class="edit-label">優先度</div>
+    <select id="edit-priority" class="edit-select">
+      <option value="">-- なし --</option>
+      <option value="🔴 高">🔴 高</option>
+      <option value="🟡 中">🟡 中</option>
+      <option value="🟢 低">🟢 低</option>
+    </select>
+    <div class="edit-label">大分類</div>
+    <select id="edit-category" class="edit-select">
+      <option value="">-- なし --</option>
+      <option value="対社員">👥 対社員</option>
+      <option value="対役職者">👔 対役職者</option>
+      <option value="対顧客">🤝 対顧客</option>
+      <option value="メーカー連携">🏭 メーカー連携</option>
+      <option value="仕入先対応">🔧 仕入先対応</option>
+      <option value="経営判断">💼 経営判断</option>
+      <option value="個人思考">💭 個人思考</option>
+      <option value="その他">📝 その他</option>
+    </select>
+    <div class="edit-label">振り返りコメント</div>
+    <textarea id="edit-review" placeholder="振り返り・進捗メモ（任意）"></textarea>
+    <button class="btn-primary" id="edit-save-btn" onclick="saveEdit()">💾 保存</button>
+    <button class="btn-secondary" onclick="closeEdit()">戻る</button>
+    <button class="btn-delete" onclick="deleteAction()" style="margin-top:10px;background:rgba(239,68,68,0.1);color:var(--red);border:1px solid rgba(239,68,68,0.3);">🗑️ このアクションを削除</button>
+  </div>
+</div>
+<style>
+  .edit-label { font-size: 11px; font-weight: 700; color: var(--muted); margin: 10px 0 5px; letter-spacing: 0.04em; }
+  .edit-input, .edit-select { width: 100%; padding: 9px 11px; background: var(--s2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; font-family: inherit; }
+  .btn-delete { width: 100%; padding: 11px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+</style>
 
 <div class="toast" id="toast"></div>
 
@@ -333,9 +380,9 @@ async function loadActions() {
 function renderSummary() {
   var today = new Date(); today.setHours(0, 0, 0, 0);
   var all = actions.length;
-  var open = actions.filter(function(a) { return a.status !== '完了' && a.status !== 'ボツ'; }).length;
+  var open = actions.filter(function(a) { return a.status !== '完了' && a.status !== 'キャンセル'; }).length;
   var overdue = actions.filter(function(a) {
-    if (a.status === '完了' || a.status === 'ボツ') return false;
+    if (a.status === '完了' || a.status === 'キャンセル') return false;
     if (!a.deadline) return false;
     return new Date(a.deadline) < today;
   }).length;
@@ -397,10 +444,10 @@ function renderList() {
 
   var filtered = actions.filter(function(a) {
     // status フィルター
-    if (filter.status === 'open' && (a.status === '完了' || a.status === 'ボツ')) return false;
+    if (filter.status === 'open' && (a.status === '完了' || a.status === 'キャンセル')) return false;
     if (filter.status === 'done' && a.status !== '完了') return false;
     if (filter.status === 'overdue') {
-      if (a.status === '完了' || a.status === 'ボツ') return false;
+      if (a.status === '完了' || a.status === 'キャンセル') return false;
       if (!a.deadline) return false;
       if (new Date(a.deadline) >= today) return false;
     }
@@ -422,8 +469,8 @@ function renderList() {
       var e = employees.find(function(x) { return x.id === id; });
       return e ? e.name : '?';
     }).join('・');
-    var isOverdue = a.deadline && a.status !== '完了' && a.status !== 'ボツ' && new Date(a.deadline) < today;
-    var isSoon = a.deadline && a.status !== '完了' && a.status !== 'ボツ' && new Date(a.deadline) >= today && new Date(a.deadline) < soon;
+    var isOverdue = a.deadline && a.status !== '完了' && a.status !== 'キャンセル' && new Date(a.deadline) < today;
+    var isSoon = a.deadline && a.status !== '完了' && a.status !== 'キャンセル' && new Date(a.deadline) >= today && new Date(a.deadline) < soon;
     var classes = 'action-card' + (isOverdue ? ' overdue' : isSoon ? ' soon' : '') + (a.status === '完了' ? ' done' : '');
     var deadlineClass = isOverdue ? 'deadline-overdue' : isSoon ? 'deadline-soon' : '';
     var deadlineText = a.deadline ? '📅 ' + a.deadline.replace(/-/g, '/') + (isOverdue ? ' ⚠️ 期限超過' : isSoon ? ' ⏰ 近日' : '') : '期限なし';
@@ -436,15 +483,16 @@ function renderList() {
     html += '<div class="ac-meta">';
     if (names) html += '<span>👤 ' + esc(names) + '</span>';
     html += '<span class="' + deadlineClass + '">' + deadlineText + '</span>';
-    if (a.category) html += '<span>' + (a.category === '対社員' ? '👥' : a.category === '対役職者' ? '👔' : '🤝') + ' ' + a.category + '</span>';
+    if (a.category) html += '<span>' + catIcon(a.category) + ' ' + esc(a.category) + '</span>';
     if (a.review) html += '<span style="background:rgba(59,130,246,0.15);color:var(--blue);">💬 振り返りあり</span>';
     html += '</div>';
     html += '<div class="ac-actions">';
-    ['未着手', '進行中', '完了', '継続', 'ボツ'].forEach(function(st) {
+    ['未着手', '進行中', '完了', '継続', 'キャンセル'].forEach(function(st) {
       var active = (a.status === st) ? ' active' : '';
       html += '<button class="st-btn' + active + '" onclick="updateStatus(\'' + a.id + '\',\'' + st + '\')">' + st + '</button>';
     });
     html += '<button class="st-btn" onclick="openReview(\'' + a.id + '\')" title="振り返りコメント">💬</button>';
+    html += '<button class="st-btn" onclick="openEdit(\'' + a.id + '\')" title="編集" style="background:rgba(168,85,247,0.15);color:var(--purple);">✏️</button>';
     html += '</div></div>';
   });
   html += '</div>';
@@ -506,6 +554,116 @@ function esc(s) {
   var d = document.createElement('div');
   d.textContent = s;
   return d.innerHTML;
+}
+
+/* ── カテゴリアイコン ── */
+function catIcon(cat) {
+  switch(cat) {
+    case '対社員': return '👥';
+    case '対役職者': return '👔';
+    case '対顧客': return '🤝';
+    case 'メーカー連携': return '🏭';
+    case '仕入先対応': return '🔧';
+    case '経営判断': return '💼';
+    case '個人思考': return '💭';
+    case 'その他': return '📝';
+    default: return '📌';
+  }
+}
+
+/* ════════════════════════════════════════
+   編集モーダル（内容・担当者・期限・優先度・大分類・振り返り）
+   ═══════════════════════════════════════ */
+function openEdit(id) {
+  editingActionId = id;
+  var a = actions.find(function(x) { return x.id === id; });
+  if (!a) return;
+
+  // 担当者セレクトを社員リストで埋める
+  var assigneeSel = document.getElementById('edit-assignee');
+  assigneeSel.innerHTML = '<option value="">-- 選択しない --</option>' +
+    employees.map(function(e) {
+      var selected = (a.assignees && a.assignees[0] === e.id) ? ' selected' : '';
+      return '<option value="' + e.id + '"' + selected + '>' + esc(e.name) + '</option>';
+    }).join('');
+
+  document.getElementById('edit-content').value = a.content || '';
+  document.getElementById('edit-deadline').value = a.deadline || '';
+  document.getElementById('edit-priority').value = a.priority || '';
+  document.getElementById('edit-category').value = a.category || '';
+  document.getElementById('edit-review').value = a.review || '';
+  document.getElementById('edit-modal').classList.add('show');
+}
+
+function closeEdit(e) {
+  if (e && e.target !== document.getElementById('edit-modal') && e.type !== 'click') return;
+  document.getElementById('edit-modal').classList.remove('show');
+  editingActionId = null;
+}
+
+async function saveEdit() {
+  if (!editingActionId) return;
+  var content = document.getElementById('edit-content').value.trim();
+  if (!content) { showToast('内容を入力してください'); return; }
+  var assigneeId = document.getElementById('edit-assignee').value;
+  var deadline = document.getElementById('edit-deadline').value;
+  var priority = document.getElementById('edit-priority').value;
+  var category = document.getElementById('edit-category').value;
+  var review = document.getElementById('edit-review').value.trim();
+
+  var btn = document.getElementById('edit-save-btn');
+  btn.disabled = true;
+  btn.textContent = '保存中...';
+
+  try {
+    var props = {
+      '内容': { title: [{ text: { content: content.substring(0, 2000) } }] },
+      '担当者': { relation: assigneeId ? [{ id: assigneeId }] : [] },
+      '期限': deadline ? { date: { start: deadline } } : { date: null },
+      '優先度': priority ? { select: { name: priority } } : { select: null },
+      '大分類': category ? { select: { name: category } } : { select: null },
+      '振り返りコメント': review ? { rich_text: [{ text: { content: review.substring(0, 2000) } }] } : { rich_text: [] },
+    };
+    await notionAPI('pages/' + editingActionId, 'PATCH', { properties: props });
+    // ローカル状態を更新
+    var a = actions.find(function(x) { return x.id === editingActionId; });
+    if (a) {
+      a.content = content;
+      a.assignees = assigneeId ? [assigneeId] : [];
+      a.deadline = deadline;
+      a.priority = priority;
+      a.category = category;
+      a.review = review;
+    }
+    closeEdit();
+    renderSummary();
+    renderList();
+    showToast('✅ 保存しました');
+  } catch(e) {
+    console.error(e);
+    showToast('❌ 保存失敗: ' + (e.message || e));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '💾 保存';
+  }
+}
+
+async function deleteAction() {
+  if (!editingActionId) return;
+  var a = actions.find(function(x) { return x.id === editingActionId; });
+  if (!a) return;
+  if (!confirm('⚠️ このアクションを削除します\n\n「' + a.content + '」\n\nNotionのゴミ箱に移動します（30日以内なら復元可）。続行しますか？')) return;
+  try {
+    await notionAPI('pages/' + editingActionId, 'PATCH', { archived: true });
+    actions = actions.filter(function(x) { return x.id !== editingActionId; });
+    closeEdit();
+    renderSummary();
+    renderList();
+    showToast('🗑️ 削除しました');
+  } catch(e) {
+    console.error(e);
+    showToast('❌ 削除失敗: ' + (e.message || e));
+  }
 }
 
 // 初期化

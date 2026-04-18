@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>📖 用語集 | f.o.o</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f0a500">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+:root {
+  --accent: #f0a500;
+  --accent2: #e07000;
+  --red: #ef4444;
+  --yellow: #eab308;
+  --green: #22c55e;
+  --blue: #3b82f6;
+  --purple: #a855f7;
+  --pink: #ec4899;
+  --brown: #a16207;
+  --bg: #1a1a18;
+  --s1: #242420;
+  --s2: #2d2d28;
+  --s3: #3a3a35;
+  --border: rgba(255,255,255,0.08);
+  --text: #f0ece4;
+  --muted: #9e9a90;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #fdf6ee;
+    --s1: #fff;
+    --s2: #f5f0e8;
+    --s3: #ebe5d9;
+    --border: rgba(0,0,0,0.08);
+    --text: #1a1612;
+    --muted: #6b6560;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 100px; }
+.app-header { position: sticky; top: 0; z-index: 100; background: var(--bg); border-bottom: 0.5px solid var(--border); padding: 14px 16px 10px; display: flex; align-items: center; gap: 10px; }
+.header-icon { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.header-titles { flex: 1; }
+.header-title { font-size: 16px; font-weight: 600; }
+.header-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.portal-back-btn { font-size: 12px; color: var(--muted); background: var(--s2); border: 0.5px solid var(--border); padding: 6px 12px; border-radius: 20px; text-decoration: none; }
+.refresh-btn { font-size: 14px; background: var(--s2); border: 0.5px solid var(--border); padding: 6px 10px; border-radius: 20px; cursor: pointer; color: var(--muted); font-family: inherit; }
+
+/* Main tabs */
+.tab-main { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; padding: 12px; background: var(--bg); border-bottom: 0.5px solid var(--border); }
+.tab-chip { padding: 10px 8px; border-radius: 10px; font-size: 12px; font-weight: 700; border: 1px solid var(--border); background: var(--s2); color: var(--muted); cursor: pointer; text-align: center; font-family: inherit; }
+.tab-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.tab-chip.learning { background: rgba(234,179,8,0.15); color: var(--yellow); border-color: rgba(234,179,8,0.3); }
+.tab-chip.learning.active { background: var(--yellow); color: #fff; border-color: var(--yellow); }
+.tab-count { font-size: 10px; opacity: 0.8; margin-top: 2px; }
+
+/* Filter */
+.filter-row { padding: 6px 12px; display: flex; gap: 6px; overflow-x: auto; background: var(--bg); scrollbar-width: none; }
+.filter-row::-webkit-scrollbar { display: none; }
+.filter-chip { flex-shrink: 0; padding: 5px 12px; border-radius: 16px; font-size: 11px; border: 0.5px solid var(--border); background: var(--s2); color: var(--muted); cursor: pointer; white-space: nowrap; font-family: inherit; }
+.filter-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.search-row { padding: 6px 12px 10px; }
+.search-input { width: 100%; padding: 10px 14px; background: var(--s2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 14px; font-family: inherit; }
+
+/* List */
+.list { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.term-card { background: var(--s2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; cursor: pointer; transition: all 0.15s; }
+.term-card:active { transform: scale(0.99); }
+.term-card:hover { border-color: var(--accent); }
+.term-card.learning { border-left: 4px solid var(--yellow); }
+.term-card.excluded { opacity: 0.55; }
+
+.tc-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 4px; }
+.tc-title { font-size: 16px; font-weight: 700; }
+.tc-reading { font-size: 11px; color: var(--muted); margin-left: 6px; }
+.tc-badges { display: flex; gap: 4px; flex-shrink: 0; }
+.tc-cat { font-size: 10px; padding: 2px 8px; border-radius: 10px; }
+.cat-銘柄 { background: rgba(59,130,246,0.15); color: var(--blue); }
+.cat-サイズ { background: rgba(168,85,247,0.15); color: var(--purple); }
+.cat-メーカー { background: rgba(236,72,153,0.15); color: var(--pink); }
+.cat-顧客・得意先 { background: rgba(240,165,0,0.15); color: var(--accent); }
+.cat-社員 { background: rgba(34,197,94,0.15); color: var(--green); }
+.cat-仕入先・業者 { background: rgba(161,98,7,0.15); color: var(--brown); }
+.cat-業界用語 { background: rgba(234,179,8,0.15); color: var(--yellow); }
+.cat-略語 { background: rgba(158,154,144,0.15); color: var(--muted); }
+.cat-その他 { background: var(--s3); color: var(--muted); }
+.tc-status { font-size: 10px; padding: 2px 8px; border-radius: 10px; }
+.status-学習中 { background: rgba(234,179,8,0.2); color: var(--yellow); font-weight: 700; }
+.status-使用中 { background: rgba(34,197,94,0.15); color: var(--green); }
+.status-除外 { background: var(--s3); color: var(--muted); }
+.tc-meaning { font-size: 12px; color: var(--muted); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tc-empty { font-size: 11px; color: var(--yellow); font-style: italic; }
+
+.empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; }
+.loader { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
+.loader::before { content: '⏳'; display: block; font-size: 32px; margin-bottom: 8px; }
+
+/* Float add button */
+.fab-add { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; border-radius: 50%; background: var(--accent); color: #fff; border: none; font-size: 28px; cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,0.25); z-index: 500; font-family: inherit; }
+.fab-add:active { transform: scale(0.95); }
+
+/* Modal */
+.modal-ov { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 700; display: none; align-items: center; justify-content: center; padding: 16px; }
+.modal-ov.show { display: flex; }
+.modal { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 18px; width: 100%; max-width: 500px; max-height: 92vh; overflow-y: auto; }
+.modal-title { font-size: 17px; font-weight: 700; margin-bottom: 14px; }
+.m-label { font-size: 11px; font-weight: 700; color: var(--muted); margin: 12px 0 5px; letter-spacing: 0.04em; }
+.m-input, .m-select, .m-textarea { width: 100%; padding: 10px 12px; background: var(--s2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; font-family: inherit; }
+.m-textarea { min-height: 70px; resize: vertical; }
+.m-btns { display: flex; gap: 8px; margin-top: 18px; }
+.m-btns button { flex: 1; padding: 12px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; border: 1px solid var(--border); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-secondary { background: var(--s2); color: var(--muted); }
+.btn-delete { width: 100%; background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid rgba(239,68,68,0.3); padding: 11px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 10px; }
+
+/* Info banner */
+.info-banner { margin: 10px 12px; padding: 10px 14px; background: rgba(234,179,8,0.1); border: 1px solid rgba(234,179,8,0.3); border-radius: 10px; font-size: 12px; color: var(--yellow); line-height: 1.6; }
+.info-banner .info-title { font-weight: 700; margin-bottom: 4px; color: var(--yellow); }
+
+.toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--s3); color: var(--text); padding: 10px 20px; border-radius: 20px; font-size: 13px; transition: transform 0.25s; z-index: 800; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+@media (min-width: 700px) {
+  .tab-main, .filter-row, .search-row, .list { max-width: 700px; margin-left: auto; margin-right: auto; }
+  .list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="header-icon">📖</div>
+  <div class="header-titles">
+    <div class="header-title">用語集</div>
+    <div class="header-sub">AI精度向上のための社内用語辞書</div>
+  </div>
+  <button class="refresh-btn" onclick="loadTerms()">🔄</button>
+  <a href="index.html" class="portal-back-btn">← ポータル</a>
+</div>
+
+<!-- メインタブ -->
+<div class="tab-main">
+  <button class="tab-chip learning active" id="tab-learning" onclick="setMainTab('学習中',this)">
+    ⭐ 要確認
+    <div class="tab-count" id="count-learning">-</div>
+  </button>
+  <button class="tab-chip" id="tab-active" onclick="setMainTab('使用中',this)">
+    ✅ 使用中
+    <div class="tab-count" id="count-active">-</div>
+  </button>
+  <button class="tab-chip" id="tab-all" onclick="setMainTab('all',this)">
+    📚 全部
+    <div class="tab-count" id="count-all">-</div>
+  </button>
+</div>
+
+<!-- 学習中タブの説明 -->
+<div class="info-banner" id="info-learning" style="display:none;">
+  <div class="info-title">⭐ 要確認（学習中）の用語</div>
+  AIが会話から拾った「意味がわからない用語」です。タップして意味を入力し「使用中」に変更すると、次回の録音から精度が上がります。
+</div>
+
+<!-- カテゴリフィルター -->
+<div class="filter-row" id="cat-filter"></div>
+
+<!-- 検索 -->
+<div class="search-row">
+  <input class="search-input" id="search-input" placeholder="🔍 用語・読み方・意味で検索..." oninput="applyFilters()">
+</div>
+
+<div id="list-container"><div class="loader">読み込み中...</div></div>
+
+<!-- フロート追加ボタン -->
+<button class="fab-add" onclick="openNewModal()" title="新規用語を追加">+</button>
+
+<!-- 編集・新規モーダル -->
+<div class="modal-ov" id="edit-modal" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title" id="modal-title">✏️ 用語を編集</div>
+    <div class="m-label">用語 *</div>
+    <input class="m-input" id="m-term" placeholder="例: M170、TOYO、CLOなど">
+    <div class="m-label">カテゴリ</div>
+    <select class="m-select" id="m-category">
+      <option value="">-- 未分類 --</option>
+      <option value="銘柄">🏷️ 銘柄</option>
+      <option value="サイズ">📏 サイズ</option>
+      <option value="メーカー">🏭 メーカー</option>
+      <option value="顧客・得意先">🤝 顧客・得意先</option>
+      <option value="社員">👤 社員</option>
+      <option value="仕入先・業者">🔧 仕入先・業者</option>
+      <option value="業界用語">📖 業界用語</option>
+      <option value="略語">🔤 略語</option>
+      <option value="その他">📝 その他</option>
+    </select>
+    <div class="m-label">読み方（カタカナ・Whisper用）</div>
+    <input class="m-input" id="m-reading" placeholder="例: エムイチナナマル">
+    <div class="m-label">意味・説明（Claude用）</div>
+    <textarea class="m-textarea" id="m-meaning" placeholder="どういう用語か、背景、使い方など"></textarea>
+    <div class="m-label">AI使用状況</div>
+    <select class="m-select" id="m-status">
+      <option value="学習中">⭐ 学習中（要確認）</option>
+      <option value="使用中">✅ 使用中（AIに投入）</option>
+      <option value="除外">🔒 除外（使わない）</option>
+    </select>
+    <div class="m-label">メモ（任意）</div>
+    <textarea class="m-textarea" id="m-memo" placeholder="参考情報など"></textarea>
+    <div class="m-btns">
+      <button class="btn-secondary" onclick="closeModal()">戻る</button>
+      <button class="btn-primary" id="m-save-btn" onclick="saveTerm()">💾 保存</button>
+    </div>
+    <button class="btn-delete" id="m-delete-btn" onclick="deleteTerm()" style="display:none;">🗑️ この用語を削除</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
+const DICTIONARY_DB = '2a0de92c-ce90-4c83-a26a-9358986b9914';
+const SESSION_KEY = 'foo_portal_session';
+
+let loginUser = '';
+let allTerms = [];
+let currentTab = '学習中';   // '学習中' | '使用中' | 'all'
+let currentCat = 'all';
+let editingTermId = null;
+
+// Auth
+(function(){
+  try {
+    var s = JSON.parse(localStorage.getItem(SESSION_KEY));
+    if (!s || !s.name || new Date(s.expires) < new Date()) { location.href = 'index.html'; return; }
+    loginUser = s.name;
+  } catch(e) { location.href = 'index.html'; }
+})();
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 2500);
+}
+
+async function notionAPI(path, method, body) {
+  const opts = { method: method || 'GET', headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(WORKER + '/' + path, opts);
+  const text = await r.text();
+  let data;
+  try { data = JSON.parse(text); } catch(e) { throw new Error('parse: ' + text.slice(0,100)); }
+  if (data.object === 'error') throw new Error(data.message || 'notion error');
+  return data;
+}
+
+async function loadTerms() {
+  document.getElementById('list-container').innerHTML = '<div class="loader">読み込み中...</div>';
+  try {
+    let all = [];
+    let cursor = null;
+    do {
+      const body = { page_size: 100 };
+      if (cursor) body.start_cursor = cursor;
+      const data = await notionAPI('databases/' + DICTIONARY_DB + '/query', 'POST', body);
+      all = all.concat(data.results || []);
+      cursor = data.has_more ? data.next_cursor : null;
+    } while (cursor);
+
+    allTerms = all.map(function(p) {
+      const pr = p.properties;
+      return {
+        id: p.id,
+        term: pr['用語']?.title?.[0]?.plain_text || '',
+        category: pr['カテゴリ']?.select?.name || '',
+        reading: pr['読み方']?.rich_text?.[0]?.plain_text || '',
+        meaning: pr['意味・説明']?.rich_text?.[0]?.plain_text || '',
+        status: pr['AI使用状況']?.select?.name || '学習中',
+        memo: pr['メモ']?.rich_text?.[0]?.plain_text || '',
+        createdAt: p.created_time,
+        updatedAt: p.last_edited_time,
+      };
+    }).filter(function(t) { return t.term; });
+
+    renderCounts();
+    renderCatFilter();
+    applyFilters();
+  } catch(e) {
+    console.error(e);
+    document.getElementById('list-container').innerHTML = '<div class="empty">読み込みエラー: ' + (e.message || e) + '</div>';
+  }
+}
+
+function renderCounts() {
+  const byStatus = { '学習中': 0, '使用中': 0, '除外': 0 };
+  allTerms.forEach(function(t) { if (byStatus[t.status] !== undefined) byStatus[t.status]++; });
+  document.getElementById('count-learning').textContent = byStatus['学習中'];
+  document.getElementById('count-active').textContent = byStatus['使用中'];
+  document.getElementById('count-all').textContent = allTerms.length;
+}
+
+function renderCatFilter() {
+  const cats = {};
+  allTerms.forEach(function(t) {
+    if (currentTab !== 'all' && t.status !== currentTab) return;
+    if (t.category) cats[t.category] = (cats[t.category] || 0) + 1;
+  });
+  const container = document.getElementById('cat-filter');
+  let html = '<button class="filter-chip' + (currentCat === 'all' ? ' active' : '') + '" onclick="setCat(\'all\',this)">全カテゴリ</button>';
+  Object.keys(cats).sort(function(a,b){ return cats[b] - cats[a]; }).forEach(function(c) {
+    const active = (c === currentCat) ? ' active' : '';
+    html += '<button class="filter-chip' + active + '" onclick="setCat(\'' + esc(c) + '\',this)">' + c + ' (' + cats[c] + ')</button>';
+  });
+  container.innerHTML = html;
+}
+
+function setMainTab(tab, el) {
+  currentTab = tab;
+  currentCat = 'all';
+  document.querySelectorAll('.tab-main .tab-chip').forEach(function(c) { c.classList.remove('active'); });
+  if (el) el.classList.add('active');
+  document.getElementById('info-learning').style.display = (tab === '学習中') ? '' : 'none';
+  renderCatFilter();
+  applyFilters();
+}
+
+function setCat(cat, el) {
+  currentCat = cat;
+  document.querySelectorAll('#cat-filter .filter-chip').forEach(function(c) { c.classList.remove('active'); });
+  if (el) el.classList.add('active');
+  applyFilters();
+}
+
+function applyFilters() {
+  const q = (document.getElementById('search-input').value || '').trim().toLowerCase();
+  const filtered = allTerms.filter(function(t) {
+    if (currentTab !== 'all' && t.status !== currentTab) return false;
+    if (currentCat !== 'all' && t.category !== currentCat) return false;
+    if (q) {
+      const hay = (t.term + ' ' + t.reading + ' ' + t.meaning + ' ' + t.category).toLowerCase();
+      if (hay.indexOf(q) < 0) return false;
+    }
+    return true;
+  });
+  // 学習中タブは意味未入力を上に、他はAZ順
+  filtered.sort(function(a, b) {
+    if (currentTab === '学習中') {
+      const aEmpty = !a.meaning ? 0 : 1;
+      const bEmpty = !b.meaning ? 0 : 1;
+      if (aEmpty !== bEmpty) return aEmpty - bEmpty;
+    }
+    return (a.term || '').localeCompare(b.term || '', 'ja');
+  });
+  renderList(filtered);
+}
+
+function renderList(list) {
+  const container = document.getElementById('list-container');
+  if (!list.length) {
+    if (currentTab === '学習中') {
+      container.innerHTML = '<div class="empty">🎉 要確認の用語はありません<br><small>AIが拾った新しい用語はここに届きます</small></div>';
+    } else {
+      container.innerHTML = '<div class="empty">該当する用語はありません</div>';
+    }
+    return;
+  }
+  let html = '<div class="list">';
+  list.forEach(function(t) {
+    const classes = 'term-card ' + (t.status === '学習中' ? 'learning' : t.status === '除外' ? 'excluded' : '');
+    html += '<div class="' + classes + '" onclick="openEdit(\'' + t.id + '\')">';
+    html += '<div class="tc-header">';
+    html += '<div><span class="tc-title">' + esc(t.term) + '</span>';
+    if (t.reading) html += '<span class="tc-reading">' + esc(t.reading) + '</span>';
+    html += '</div>';
+    html += '<div class="tc-badges">';
+    if (t.category) html += '<span class="tc-cat cat-' + t.category + '">' + esc(t.category) + '</span>';
+    html += '<span class="tc-status status-' + t.status + '">' + t.status + '</span>';
+    html += '</div></div>';
+    if (t.meaning) {
+      html += '<div class="tc-meaning">' + esc(t.meaning) + '</div>';
+    } else if (t.status === '学習中') {
+      html += '<div class="tc-empty">⚠️ 意味が未入力です（タップして編集）</div>';
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function esc(s) {
+  var d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+/* ════════════════════════════════════════
+   編集・新規モーダル
+   ═══════════════════════════════════════ */
+function openNewModal() {
+  editingTermId = null;
+  document.getElementById('modal-title').textContent = '➕ 新規用語を追加';
+  document.getElementById('m-term').value = '';
+  document.getElementById('m-category').value = '';
+  document.getElementById('m-reading').value = '';
+  document.getElementById('m-meaning').value = '';
+  document.getElementById('m-status').value = '使用中';
+  document.getElementById('m-memo').value = '';
+  document.getElementById('m-delete-btn').style.display = 'none';
+  document.getElementById('edit-modal').classList.add('show');
+  setTimeout(function(){ document.getElementById('m-term').focus(); }, 50);
+}
+
+function openEdit(id) {
+  editingTermId = id;
+  const t = allTerms.find(function(x) { return x.id === id; });
+  if (!t) return;
+  document.getElementById('modal-title').textContent = (t.status === '学習中' ? '⭐ 意味を入力' : '✏️ 用語を編集');
+  document.getElementById('m-term').value = t.term;
+  document.getElementById('m-category').value = t.category;
+  document.getElementById('m-reading').value = t.reading;
+  document.getElementById('m-meaning').value = t.meaning;
+  document.getElementById('m-status').value = t.status;
+  document.getElementById('m-memo').value = t.memo;
+  document.getElementById('m-delete-btn').style.display = '';
+  document.getElementById('edit-modal').classList.add('show');
+}
+
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('edit-modal') && e.type === 'click') return;
+  document.getElementById('edit-modal').classList.remove('show');
+  editingTermId = null;
+}
+
+async function saveTerm() {
+  const term = document.getElementById('m-term').value.trim();
+  if (!term) { showToast('用語を入力してください'); return; }
+  const category = document.getElementById('m-category').value;
+  const reading = document.getElementById('m-reading').value.trim();
+  const meaning = document.getElementById('m-meaning').value.trim();
+  const status = document.getElementById('m-status').value;
+  const memo = document.getElementById('m-memo').value.trim();
+
+  const btn = document.getElementById('m-save-btn');
+  btn.disabled = true;
+  btn.textContent = '保存中...';
+
+  try {
+    const props = {
+      '用語': { title: [{ text: { content: term.substring(0, 200) } }] },
+      'カテゴリ': category ? { select: { name: category } } : { select: null },
+      '読み方': reading ? { rich_text: [{ text: { content: reading.substring(0, 2000) } }] } : { rich_text: [] },
+      '意味・説明': meaning ? { rich_text: [{ text: { content: meaning.substring(0, 2000) } }] } : { rich_text: [] },
+      'AI使用状況': { select: { name: status } },
+      'メモ': memo ? { rich_text: [{ text: { content: memo.substring(0, 2000) } }] } : { rich_text: [] },
+    };
+
+    if (editingTermId) {
+      // 編集
+      await notionAPI('pages/' + editingTermId, 'PATCH', { properties: props });
+      showToast('✅ 更新しました');
+    } else {
+      // 新規作成
+      await notionAPI('pages', 'POST', {
+        parent: { database_id: DICTIONARY_DB },
+        properties: props,
+      });
+      showToast('✅ 追加しました');
+    }
+    closeModal();
+    await loadTerms();
+  } catch(e) {
+    console.error(e);
+    showToast('❌ 保存失敗: ' + (e.message || e));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '💾 保存';
+  }
+}
+
+async function deleteTerm() {
+  if (!editingTermId) return;
+  const t = allTerms.find(function(x) { return x.id === editingTermId; });
+  if (!t) return;
+  if (!confirm('⚠️ この用語を削除します\n\n「' + t.term + '」\n\nNotionのゴミ箱に移動します（30日以内なら復元可）。続行しますか？')) return;
+
+  try {
+    await notionAPI('pages/' + editingTermId, 'PATCH', { archived: true });
+    closeModal();
+    await loadTerms();
+    showToast('🗑️ 削除しました');
+  } catch(e) {
+    console.error(e);
+    showToast('❌ 削除失敗: ' + (e.message || e));
+  }
+}
+
+// 初期化
+loadTerms();
+</script>
+</body>
+</html>

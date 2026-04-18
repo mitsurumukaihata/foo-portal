@@ -167,13 +167,52 @@ body { font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif; background: var
 const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
 const ACTION_DB = 'bf697864953d4bb3be6c2cfbbc88bb4a';
 const EMPLOYEE_DB = '08c5405729794337886b3565352ef96a';
+const RECORDING_DB = 'c470904f1e624056b675dc080420cc1d';
 const SESSION_KEY = 'foo_portal_session';
 
 let loginUser = '';
+let loginGroup = '';    // アプリグループ（管理者/部長/リーダー等）
+let loginId = '';       // 社員マスタのページID
 let actions = [];
 let employees = [];
+let meetingsMap = {};   // { meetingId: {permission, participants:[empId], recorder} } 閲覧制限の判定用
 let filter = { status: 'open', category: 'all', assigneeId: 'all' };
 let editingActionId = null;
+
+// アプリグループの階層（meeting-list.html と同じロジック）
+const GROUP_RANK = {
+  '会長': 100, '管理者': 90, '部長': 70, 'リーダー': 50,
+  '事務': 40, '経理': 40, 'SNS/オークション': 40, '一般': 10, '': 0
+};
+
+/* ── 閲覧権限判定（meeting-list.html の canView と同等ロジック） ──
+   各アクションの「元会議」の閲覧権限を参照して判定する。
+   会議情報がない場合は「元会議なし＝手動作成」とみなし全員閲覧可。 */
+function canViewAction(action) {
+  if (!action.meetingId) return true;  // 元会議なし = 手動作成 = 制限なし
+  const m = meetingsMap[action.meetingId];
+  if (!m) return true;  // 元会議の情報が取れなかった = フェールセーフで表示
+
+  const perm = m.permission || '全員';
+  const rank = GROUP_RANK[loginGroup] || 0;
+  const isParticipant = (m.participants || []).indexOf(loginId) >= 0;
+  const isRecorder = m.recorder === loginUser;
+  const isAssignee = (action.assignees || []).indexOf(loginId) >= 0;
+
+  if (perm === '全員') return true;
+  if (rank >= 90) return true;  // 管理者・会長は全部見える
+  if (isAssignee) return true;  // アクション担当者本人は必ず見える
+  if (perm === '録音者のみ') return isRecorder;
+  if (perm === '参加者のみ') return isParticipant || isRecorder;
+  if (perm === '部長まで') return rank >= 70 || isParticipant || isRecorder;
+  if (perm === 'リーダーまで') return rank >= 50 || isParticipant || isRecorder;
+  if (perm === '営業・経営') {
+    if (rank >= 70) return true;
+    if (loginGroup === '事務' || loginGroup === 'SNS/オークション') return true;
+    return isParticipant || isRecorder;
+  }
+  return false;
+}
 
 // Auth
 (function(){
@@ -208,14 +247,51 @@ async function loadEmployees() {
     page_size: 100,
   });
   employees = (data.results || []).map(function(p) {
+    const name = p.properties['氏名']?.title?.[0]?.plain_text || '';
+    const group = p.properties['アプリグループ']?.select?.name || '';
+    // 自分の情報を判定（閲覧制限判定用）
+    if (name === loginUser) {
+      loginGroup = group;
+      loginId = p.id;
+    }
     return {
       id: p.id,
-      name: p.properties['氏名']?.title?.[0]?.plain_text || '',
-      group: p.properties['アプリグループ']?.select?.name || '',
+      name: name,
+      group: group,
       order: p.properties['表示順']?.number || 999,
     };
   }).filter(function(e) { return e.name; });
   employees.sort(function(a, b) { return a.order - b.order; });
+}
+
+/* ── 会議録音DBから関連する会議の閲覧権限・参加者・録音者を取得 ──
+   actions[].meetingId で参照されている会議だけロード（全件は不要） */
+async function loadMeetingsForPermission(meetingIds) {
+  const uniqueIds = Array.from(new Set((meetingIds || []).filter(Boolean)));
+  if (uniqueIds.length === 0) return;
+
+  // Notion DB query で指定ページIDのリストをフィルタする方法はないので、全件取得 → 必要な分だけ抽出
+  // 件数が100を超える場合はページネーション
+  let all = [];
+  let cursor = null;
+  do {
+    const body = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    const data = await notionAPI('databases/' + RECORDING_DB + '/query', 'POST', body);
+    all = all.concat(data.results || []);
+    cursor = data.has_more ? data.next_cursor : null;
+  } while (cursor);
+
+  meetingsMap = {};
+  all.forEach(function(p) {
+    if (uniqueIds.indexOf(p.id) < 0) return;
+    const pr = p.properties;
+    meetingsMap[p.id] = {
+      permission: pr['閲覧権限']?.select?.name || '全員',
+      participants: (pr['参加者']?.relation || []).map(function(r) { return r.id; }),
+      recorder: pr['録音者']?.select?.name || '',
+    };
+  });
 }
 
 async function loadActions() {
@@ -225,7 +301,7 @@ async function loadActions() {
       sorts: [{ property: '期限', direction: 'ascending' }],
       page_size: 100,
     });
-    actions = (data.results || []).map(function(p) {
+    const rawActions = (data.results || []).map(function(p) {
       return {
         id: p.id,
         content: p.properties['内容']?.title?.[0]?.plain_text || '',
@@ -240,6 +316,12 @@ async function loadActions() {
         updatedAt: p.properties['更新日']?.last_edited_time || '',
       };
     });
+
+    // 🔒 閲覧制限: 元会議の閲覧権限を取得してフィルタ
+    const meetingIds = rawActions.map(function(a){ return a.meetingId; }).filter(Boolean);
+    await loadMeetingsForPermission(meetingIds);
+    actions = rawActions.filter(canViewAction);
+
     renderSummary();
     renderAssigneeFilter();
     renderList();

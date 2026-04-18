@@ -675,12 +675,16 @@ function openDetail(id) {
   html += '</div>';
 
   // 要約
+  html += '<div class="detail-sec">';
+  html += '<div class="detail-sec-title">📝 要約</div>';
   if (r.summary) {
-    html += '<div class="detail-sec">';
-    html += '<div class="detail-sec-title">📝 要約</div>';
     html += '<div class="detail-content">' + esc(r.summary) + '</div>';
-    html += '</div>';
+  } else if (r.transcribe) {
+    html += '<div class="detail-content" style="color:var(--muted);font-style:italic;">要約がまだありません。下の「🤖 文字起こしから AI で再抽出」ボタンで要約・アクションを生成できます。</div>';
+  } else {
+    html += '<div class="detail-content" style="color:var(--muted);font-style:italic;">要約も文字起こしもまだありません。</div>';
   }
+  html += '</div>';
 
   // アクション
   if (recActions.length) {
@@ -880,10 +884,11 @@ async function reExtractActions(meetingId) {
   }, 1000);
 
   try {
-    // 参加者名で前置きして /ai/summarize に投げる
+    // 参加者名を前置きして /ai/summarize に投げる
+    // Worker側で会議タイプ・シーンに応じたsystem promptが適用されるので、余計な preamble は不要
     var partNames = r.participants.map(function(id){ return (allEmployees[id]&&allEmployees[id].name) || ''; }).filter(Boolean);
-    var preamble = '【タスクのみ抽出】以下の会議からアクション（タスク）だけを「- 内容 [担当:氏名] [期限:YYYY-MM-DD]」形式で箇条書きしてください。要約や概要は不要です。\n';
-    if (partNames.length) preamble += '【参加者】' + partNames.join('、') + '\n';
+    var preamble = '';
+    if (partNames.length) preamble += '【この会議の参加者】\n' + partNames.join('、') + '\n\n';
     preamble += '【会議タイプ】' + (r.type || '不明') + '\n\n【文字起こし】\n';
 
     // 🔒 90秒タイムアウト（Promise.raceで確実に）
@@ -891,7 +896,12 @@ async function reExtractActions(meetingId) {
     var fetchPromise = fetch(WORKER + '/ai/summarize', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: preamble + r.transcribe, lang: 'ja' }),
+      body: JSON.stringify({
+        text: preamble + r.transcribe,
+        lang: 'ja',
+        meetingType: r.type || '',
+        scene: r.scene || '',   // 個人メモのシーンがあれば適用
+      }),
       signal: controller.signal,
     });
     var timeoutPromise = new Promise(function(_, reject) {
@@ -933,16 +943,58 @@ async function reExtractActions(meetingId) {
       }
     });
 
-    if (!actions.length) {
-      showToast('❕ アクションは抽出されませんでした（AI応答にタスクが含まれていません）');
+    // 要約テキストを取得（Claudeが返すフィールド名のゆらぎに対応）
+    var newSummary = (data.summary || '').trim();
+
+    // プレビュー → 承認してから登録
+    var preview = '';
+    if (newSummary) {
+      preview += '【AI要約】\n' + newSummary + '\n\n';
+    }
+    if (actions.length) {
+      preview += '【抽出されたアクション ' + actions.length + '件】\n'
+              + actions.map(function(a,i){ return (i+1)+'. '+a.content; }).join('\n')
+              + '\n\n';
+    } else {
+      preview += '【アクション】（抽出0件）\n\n';
+    }
+    preview += '上記を登録します:\n';
+    preview += '✅ 要約は会議レコードに ' + (r.summary ? '上書き保存' : '新規保存') + '\n';
+    preview += '✅ アクションはアクション項目DBに追加（既存は削除しません）';
+
+    if (!newSummary && !actions.length) {
+      showToast('❕ 要約もアクションも抽出されませんでした');
       console.log('[reExtract] AI raw response:', data);
       return;
     }
 
-    // プレビュー → 承認してから登録
-    var preview = actions.map(function(a,i){ return (i+1)+'. '+a.content; }).join('\n');
-    if (!confirm('以下のアクションを追加します:\n\n' + preview + '\n\nよろしいですか？')) return;
+    if (!confirm(preview)) return;
 
+    // 1️⃣ 会議レコードの「要約」を PATCH 更新（長文対応で複数chunk）
+    var summaryChunks = [];
+    if (newSummary) {
+      var remaining = newSummary;
+      while (remaining.length > 0 && summaryChunks.length < 100) {
+        summaryChunks.push({ text: { content: remaining.slice(0, 2000) } });
+        remaining = remaining.slice(2000);
+      }
+    }
+    var summaryUpdated = false;
+    if (summaryChunks.length > 0) {
+      try {
+        await notionAPI('pages/' + meetingId, 'PATCH', {
+          properties: { '要約': { rich_text: summaryChunks } },
+        });
+        summaryUpdated = true;
+        // ローカル状態も更新
+        var rec = allRecordings.find(function(x){ return x.id === meetingId; });
+        if (rec) rec.summary = newSummary;
+      } catch(e) {
+        console.error('[reExtract] 要約更新失敗:', e);
+      }
+    }
+
+    // 2️⃣ アクション登録
     var ok = 0, err = 0;
     for (var i = 0; i < actions.length; i++) {
       var a = actions[i];
@@ -959,7 +1011,15 @@ async function reExtractActions(meetingId) {
         ok++;
       } catch(e){ console.error(e); err++; }
     }
-    showToast('✅ ' + ok + '件追加' + (err ? ' / ❌' + err + '件失敗' : ''));
+
+    var msg = '';
+    if (summaryUpdated) msg += '📝 要約を更新';
+    if (ok > 0) msg += (msg ? ' / ' : '') + '✅ ' + ok + '件追加';
+    if (err > 0) msg += ' / ❌' + err + '件失敗';
+    if (!msg) msg = '完了';
+    showToast(msg);
+
+    await loadRecordings();
     await loadActions();
     openDetail(meetingId);
   } catch(e) {

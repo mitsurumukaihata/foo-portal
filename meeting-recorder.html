@@ -1927,7 +1927,17 @@ async function whisperTranscribe() {
   form.append('model', 'whisper-large-v3');
   // タイヤ業界の固有名詞ヒント（精度向上）
   // 用語集から動的に Whisper prompt を構築（デフォルト + DB登録の用語）
-  form.append('prompt', buildWhisperPrompt(dictionaryCache || []));
+  // ⚠️ Groq Whisperは896文字以上のpromptでHTTP400。送信直前で強制トリミング（保険）
+  var whisperPrompt = buildWhisperPrompt(dictionaryCache || []);
+  if (whisperPrompt.length > 880) {
+    console.warn('[Whisper Prompt] 送信直前で ' + whisperPrompt.length + '→880 にトリミング');
+    whisperPrompt = whisperPrompt.slice(0, 880);
+    // トリミングで中途半端な場所で切れても動くが、見た目キレイにするため最後の「、」以前まで
+    var lastComma = whisperPrompt.lastIndexOf('、');
+    if (lastComma > 400) whisperPrompt = whisperPrompt.slice(0, lastComma);
+  }
+  console.log('[Whisper] prompt length:', whisperPrompt.length, 'chars');
+  form.append('prompt', whisperPrompt);
   var controller = new AbortController();
   // タイムアウトをファイルサイズに応じて動的に: 10MB以下=2分、それ以上=サイズ×30秒（最大10分）
   var sizeMBNum = blob.size / 1024 / 1024;

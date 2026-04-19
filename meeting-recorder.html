@@ -864,13 +864,26 @@ async function loadDictionary() {
   }
 }
 
-/* 用語集をWhisper prompt用の文字列に変換（単語を列挙） */
+/* 用語集をWhisper prompt用の文字列に変換（単語を列挙）
+   ⚠️ Groq Whisperのprompt上限は896文字。超えると HTTP 400 エラーになるので必ずトリミング */
 function buildWhisperPrompt(dict) {
-  // タイヤ業界のデフォルト固有名詞
+  var MAX_PROMPT_CHARS = 880;  // 896 から少し余裕を持たせる
+  // タイヤ業界のデフォルト固有名詞（必須・優先）
   var base = 'タイヤ、TOYO、BRIDGESTONE、DUNLOP、ミシュラン、PIRELLI、YOKOHAMA、スタッドレス、ノーマル、再生、五日市倉庫、志和倉庫、海田倉庫、f.o.o、向畑、矢島、大田、中川、平野、山根、村田、岡崎、藤井、納品書、請求書、得意先';
   if (!dict || !dict.length) return base;
-  var terms = dict.map(function(d) { return d.term + (d.reading ? '（' + d.reading + '）' : ''); }).join('、');
-  return base + '、' + terms;
+  // 用語を base に追加していく。ただし上限を超えそうなら止める
+  var result = base;
+  for (var i = 0; i < dict.length; i++) {
+    var d = dict[i];
+    var term = d.term + (d.reading ? '（' + d.reading + '）' : '');
+    var candidate = result + '、' + term;
+    if (candidate.length > MAX_PROMPT_CHARS) {
+      console.warn('[Whisper Prompt] 用語集が長すぎるため', i, '個目以降を除外（上限', MAX_PROMPT_CHARS, '文字）');
+      break;
+    }
+    result = candidate;
+  }
+  return result;
 }
 
 /* 用語集をClaude system prompt用の文字列に変換（用語 + 意味） */

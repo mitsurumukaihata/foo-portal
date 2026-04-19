@@ -238,12 +238,12 @@ body::-webkit-scrollbar { display:none; }
       <div style="font-size:28px;flex-shrink:0;">📤</div>
       <div style="flex:1;text-align:left;">
         <div style="font-size:14px;font-weight:700;">音声ファイルから取り込み</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4;">iPhoneボイスメモ / LINE共有 / ICレコーダー 等の<br>.m4a / .mp3 / .wav / .webm ファイルを自動処理</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4;">iPhoneボイスメモ / LINE共有 / ICレコーダー 等の<br>.m4a / .mp3 / .wav / .webm を自動処理（複数可）</div>
       </div>
       <div style="font-size:16px;color:var(--muted);">›</div>
     </button>
     <div style="font-size:10px;color:var(--muted);margin-top:6px;text-align:center;line-height:1.5;">
-      画面オフでも録音できる外部アプリ＋Whisperで高精度。<br>最大25MB（圧縮設定のボイスメモなら約90分まで1ファイルOK）
+      画面オフでも録音できる外部アプリ＋Whisperで高精度。<br>1ファイル最大25MB / 長時間会議は60分ごと分割→複数選択でOK
     </div>
   </div>
   <div class="history-header" style="margin-top:18px;">最近の録音</div>
@@ -585,8 +585,9 @@ var aiResult = null;         // { summary, actionItems, participants }
 var audioChunks = [];        // Whisper送信用の音声データ（MediaRecorderチャンク）
 var audioMimeType = 'audio/webm';
 var importMode = false;      // true = 音声ファイル取り込みモード / false = 通常録音モード
-var importedAudioFile = null;// 取り込んだ File オブジェクト（案B: ファイル取り込み時のみセット）
+var importedAudioFile = null;// 取り込んだ File オブジェクト（単一・後方互換）
 var importedFilename = '';   // 取り込みファイルの元ファイル名（Whisper送信時に使用）
+var importedAudioFiles = []; // 複数ファイル取り込み時の配列（順序重要・前半→後半の順で連結）
 var meetingType = '';        // 会議タイプ（全体会議/チーム会議/個人メモ/部長会/リーダー会/1ON1/取引先会議/電話対応/その他）
 var meetingScene = '';       // 個人メモ時のシーン（思考整理/経営者/メーカー/業者/顧客/その他）
 var meetingCounterpart = ''; // 個人メモ時の相手情報（名前・会社・役職の組み合わせ、録音前に入力）
@@ -669,23 +670,41 @@ function startNewRecord() {
   showMeetingTypeScreen();
 }
 
-/* ── ホーム: 音声ファイルから取り込み ── */
+/* ── ホーム: 音声ファイルから取り込み（複数選択対応） ── */
 function openImportAudioFile() {
   var input = document.createElement('input');
   input.type = 'file';
+  input.multiple = true;  // 複数選択可（長時間会議の分割録音を1会議として処理）
   input.accept = 'audio/*,.m4a,.mp3,.wav,.webm,.aac,.ogg,.mp4';
   input.onchange = function(ev) {
-    var file = ev.target.files && ev.target.files[0];
-    if (!file) return;
-    var sizeMB = file.size / 1024 / 1024;
-    if (sizeMB > 25) {
-      alert('音声ファイルが大きすぎます (' + sizeMB.toFixed(1) + 'MB)。\n\nGroq Whisperは25MB以下のみ対応。\n\n対処:\n・ファイルを分割する\n・iPhoneボイスメモは設定 > ボイスメモ > オーディオ品質を「圧縮」に\n・音質を下げる（mp3で128kbps等）');
+    var files = Array.from(ev.target.files || []);
+    if (!files.length) return;
+
+    // 25MB超のファイルがないかチェック（Whisperの制限はファイル単位）
+    var oversize = files.filter(function(f){ return f.size > 25 * 1024 * 1024; });
+    if (oversize.length) {
+      alert('25MBを超えるファイルがあります:\n\n' + oversize.map(function(f){ return '・' + f.name + ' (' + (f.size/1024/1024).toFixed(1) + 'MB)'; }).join('\n') + '\n\nGroq Whisperはファイル1つあたり25MB以下のみ対応です。\n\n対処:\n・iPhoneボイスメモ「圧縮」設定にする\n・60分ごとに録音を区切る\n・音質を下げる');
       return;
     }
+
+    // ファイル名でソート（自然順、例: "1of2.m4a" → "2of2.m4a"）
+    files.sort(function(a, b){ return (a.name || '').localeCompare((b.name || ''), undefined, { numeric: true }); });
+
+    var totalMB = files.reduce(function(s, f){ return s + f.size; }, 0) / 1024 / 1024;
+    if (files.length > 1) {
+      var msg = '【複数ファイルを1会議として処理】\n\n以下の順で文字起こし→連結→AI要約します:\n\n';
+      msg += files.map(function(f, i){ return (i+1) + '. ' + f.name + '  (' + (f.size/1024/1024).toFixed(1) + 'MB)'; }).join('\n');
+      msg += '\n\n合計: ' + totalMB.toFixed(1) + 'MB / ' + files.length + 'ファイル';
+      msg += '\n\n⚠️ ファイル名の順番が録音順と一致しているか確認してください。\n（例: "会議_1of2.m4a" → "会議_2of2.m4a"）\n\n続行しますか？';
+      if (!confirm(msg)) return;
+    }
+
     importMode = true;
-    importedAudioFile = file;
-    importedFilename = file.name || 'import.m4a';
-    console.log('[Import] file selected:', importedFilename, sizeMB.toFixed(2), 'MB, type:', file.type);
+    importedAudioFiles = files;
+    importedAudioFile = files[0];  // 単一ファイル時の後方互換用
+    importedFilename = files[0].name || 'import.m4a';
+    console.log('[Import] files selected:', files.length, 'total:', totalMB.toFixed(2), 'MB');
+    files.forEach(function(f, i){ console.log('  [' + (i+1) + '] ' + f.name + ' ' + (f.size/1024/1024).toFixed(2) + 'MB ' + f.type); });
     showMeetingTypeScreen();
   };
   input.click();
@@ -1151,51 +1170,123 @@ function escHtml(s) {
   return d.innerHTML;
 }
 
+/* ── 拡張子からMIMEタイプを判定 ── */
+function detectAudioMime(file) {
+  if (file.type) return file.type;
+  var ext = ((file.name || '').split('.').pop() || '').toLowerCase();
+  if (ext === 'm4a' || ext === 'aac' || ext === 'mp4') return 'audio/mp4';
+  if (ext === 'mp3') return 'audio/mpeg';
+  if (ext === 'wav') return 'audio/wav';
+  if (ext === 'ogg') return 'audio/ogg';
+  if (ext === 'webm') return 'audio/webm';
+  return 'audio/webm';
+}
+
 /* ── Start processing from imported audio file (案B) ──
-   録音せず、選択済みのFileを audioChunks にロードして Whisper → AI要約 → Notion保存へ */
+   録音せず、選択済みのFile(s)を Whisper → AI要約 → Notion保存へ
+   複数ファイルの場合は順次Whisper→文字起こし結果を連結 */
 async function startProcessingFromFile() {
-  if (!importedAudioFile) {
+  var files = (importedAudioFiles && importedAudioFiles.length) ? importedAudioFiles : (importedAudioFile ? [importedAudioFile] : []);
+  if (!files.length) {
     showToast('音声ファイルが選択されていません');
     importMode = false;
     showScreen('screen-idle');
     return;
   }
 
-  // audioChunks にファイル本体を1つのBlobとして格納（File extends Blob なので直接push可）
-  audioChunks = [importedAudioFile];
-
-  // MIMEタイプとファイル名を決定（Whisper送信時に使用）
-  var ext = (importedFilename.split('.').pop() || '').toLowerCase();
-  var typ = importedAudioFile.type || '';
-  if (typ) {
-    audioMimeType = typ;
-  } else if (ext === 'm4a' || ext === 'aac') {
-    audioMimeType = 'audio/mp4';
-  } else if (ext === 'mp3') {
-    audioMimeType = 'audio/mpeg';
-  } else if (ext === 'wav') {
-    audioMimeType = 'audio/wav';
-  } else if (ext === 'ogg') {
-    audioMimeType = 'audio/ogg';
-  } else if (ext === 'webm') {
-    audioMimeType = 'audio/webm';
-  } else if (ext === 'mp4') {
-    audioMimeType = 'audio/mp4';
-  } else {
-    audioMimeType = 'audio/webm';  // fallback
-  }
-  console.log('[Import] ready for Whisper: file=', importedFilename, 'type=', audioMimeType, 'size=', (importedAudioFile.size/1024/1024).toFixed(2), 'MB');
-
-  // 録音時間は不明なので 0 に（Whisper処理後、Notion保存時に durationMin=1 になる）
-  recordStartTime = Date.now();  // getElapsedMs() が破綻しないよう現在時刻をセット（elapsed=0扱い）
+  // 録音時間は不明なので 0 に（getElapsedMs() が破綻しないよう現在時刻をセット）
+  recordStartTime = Date.now();
   pausedDuration = 0;
   pauseStartTime = null;
 
-  // そのまま proceedWithSummary へ（Whisper → ドラフト保存 → 参加者画面 → 要約）
   transcriptParts = [];
   interimText = '';
   aiResult = null;
-  await proceedWithSummary();
+
+  if (files.length === 1) {
+    // ── 単一ファイル: 既存と同じ処理 ──
+    audioChunks = [files[0]];
+    audioMimeType = detectAudioMime(files[0]);
+    console.log('[Import] single file: type=', audioMimeType, 'size=', (files[0].size/1024/1024).toFixed(2), 'MB');
+    await proceedWithSummary();
+  } else {
+    // ── 複数ファイル: 順次Whisper → 連結 → 一括処理 ──
+    await proceedWithSummaryMulti(files);
+  }
+}
+
+/* ── 複数ファイルを順次Whisperにかけ、連結後にClaude要約 ── */
+async function proceedWithSummaryMulti(files) {
+  showScreen('screen-processing');
+  resetProcessingSteps();
+
+  // 用語集を先行ロード
+  try { await loadDictionary(); } catch(e) { console.warn('[Dictionary] load failed:', e); }
+
+  setStepActive('step-transcribe');
+
+  // step-transcribeのラベルを動的に更新できるよう参照取得
+  var labelEl = document.getElementById('step-transcribe-label');
+  var originalLabel = labelEl ? labelEl.textContent : '';
+
+  var allTexts = [];
+  for (var i = 0; i < files.length; i++) {
+    var f = files[i];
+    if (labelEl) labelEl.textContent = '🎙️ Whisper文字起こし中... (' + (i+1) + '/' + files.length + ')';
+    try {
+      // 単一ファイル分だけ audioChunks にセットしてwhisperTranscribe実行
+      audioChunks = [f];
+      audioMimeType = detectAudioMime(f);
+      importedFilename = f.name || ('part' + (i+1) + '.m4a');
+      console.log('[Import-Multi] processing ' + (i+1) + '/' + files.length + ': ' + importedFilename);
+      var partText = await whisperTranscribe();
+      if (partText) {
+        // パート区切りを目立たせる
+        allTexts.push('━━━━━━━━ 【パート ' + (i+1) + '/' + files.length + '】' + (f.name || '') + ' ━━━━━━━━\n' + partText);
+      } else {
+        allTexts.push('━━━━━━━━ 【パート ' + (i+1) + '/' + files.length + '】' + (f.name || '') + '（文字起こし結果なし）━━━━━━━━');
+      }
+    } catch(e) {
+      console.error('[Import-Multi] パート ' + (i+1) + ' Whisper失敗:', e);
+      allTexts.push('━━━━━━━━ 【パート ' + (i+1) + '/' + files.length + '】' + (f.name || '') + ' ※エラー: ' + (e.message || e) + ' ━━━━━━━━');
+      showToast('⚠️ パート ' + (i+1) + ' で文字起こし失敗（他のパートは続行）');
+    }
+  }
+
+  if (labelEl) labelEl.textContent = originalLabel;
+
+  var fullText = allTexts.join('\n\n');
+  transcriptParts = fullText ? [{ text: fullText, timestamp: Date.now() }] : [];
+  pendingTranscribeText = fullText;
+  setStepDone('step-transcribe');
+
+  // 🔒 ドラフト保存（複数ファイル分の連結文字起こしを丸ごと）
+  if (fullText) {
+    try {
+      draftNotionPageId = await createDraftNotionRecord(fullText);
+      console.log('[Draft-Multi] Created draft:', draftNotionPageId);
+    } catch(e) {
+      console.error('[Draft-Multi] 保存失敗:', e);
+      showToast('⚠️ 文字起こしのドラフト保存失敗（要約は続行）');
+    }
+  }
+
+  if (!fullText) {
+    await runSummarizeStep('');
+    await showResultScreen('');
+    return;
+  }
+
+  // AI推定（参加者抽出のため軽く要約）
+  try {
+    aiResult = await aiSummarize(fullText);
+  } catch(e) {
+    console.warn('[Multi] 初回AI推定失敗:', e);
+    aiResult = null;
+  }
+
+  // 参加者確認画面
+  await showParticipantsScreen(fullText);
 }
 
 /* ── Start recording ── */
@@ -2296,6 +2387,7 @@ function backToIdle() {
   importMode = false;
   importedAudioFile = null;
   importedFilename = '';
+  importedAudioFiles = [];
   meetingType = '';
   meetingCategory = '';
   meetingPermission = '';

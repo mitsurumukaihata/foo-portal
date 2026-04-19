@@ -754,6 +754,9 @@ function openDetail(id) {
   html += '<button class="op-btn op-add" onclick="openAddActionModal(\'' + r.id + '\')">➕ アクション（タスク）を追加</button>';
   if (r.transcribe) {
     html += '<button class="op-btn op-ai" onclick="reExtractActions(\'' + r.id + '\')">🤖 文字起こしから AI で再抽出</button>';
+  } else {
+    html += '<button class="op-btn op-ai" onclick="transcribeFromAudioFile(\'' + r.id + '\')">📤 音声ファイルから書き起こし＆要約</button>';
+    html += '<div style="font-size:11px;color:var(--muted);padding:2px 10px 6px;">💡 iPhoneボイスメモ等のファイル(.m4a/.mp3/.wav/.webm) → Whisper → AI要約・アクション抽出まで自動実行（最大3〜5分）</div>';
   }
   html += '<a class="op-btn op-notion" href="https://www.notion.so/' + r.id.replace(/-/g, '') + '" target="_blank">📗 Notionで開く（本文編集）</a>';
   if (canDelete) {
@@ -852,6 +855,112 @@ async function saveNewAction() {
     btn.disabled = false;
     btn.textContent = '保存';
   }
+}
+
+/* ════════════════════════════════════════
+   操作: 音声ファイルからWhisperで書き起こし → 要約・アクション抽出まで自動
+   ═══════════════════════════════════════ */
+async function transcribeFromAudioFile(meetingId) {
+  var r = allRecordings.find(function(x){ return x.id === meetingId; });
+  if (!r) return;
+  if (r.transcribe) {
+    if (!confirm('既に文字起こしがあります。上書きしますか？')) return;
+  }
+
+  // ファイル選択ダイアログを開く
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'audio/*,.m4a,.mp3,.wav,.webm,.aac,.ogg,.mp4';
+  input.onchange = async function(ev) {
+    var file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    var sizeMB = file.size / 1024 / 1024;
+    if (sizeMB > 25) {
+      alert('音声ファイルが大きすぎます (' + sizeMB.toFixed(1) + 'MB)。\nGroq Whisperは25MB以下のみ対応。\n\n対処: ファイルを分割するか、低音質形式(m4a等)に変換してください。');
+      return;
+    }
+    if (!confirm('音声ファイル「' + file.name + '」(' + sizeMB.toFixed(1) + 'MB) を Whisper で書き起こします。\n\n続けてAI要約とアクション抽出も自動実行します。\n\n所要時間: 1分の音声につき約20〜40秒（最大5分）\n続行しますか？')) return;
+
+    // 進捗UI（スピナー）
+    var processingEl = document.createElement('div');
+    processingEl.id = 'transcribe-processing';
+    processingEl.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--s3);color:var(--text);padding:12px 20px;border-radius:20px;font-size:13px;z-index:800;box-shadow:0 4px 12px rgba(0,0,0,0.3);display:flex;align-items:center;gap:10px;';
+    processingEl.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid var(--muted);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;"></span><span id="transcribe-step">📤 音声アップロード中...</span> <span id="transcribe-timer" style="color:var(--muted);">0秒</span>';
+    if (!document.getElementById('reextract-spin-style')) {
+      var styleEl = document.createElement('style');
+      styleEl.id = 'reextract-spin-style';
+      styleEl.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+      document.head.appendChild(styleEl);
+    }
+    document.body.appendChild(processingEl);
+    var startTime = Date.now();
+    var timerInterval = setInterval(function() {
+      var sec = Math.floor((Date.now() - startTime) / 1000);
+      var timerEl = document.getElementById('transcribe-timer');
+      if (timerEl) timerEl.textContent = sec + '秒';
+    }, 1000);
+
+    try {
+      // Step 1: Whisper 書き起こし
+      var stepEl = document.getElementById('transcribe-step');
+      if (stepEl) stepEl.textContent = '🎙️ Whisper で文字起こし中...';
+
+      var form = new FormData();
+      form.append('file', file, file.name);
+      form.append('language', 'ja');
+      form.append('model', 'whisper-large-v3');
+      form.append('prompt', 'タイヤ、TOYO、BRIDGESTONE、DUNLOP、MICHELIN、PIRELLI、YOKOHAMA、f.o.oパック、向畑、矢島、大田、中川、平野、山根、村田、岡崎、藤井');
+
+      var ctrl = new AbortController();
+      var timeout = setTimeout(function(){ ctrl.abort(); }, 5 * 60 * 1000); // 5分
+      var wRes = await fetch(WORKER + '/ai/transcribe', { method: 'POST', body: form, signal: ctrl.signal });
+      clearTimeout(timeout);
+      if (!wRes.ok) {
+        var errText = await wRes.text();
+        throw new Error('Whisper HTTP ' + wRes.status + ': ' + errText.slice(0, 200));
+      }
+      var wData = await wRes.json();
+      var transcribeText = (wData.text || '').trim();
+      if (!transcribeText) throw new Error('文字起こし結果が空でした（無音か音量不足の可能性）');
+
+      // Step 2: Notion の文字起こし欄を更新（rich_text 100chunk × 2000字）
+      stepEl = document.getElementById('transcribe-step');
+      if (stepEl) stepEl.textContent = '💾 Notionに保存中...';
+      var chunks = [];
+      var rem = transcribeText;
+      while (rem.length > 0 && chunks.length < 100) {
+        chunks.push({ text: { content: rem.slice(0, 2000) } });
+        rem = rem.slice(2000);
+      }
+      await notionAPI('pages/' + meetingId, 'PATCH', {
+        properties: { '文字起こし': { rich_text: chunks } },
+      });
+      // ローカル状態も更新
+      r.transcribe = transcribeText;
+
+      // Step 3: 後始末
+      clearInterval(timerInterval);
+      processingEl.remove();
+      showToast('✅ 文字起こし完了 (' + transcribeText.length + '文字)。続けてAI要約を実行します...');
+
+      // 詳細パネルを再描画（文字起こしが反映 & ボタンが「再抽出」に切替）
+      openDetail(meetingId);
+
+      // Step 4: AI要約・アクション抽出を続行
+      setTimeout(function() {
+        reExtractActions(meetingId);
+      }, 800);
+    } catch(e) {
+      console.error('[transcribeFromAudioFile]', e);
+      clearInterval(timerInterval);
+      var pe = document.getElementById('transcribe-processing');
+      if (pe) pe.remove();
+      var msg = (e && e.message) || String(e);
+      if (msg.indexOf('aborted') >= 0) msg = 'タイムアウト（5分）';
+      alert('❌ 失敗しました\n\n' + msg + '\n\n対処:\n・音声ファイルが25MB以下か確認\n・無音や雑音だらけでないか確認\n・しばらく待って再試行');
+    }
+  };
+  input.click();
 }
 
 /* ════════════════════════════════════════

@@ -110,6 +110,17 @@ var worker_default = {
           systemPrompt += `\n\n【弊社の用語集（これらは固有名詞として正確に扱うこと）】\n${dictionary.trim()}`;
         }
 
+        // 全プロンプトに「アクション抽出を徹底」指示を追加（上限15個）
+        systemPrompt += `\n\n【アクション抽出ルール】
+actionItems は、会話中に出てきた「行動可能なタスク」を**漏らさず**拾ってください（上限15個）。
+- 「やる」「確認する」「連絡する」「検討する」「調べる」「発注する」「送る」「返答する」「次回までに」「〜したい」等の発言は全て候補
+- 明示されていなくても、文脈から明らかに必要なフォローアップは抽出する
+- 1アイテム1アクションに分割（複合は複数に分ける）
+- 「誰が」が特定できればプレフィックスに（例: 「向畑: TOYOに納期を確認」）
+- 期限が会話で言及されていれば末尾に含める（例: 「矢島: 見積書作成（4/25まで）」）
+- アクションが少ない雑談でも、最低限「次回フォロー」等の気づきは1-2個は拾う
+- 雑談すぎて本当にアクション不要なら空配列でOK（無理に作らない）`;
+
         // 全プロンプトに「不明な用語があれば unknown_terms 配列で返す」指示を追加
         systemPrompt += `\n\n【追加指示】レスポンスJSONに以下を必ず含めてください:
   "unknown_terms": ["聞き慣れない固有名詞・略語・人名・会社名・銘柄名を最大10個まで。明らかに一般用語のものは除く"]
@@ -117,7 +128,7 @@ var worker_default = {
         const res2 = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-          body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 2048, system: systemPrompt, messages: [{ role: "user", content: "\u4EE5\u4E0B\u306E\u4F1A\u8B70\u306E\u6587\u5B57\u8D77\u3053\u3057\u3092\u8981\u7D04\u3057\u3066\u304F\u3060\u3055\u3044:\n\n" + text2.slice(0, 5e4) }] })
+          body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 4096, system: systemPrompt, messages: [{ role: "user", content: "\u4EE5\u4E0B\u306E\u4F1A\u8B70\u306E\u6587\u5B57\u8D77\u3053\u3057\u3092\u8981\u7D04\u3057\u3066\u304F\u3060\u3055\u3044:\n\n" + text2.slice(0, 5e4) }] })
         });
         if (!res2.ok) {
           const errText = await res2.text();

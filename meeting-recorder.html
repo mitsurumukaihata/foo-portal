@@ -218,7 +218,7 @@ body::-webkit-scrollbar { display:none; }
       <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
     </div>
   </div>
-  <div class="header-title">会議<span>録音</span></div>
+  <div class="header-title">会議<span>録音</span> <span style="font-size:9px;color:var(--muted);font-weight:400;">v2026.04.19.2040</span></div>
 </div>
 
 <!-- Screen: Idle -->
@@ -867,21 +867,38 @@ async function loadDictionary() {
   }
 }
 
+/* UTF-8バイト長を測る（Groqはバイト or トークン単位の制限なので） */
+function utf8ByteLength(s) {
+  try { return new TextEncoder().encode(s).length; } catch(_) {
+    var n = 0;
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charCodeAt(i);
+      if (c < 0x80) n += 1;
+      else if (c < 0x800) n += 2;
+      else if (c < 0xD800 || c >= 0xE000) n += 3;
+      else { n += 4; i++; }  // surrogate pair
+    }
+    return n;
+  }
+}
+
 /* 用語集をWhisper prompt用の文字列に変換（単語を列挙）
-   ⚠️ Groq Whisperのprompt上限は896文字。超えると HTTP 400 エラーになるので必ずトリミング */
+   ⚠️ Groq Whisperのprompt上限は 896 CHARACTERS（実際はバイトの可能性も高いので両方で安全圏に） */
 function buildWhisperPrompt(dict) {
-  var MAX_PROMPT_CHARS = 880;  // 896 から少し余裕を持たせる
+  // 日本語1文字≒UTF-8で3バイト。Groqが「characters」と言っていても実装次第でバイト計算のケースあり
+  // 安全圏として 280文字（≒ 840バイト）を上限にする
+  var MAX_CHARS = 280;
   // タイヤ業界のデフォルト固有名詞（必須・優先）
   var base = 'タイヤ、TOYO、BRIDGESTONE、DUNLOP、ミシュラン、PIRELLI、YOKOHAMA、スタッドレス、ノーマル、再生、五日市倉庫、志和倉庫、海田倉庫、f.o.o、向畑、矢島、大田、中川、平野、山根、村田、岡崎、藤井、納品書、請求書、得意先';
+  // baseだけで既に150字程度 = 残り130字分の用語を追加可能
   if (!dict || !dict.length) return base;
-  // 用語を base に追加していく。ただし上限を超えそうなら止める
   var result = base;
   for (var i = 0; i < dict.length; i++) {
     var d = dict[i];
     var term = d.term + (d.reading ? '（' + d.reading + '）' : '');
     var candidate = result + '、' + term;
-    if (candidate.length > MAX_PROMPT_CHARS) {
-      console.warn('[Whisper Prompt] 用語集が長すぎるため', i, '個目以降を除外（上限', MAX_PROMPT_CHARS, '文字）');
+    if (candidate.length > MAX_CHARS) {
+      console.warn('[Whisper Prompt] 用語集 ' + i + '個目以降を除外（上限', MAX_CHARS, '字）');
       break;
     }
     result = candidate;
@@ -1926,17 +1943,22 @@ async function whisperTranscribe() {
   form.append('language', 'ja');
   form.append('model', 'whisper-large-v3');
   // タイヤ業界の固有名詞ヒント（精度向上）
-  // 用語集から動的に Whisper prompt を構築（デフォルト + DB登録の用語）
-  // ⚠️ Groq Whisperは896文字以上のpromptでHTTP400。送信直前で強制トリミング（保険）
+  // 用語集から動的に Whisper prompt を構築
+  // ⚠️ Groq Whisperは 896 "characters" 制限。JSの .length が文字数でもGroq側でバイト/トークンに膨張する可能性あり
+  // 送信直前に「文字数 ≤ 280」「UTF-8バイト数 ≤ 840」の両方を満たすよう強制トリミング
   var whisperPrompt = buildWhisperPrompt(dictionaryCache || []);
-  if (whisperPrompt.length > 880) {
-    console.warn('[Whisper Prompt] 送信直前で ' + whisperPrompt.length + '→880 にトリミング');
-    whisperPrompt = whisperPrompt.slice(0, 880);
-    // トリミングで中途半端な場所で切れても動くが、見た目キレイにするため最後の「、」以前まで
+  var promptByteLen = utf8ByteLength(whisperPrompt);
+  if (whisperPrompt.length > 280 || promptByteLen > 840) {
+    console.warn('[Whisper Prompt] 送信直前トリミング: 元=' + whisperPrompt.length + '字/' + promptByteLen + 'バイト → 上限280字/840バイト');
+    // まず文字数でカット
+    while (whisperPrompt.length > 280) whisperPrompt = whisperPrompt.slice(0, -1);
+    // バイト数でもカット（日本語1字=3バイト、だが稀にサロゲートペアなどで膨らむ）
+    while (utf8ByteLength(whisperPrompt) > 840) whisperPrompt = whisperPrompt.slice(0, -1);
+    // 見た目キレイに「、」区切りまで戻す
     var lastComma = whisperPrompt.lastIndexOf('、');
-    if (lastComma > 400) whisperPrompt = whisperPrompt.slice(0, lastComma);
+    if (lastComma > 100) whisperPrompt = whisperPrompt.slice(0, lastComma);
   }
-  console.log('[Whisper] prompt length:', whisperPrompt.length, 'chars');
+  console.log('[Whisper] final prompt:', whisperPrompt.length, '字 /', utf8ByteLength(whisperPrompt), 'バイト');
   form.append('prompt', whisperPrompt);
   var controller = new AbortController();
   // タイムアウトをファイルサイズに応じて動的に: 10MB以下=2分、それ以上=サイズ×30秒（最大10分）

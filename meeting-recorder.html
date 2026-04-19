@@ -223,12 +223,30 @@ body::-webkit-scrollbar { display:none; }
   <div id="restore-area"></div>
   <div id="speech-warning"></div>
   <div class="rec-area">
-    <button class="rec-btn" id="btn-record" onclick="showMeetingTypeScreen()">
+    <button class="rec-btn" id="btn-record" onclick="startNewRecord()">
       <div class="rec-btn-inner"></div>
     </button>
     <div class="rec-label">タップして録音開始</div>
   </div>
-  <div class="history-header">最近の録音</div>
+  <div style="display:flex;align-items:center;gap:10px;margin:16px 20px 0;color:var(--muted);font-size:11px;">
+    <div style="flex:1;height:1px;background:var(--border);"></div>
+    <span>または</span>
+    <div style="flex:1;height:1px;background:var(--border);"></div>
+  </div>
+  <div style="padding:14px 16px 4px;">
+    <button onclick="openImportAudioFile()" style="width:100%;background:var(--s2);border:1px dashed var(--border2);border-radius:14px;padding:16px;display:flex;align-items:center;gap:12px;cursor:pointer;font-family:inherit;color:var(--text);">
+      <div style="font-size:28px;flex-shrink:0;">📤</div>
+      <div style="flex:1;text-align:left;">
+        <div style="font-size:14px;font-weight:700;">音声ファイルから取り込み</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4;">iPhoneボイスメモ / LINE共有 / ICレコーダー 等の<br>.m4a / .mp3 / .wav / .webm ファイルを自動処理</div>
+      </div>
+      <div style="font-size:16px;color:var(--muted);">›</div>
+    </button>
+    <div style="font-size:10px;color:var(--muted);margin-top:6px;text-align:center;line-height:1.5;">
+      画面オフでも録音できる外部アプリ＋Whisperで高精度。<br>最大25MB（圧縮設定のボイスメモなら約90分まで1ファイルOK）
+    </div>
+  </div>
+  <div class="history-header" style="margin-top:18px;">最近の録音</div>
   <div id="history-list">
     <div class="empty-state">読み込み中...</div>
   </div>
@@ -566,6 +584,9 @@ var lastVisibleTime = 0;
 var aiResult = null;         // { summary, actionItems, participants }
 var audioChunks = [];        // Whisper送信用の音声データ（MediaRecorderチャンク）
 var audioMimeType = 'audio/webm';
+var importMode = false;      // true = 音声ファイル取り込みモード / false = 通常録音モード
+var importedAudioFile = null;// 取り込んだ File オブジェクト（案B: ファイル取り込み時のみセット）
+var importedFilename = '';   // 取り込みファイルの元ファイル名（Whisper送信時に使用）
 var meetingType = '';        // 会議タイプ（全体会議/チーム会議/個人メモ/部長会/リーダー会/1ON1/取引先会議/電話対応/その他）
 var meetingScene = '';       // 個人メモ時のシーン（思考整理/経営者/メーカー/業者/顧客/その他）
 var meetingCounterpart = ''; // 個人メモ時の相手情報（名前・会社・役職の組み合わせ、録音前に入力）
@@ -633,13 +654,48 @@ function showMeetingTypeScreen() {
     });
   } catch(e) {}
   showScreen('screen-meeting-type');
+
+  // ファイル取り込みモードの時はタイトル表示も差し替え
+  var headerEl = document.querySelector('#screen-meeting-type .screen > div > div[style*="font-size:20px"]');
+  if (!headerEl) headerEl = document.querySelector('#screen-meeting-type div[style*="font-size:20px"]');
+  if (headerEl) headerEl.textContent = importMode ? '📤 会議タイプを選択（ファイル取り込み）' : '🎙️ 会議タイプを選択';
+}
+
+/* ── ホーム: 録音開始（通常モード） ── */
+function startNewRecord() {
+  importMode = false;
+  importedAudioFile = null;
+  importedFilename = '';
+  showMeetingTypeScreen();
+}
+
+/* ── ホーム: 音声ファイルから取り込み ── */
+function openImportAudioFile() {
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'audio/*,.m4a,.mp3,.wav,.webm,.aac,.ogg,.mp4';
+  input.onchange = function(ev) {
+    var file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    var sizeMB = file.size / 1024 / 1024;
+    if (sizeMB > 25) {
+      alert('音声ファイルが大きすぎます (' + sizeMB.toFixed(1) + 'MB)。\n\nGroq Whisperは25MB以下のみ対応。\n\n対処:\n・ファイルを分割する\n・iPhoneボイスメモは設定 > ボイスメモ > オーディオ品質を「圧縮」に\n・音質を下げる（mp3で128kbps等）');
+      return;
+    }
+    importMode = true;
+    importedAudioFile = file;
+    importedFilename = file.name || 'import.m4a';
+    console.log('[Import] file selected:', importedFilename, sizeMB.toFixed(2), 'MB, type:', file.type);
+    showMeetingTypeScreen();
+  };
+  input.click();
 }
 
 function selectMeetingType(btn) {
   meetingType = btn.dataset.type;
   meetingCategory = btn.dataset.cat;
   meetingPermission = btn.dataset.perm;
-  console.log('[MeetingType] selected:', meetingType, meetingCategory, meetingPermission);
+  console.log('[MeetingType] selected:', meetingType, meetingCategory, meetingPermission, 'importMode=', importMode);
 
   // 個人メモの場合はシーン選択画面へ遷移（AI要約プロンプトを相手別に切り替えるため）
   if (meetingType === '個人メモ') {
@@ -647,8 +703,12 @@ function selectMeetingType(btn) {
     return;
   }
 
-  // それ以外はそのまま録音開始
-  startRecording();
+  // ファイル取り込みモードなら録音せずにWhisper処理へ
+  if (importMode) {
+    startProcessingFromFile();
+  } else {
+    startRecording();
+  }
 }
 
 /* ── 個人メモのシーン選択 ── */
@@ -665,9 +725,13 @@ function selectMeetingScene(btn) {
   if (role) parts.push(role);
   meetingCounterpart = parts.join(' / ');
 
-  console.log('[MeetingScene] selected:', meetingScene, 'counterpart:', meetingCounterpart);
-  // 録音開始
-  startRecording();
+  console.log('[MeetingScene] selected:', meetingScene, 'counterpart:', meetingCounterpart, 'importMode=', importMode);
+  // ファイル取り込みモードなら録音せずにWhisper処理へ
+  if (importMode) {
+    startProcessingFromFile();
+  } else {
+    startRecording();
+  }
 }
 
 /* ── 社員マスタの取得（キャッシュ付き）
@@ -1085,6 +1149,53 @@ function escHtml(s) {
   var d = document.createElement('div');
   d.textContent = s;
   return d.innerHTML;
+}
+
+/* ── Start processing from imported audio file (案B) ──
+   録音せず、選択済みのFileを audioChunks にロードして Whisper → AI要約 → Notion保存へ */
+async function startProcessingFromFile() {
+  if (!importedAudioFile) {
+    showToast('音声ファイルが選択されていません');
+    importMode = false;
+    showScreen('screen-idle');
+    return;
+  }
+
+  // audioChunks にファイル本体を1つのBlobとして格納（File extends Blob なので直接push可）
+  audioChunks = [importedAudioFile];
+
+  // MIMEタイプとファイル名を決定（Whisper送信時に使用）
+  var ext = (importedFilename.split('.').pop() || '').toLowerCase();
+  var typ = importedAudioFile.type || '';
+  if (typ) {
+    audioMimeType = typ;
+  } else if (ext === 'm4a' || ext === 'aac') {
+    audioMimeType = 'audio/mp4';
+  } else if (ext === 'mp3') {
+    audioMimeType = 'audio/mpeg';
+  } else if (ext === 'wav') {
+    audioMimeType = 'audio/wav';
+  } else if (ext === 'ogg') {
+    audioMimeType = 'audio/ogg';
+  } else if (ext === 'webm') {
+    audioMimeType = 'audio/webm';
+  } else if (ext === 'mp4') {
+    audioMimeType = 'audio/mp4';
+  } else {
+    audioMimeType = 'audio/webm';  // fallback
+  }
+  console.log('[Import] ready for Whisper: file=', importedFilename, 'type=', audioMimeType, 'size=', (importedAudioFile.size/1024/1024).toFixed(2), 'MB');
+
+  // 録音時間は不明なので 0 に（Whisper処理後、Notion保存時に durationMin=1 になる）
+  recordStartTime = Date.now();  // getElapsedMs() が破綻しないよう現在時刻をセット（elapsed=0扱い）
+  pausedDuration = 0;
+  pauseStartTime = null;
+
+  // そのまま proceedWithSummary へ（Whisper → ドラフト保存 → 参加者画面 → 要約）
+  transcriptParts = [];
+  interimText = '';
+  aiResult = null;
+  await proceedWithSummary();
 }
 
 /* ── Start recording ── */
@@ -1668,7 +1779,21 @@ async function whisperTranscribe() {
     console.warn('[Whisper] 音声ファイルが25MBを超えています。長時間録音は分割が必要です。');
   }
   var form = new FormData();
-  var filename = audioMimeType.indexOf('mp4') >= 0 ? 'meeting.m4a' : 'meeting.webm';
+  // ファイル名: 取り込みモードなら元ファイル名、それ以外はMIMEタイプから決定
+  var filename;
+  if (importMode && importedFilename) {
+    filename = importedFilename;
+  } else if (audioMimeType.indexOf('mp4') >= 0 || audioMimeType.indexOf('m4a') >= 0 || audioMimeType.indexOf('aac') >= 0) {
+    filename = 'meeting.m4a';
+  } else if (audioMimeType.indexOf('mpeg') >= 0 || audioMimeType.indexOf('mp3') >= 0) {
+    filename = 'meeting.mp3';
+  } else if (audioMimeType.indexOf('wav') >= 0) {
+    filename = 'meeting.wav';
+  } else if (audioMimeType.indexOf('ogg') >= 0) {
+    filename = 'meeting.ogg';
+  } else {
+    filename = 'meeting.webm';
+  }
   form.append('file', blob, filename);
   form.append('language', 'ja');
   form.append('model', 'whisper-large-v3');
@@ -2167,6 +2292,10 @@ function backToIdle() {
   interimText = '';
   aiResult = null;
   audioChunks = [];
+  // ファイル取り込みモードもリセット
+  importMode = false;
+  importedAudioFile = null;
+  importedFilename = '';
   meetingType = '';
   meetingCategory = '';
   meetingPermission = '';

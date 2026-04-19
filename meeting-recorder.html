@@ -218,7 +218,7 @@ body::-webkit-scrollbar { display:none; }
       <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
     </div>
   </div>
-  <div class="header-title">会議<span>録音</span> <span style="font-size:9px;color:var(--muted);font-weight:400;">v2026.04.19.2040</span></div>
+  <div class="header-title">会議<span>録音</span> <span style="font-size:9px;color:var(--muted);font-weight:400;">v2026.04.19.2110</span></div>
 </div>
 
 <!-- Screen: Idle -->
@@ -273,10 +273,10 @@ body::-webkit-scrollbar { display:none; }
         <div class="mt-name">チーム会議</div>
         <div class="mt-perm">参加者＋役職</div>
       </button>
-      <button class="mt-btn" data-type="個人メモ" data-cat="対社員" data-perm="録音者のみ" onclick="selectMeetingType(this)">
-        <div class="mt-emoji">📝</div>
-        <div class="mt-name">個人メモ</div>
-        <div class="mt-perm">録音者のみ</div>
+      <button class="mt-btn" data-type="1ON1" data-cat="対社員" data-perm="部長まで" onclick="selectMeetingType(this)">
+        <div class="mt-emoji">🔒</div>
+        <div class="mt-name">1ON1</div>
+        <div class="mt-perm">参加者＋部長</div>
       </button>
     </div>
 
@@ -292,16 +292,16 @@ body::-webkit-scrollbar { display:none; }
         <div class="mt-name">リーダー会</div>
         <div class="mt-perm">リーダー以上</div>
       </button>
-      <button class="mt-btn" data-type="1ON1" data-cat="対役職者" data-perm="部長まで" onclick="selectMeetingType(this)">
-        <div class="mt-emoji">🔒</div>
-        <div class="mt-name">1ON1</div>
-        <div class="mt-perm">参加者＋部長</div>
-      </button>
     </div>
 
     <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;color:var(--muted);margin:18px 0 8px;">📝 その他</div>
     <div class="mt-grid">
-      <button class="mt-btn" data-type="その他" data-cat="対社員" data-perm="参加者のみ" onclick="selectMeetingType(this)">
+      <button class="mt-btn" data-type="個人メモ" data-cat="その他" data-perm="録音者のみ" onclick="selectMeetingType(this)">
+        <div class="mt-emoji">📝</div>
+        <div class="mt-name">個人メモ</div>
+        <div class="mt-perm">録音者のみ</div>
+      </button>
+      <button class="mt-btn" data-type="その他" data-cat="その他" data-perm="参加者のみ" onclick="selectMeetingType(this)">
         <div class="mt-emoji">❓</div>
         <div class="mt-name">その他</div>
         <div class="mt-perm">参加者のみ</div>

@@ -447,6 +447,11 @@ body::-webkit-scrollbar { display:none; }
     </nav>
     <div class="sidebar-footer">
       <div id="login-info">読込中...</div>
+      <div id="sidebar-today" style="margin-top:8px;padding:8px 10px;background:linear-gradient(135deg, var(--accent), var(--accent2));color:#fff;border-radius:8px;font-size:11px;">
+        <div style="font-size:9px;opacity:0.8;letter-spacing:0.04em;">📅 今日の売上</div>
+        <div id="sidebar-today-amount" style="font-size:16px;font-weight:900;">—</div>
+        <div id="sidebar-today-count" style="font-size:9px;opacity:0.85;"></div>
+      </div>
       <button class="btn-link" style="margin-top:8px;padding:4px 8px;font-size:11px;" onclick="showHelpOverlay()">⌨ ショートカット一覧</button>
     </div>
   </aside>
@@ -1366,7 +1371,18 @@ function renderRecentSlips() {
 /* ════════════════════════════════════════
    ダッシュボード
    ═══════════════════════════════════════ */
+function refreshSidebarToday() {
+  const today = new Date();
+  const ts = today.toISOString().slice(0,10);
+  const todaySlips = state.recentSlips.filter(s => s.date === ts);
+  const amt = todaySlips.reduce((s, x) => s + x.amount, 0);
+  const el1 = document.getElementById('sidebar-today-amount');
+  const el2 = document.getElementById('sidebar-today-count');
+  if (el1) el1.textContent = todaySlips.length ? fmtShortYen(amt) : '—';
+  if (el2) el2.textContent = todaySlips.length ? todaySlips.length + '件' : '未入力';
+}
 function refreshDashboard() {
+  refreshSidebarToday();
   const today = new Date();
   const ymPrefix = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0');
   const todayStr = today.toISOString().slice(0,10);

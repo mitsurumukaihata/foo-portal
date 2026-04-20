@@ -866,6 +866,10 @@ body::-webkit-scrollbar { display:none; }
         <div id="pc-credit"><div class="empty">集計実行後に表示</div></div>
       </div>
       <div class="card">
+        <div class="card-title">🛞 仕入商品 TOP 20（明細ベース）</div>
+        <div id="pc-products"><div class="empty">明細を取得して集計...（期間が広いと時間かかります）</div></div>
+      </div>
+      <div class="card">
         <div class="card-title">📅 月別詳細表</div>
         <div id="pc-monthly-table"><div class="empty">集計実行後に表示</div></div>
       </div>
@@ -2825,6 +2829,12 @@ async function loadPurchase(force) {
       const count = slips.filter(s => (s.properties['仕入日']?.date?.start || '').startsWith(ym)).length;
       return `<tr><td>${ym.replace('-','/')}</td><td class="right">${count}</td><td class="right">${fmtJPY(amt)}</td><td class="right">${count ? fmtJPY(amt/count) : '—'}</td></tr>`;
     }).join('');
+
+    // 商品ランキング（明細取得、バックグラウンド）
+    document.getElementById('pc-products').innerHTML = '<div class="empty">📥 明細取得中...</div>';
+    loadPurchaseProducts(slips).catch(e => {
+      document.getElementById('pc-products').innerHTML = '<div class="empty">取得失敗: ' + escHtml(e.message || e) + '</div>';
+    });
     document.getElementById('pc-monthly-table').innerHTML = `
       <table class="mo-table">
         <thead><tr><th>年月</th><th class="right">伝票数</th><th class="right">税込合計</th><th class="right">平均/件</th></tr></thead>
@@ -2843,6 +2853,50 @@ async function loadPurchase(force) {
     console.error(e);
     document.getElementById('pc-suppliers').innerHTML = '<div class="empty">取得失敗: ' + escHtml(e.message || e) + '</div>';
   }
+}
+
+/* 仕入商品ランキング */
+async function loadPurchaseProducts(slips) {
+  if (!slips.length) { document.getElementById('pc-products').innerHTML = '<div class="empty">伝票なし</div>'; return; }
+  const slipIds = slips.map(s => s.id);
+  const details = [];
+  const BATCH = 30;
+  for (let i = 0; i < slipIds.length; i += BATCH) {
+    const batch = slipIds.slice(i, i + BATCH);
+    const filter = batch.length === 1
+      ? { property: '仕入伝票', relation: { contains: batch[0] } }
+      : { or: batch.map(id => ({ property: '仕入伝票', relation: { contains: id } })) };
+    let cursor = null;
+    do {
+      const body = { filter, page_size: 100 };
+      if (cursor) body.start_cursor = cursor;
+      const r = await notionPost('/databases/' + PURCHASE_DETAIL_DB + '/query', body);
+      details.push(...(r.results || []));
+      cursor = r.has_more ? r.next_cursor : null;
+    } while (cursor);
+  }
+  // 集計: 品名+サイズベース
+  const agg = new Map();
+  for (const d of details) {
+    const name = d.properties['品名']?.rich_text?.[0]?.plain_text || '(不明)';
+    const size = d.properties['タイヤサイズ']?.rich_text?.[0]?.plain_text || '';
+    const code = d.properties['商品コード']?.rich_text?.[0]?.plain_text || '';
+    const qty = d.properties['数量']?.number || 0;
+    const amt = d.properties['税込小計']?.number || 0;
+    const key = (code ? code + ' ' : '') + name + (size ? ' ' + size : '');
+    if (!agg.has(key)) agg.set(key, { name: key, amount: 0, qty: 0, count: 0, size, code });
+    const v = agg.get(key);
+    v.amount += amt; v.qty += qty; v.count++;
+  }
+  const sorted = [...agg.values()].sort((a, b) => b.amount - a.amount).slice(0, 20);
+  const totalAmt = [...agg.values()].reduce((s, x) => s + x.amount, 0);
+  const maxAmt = sorted[0]?.amount || 1;
+  document.getElementById('pc-products').innerHTML = sorted.map((v, i) => {
+    const rk = i + 1;
+    const rkIcon = rk === 1 ? '🥇' : rk === 2 ? '🥈' : rk === 3 ? '🥉' : '#' + rk;
+    const rkCls = rk === 1 ? 'gold' : rk === 2 ? 'silver' : rk === 3 ? 'bronze' : '';
+    return `<div class="mo-row"><div class="rk ${rkCls}">${rkIcon}</div><div class="nm" title="${escHtml(v.name)}">${escHtml(v.name.slice(0, 60))}<div style="font-size:9px;color:var(--muted);">${v.count}明細 · ${v.qty}個</div></div><div class="mini-bar"><div class="fill" style="width:${(v.amount/maxAmt)*100}%"></div></div><div class="am">${fmtShortYen(v.amount)}</div><div class="pct">${((v.amount/totalAmt)*100).toFixed(1)}%</div></div>`;
+  }).join('') + `<div style="margin-top:8px;color:var(--muted);font-size:10px;text-align:right;">全 ${agg.size} 種 · ${details.length} 明細</div>`;
 }
 
 /* ═══════════ 得意先マスタ ═══════════ */

@@ -4603,7 +4603,13 @@ function calcTotals() {
 /* F8=登録 / Esc=リセット / Ctrl+N=新規入力 / Ctrl+K=検索 */
 document.addEventListener('keydown', (e) => {
   // グローバルショートカット（どのページでも効く）
-  if (e.ctrlKey && (e.key === 'n' || e.key === 'N')) { e.preventDefault(); newSale(); return; }
+  if (e.ctrlKey && (e.key === 'n' || e.key === 'N')) {
+    e.preventDefault();
+    const hasUnsaved = state.currentPage === 'sales' && state.details.some(d => hasData(d));
+    if (hasUnsaved && !confirm('入力中の売上伝票があります。新規入力に切り替えますか？（内容は下書き自動保存されています）')) return;
+    newSale();
+    return;
+  }
   if (e.ctrlKey && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); showPage('search'); initSearchIfNeeded(); setTimeout(() => { const el = document.getElementById('search-customer'); if (el) el.focus(); }, 100); return; }
   if (e.ctrlKey && (e.key === '/' )) { e.preventDefault(); showHelpOverlay(); return; }
   // Ctrl+1〜9 で各ページへ

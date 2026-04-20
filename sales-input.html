@@ -3791,9 +3791,16 @@ async function showVehicleTimeline(idx) {
     const filter = isCarNum
       ? { property: '車番', rich_text: { contains: v.carNo } }
       : { property: '備考', rich_text: { contains: v.mgmtNo } };
-    const r = await notionPost('/databases/' + DETAIL_DB + '/query', { filter, page_size: 100 });
-    // 伝票タイトルとタイトル情報も取得
-    const details = r.results || [];
+    // ページネーション対応で全件取得
+    const details = [];
+    let cursor = null;
+    do {
+      const body = { filter, page_size: 100 };
+      if (cursor) body.start_cursor = cursor;
+      const r = await notionPost('/databases/' + DETAIL_DB + '/query', body);
+      details.push(...(r.results || []));
+      cursor = r.has_more ? r.next_cursor : null;
+    } while (cursor && details.length < 500);  // 最大500明細まで
     // 伝票IDごとにグルーピング
     const bySlip = new Map();
     for (const d of details) {

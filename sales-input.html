@@ -161,7 +161,8 @@ body::-webkit-scrollbar { display:none; }
 .help-modal .close-btn { position:absolute; top:10px; right:14px; background:none; border:none; color:var(--muted); font-size:24px; cursor:pointer; }
 
 /* Toast */
-.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--s3); color:var(--text); padding:12px 20px; border-radius:24px; font-size:13px; z-index:300; box-shadow:0 8px 24px rgba(0,0,0,0.3); border:1px solid var(--border); }
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--s3); color:var(--text); padding:12px 20px; border-radius:24px; font-size:13px; z-index:300; box-shadow:0 8px 24px rgba(0,0,0,0.3); border:1px solid var(--border); animation:toastIn 0.3s; }
+@keyframes toastIn { from { opacity:0; transform:translateX(-50%) translateY(20px); } to { opacity:1; transform:translateX(-50%); } }
 
 /* Empty state */
 .empty { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; }

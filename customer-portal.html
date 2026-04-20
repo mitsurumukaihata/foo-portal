@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>タイヤ管理ポータル - f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap');
+
+:root {
+  --bg:#f8f4ed; --card:#fff; --text:#2a1f0f; --muted:#8c7a5a;
+  --accent:#e07000; --accent2:#f0a500; --border:#e8d8c4; --green:#1a9e4a; --red:#dc2626;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP', sans-serif; }
+
+.head { background:linear-gradient(135deg, var(--accent), var(--accent2)); color:#fff; padding:32px 24px; }
+.head-inner { max-width:1200px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; gap:20px; flex-wrap:wrap; }
+.head-brand { display:flex; align-items:center; gap:14px; }
+.head-brand .logo { width:48px; height:48px; background:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--accent); font-weight:900; font-size:24px; }
+.head-brand .name { font-size:24px; font-weight:900; letter-spacing:0.02em; }
+.head-brand .sub { font-size:11px; opacity:0.9; margin-top:2px; }
+.head-cust { text-align:right; }
+.head-cust .label { font-size:10px; opacity:0.8; letter-spacing:0.08em; }
+.head-cust .name { font-size:22px; font-weight:900; margin-top:2px; }
+.head-cust .sub { font-size:10px; opacity:0.8; margin-top:2px; }
+
+.container { max-width:1200px; margin:0 auto; padding:24px; }
+
+.kpi-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:24px; }
+.kpi { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px 22px; position:relative; }
+.kpi .label { font-size:11px; color:var(--muted); font-weight:700; letter-spacing:0.04em; }
+.kpi .value { font-size:26px; font-weight:900; color:var(--accent); margin-top:4px; }
+.kpi .sub { font-size:11px; color:var(--muted); margin-top:2px; }
+.kpi .icon { position:absolute; top:16px; right:18px; font-size:24px; opacity:0.4; }
+
+.section { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px 24px; margin-bottom:20px; }
+.section-title { font-size:16px; font-weight:900; margin-bottom:14px; display:flex; align-items:center; gap:8px; border-left:4px solid var(--accent); padding-left:10px; }
+
+.vehicle-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:14px; }
+.vehicle-card { background:#fdf6ee; border:1px solid var(--border); border-radius:10px; padding:14px; cursor:pointer; transition:all 0.15s; }
+.vehicle-card:hover { transform:translateY(-2px); box-shadow:0 8px 20px rgba(224,112,0,0.15); border-color:var(--accent); }
+.vehicle-card .vc-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px; }
+.vehicle-card .vc-num { font-weight:900; font-size:14px; color:var(--accent); }
+.vehicle-card .vc-mgmt { font-family:monospace; font-size:11px; color:var(--muted); }
+.vehicle-card .vc-sizes { font-size:11px; line-height:1.6; color:var(--text); }
+.vehicle-card .vc-sizes .lbl { color:var(--muted); font-weight:700; font-size:10px; }
+.vehicle-card .vc-footer { margin-top:8px; padding-top:8px; border-top:0.5px solid var(--border); display:flex; justify-content:space-between; font-size:10px; color:var(--muted); }
+
+.timeline { position:relative; padding-left:24px; }
+.timeline::before { content:''; position:absolute; left:8px; top:0; bottom:0; width:2px; background:var(--border); }
+.tl-item { position:relative; padding:10px 0 10px 16px; }
+.tl-item::before { content:''; position:absolute; left:-20px; top:16px; width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid #fff; box-shadow:0 0 0 2px var(--accent); }
+.tl-date { font-size:12px; font-weight:900; color:var(--accent); }
+.tl-title { font-size:13px; margin:2px 0; }
+.tl-works { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+.tl-works span { background:#fdf6ee; border:1px solid var(--border); padding:2px 8px; border-radius:12px; font-size:10px; }
+.tl-amt { float:right; font-weight:700; color:var(--accent); font-size:12px; }
+
+.footer { text-align:center; padding:30px 20px; color:var(--muted); font-size:11px; border-top:1px solid var(--border); margin-top:20px; }
+.footer a { color:var(--accent); }
+
+.loading { text-align:center; padding:60px 20px; color:var(--muted); }
+.spinner { display:inline-block; width:32px; height:32px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+@media (max-width: 600px) {
+  .head { padding:20px 16px; }
+  .head-brand .name { font-size:18px; }
+  .head-cust .name { font-size:16px; }
+  .container { padding:16px; }
+  .kpi .value { font-size:20px; }
+}
+</style>
+</head>
+<body>
+
+<header class="head">
+  <div class="head-inner">
+    <div class="head-brand">
+      <div class="logo">f</div>
+      <div>
+        <div class="name">f.o.o タイヤ管理ポータル</div>
+        <div class="sub">有限会社 タイヤマネージャー f.o.o</div>
+      </div>
+    </div>
+    <div class="head-cust">
+      <div class="label">CUSTOMER</div>
+      <div class="name" id="cust-name">—</div>
+      <div class="sub" id="cust-sub">読み込み中...</div>
+    </div>
+  </div>
+</header>
+
+<main class="container" id="main">
+  <div class="loading"><div class="spinner"></div><div style="margin-top:12px;">データを取得中...</div></div>
+</main>
+
+<div class="footer">
+  🚚 御社の管理車両情報 · このポータルは f.o.o が提供するタイヤライフサイクル管理サービスの一部です<br>
+  お問い合わせ: 有限会社タイヤマネージャー f.o.o / <a href="mailto:info@foo-tire.jp">info@foo-tire.jp</a>
+</div>
+
+<script>
+const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
+const VEHICLE_DB = '16f9f0df45e942069e032715fb2d37b2';
+const SALES_DB = '58cc4a13df03435db14b3439ef1f0a6f';
+const DETAIL_DB = '07bd22655e5849fd854bef1f4c4b5688';
+const CUSTOMER_DB = 'f632f512f12d49b2b11f2b3e45c70aec';
+const ENDUSER_DB = '1ca8d122be214e3892879932147143c9';
+
+const params = new URLSearchParams(location.search);
+const custId = params.get('customer') || params.get('c');
+const custName = params.get('name');
+
+function fmtYen(n) { return '¥' + Math.round(n || 0).toLocaleString(); }
+function fmtShort(n) {
+  n = Math.round(n || 0);
+  if (Math.abs(n) >= 1e8) return '¥' + (n/1e8).toFixed(2).replace(/\.00$/,'') + '億';
+  if (Math.abs(n) >= 1e4) return '¥' + (n/1e4).toFixed(1).replace(/\.0$/,'') + '万';
+  return '¥' + n.toLocaleString();
+}
+function escH(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+
+async function np(path, body) {
+  const r = await fetch(WORKER + path, { method: body ? 'POST' : 'GET', headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+async function load() {
+  if (!custId) {
+    document.getElementById('main').innerHTML = '<div class="section" style="text-align:center;"><h2>URLパラメータ不足</h2><p style="margin-top:10px;color:var(--muted);">?customer=&lt;顧客ID&gt; を指定してください</p></div>';
+    return;
+  }
+  try {
+    // 顧客情報取得
+    const custData = await np('/pages/' + custId);
+    const name = Object.values(custData.properties).find(p => p.type === 'title')?.title?.[0]?.plain_text || custName || '';
+    document.getElementById('cust-name').textContent = name || '(不明)';
+    document.getElementById('cust-sub').textContent = '管理車両一覧';
+    document.title = name + ' - f.o.o タイヤ管理ポータル';
+
+    // 車両取得
+    const vehicleRes = await np('/databases/' + VEHICLE_DB + '/query', {
+      filter: { property: '顧客', relation: { contains: custId } },
+      page_size: 100,
+    });
+    const vehicles = (vehicleRes.results || []).map(p => ({
+      id: p.id,
+      carNo: p.properties['車番']?.title?.[0]?.plain_text || '',
+      mgmtNo: p.properties['管理番号']?.rich_text?.[0]?.plain_text || '',
+      size前: p.properties['前輪サイズ']?.rich_text?.[0]?.plain_text || '',
+      size後: p.properties['後輪サイズ']?.rich_text?.[0]?.plain_text || '',
+      車種: p.properties['車種']?.select?.name || '',
+      仕様: p.properties['仕様']?.select?.name || '',
+      本数: p.properties['本数']?.number || 0,
+      バルブ交換日: p.properties['最終バルブ交換日']?.date?.start || '',
+    }));
+    const totalTires = vehicles.reduce((s, v) => s + v.本数, 0);
+
+    // 過去1年の作業履歴
+    const oneYearAgo = new Date(); oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    const fromStr = oneYearAgo.toISOString().slice(0, 10);
+    const slipRes = await np('/databases/' + SALES_DB + '/query', {
+      filter: { and: [
+        { or: [
+          { property: '顧客名', relation: { contains: custId } },
+          { property: '請求先', relation: { contains: custId } },
+        ]},
+        { property: '売上日', date: { on_or_after: fromStr } },
+      ]},
+      sorts: [{ property: '売上日', direction: 'descending' }],
+      page_size: 60,
+    });
+    const slips = (slipRes.results || []).map(p => ({
+      id: p.id,
+      date: p.properties['売上日']?.date?.start || '',
+      title: p.properties['伝票タイトル']?.title?.[0]?.plain_text || '',
+      amount: p.properties['税込合計']?.number || 0,
+      car: p.properties['車番']?.rich_text?.[0]?.plain_text || '',
+    }));
+    const totalAmount = slips.reduce((s, x) => s + x.amount, 0);
+
+    // KPI + セクション描画
+    const main = document.getElementById('main');
+    main.innerHTML = `
+      <div class="kpi-grid">
+        <div class="kpi"><div class="icon">🚚</div><div class="label">管理車両</div><div class="value">${vehicles.length}</div><div class="sub">台</div></div>
+        <div class="kpi"><div class="icon">🛞</div><div class="label">タイヤ総本数</div><div class="value">${totalTires.toLocaleString()}</div><div class="sub">本</div></div>
+        <div class="kpi"><div class="icon">📅</div><div class="label">直近1年の作業</div><div class="value">${slips.length}</div><div class="sub">回</div></div>
+        <div class="kpi"><div class="icon">💴</div><div class="label">直近1年の取引額</div><div class="value">${fmtShort(totalAmount)}</div><div class="sub">税込</div></div>
+      </div>
+      <div class="section">
+        <div class="section-title">🚚 管理車両一覧</div>
+        ${vehicles.length ? `<div class="vehicle-grid">${vehicles.map(v => `
+          <div class="vehicle-card">
+            <div class="vc-head">
+              <div class="vc-num">${escH(v.carNo || '管理#' + v.mgmtNo)}</div>
+              ${v.mgmtNo ? `<div class="vc-mgmt">${escH(v.mgmtNo)}</div>` : ''}
+            </div>
+            <div class="vc-sizes">
+              <div><span class="lbl">前輪</span> ${escH(v.size前 || '-')}</div>
+              <div><span class="lbl">後輪</span> ${escH(v.size後 || '-')}</div>
+            </div>
+            <div class="vc-footer">
+              <span>${escH(v.車種 || '-')} / ${escH(v.仕様 || '-')}</span>
+              <span>${v.本数}本</span>
+            </div>
+          </div>
+        `).join('')}</div>` : '<p style="color:var(--muted);">管理車両はありません</p>'}
+      </div>
+      <div class="section">
+        <div class="section-title">📜 直近の作業履歴（過去1年）</div>
+        ${slips.length ? `<div class="timeline">${slips.map(s => `
+          <div class="tl-item">
+            <span class="tl-amt">${fmtYen(s.amount)}</span>
+            <div class="tl-date">${s.date.replace(/-/g, '/')}</div>
+            <div class="tl-title">${escH(s.car || '')} ${escH(s.title.replace(/^\d{4}\/\d{1,2}\/\d{1,2}\s*/, ''))}</div>
+          </div>
+        `).join('')}</div>` : '<p style="color:var(--muted);">直近の作業履歴はありません</p>'}
+      </div>
+    `;
+  } catch(e) {
+    console.error(e);
+    document.getElementById('main').innerHTML = '<div class="section"><p style="color:var(--red);">取得失敗: ' + escH(e.message) + '</p></div>';
+  }
+}
+load();
+</script>
+</body>
+</html>

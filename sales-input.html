@@ -1030,18 +1030,30 @@ async function searchCar(q) {
   // 得意先選択中なら空でも出す。未選択なら2文字以上必要
   if (!hasCustomer && (!q || q.length < 2)) { el.classList.remove('show'); return; }
   try {
+    // 顧客の絞り込みは、新DBリレーションと旧DB対応のため
+    // 「顧客名 relation contains」または「伝票タイトル contains 顧客名(短縮)」で OR
+    function buildCustomerFilter(c) {
+      // 名前から「有限会社」「株式会社」「(株)」「(有)」を除いた短縮版でも引く
+      const shortName = (c.name || '').replace(/(有限会社|株式会社|\(株\)|\(有\)|㈱|㈲|（株）|（有）)/g, '').trim();
+      const orF = [
+        { property: '顧客名', relation: { contains: c.id } },
+        { property: '伝票タイトル', title: { contains: c.name } },
+      ];
+      if (shortName && shortName !== c.name) orF.push({ property: '伝票タイトル', title: { contains: shortName } });
+      return { or: orF };
+    }
     let filter;
     if (q && q.trim()) {
       const variants = carSearchVariants(q.trim());
       const orFilters = variants.map(v => ({ property: '車番', rich_text: { contains: v } }));
       const carFilter = orFilters.length === 1 ? orFilters[0] : { or: orFilters };
       filter = hasCustomer
-        ? { and: [ carFilter, { property: '顧客名', relation: { contains: state.selectedCustomer.id } } ] }
+        ? { and: [ carFilter, buildCustomerFilter(state.selectedCustomer) ] }
         : carFilter;
     } else {
       // 空入力 + 顧客選択中 → その顧客の最近の伝票
       filter = { and: [
-        { property: '顧客名', relation: { contains: state.selectedCustomer.id } },
+        buildCustomerFilter(state.selectedCustomer),
         { property: '車番', rich_text: { is_not_empty: true } },
       ]};
     }

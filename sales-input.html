@@ -543,6 +543,12 @@ body::-webkit-scrollbar { display:none; }
         <div id="dash-activity"><div class="empty">集計中...</div></div>
       </div>
 
+      <!-- やると良いこと (Action items) -->
+      <div class="card" id="dash-actions-card">
+        <div class="card-title">✅ 今日のオススメアクション</div>
+        <div id="dash-actions"></div>
+      </div>
+
       <!-- 2カラム: 直近入力 / 下書き -->
       <div class="mo-split">
         <div class="card">
@@ -1473,6 +1479,7 @@ function refreshDashboard() {
   renderDashboardDrafts(drafts);
   renderDashboardActivity();
   renderWelcomeBanner();
+  renderDashboardActions();
   // 直近10件
   const showEl = document.getElementById('dashboard-recent-list');
   if (!showEl) return;
@@ -1513,6 +1520,42 @@ async function refreshDashboardUnbilled() {
       card.style.borderColor = (r.results || []).length > 0 ? 'var(--red)' : 'var(--border)';
     }
   } catch(e) { console.error(e); el.textContent = '?'; }
+}
+
+function renderDashboardActions() {
+  const el = document.getElementById('dash-actions');
+  if (!el) return;
+  const actions = [];
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const todayCount = state.recentSlips.filter(s => s.date === todayStr).length;
+  const drafts = loadDraftList();
+  if (drafts.length > 0) {
+    actions.push({ icon: '💾', label: `下書きが ${drafts.length} 件あります`, color: 'var(--blue)', onclick: `showPage('drafts')`, cta: '編集を再開' });
+  }
+  if (todayCount === 0 && today.getHours() >= 9 && today.getHours() < 18) {
+    actions.push({ icon: '✍️', label: '今日はまだ売上入力がありません', color: 'var(--accent)', onclick: `newSale()`, cta: '新規入力' });
+  }
+  // 未請求バッジから推定
+  const unbilled = document.getElementById('stat-unbilled')?.textContent;
+  if (unbilled && parseInt(unbilled) > 0) {
+    actions.push({ icon: '💡', label: `未請求伝票が ${unbilled} 件あります`, color: 'var(--red)', onclick: `showPage('search');initSearchIfNeeded();setTimeout(()=>{document.getElementById('search-status').value='未請求';execSearch();},100)`, cta: '確認する' });
+  }
+  // 車両マスタがまだロードされてない
+  if (!vehicleCache) {
+    actions.push({ icon: '🚚', label: '車両マスタを確認してタイヤ履歴を活用', color: 'var(--green)', onclick: `showPage('vehicles')`, cta: '開く' });
+  }
+  if (!actions.length) {
+    el.innerHTML = '<div class="empty">🎉 現時点で対応必要なアクションはありません。引き続き頑張りましょう！</div>';
+    return;
+  }
+  el.innerHTML = actions.map(a => `
+    <div style="display:flex; align-items:center; gap:12px; padding:10px 14px; background:var(--s2); border-left:3px solid ${a.color}; border-radius:0 8px 8px 0; margin-bottom:6px;">
+      <div style="font-size:20px;">${a.icon}</div>
+      <div style="flex:1; font-size:13px;">${escHtml(a.label)}</div>
+      <button class="btn btn-primary" style="padding:6px 14px;font-size:11px;" onclick="${a.onclick}">${a.cta} →</button>
+    </div>
+  `).join('');
 }
 
 function calcSalesStreak() {

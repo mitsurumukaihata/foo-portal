@@ -637,6 +637,7 @@ async function loadCustomers() {
       name: p.properties['得意先名']?.title?.[0]?.plain_text || '',
       code: p.properties['得意先コード']?.rich_text?.[0]?.plain_text || '',
       ryakushou: p.properties['略称']?.rich_text?.[0]?.plain_text || '',
+      yomi: p.properties['フリガナ']?.rich_text?.[0]?.plain_text || '',
     })).filter(c => c.name);
   } catch(e) { console.error('得意先取得失敗', e); }
 }
@@ -945,24 +946,37 @@ document.addEventListener('change', (e) => {
   if (e.target.name === 'tax-type') { updateTaxTypeUI(); calcTotals(); }
 });
 
+// カタカナ⇄ひらがな正規化（検索用）
+function toHira(s) { return (s || '').replace(/[\u30A1-\u30F6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60)).toLowerCase(); }
+function attrEsc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;'); }
+
 function searchCustomer(q) {
   const el = document.getElementById('customer-results');
   if (!q || q.length < 1) { el.classList.remove('show'); return; }
-  const lq = q.toLowerCase();
+  const lq = toHira(q);
   const matches = state.customers.filter(c =>
-    (c.name || '').toLowerCase().includes(lq) ||
-    (c.code || '').toLowerCase().includes(lq) ||
-    (c.ryakushou || '').toLowerCase().includes(lq)
-  ).slice(0, 15);
+    toHira(c.name).includes(lq) ||
+    toHira(c.code).includes(lq) ||
+    toHira(c.ryakushou).includes(lq) ||
+    toHira(c.yomi).includes(lq)
+  ).slice(0, 20);
   if (!matches.length) { el.innerHTML = '<div style="padding:10px;color:var(--muted);font-size:12px;">該当なし</div>'; el.classList.add('show'); return; }
   el.innerHTML = matches.map(c => `
-    <div class="search-result" onclick="selectCustomer('${c.id}', ${JSON.stringify(c.name)}, ${JSON.stringify(c.code || '')})">
+    <div class="search-result" data-cid="${attrEsc(c.id)}" data-cname="${attrEsc(c.name)}" data-ccode="${attrEsc(c.code || '')}">
       <div class="title">${escHtml(c.name)}</div>
-      <div class="sub">コード: ${escHtml(c.code || '-')}${c.ryakushou ? ' · ' + escHtml(c.ryakushou) : ''}</div>
+      <div class="sub">${escHtml(c.code || '-')}${c.ryakushou ? ' · ' + escHtml(c.ryakushou) : ''}${c.yomi ? ' · ' + escHtml(c.yomi) : ''}</div>
     </div>
   `).join('');
   el.classList.add('show');
 }
+
+// 委譲クリック（クォートバグ回避）
+document.addEventListener('mousedown', (e) => {
+  const r = e.target.closest('#customer-results .search-result');
+  if (r) { e.preventDefault(); selectCustomer(r.dataset.cid, r.dataset.cname, r.dataset.ccode); return; }
+  const cr = e.target.closest('#car-results .search-result');
+  if (cr) { e.preventDefault(); selectCar(cr.dataset.car, cr.dataset.sid); }
+});
 function selectCustomer(id, name, code) {
   state.selectedCustomer = { id, name, code };
   const inp = document.getElementById('input-customer');
@@ -992,7 +1006,7 @@ async function searchCar(q) {
     const uniq = new Map();
     for (const r of results) if (!uniq.has(r.car)) uniq.set(r.car, r);
     el.innerHTML = [...uniq.values()].slice(0, 8).map(r => `
-      <div class="search-result" onclick="selectCar(${JSON.stringify(r.car)}, '${r.id}')">
+      <div class="search-result" data-car="${attrEsc(r.car)}" data-sid="${attrEsc(r.id)}">
         <div class="title">${escHtml(r.car)}</div>
         <div class="sub">${r.date} · ${escHtml(r.title.slice(0,30))} · ${fmtYen(r.amount)}</div>
       </div>

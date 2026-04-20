@@ -1557,14 +1557,15 @@ async function loadDashboardProfitMini() {
     const pct = sales ? (profit / sales * 100) : 0;
     if (!sales && !purch) { el.style.display = 'none'; return; }
     el.style.display = 'block';
+    const noPurchNote = !purch && sales > 0 ? '<span style="font-size:10px;color:var(--muted);margin-left:8px;">(仕入データまだ未取り込み or 今月分なし)</span>' : '';
     el.innerHTML = `
       <div style="margin-bottom:16px; padding:12px 18px; background:linear-gradient(135deg, #fef9f1, #fdf6ee); border:1px solid var(--accent); border-radius:10px;">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-          <div style="font-size:13px; font-weight:700; color:var(--accent);">💎 今月の粗利状況</div>
+          <div style="font-size:13px; font-weight:700; color:var(--accent);">💎 今月の粗利状況${noPurchNote}</div>
           <div style="display:flex; gap:16px; font-size:12px; flex-wrap:wrap;">
             <span>売上 <b>${fmtShortYen(sales)}</b></span>
             <span>仕入 <b style="color:var(--red);">${fmtShortYen(purch)}</b></span>
-            <span>粗利 <b style="color:${profit >= 0 ? 'var(--green)' : 'var(--red)'};">${fmtShortYen(profit)} (${pct.toFixed(1)}%)</b></span>
+            <span>粗利 <b style="color:${profit >= 0 ? 'var(--green)' : 'var(--red)'};">${fmtShortYen(profit)}${purch ? ' (' + pct.toFixed(1) + '%)' : ''}</b></span>
           </div>
         </div>
       </div>

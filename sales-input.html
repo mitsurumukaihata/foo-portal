@@ -810,6 +810,7 @@ body::-webkit-scrollbar { display:none; }
           <div class="form-row" style="align-self:end;"><button class="btn btn-secondary" onclick="quickRange('bc','last12')">直近12ヶ月</button></div>
           <div class="form-row" style="align-self:end;"><button class="btn btn-secondary" onclick="quickRange('bc','thisfy')">今年度</button></div>
           <div class="form-row" style="align-self:end;"><button class="btn btn-secondary" onclick="quickRange('bc','lastfy')">前年度</button></div>
+          <div class="form-row" style="align-self:end;"><button class="btn btn-secondary" onclick="exportByCustomerCSV()">📥 CSV</button></div>
         </div>
       </div>
       <div id="bc-summary"></div>
@@ -2323,6 +2324,29 @@ async function queryAllSlipsRange(fromStr, toStr) {
   return all;
 }
 
+// 得意先別 CSV出力
+let _bcData = null;
+function exportByCustomerCSV() {
+  if (!_bcData) { showToast('先に集計を実行してください'); return; }
+  const { sorted, ymList } = _bcData;
+  const csvRows = [['得意先', '伝票数', ...ymList, '合計']];
+  for (const [name, v] of sorted) {
+    const row = [name, v.count];
+    for (const ym of ymList) row.push(v.perYm.get(ym) || 0);
+    row.push(v.total);
+    csvRows.push(row);
+  }
+  const csv = '\ufeff' + csvRows.map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `得意先別集計_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('📥 CSV ダウンロード');
+}
+
 /* ═══════════ 得意先別集計（キャッシュ経由） ═══════════ */
 async function loadByCustomer() {
   const r = rangeToStrs('bc');
@@ -2348,6 +2372,7 @@ async function loadByCustomer() {
       }
     }
     const sorted = [...agg.entries()].sort((a, b) => b[1].total - a[1].total);
+    _bcData = { sorted, ymList: r.ymList };
     // サマリ
     const avgPerCust = sorted.length ? totalAmt / sorted.length : 0;
     document.getElementById('bc-summary').innerHTML = `

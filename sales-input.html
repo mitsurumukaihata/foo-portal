@@ -1502,6 +1502,22 @@ async function refreshDashboardUnbilled() {
   } catch(e) { console.error(e); el.textContent = '?'; }
 }
 
+function calcSalesStreak() {
+  // 今日から遡って連続売上日数
+  const today = new Date();
+  let streak = 0;
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const ds = d.toISOString().slice(0, 10);
+    const hit = state.recentSlips.some(s => s.date === ds);
+    if (hit) streak++;
+    else if (i === 0) continue; // 今日がまだ0件でもストリーク切れではない
+    else break;
+  }
+  return streak;
+}
+
 function renderDashboardHighlight() {
   const el = document.getElementById('dash-highlight');
   if (!el) return;
@@ -1558,6 +1574,21 @@ function renderDashboardHighlight() {
       <div class="hl-sub">${today.toLocaleDateString('ja-JP', { weekday:'long' })}</div>
     </div>
   `;
+  // ストリーク情報を追加
+  const streak = calcSalesStreak();
+  if (streak >= 2) {
+    const card = document.createElement('div');
+    card.className = 'hl-card';
+    card.style.background = 'linear-gradient(135deg, #ef4444, #f87171)';
+    card.style.boxShadow = '0 6px 20px rgba(239,68,68,0.25)';
+    card.innerHTML = `
+      <div class="hl-icon">🔥</div>
+      <div class="hl-label">連続営業記録</div>
+      <div class="hl-value">${streak}日連続</div>
+      <div class="hl-sub">${streak >= 30 ? '素晴らしい！' : streak >= 7 ? '絶好調！' : '良いペース'}</div>
+    `;
+    el.appendChild(card);
+  }
 }
 
 function renderDashboardHeatmap() {

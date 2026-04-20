@@ -497,6 +497,9 @@ body::-webkit-scrollbar { display:none; }
         </div>
       </div>
 
+      <!-- Welcome バナー（初回のみ） -->
+      <div id="welcome-banner" style="display:none;"></div>
+
       <!-- ハイライトウィジェット -->
       <div id="dash-highlight" class="dash-highlight"></div>
 
@@ -1425,6 +1428,7 @@ function refreshDashboard() {
   renderDashboardHighlight();
   renderDashboardDrafts(drafts);
   renderDashboardActivity();
+  renderWelcomeBanner();
   // 直近10件
   const showEl = document.getElementById('dashboard-recent-list');
   if (!showEl) return;
@@ -1580,6 +1584,31 @@ function renderDashboardHeatmap() {
           </div>
           多い
         </div>
+      </div>
+    </div>
+  `;
+}
+
+// 今日まだ開いてない場合だけ表示する Welcome バナー（ユーザー名入り）
+function renderWelcomeBanner() {
+  const el = document.getElementById('welcome-banner');
+  if (!el) return;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const key = 'welcome-shown:' + todayStr;
+  try {
+    if (localStorage.getItem(key)) { el.style.display = 'none'; return; }
+    localStorage.setItem(key, '1');
+  } catch(_) {}
+  const hour = new Date().getHours();
+  const greet = hour < 11 ? 'おはようございます' : hour < 17 ? 'こんにちは' : 'おつかれさまです';
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div style="margin-bottom:16px; padding:16px 20px; background:linear-gradient(135deg, #fdf6ee, #fef9f1); border-left:4px solid var(--accent); border-radius:8px; position:relative;">
+      <button onclick="document.getElementById('welcome-banner').style.display='none'" style="position:absolute; top:8px; right:10px; background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer;">×</button>
+      <div style="font-weight:700; color:var(--accent); font-size:15px;">🌅 ${greet}、${loginUser} さん</div>
+      <div style="margin-top:6px; font-size:12px; color:var(--text); line-height:1.6;">
+        今日も一日頑張りましょう！<br>
+        <span style="color:var(--muted); font-size:11px;">💡 <kbd style="background:var(--s3);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:10px;">Ctrl+N</kbd> で新規入力、<kbd style="background:var(--s3);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:10px;">Ctrl+K</kbd> で検索、<kbd style="background:var(--s3);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:10px;">Ctrl+/</kbd> でショートカット一覧</span>
       </div>
     </div>
   `;

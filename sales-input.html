@@ -1034,6 +1034,12 @@ body::-webkit-scrollbar { display:none; }
       <tr><td class="k">得意先</td><td>コード / 名前 / 略称 / フリガナ（ひらがな可）で部分一致</td></tr>
       <tr><td class="k">サイズ／銘柄</td><td>明細先行フィルタ → 伝票一覧</td></tr>
     </table>
+    <h3>🌍 グローバル（どのページでも）</h3>
+    <table>
+      <tr><td class="k"><kbd>Ctrl</kbd>+<kbd>N</kbd></td><td>新規売上入力</td></tr>
+      <tr><td class="k"><kbd>Ctrl</kbd>+<kbd>K</kbd></td><td>伝票検索を開く</td></tr>
+      <tr><td class="k"><kbd>Ctrl</kbd>+<kbd>/</kbd></td><td>このヘルプを開く</td></tr>
+    </table>
     <h3>📊 ページ切替</h3>
     <table>
       <tr><td class="k">サイドバー</td><td>各ページへジャンプ</td></tr>
@@ -4199,8 +4205,13 @@ function calcTotals() {
   return { zeinuki, zeigaku, zeikomi };
 }
 
-/* F8=登録 / Esc=リセット */
+/* F8=登録 / Esc=リセット / Ctrl+N=新規入力 / Ctrl+K=検索 */
 document.addEventListener('keydown', (e) => {
+  // グローバルショートカット（どのページでも効く）
+  if (e.ctrlKey && (e.key === 'n' || e.key === 'N')) { e.preventDefault(); newSale(); return; }
+  if (e.ctrlKey && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); showPage('search'); initSearchIfNeeded(); setTimeout(() => { const el = document.getElementById('search-customer'); if (el) el.focus(); }, 100); return; }
+  if (e.ctrlKey && (e.key === '/' )) { e.preventDefault(); showHelpOverlay(); return; }
+
   if (state.currentPage !== 'sales') return;
   if (e.key === 'F8') { e.preventDefault(); submitSale(); }
   else if (e.key === 'Escape') {

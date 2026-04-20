@@ -998,14 +998,37 @@ function selectCustomer(id, name, code) {
   if (sel) sel.innerHTML = '<span class="selected-tag">✓ ' + escHtml(name) + (code ? ' (' + escHtml(code) + ')' : '') + '</span>';
   document.getElementById('customer-results').classList.remove('show');
 }
+// "3415" → ["3415", "34-15"]、"341" → ["341", "3-41", "34-1"]、文字含み → そのまま
+function carSearchVariants(q) {
+  const v = new Set();
+  v.add(q);
+  const digits = q.replace(/[^0-9]/g, '');
+  if (digits && digits === q) {
+    v.add(digits);
+    if (digits.length >= 2) {
+      // 末尾4桁ナンバー想定: 真ん中にハイフン
+      const half = Math.floor(digits.length / 2);
+      v.add(digits.slice(0, half) + '-' + digits.slice(half));
+      // 4桁の場合 1-3 / 3-1 も
+      if (digits.length === 4) {
+        v.add(digits.slice(0,1) + '-' + digits.slice(1));
+        v.add(digits.slice(0,3) + '-' + digits.slice(3));
+      }
+    }
+  }
+  return [...v];
+}
+
 async function searchCar(q) {
   const el = document.getElementById('car-results');
   if (!q || q.length < 2) { el.classList.remove('show'); return; }
   try {
+    const variants = carSearchVariants(q.trim());
+    const orFilters = variants.map(v => ({ property: '車番', rich_text: { contains: v } }));
     const r = await notionPost('/databases/' + SALES_DB + '/query', {
-      filter: { property: '車番', rich_text: { contains: q } },
+      filter: orFilters.length === 1 ? orFilters[0] : { or: orFilters },
       sorts: [{ property: '売上日', direction: 'descending' }],
-      page_size: 10,
+      page_size: 20,
     });
     const results = (r.results || []).map(p => ({
       id: p.id,

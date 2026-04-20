@@ -430,6 +430,7 @@ body::-webkit-scrollbar { display:none; }
       <button class="nav-item" data-page="by-customer" onclick="showPage('by-customer')"><span class="icon">📑</span>得意先別集計</button>
       <button class="nav-item" data-page="by-product" onclick="showPage('by-product')"><span class="icon">🛞</span>商品別集計</button>
       <button class="nav-item" data-page="purchase" onclick="showPage('purchase')"><span class="icon">📥</span>仕入集計</button>
+      <button class="nav-item" data-page="profit" onclick="showPage('profit')"><span class="icon">💎</span>粗利分析</button>
       <button class="nav-item" data-page="vehicles" onclick="showPage('vehicles')"><span class="icon">🚚</span>車両マスタ</button>
 
       <div class="nav-section">⚙️ 設定</div>
@@ -863,6 +864,38 @@ body::-webkit-scrollbar { display:none; }
       </div>
     </div>
 
+    <!-- ════════════ 粗利分析 ════════════ -->
+    <div class="page" id="page-profit">
+      <div class="page-header">
+        <div>
+          <div class="page-title">💎 粗利分析</div>
+          <div class="page-sub">売上と仕入を月別・メーカー別に並べて粗利率を算出</div>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-secondary" onclick="loadProfit(true)">🔄 再読込</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="range-picker">
+          <div class="form-row"><div class="form-label">期間 開始</div><input type="month" id="pr-from" class="form-input"></div>
+          <div class="form-row"><div class="form-label">期間 終了</div><input type="month" id="pr-to" class="form-input"></div>
+          <div class="form-row" style="align-self:end;"><button class="btn btn-primary" onclick="loadProfit()">💡 分析実行</button></div>
+          <div class="form-row" style="align-self:end;"><button class="btn btn-secondary" onclick="quickRangeProfit('last6')">直近6ヶ月</button></div>
+          <div class="form-row" style="align-self:end;"><button class="btn btn-secondary" onclick="quickRangeProfit('last12')">直近12ヶ月</button></div>
+          <div class="form-row" style="align-self:end;"><button class="btn btn-secondary" onclick="quickRangeProfit('thisfy')">今年度</button></div>
+        </div>
+      </div>
+      <div id="pr-summary"></div>
+      <div class="card">
+        <div class="card-title">📊 月別 売上 vs 仕入 と 粗利</div>
+        <div id="pr-chart"><div class="empty">期間を指定して「分析実行」</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📅 月別詳細表</div>
+        <div id="pr-monthly"><div class="empty">分析実行後に表示</div></div>
+      </div>
+    </div>
+
     <!-- ════════════ 車両マスタ ════════════ -->
     <div class="page" id="page-vehicles">
       <div class="page-header">
@@ -1048,6 +1081,7 @@ function showPage(page) {
   if (page === 'search') initSearchIfNeeded();
   if (page === 'vehicles') loadVehicles(false);
   if (page === 'purchase') initPurchaseIfNeeded();
+  if (page === 'profit') initProfitIfNeeded();
   if (page === 'drafts') renderDrafts();
   if (page === 'sales') { ensureYayoiRows(); setTimeout(() => { const el = document.getElementById('input-customer'); if (el && !el.value) el.focus(); }, 100); }
   window.scrollTo(0, 0);
@@ -2725,6 +2759,178 @@ async function loadPurchase(force) {
   } catch(e) {
     console.error(e);
     document.getElementById('pc-suppliers').innerHTML = '<div class="empty">取得失敗: ' + escHtml(e.message || e) + '</div>';
+  }
+}
+
+/* ═══════════ 粗利分析 ═══════════ */
+function initProfitIfNeeded() {
+  const f = document.getElementById('pr-from');
+  if (!f.value) { quickRangeProfit('last6'); }
+}
+function quickRangeProfit(mode) {
+  const today = new Date();
+  let from, to;
+  if (mode === 'last6') { from = new Date(today.getFullYear(), today.getMonth() - 5, 1); to = today; }
+  else if (mode === 'last12') { from = new Date(today.getFullYear(), today.getMonth() - 11, 1); to = today; }
+  else if (mode === 'thisfy') {
+    const y = today.getMonth() >= 3 ? today.getFullYear() : today.getFullYear() - 1;
+    from = new Date(y, 3, 1); to = new Date(y + 1, 2, 31);
+  }
+  document.getElementById('pr-from').value = from.toISOString().slice(0, 7);
+  document.getElementById('pr-to').value = to.toISOString().slice(0, 7);
+  loadProfit();
+}
+
+async function loadProfit() {
+  const from = document.getElementById('pr-from').value;
+  const to = document.getElementById('pr-to').value;
+  if (!from || !to) { showToast('期間を選択してください'); return; }
+  const [fy, fm] = from.split('-').map(Number);
+  const [ty, tm] = to.split('-').map(Number);
+  const fromStr = `${fy}-${String(fm).padStart(2,'0')}-01`;
+  const toStr = `${ty}-${String(tm).padStart(2,'0')}-${String(new Date(ty, tm, 0).getDate()).padStart(2,'0')}`;
+
+  document.getElementById('pr-summary').innerHTML = '';
+  document.getElementById('pr-chart').innerHTML = '<div class="empty">📥 売上・仕入データ取得中...</div>';
+  document.getElementById('pr-monthly').innerHTML = '<div class="empty">集計中...</div>';
+
+  try {
+    // 売上と仕入を並列で取得
+    const [salesRes, purchRes] = await Promise.all([
+      notionPost('/databases/' + SALES_DB + '/query', {
+        filter: { and: [
+          { property: '売上日', date: { on_or_after: fromStr } },
+          { property: '売上日', date: { on_or_before: toStr } },
+        ]},
+        page_size: 100,
+      }),
+      notionPost('/databases/' + PURCHASE_SLIP_DB + '/query', {
+        filter: { and: [
+          { property: '仕入日', date: { on_or_after: fromStr } },
+          { property: '仕入日', date: { on_or_before: toStr } },
+        ]},
+        page_size: 100,
+      }),
+    ]);
+
+    // 月別集計
+    const byMonth = new Map(); // YYYY-MM → { sales, purchase }
+    const addMonth = (ym, field, val) => {
+      if (!byMonth.has(ym)) byMonth.set(ym, { sales: 0, purchase: 0 });
+      byMonth.get(ym)[field] += val;
+    };
+
+    // 売上 1ページ目のみ仮集計、さらにページネーション
+    async function loadAll(firstRes, db, dateKey) {
+      const all = [...(firstRes.results || [])];
+      let cursor = firstRes.has_more ? firstRes.next_cursor : null;
+      while (cursor) {
+        const r = await notionPost('/databases/' + db + '/query', {
+          filter: { and: [
+            { property: dateKey, date: { on_or_after: fromStr } },
+            { property: dateKey, date: { on_or_before: toStr } },
+          ]},
+          page_size: 100,
+          start_cursor: cursor,
+        });
+        all.push(...(r.results || []));
+        cursor = r.has_more ? r.next_cursor : null;
+      }
+      return all;
+    }
+    const allSales = await loadAll(salesRes, SALES_DB, '売上日');
+    const allPurch = await loadAll(purchRes, PURCHASE_SLIP_DB, '仕入日');
+
+    for (const s of allSales) {
+      const ym = (s.properties['売上日']?.date?.start || '').slice(0, 7);
+      if (ym) addMonth(ym, 'sales', s.properties['税込合計']?.number || 0);
+    }
+    for (const p of allPurch) {
+      const ym = (p.properties['仕入日']?.date?.start || '').slice(0, 7);
+      if (ym) addMonth(ym, 'purchase', p.properties['税込合計']?.number || 0);
+    }
+
+    const ymList = [...byMonth.keys()].sort();
+    let totalS = 0, totalP = 0;
+    for (const ym of ymList) { const v = byMonth.get(ym); totalS += v.sales; totalP += v.purchase; }
+    const totalProfit = totalS - totalP;
+    const profitPct = totalS ? (totalProfit / totalS * 100) : 0;
+
+    document.getElementById('pr-summary').innerHTML = `
+      <div class="summary-cards">
+        <div class="summary-card"><div class="lbl">売上合計(税込)</div><div class="val">${fmtShortYen(totalS)}</div><div class="sub">${allSales.length}件</div></div>
+        <div class="summary-card"><div class="lbl">仕入合計(税込)</div><div class="val" style="color:var(--red);">${fmtShortYen(totalP)}</div><div class="sub">${allPurch.length}件</div></div>
+        <div class="summary-card"><div class="lbl">粗利</div><div class="val" style="color:${totalProfit>=0?'var(--green)':'var(--red)'};">${fmtShortYen(totalProfit)}</div><div class="sub">粗利率 ${profitPct.toFixed(1)}%</div></div>
+        <div class="summary-card"><div class="lbl">月平均粗利</div><div class="val">${fmtShortYen(totalProfit/Math.max(1, ymList.length))}</div><div class="sub">${ymList.length}ヶ月</div></div>
+      </div>
+    `;
+
+    // 月別棒グラフ(売上/仕入 ペア)
+    const maxAmount = Math.max(1, ...ymList.map(ym => Math.max(byMonth.get(ym).sales, byMonth.get(ym).purchase)));
+    document.getElementById('pr-chart').innerHTML = `
+      <div style="display:flex; gap:4px; align-items:flex-end; height:240px; padding:10px 0 30px; border-bottom:1px solid var(--border);">
+        ${ymList.map(ym => {
+          const v = byMonth.get(ym);
+          const profit = v.sales - v.purchase;
+          const hS = (v.sales / maxAmount) * 100;
+          const hP = (v.purchase / maxAmount) * 100;
+          return `
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; min-width:0;" title="${ym.replace('-','/')}: 売上 ${fmtJPY(v.sales)} / 仕入 ${fmtJPY(v.purchase)} / 粗利 ${fmtJPY(profit)}">
+              <div style="display:flex; gap:1px; width:100%; align-items:flex-end; height:100%;">
+                <div style="flex:1; background:linear-gradient(180deg, var(--accent), var(--accent2)); height:${hS}%; border-radius:3px 3px 0 0;"></div>
+                <div style="flex:1; background:linear-gradient(180deg, var(--red), #f87171); height:${hP}%; border-radius:3px 3px 0 0; opacity:0.85;"></div>
+              </div>
+              <div style="font-size:9px; color:var(--muted); transform:rotate(-30deg); transform-origin:center top; margin-top:6px;">${ym.slice(2).replace('-','/')}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      <div style="display:flex; gap:12px; justify-content:center; margin-top:12px; font-size:11px;">
+        <span><span style="display:inline-block; width:10px; height:10px; background:var(--accent); border-radius:2px; vertical-align:middle;"></span> 売上</span>
+        <span><span style="display:inline-block; width:10px; height:10px; background:var(--red); border-radius:2px; vertical-align:middle;"></span> 仕入</span>
+      </div>
+    `;
+
+    // 月別表
+    const rowsDesc = [...ymList].reverse();
+    document.getElementById('pr-monthly').innerHTML = `
+      <table class="mo-table">
+        <thead><tr>
+          <th>年月</th>
+          <th class="right">売上(税込)</th>
+          <th class="right">仕入(税込)</th>
+          <th class="right">粗利</th>
+          <th class="right">粗利率</th>
+        </tr></thead>
+        <tbody>
+        ${rowsDesc.map(ym => {
+          const v = byMonth.get(ym);
+          const profit = v.sales - v.purchase;
+          const pct = v.sales ? (profit / v.sales * 100) : 0;
+          const cls = profit >= 0 ? 'delta-up' : 'delta-down';
+          return `<tr>
+            <td>${ym.replace('-','/')}</td>
+            <td class="right">${fmtJPY(v.sales)}</td>
+            <td class="right" style="color:var(--red);">${fmtJPY(v.purchase)}</td>
+            <td class="right ${cls}">${fmtJPY(profit)}</td>
+            <td class="right ${cls}">${pct.toFixed(1)}%</td>
+          </tr>`;
+        }).join('')}
+        </tbody>
+        <tfoot>
+          <tr style="background:var(--s3); font-weight:900;">
+            <td>合計 (${ymList.length}ヶ月)</td>
+            <td class="right">${fmtJPY(totalS)}</td>
+            <td class="right" style="color:var(--red);">${fmtJPY(totalP)}</td>
+            <td class="right" style="color:${totalProfit>=0?'var(--green)':'var(--red)'};">${fmtJPY(totalProfit)}</td>
+            <td class="right" style="color:${totalProfit>=0?'var(--green)':'var(--red)'};">${profitPct.toFixed(1)}%</td>
+          </tr>
+        </tfoot>
+      </table>
+    `;
+  } catch(e) {
+    console.error(e);
+    document.getElementById('pr-chart').innerHTML = '<div class="empty">取得失敗: ' + escHtml(e.message || e) + '</div>';
   }
 }
 

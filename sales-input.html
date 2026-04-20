@@ -425,16 +425,21 @@ body::-webkit-scrollbar { display:none; }
       <button class="nav-item coming" disabled><span class="icon">📥</span>仕入れ入力</button>
       <button class="nav-item coming" disabled><span class="icon">🆕</span>新規導入入力</button>
 
-      <div class="nav-section">🔍 確認・分析</div>
+      <div class="nav-section">🔍 確認・検索</div>
       <button class="nav-item" data-page="search" onclick="showPage('search')"><span class="icon">🔎</span>伝票検索</button>
       <button class="nav-item" data-page="recent" onclick="showPage('recent')"><span class="icon">📋</span>最近の入力</button>
+
+      <div class="nav-section">📊 分析・集計</div>
       <button class="nav-item" data-page="monthly" onclick="showPage('monthly')"><span class="icon">📈</span>月次集計</button>
       <button class="nav-item" data-page="by-customer" onclick="showPage('by-customer')"><span class="icon">📑</span>得意先別集計</button>
       <button class="nav-item" data-page="by-product" onclick="showPage('by-product')"><span class="icon">🛞</span>商品別集計</button>
       <button class="nav-item" data-page="purchase" onclick="showPage('purchase')"><span class="icon">📥</span>仕入集計</button>
       <button class="nav-item" data-page="profit" onclick="showPage('profit')"><span class="icon">💎</span>粗利分析</button>
+
+      <div class="nav-section">🗃 マスタ管理</div>
       <button class="nav-item" data-page="vehicles" onclick="showPage('vehicles')"><span class="icon">🚚</span>車両マスタ</button>
       <button class="nav-item" data-page="customers" onclick="showPage('customers')"><span class="icon">👥</span>得意先マスタ</button>
+      <a class="nav-item" href="customer-portal.html" target="_blank" style="opacity:0.8;"><span class="icon">🌐</span>顧客ポータル(空)</a>
 
       <div class="nav-section">⚙️ 設定</div>
       <button class="nav-item" data-page="drafts" onclick="showPage('drafts')"><span class="icon">📋</span>下書き一覧 <span class="badge" id="draft-badge" style="display:none;">0</span></button>

@@ -337,6 +337,24 @@ body::-webkit-scrollbar { display:none; }
 .summary-card .lbl { font-size:10px; color:var(--muted); font-weight:700; }
 .summary-card .val { font-size:20px; font-weight:900; color:var(--accent); margin-top:3px; font-feature-settings:'tnum'; }
 .summary-card .sub { font-size:10px; color:var(--muted); margin-top:2px; }
+
+/* 検索チップ */
+.hinmoku-chip { display:inline-flex; align-items:center; padding:5px 10px; background:var(--s3); border:1px solid var(--border); border-radius:14px; font-size:11px; cursor:pointer; user-select:none; }
+.hinmoku-chip.on { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:700; }
+.hinmoku-chip:hover:not(.on) { background:var(--s2); }
+
+/* 検索結果の明細展開行 */
+.sr-row { cursor:pointer; }
+.sr-detail-row td { background:var(--s1); padding:0; border-bottom:0.5px solid var(--border); }
+.sr-detail-wrap { padding:10px 16px 14px; background:linear-gradient(180deg, rgba(240,165,0,0.05), transparent); }
+.sr-detail-table { width:100%; border-collapse:collapse; font-size:11px; }
+.sr-detail-table th { background:var(--s2); padding:5px 8px; text-align:left; color:var(--muted); font-size:10px; font-weight:700; }
+.sr-detail-table th.right { text-align:right; }
+.sr-detail-table td { padding:5px 8px; border-bottom:0.5px solid var(--border); }
+.sr-detail-table td.right { text-align:right; }
+.sr-detail-table tr:last-child td { border:none; }
+.sr-match-hit { background:rgba(240,165,0,0.15); font-weight:700; }
+.sr-actions { display:flex; gap:10px; margin-top:8px; font-size:11px; }
 </style>
 </head>
 <body>
@@ -542,41 +560,67 @@ body::-webkit-scrollbar { display:none; }
       </div>
     </div>
 
-    <!-- ════════════ 伝票検索 ════════════ -->
+    <!-- ════════════ 伝票検索（強化版） ════════════ -->
     <div class="page" id="page-search">
       <div class="page-header">
         <div>
           <div class="page-title">🔎 伝票検索</div>
-          <div class="page-sub">車番・得意先・期間で検索</div>
+          <div class="page-sub">得意先・車番・サイズ・品目・日付・担当者で横断検索</div>
         </div>
       </div>
       <div class="card">
         <div class="form-grid cols-4">
           <div class="form-row">
+            <div class="form-label">🚚 得意先名</div>
+            <input type="text" id="search-customer" class="form-input" placeholder="名前・略称（部分一致）">
+          </div>
+          <div class="form-row">
             <div class="form-label">🚗 車番</div>
-            <input type="text" id="search-car" class="form-input" placeholder="車番（4桁以上）">
+            <input type="text" id="search-car" class="form-input" placeholder="3415 / 34-15 どちらでも">
           </div>
           <div class="form-row">
-            <div class="form-label">🚚 得意先</div>
-            <input type="text" id="search-customer" class="form-input" placeholder="得意先名">
+            <div class="form-label">📐 タイヤサイズ</div>
+            <input type="text" id="search-size" class="form-input" placeholder="245/70R19.5 等（部分一致）">
           </div>
           <div class="form-row">
-            <div class="form-label">期間 開始</div>
+            <div class="form-label">🏷 銘柄</div>
+            <input type="text" id="search-brand" class="form-input" placeholder="M646 等（部分一致）">
+          </div>
+        </div>
+        <div class="form-grid cols-4" style="margin-top:12px;">
+          <div class="form-row">
+            <div class="form-label">📅 期間 開始</div>
             <input type="date" id="search-from" class="form-input">
           </div>
           <div class="form-row">
-            <div class="form-label">期間 終了</div>
+            <div class="form-label">📅 期間 終了</div>
             <input type="date" id="search-to" class="form-input">
           </div>
+          <div class="form-row">
+            <div class="form-label">👤 担当者</div>
+            <select id="search-staff" class="form-select"><option value="">（すべて）</option></select>
+          </div>
+          <div class="form-row">
+            <div class="form-label">💰 金額 範囲（税込）</div>
+            <div style="display:flex;gap:4px;">
+              <input type="number" id="search-amt-min" class="form-input" placeholder="最小" style="flex:1;">
+              <input type="number" id="search-amt-max" class="form-input" placeholder="最大" style="flex:1;">
+            </div>
+          </div>
         </div>
-        <div style="display:flex;gap:8px;margin-top:14px;">
+        <div style="margin-top:12px;">
+          <div class="form-label" style="margin-bottom:6px;">🏷 品目（区分） — 複数選択可</div>
+          <div id="search-hinmoku-chips" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px;align-items:center;">
           <button class="btn btn-primary" onclick="execSearch()">🔍 検索実行</button>
           <button class="btn btn-secondary" onclick="clearSearch()">クリア</button>
+          <div id="search-summary" style="margin-left:auto;font-size:12px;color:var(--muted);"></div>
         </div>
       </div>
       <div class="card">
         <div class="card-title">検索結果</div>
-        <div id="search-results-area"><div class="empty">検索条件を入力して「検索実行」をクリック</div></div>
+        <div id="search-results-area"><div class="empty">条件を入力して「検索実行」</div></div>
       </div>
     </div>
 
@@ -791,6 +835,7 @@ function showPage(page) {
   if (page === 'monthly') loadMonthly();
   if (page === 'by-customer') initByCustomerIfNeeded();
   if (page === 'by-product') initByProductIfNeeded();
+  if (page === 'search') initSearchIfNeeded();
   if (page === 'drafts') renderDrafts();
   if (page === 'sales') { ensureYayoiRows(); setTimeout(() => { const el = document.getElementById('input-customer'); if (el && !el.value) el.focus(); }, 100); }
   window.scrollTo(0, 0);
@@ -1622,9 +1667,9 @@ function renderBcRanking(sorted, totalAmt) {
     const rkIcon = rk === 1 ? '🥇' : rk === 2 ? '🥈' : rk === 3 ? '🥉' : '#' + rk;
     const rkCls = rk === 1 ? 'gold' : rk === 2 ? 'silver' : rk === 3 ? 'bronze' : '';
     return `
-      <div class="mo-row">
+      <div class="mo-row" style="cursor:pointer;" onclick="jumpToSearchByCustomer(${JSON.stringify(name).replace(/"/g,'&quot;')})" title="クリックで検索画面を開く">
         <div class="rk ${rkCls}">${rkIcon}</div>
-        <div class="nm" title="${escHtml(name)}">${escHtml(name)}<div style="font-size:9px;color:var(--muted);">${v.count}伝票 · 月平均${fmtShortYen(v.total / Math.max(1, v.perYm.size))}</div></div>
+        <div class="nm" title="${escHtml(name)}">${escHtml(name)}<div style="font-size:9px;color:var(--muted);">${v.count}伝票 · 月平均${fmtShortYen(v.total / Math.max(1, v.perYm.size))} · 🔎 明細を見る</div></div>
         <div class="mini-bar"><div class="fill" style="width:${(v.total / maxAmt) * 100}%;"></div></div>
         <div class="am">${fmtShortYen(v.total)}</div>
         <div class="pct">${((v.total / totalAmt) * 100).toFixed(1)}%</div>
@@ -1784,61 +1829,245 @@ function renderCategoriesFromDetails(details) {
 }
 
 /* ════════════════════════════════════════
-   伝票検索
+   伝票検索（強化版）
    ═══════════════════════════════════════ */
+const SEARCH_HINMOKU = [...HINMOKU_OPTIONS];
+let searchSelectedHinmoku = new Set();
+let searchInitialized = false;
+function initSearchIfNeeded() {
+  if (searchInitialized) return;
+  searchInitialized = true;
+  // 品目チップ
+  const chipsEl = document.getElementById('search-hinmoku-chips');
+  chipsEl.innerHTML = SEARCH_HINMOKU.map(h =>
+    `<div class="hinmoku-chip" data-h="${escHtml(h)}" onclick="toggleHinmokuChip('${escHtml(h)}')">${escHtml(h)}</div>`
+  ).join('');
+  // 担当者
+  const staffSel = document.getElementById('search-staff');
+  staffSel.innerHTML = '<option value="">（すべて）</option>' + state.employees.map(e => `<option value="${escHtml(e)}">${escHtml(e)}</option>`).join('');
+}
+function toggleHinmokuChip(h) {
+  if (searchSelectedHinmoku.has(h)) searchSelectedHinmoku.delete(h); else searchSelectedHinmoku.add(h);
+  document.querySelectorAll('.hinmoku-chip').forEach(el => {
+    el.classList.toggle('on', searchSelectedHinmoku.has(el.dataset.h));
+  });
+}
+
 async function execSearch() {
   const car = document.getElementById('search-car').value.trim();
   const cust = document.getElementById('search-customer').value.trim();
+  const size = document.getElementById('search-size').value.trim();
+  const brand = document.getElementById('search-brand').value.trim();
   const from = document.getElementById('search-from').value;
   const to = document.getElementById('search-to').value;
-  const filters = [];
-  if (from) filters.push({ property: '売上日', date: { on_or_after: from } });
-  if (to) filters.push({ property: '売上日', date: { on_or_before: to } });
-  if (car) filters.push({ property: '車番', rich_text: { contains: car } });
-  if (!filters.length) { showToast('条件を1つ以上入力してください'); return; }
+  const staff = document.getElementById('search-staff').value;
+  const amtMin = parseInt(document.getElementById('search-amt-min').value) || null;
+  const amtMax = parseInt(document.getElementById('search-amt-max').value) || null;
+  const hinSet = new Set(searchSelectedHinmoku);
+
+  const hasAnyFilter = car || cust || size || brand || from || to || staff || amtMin || amtMax || hinSet.size;
+  if (!hasAnyFilter) { showToast('検索条件を1つ以上入力してください'); return; }
+
   const el = document.getElementById('search-results-area');
-  el.innerHTML = '<div class="empty">検索中...</div>';
+  el.innerHTML = '<div class="empty">🔍 検索中...</div>';
+  document.getElementById('search-summary').textContent = '';
+
   try {
-    const body = filters.length === 1 ? { filter: filters[0] } : { filter: { and: filters } };
-    body.sorts = [{ property: '売上日', direction: 'descending' }];
-    body.page_size = 100;
-    const r = await notionPost('/databases/' + SALES_DB + '/query', body);
-    let results = (r.results || []).map(p => ({
+    const useDetailFilter = size || brand || hinSet.size;
+    let slipIds = null; // 明細側でフィルタする場合のIDリスト
+
+    if (useDetailFilter) {
+      // DETAIL_DB を filter → unique slip IDs
+      const detailFilters = [];
+      if (size)   detailFilters.push({ property: 'タイヤサイズ', rich_text: { contains: size } });
+      if (brand)  detailFilters.push({ property: 'タイヤ銘柄',   rich_text: { contains: brand } });
+      if (hinSet.size) {
+        const arr = [...hinSet];
+        detailFilters.push(arr.length === 1
+          ? { property: '品目', select: { equals: arr[0] } }
+          : { or: arr.map(h => ({ property: '品目', select: { equals: h } })) });
+      }
+      const dFilter = detailFilters.length === 1 ? detailFilters[0] : { and: detailFilters };
+      const details = [];
+      let cursor = null;
+      el.innerHTML = '<div class="empty">🔍 明細を検索中...</div>';
+      do {
+        const body = { filter: dFilter, page_size: 100 };
+        if (cursor) body.start_cursor = cursor;
+        const r = await notionPost('/databases/' + DETAIL_DB + '/query', body);
+        details.push(...(r.results || []));
+        cursor = r.has_more ? r.next_cursor : null;
+      } while (cursor);
+      slipIds = [...new Set(details.map(d => d.properties['売上伝票']?.relation?.[0]?.id).filter(Boolean))];
+      if (!slipIds.length) { el.innerHTML = '<div class="empty">該当明細なし</div>'; return; }
+      el.innerHTML = `<div class="empty">🔍 明細 ${details.length} 件ヒット → 伝票 ${slipIds.length} 件取得中...</div>`;
+    }
+
+    // SALES_DB を取得
+    let slips;
+    if (slipIds && slipIds.length) {
+      // 伝票ID指定で取得（Notionは ID の in filter 無いので個別取得）
+      slips = [];
+      const BATCH = 30;
+      for (let i = 0; i < slipIds.length; i += BATCH) {
+        const batch = slipIds.slice(i, i + BATCH);
+        // "伝票タイトル"をバッチで取れないので、pagesから1件ずつ or contains ID で相当 → Notion は page 個別取得 API あり
+        // 代案: or contains で relation 検索でも効く → ただし slip 自体にはself relationない
+        // シンプルに: 全伝票の一括取得（slipIdsセットでフィルタ）は Notion filter で対応
+        // 売上伝票DBには page ID filter プロパティが無いため、各ページを `/pages/<id>` で取得
+        const ps = await Promise.all(batch.map(id => notionPost('/pages/' + id).catch(e => { console.error(e); return null; })));
+        slips.push(...ps.filter(Boolean));
+      }
+    } else {
+      // filter で SALES_DB query
+      const sFilters = [];
+      if (from) sFilters.push({ property: '売上日', date: { on_or_after: from } });
+      if (to)   sFilters.push({ property: '売上日', date: { on_or_before: to } });
+      if (car) {
+        const variants = carSearchVariants(car);
+        sFilters.push(variants.length === 1
+          ? { property: '車番', rich_text: { contains: variants[0] } }
+          : { or: variants.map(v => ({ property: '車番', rich_text: { contains: v } })) });
+      }
+      if (staff) sFilters.push({ property: '担当者', select: { equals: staff } });
+      const body = { sorts: [{ property: '売上日', direction: 'descending' }], page_size: 100 };
+      if (sFilters.length === 1) body.filter = sFilters[0];
+      else if (sFilters.length > 1) body.filter = { and: sFilters };
+      slips = [];
+      let cursor = null;
+      do {
+        const b = { ...body };
+        if (cursor) b.start_cursor = cursor;
+        const r = await notionPost('/databases/' + SALES_DB + '/query', b);
+        slips.push(...(r.results || []));
+        if (slips.length >= 500) break; // 安全弁
+        cursor = r.has_more ? r.next_cursor : null;
+      } while (cursor);
+    }
+
+    // 伝票側の追加フィルタ（クライアント側）
+    let results = slips.map(p => ({
       id: p.id,
       title: p.properties['伝票タイトル']?.title?.[0]?.plain_text || '',
       date: p.properties['売上日']?.date?.start || '',
       amount: p.properties['税込合計']?.number || 0,
+      zeinuki: p.properties['税抜合計']?.number || 0,
       car: p.properties['車番']?.rich_text?.[0]?.plain_text || '',
       staff: p.properties['担当者']?.select?.name || '',
+      worktype: p.properties['作業区分']?.select?.name || '',
     }));
-    if (cust) {
-      const lc = cust.toLowerCase();
-      results = results.filter(r => r.title.toLowerCase().includes(lc));
+    // 明細側から来た場合は 伝票側フィルタも適用
+    if (slipIds) {
+      if (from) results = results.filter(r => !r.date || r.date >= from);
+      if (to) results = results.filter(r => !r.date || r.date <= to);
+      if (car) {
+        const variants = carSearchVariants(car);
+        results = results.filter(r => variants.some(v => (r.car || '').includes(v)));
+      }
+      if (staff) results = results.filter(r => r.staff === staff);
     }
+    if (cust) {
+      const lq = toHira(cust);
+      results = results.filter(r => toHira(r.title).includes(lq));
+    }
+    if (amtMin !== null) results = results.filter(r => r.amount >= amtMin);
+    if (amtMax !== null) results = results.filter(r => r.amount <= amtMax);
+
+    results.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
     if (!results.length) { el.innerHTML = '<div class="empty">該当伝票なし</div>'; return; }
+
+    const total = results.reduce((s, r) => s + r.amount, 0);
+    document.getElementById('search-summary').innerHTML = `<b style="color:var(--accent);">${results.length}件</b> · 税込合計 <b style="color:var(--accent);">${fmtJPY(total)}</b>`;
+
     el.innerHTML = `
-      <div style="margin-bottom:8px;font-size:11px;color:var(--muted);">${results.length}件 ヒット</div>
       <table class="list-table">
-        <thead><tr><th>日付</th><th>タイトル</th><th>車番</th><th>担当</th><th class="right">税込</th></tr></thead>
+        <thead><tr><th style="width:30px;"></th><th>日付</th><th>タイトル</th><th>車番</th><th>担当</th><th>作業区分</th><th class="right">税込</th></tr></thead>
         <tbody>
         ${results.map(s => `
-          <tr class="clickable" onclick="window.open('https://www.notion.so/${s.id.replace(/-/g,'')}', '_blank')">
+          <tr class="sr-row clickable" onclick="toggleSearchDetail('${s.id}', this)" data-id="${s.id}">
+            <td style="text-align:center;color:var(--muted);" id="caret-${s.id.replace(/-/g,'')}">▶</td>
             <td>${s.date}</td>
             <td>${escHtml(s.title)}</td>
             <td>${escHtml(s.car || '-')}</td>
             <td>${escHtml(s.staff || '-')}</td>
+            <td>${escHtml(s.worktype || '-')}</td>
             <td class="right amount">${fmtYen(s.amount)}</td>
           </tr>
         `).join('')}
         </tbody>
       </table>
     `;
-  } catch(e) { console.error(e); el.innerHTML = '<div class="empty">検索失敗</div>'; }
+  } catch(e) {
+    console.error(e);
+    el.innerHTML = '<div class="empty">検索失敗: ' + escHtml(e.message || e) + '</div>';
+  }
 }
+
+async function toggleSearchDetail(slipId, tr) {
+  // 次の行が展開行ならたたむ
+  const nextRow = tr.nextElementSibling;
+  if (nextRow && nextRow.classList.contains('sr-detail-row')) {
+    nextRow.remove();
+    const caret = document.getElementById('caret-' + slipId.replace(/-/g,''));
+    if (caret) caret.textContent = '▶';
+    return;
+  }
+  // 展開
+  const caret = document.getElementById('caret-' + slipId.replace(/-/g,''));
+  if (caret) caret.textContent = '▼';
+  const newRow = document.createElement('tr');
+  newRow.className = 'sr-detail-row';
+  newRow.innerHTML = `<td colspan="7"><div class="sr-detail-wrap"><div style="color:var(--muted);font-size:11px;">📥 明細取得中...</div></div></td>`;
+  tr.parentNode.insertBefore(newRow, tr.nextSibling);
+  try {
+    const details = await queryDetailsBySlipIds([slipId]);
+    const hinHighlight = searchSelectedHinmoku;
+    const size = document.getElementById('search-size').value.trim().toLowerCase();
+    const brand = document.getElementById('search-brand').value.trim().toLowerCase();
+    const rows = details.map(d => {
+      const hin = d.properties['品目']?.select?.name || '';
+      const cd = d.properties['商品コード']?.rich_text?.[0]?.plain_text || '';
+      const sz = d.properties['タイヤサイズ']?.rich_text?.[0]?.plain_text || '';
+      const br = d.properties['タイヤ銘柄']?.rich_text?.[0]?.plain_text || '';
+      const qty = d.properties['数量']?.number || 0;
+      const tanka = d.properties['単価']?.number || 0;
+      const zk = d.properties['税込小計']?.number || 0;
+      const memo = d.properties['備考']?.rich_text?.[0]?.plain_text || '';
+      const hit = (hinHighlight.has(hin)) || (size && sz.toLowerCase().includes(size)) || (brand && br.toLowerCase().includes(brand));
+      return `<tr class="${hit ? 'sr-match-hit' : ''}"><td>${escHtml(hin)}</td><td>${escHtml(cd)}</td><td>${escHtml(sz)}</td><td>${escHtml(br)}</td><td class="right">${qty}</td><td class="right">${fmtYen(tanka)}</td><td class="right">${fmtYen(zk)}</td><td>${escHtml(memo)}</td></tr>`;
+    }).join('');
+    newRow.querySelector('.sr-detail-wrap').innerHTML = `
+      <table class="sr-detail-table">
+        <thead><tr><th>品目</th><th>コード</th><th>サイズ</th><th>銘柄</th><th class="right">数量</th><th class="right">単価</th><th class="right">税込</th><th>備考</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="8" style="text-align:center;color:var(--muted);">明細なし</td></tr>'}</tbody>
+      </table>
+      <div class="sr-actions">
+        <button class="btn-link" onclick="window.open('https://www.notion.so/${slipId.replace(/-/g,'')}', '_blank')">🔗 Notionで開く</button>
+        <span style="color:var(--muted);font-size:10px;">${details.length} 明細</span>
+      </div>
+    `;
+  } catch(e) {
+    console.error(e);
+    newRow.querySelector('.sr-detail-wrap').innerHTML = '<div style="color:var(--red);">明細取得失敗</div>';
+  }
+}
+
 function clearSearch() {
-  document.getElementById('search-car').value = '';
-  document.getElementById('search-customer').value = '';
-  document.getElementById('search-results-area').innerHTML = '<div class="empty">検索条件を入力して「検索実行」をクリック</div>';
+  ['search-car','search-customer','search-size','search-brand','search-from','search-to','search-amt-min','search-amt-max'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('search-staff').value = '';
+  searchSelectedHinmoku.clear();
+  document.querySelectorAll('.hinmoku-chip').forEach(el => el.classList.remove('on'));
+  document.getElementById('search-results-area').innerHTML = '<div class="empty">条件を入力して「検索実行」</div>';
+  document.getElementById('search-summary').textContent = '';
+}
+
+// 得意先別集計のランキングから検索へジャンプ
+function jumpToSearchByCustomer(name) {
+  showPage('search');
+  initSearchIfNeeded();
+  document.getElementById('search-customer').value = name;
+  execSearch();
 }
 
 /* ════════════════════════════════════════

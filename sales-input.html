@@ -305,6 +305,37 @@ body::-webkit-scrollbar { display:none; }
 .mo-table .delta-up { color:var(--green); font-weight:700; }
 .mo-table .delta-down { color:var(--red); font-weight:700; }
 .mo-table .delta-flat { color:var(--muted); }
+
+/* 期間ピッカー & タブ */
+.range-picker { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px; align-items:end; }
+.tag-btn { padding:6px 12px; background:var(--s3); border:1px solid var(--border); border-radius:16px; font-size:11px; cursor:pointer; color:var(--text); font-family:inherit; }
+.tag-btn:hover { background:var(--s2); }
+.tag-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:700; }
+
+/* ピボット表 */
+.pivot-wrap { overflow-x:auto; max-height:600px; overflow-y:auto; }
+.pivot-table { min-width:100%; border-collapse:separate; border-spacing:0; font-size:11px; font-feature-settings:'tnum'; }
+.pivot-table thead th { position:sticky; top:0; background:var(--s3); padding:6px 8px; z-index:2; border-bottom:1px solid var(--border); font-weight:700; font-size:10px; white-space:nowrap; }
+.pivot-table th.right { text-align:right; }
+.pivot-table td { padding:5px 8px; border-bottom:0.5px solid var(--border); white-space:nowrap; }
+.pivot-table td.right { text-align:right; }
+.pivot-table td.name { max-width:220px; overflow:hidden; text-overflow:ellipsis; position:sticky; left:0; background:var(--s1); z-index:1; }
+.pivot-table thead th.name-col { position:sticky; left:0; z-index:3; }
+.pivot-table tr:hover td { background:var(--s2); }
+.pivot-table tr:hover td.name { background:var(--s2); }
+.pivot-table .total-col { background:rgba(240,165,0,0.08); font-weight:700; color:var(--accent); }
+.pivot-table tfoot td { background:var(--s3); font-weight:900; border-top:2px solid var(--accent); }
+.pivot-heat-0 { color:var(--muted); }
+.pivot-heat-1 { background:rgba(240,165,0,0.05); }
+.pivot-heat-2 { background:rgba(240,165,0,0.12); }
+.pivot-heat-3 { background:rgba(240,165,0,0.22); font-weight:700; }
+.pivot-heat-4 { background:rgba(240,165,0,0.35); font-weight:700; color:#fff; }
+
+.summary-cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-bottom:14px; }
+.summary-card { background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
+.summary-card .lbl { font-size:10px; color:var(--muted); font-weight:700; }
+.summary-card .val { font-size:20px; font-weight:900; color:var(--accent); margin-top:3px; font-feature-settings:'tnum'; }
+.summary-card .sub { font-size:10px; color:var(--muted); margin-top:2px; }
 </style>
 </head>
 <body>
@@ -331,8 +362,9 @@ body::-webkit-scrollbar { display:none; }
       <button class="nav-item" data-page="search" onclick="showPage('search')"><span class="icon">🔎</span>伝票検索</button>
       <button class="nav-item" data-page="recent" onclick="showPage('recent')"><span class="icon">📋</span>最近の入力</button>
       <button class="nav-item" data-page="monthly" onclick="showPage('monthly')"><span class="icon">📈</span>月次集計</button>
-      <button class="nav-item coming" disabled><span class="icon">📑</span>得意先別集計</button>
-      <button class="nav-item coming" disabled><span class="icon">🛞</span>商品別集計</button>
+      <button class="nav-item" data-page="by-customer" onclick="showPage('by-customer')"><span class="icon">📑</span>得意先別集計</button>
+      <button class="nav-item" data-page="by-product" onclick="showPage('by-product')"><span class="icon">🛞</span>商品別集計</button>
+      <button class="nav-item" data-page="purchase" onclick="showPage('purchase')"><span class="icon">📥</span>仕入集計</button>
 
       <div class="nav-section">⚙️ 設定</div>
       <button class="nav-item" data-page="drafts" onclick="showPage('drafts')"><span class="icon">📋</span>下書き一覧 <span class="badge" id="draft-badge" style="display:none;">0</span></button>
@@ -613,6 +645,83 @@ body::-webkit-scrollbar { display:none; }
       </div>
     </div>
 
+    <!-- ════════════ 得意先別集計 ════════════ -->
+    <div class="page" id="page-by-customer">
+      <div class="page-header">
+        <div>
+          <div class="page-title">📑 得意先別集計</div>
+          <div class="page-sub">期間内の得意先別売上ランキング＋月別ピボット</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="range-picker">
+          <div class="form-row"><div class="form-label">期間 開始</div><input type="month" id="bc-from" class="form-input"></div>
+          <div class="form-row"><div class="form-label">期間 終了</div><input type="month" id="bc-to" class="form-input"></div>
+          <div class="form-row" style="align-self:end;"><button class="btn btn-primary" onclick="loadByCustomer()">🔍 集計実行</button></div>
+          <div class="form-row" style="align-self:end;"><button class="btn btn-secondary" onclick="quickRange('bc','last12')">直近12ヶ月</button></div>
+          <div class="form-row" style="align-self:end;"><button class="btn btn-secondary" onclick="quickRange('bc','thisfy')">今年度</button></div>
+          <div class="form-row" style="align-self:end;"><button class="btn btn-secondary" onclick="quickRange('bc','lastfy')">前年度</button></div>
+        </div>
+      </div>
+      <div id="bc-summary"></div>
+      <div class="card">
+        <div class="card-title">🏆 得意先ランキング</div>
+        <div id="bc-ranking"><div class="empty">期間を指定して「集計実行」</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📊 月別ピボット（得意先×月）</div>
+        <div id="bc-pivot"><div class="empty">集計実行後に表示</div></div>
+      </div>
+    </div>
+
+    <!-- ════════════ 商品別集計 ════════════ -->
+    <div class="page" id="page-by-product">
+      <div class="page-header">
+        <div>
+          <div class="page-title">🛞 商品別集計</div>
+          <div class="page-sub">期間内の商品別実績（カテゴリ/品目/銘柄/サイズでタグ分け）</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="range-picker">
+          <div class="form-row"><div class="form-label">期間 開始</div><input type="month" id="bp-from" class="form-input"></div>
+          <div class="form-row"><div class="form-label">期間 終了</div><input type="month" id="bp-to" class="form-input"></div>
+          <div class="form-row" style="align-self:end;"><button class="btn btn-primary" onclick="loadByProduct()">🔍 集計実行</button></div>
+          <div class="form-row" style="align-self:end;"><button class="btn btn-secondary" onclick="quickRange('bp','last3')">直近3ヶ月</button></div>
+          <div class="form-row" style="align-self:end;"><button class="btn btn-secondary" onclick="quickRange('bp','last12')">直近12ヶ月</button></div>
+          <div class="form-row" style="align-self:end;"><button class="btn btn-secondary" onclick="quickRange('bp','thisfy')">今年度</button></div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;" id="bp-tabs"></div>
+      </div>
+      <div id="bp-summary"></div>
+      <div class="card">
+        <div class="card-title" id="bp-main-title">🏆 内訳</div>
+        <div id="bp-ranking"><div class="empty">期間を指定して「集計実行」</div></div>
+      </div>
+    </div>
+
+    <!-- ════════════ 仕入集計 ════════════ -->
+    <div class="page" id="page-purchase">
+      <div class="page-header">
+        <div>
+          <div class="page-title">📥 仕入集計</div>
+          <div class="page-sub">仕入先別・期間別の集計</div>
+        </div>
+      </div>
+      <div class="card" style="text-align:center;padding:48px 20px;">
+        <div style="font-size:48px;margin-bottom:16px;">📥</div>
+        <div style="font-size:16px;font-weight:700;margin-bottom:8px;">仕入データ取り込み予定</div>
+        <div style="color:var(--muted);font-size:12px;line-height:1.8;">
+          2026/4/19 22:00 以降、仕入明細Excelの取り込み作業を実施します。<br>
+          取り込み完了後、このページで以下が見られるようになります：<br><br>
+          ✓ 仕入先別ランキング（TOYO/BRIDGESTONE/DUNLOP/MICHELIN/PIRELLI等）<br>
+          ✓ 月別推移＋売上との粗利計算<br>
+          ✓ 適格請求書フラグでの区分け<br>
+          ✓ 商品別 仕入→売上 の紐付け分析
+        </div>
+      </div>
+    </div>
+
     <!-- ════════════ 下書き一覧 ════════════ -->
     <div class="page" id="page-drafts">
       <div class="page-header">
@@ -679,6 +788,8 @@ function showPage(page) {
   // ページ固有の初期化
   if (page === 'recent') loadRecentSlips(true);
   if (page === 'monthly') loadMonthly();
+  if (page === 'by-customer') initByCustomerIfNeeded();
+  if (page === 'by-product') initByProductIfNeeded();
   if (page === 'drafts') renderDrafts();
   if (page === 'sales') { ensureYayoiRows(); setTimeout(() => { const el = document.getElementById('input-customer'); if (el && !el.value) el.focus(); }, 100); }
   window.scrollTo(0, 0);
@@ -898,11 +1009,14 @@ async function queryDetailsByDate(fromStr, toStr) {
 async function loadMonthly() {
   const months = parseInt(document.getElementById('mo-range')?.value || '24');
   const today = new Date();
-  const fromDate = new Date(today.getFullYear(), today.getMonth() - (months - 1), 1);
-  const fromStr = fromDate.toISOString().slice(0,10);
+  // 表示は months ヶ月、但し前年同月比を全期間に出すため +12ヶ月前から取得
+  const displayFrom = new Date(today.getFullYear(), today.getMonth() - (months - 1), 1);
+  const fetchFrom = new Date(today.getFullYear(), today.getMonth() - (months - 1) - 12, 1);
+  const fromStr = fetchFrom.toISOString().slice(0,10);
+  const displayFromYm = displayFrom.toISOString().slice(0,7);
 
   // リセット
-  document.getElementById('mo-hero').innerHTML = '<div class="mo-hero-skeleton">📥 ' + months + 'ヶ月分の伝票を取得中...</div>';
+  document.getElementById('mo-hero').innerHTML = '<div class="mo-hero-skeleton">📥 ' + months + 'ヶ月 + 前年比用12ヶ月 = 計' + (months + 12) + 'ヶ月分の伝票を取得中...</div>';
   document.getElementById('mo-kpi').innerHTML = '';
   document.getElementById('mo-chart').innerHTML = '<div class="empty">集計中...</div>';
   document.getElementById('mo-categories').innerHTML = '<div class="empty">集計中...</div>';
@@ -926,7 +1040,9 @@ async function loadMonthly() {
       b.slips.push(p);
     }
 
-    const ymList = [...buckets.keys()].sort();
+    // 表示は displayFromYm 以降のみ（bucketsには前年分も含まれる）
+    const allYmList = [...buckets.keys()].sort();
+    const ymList = allYmList.filter(ym => ym >= displayFromYm);
     const ymCurrent = today.toISOString().slice(0,7);
     const ymPrev = (() => { const d = new Date(today.getFullYear(), today.getMonth() - 1, 1); return d.toISOString().slice(0,7); })();
     const ymYoY = (() => { const d = new Date(today.getFullYear() - 1, today.getMonth(), 1); return d.toISOString().slice(0,7); })();
@@ -1154,6 +1270,257 @@ function renderTopCustomersFromSlips(ym, slips) {
       </div>
     `;
   }).join('');
+}
+
+/* ═══════════ 期間ピッカー ヘルパ ═══════════ */
+function quickRange(prefix, mode) {
+  const today = new Date();
+  let from, to;
+  if (mode === 'last3') { from = new Date(today.getFullYear(), today.getMonth() - 2, 1); to = today; }
+  else if (mode === 'last12') { from = new Date(today.getFullYear(), today.getMonth() - 11, 1); to = today; }
+  else if (mode === 'thisfy') {
+    // 日本の年度: 4月始まり
+    const y = today.getMonth() >= 3 ? today.getFullYear() : today.getFullYear() - 1;
+    from = new Date(y, 3, 1); to = new Date(y + 1, 2, 31);
+  }
+  else if (mode === 'lastfy') {
+    const y = today.getMonth() >= 3 ? today.getFullYear() - 1 : today.getFullYear() - 2;
+    from = new Date(y, 3, 1); to = new Date(y + 1, 2, 31);
+  }
+  document.getElementById(prefix + '-from').value = from.toISOString().slice(0, 7);
+  document.getElementById(prefix + '-to').value = to.toISOString().slice(0, 7);
+  if (prefix === 'bc') loadByCustomer();
+  else if (prefix === 'bp') loadByProduct();
+}
+function initByCustomerIfNeeded() {
+  const f = document.getElementById('bc-from'), t = document.getElementById('bc-to');
+  if (!f.value) { quickRange('bc', 'last12'); }
+}
+function initByProductIfNeeded() {
+  const f = document.getElementById('bp-from'), t = document.getElementById('bp-to');
+  if (!f.value) { renderBpTabs(); quickRange('bp', 'last3'); }
+}
+function rangeToStrs(prefix) {
+  const f = document.getElementById(prefix + '-from').value || '';
+  const t = document.getElementById(prefix + '-to').value || '';
+  if (!f || !t) return null;
+  const [fy, fm] = f.split('-').map(Number);
+  const [ty, tm] = t.split('-').map(Number);
+  const fromStr = `${fy}-${String(fm).padStart(2,'0')}-01`;
+  const toStr = `${ty}-${String(tm).padStart(2,'0')}-${String(new Date(ty, tm, 0).getDate()).padStart(2,'0')}`;
+  // 月の一覧
+  const ymList = [];
+  let y = fy, m = fm;
+  while (y < ty || (y === ty && m <= tm)) {
+    ymList.push(`${y}-${String(m).padStart(2,'0')}`);
+    m++; if (m > 12) { m = 1; y++; }
+  }
+  return { fromStr, toStr, ymList };
+}
+
+async function queryAllSlipsRange(fromStr, toStr) {
+  const all = [];
+  let cursor = null;
+  const filter = { and: [
+    { property: '売上日', date: { on_or_after: fromStr } },
+    { property: '売上日', date: { on_or_before: toStr } },
+  ]};
+  do {
+    const body = { filter, page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    const r = await notionPost('/databases/' + SALES_DB + '/query', body);
+    all.push(...(r.results || []));
+    cursor = r.has_more ? r.next_cursor : null;
+  } while (cursor);
+  return all;
+}
+
+/* ═══════════ 得意先別集計 ═══════════ */
+async function loadByCustomer() {
+  const r = rangeToStrs('bc');
+  if (!r) { showToast('期間を選択してください'); return; }
+  document.getElementById('bc-ranking').innerHTML = '<div class="empty">📥 伝票取得中...</div>';
+  document.getElementById('bc-pivot').innerHTML = '<div class="empty">集計中...</div>';
+  document.getElementById('bc-summary').innerHTML = '';
+  try {
+    const slips = await queryAllSlipsRange(r.fromStr, r.toStr);
+    // 顧客集計
+    const agg = new Map();
+    let totalAmt = 0, totalCnt = 0;
+    for (const s of slips) {
+      const date = s.properties['売上日']?.date?.start || '';
+      const ym = date.slice(0, 7);
+      const amt = s.properties['税込合計']?.number || 0;
+      const title = s.properties['伝票タイトル']?.title?.[0]?.plain_text || '';
+      const name = parseTitleCustomer(title) || '(不明)';
+      totalAmt += amt; totalCnt++;
+      if (!agg.has(name)) agg.set(name, { total: 0, count: 0, perYm: new Map() });
+      const v = agg.get(name);
+      v.total += amt; v.count++;
+      v.perYm.set(ym, (v.perYm.get(ym) || 0) + amt);
+    }
+    const sorted = [...agg.entries()].sort((a, b) => b[1].total - a[1].total);
+    // サマリ
+    const avgPerCust = sorted.length ? totalAmt / sorted.length : 0;
+    document.getElementById('bc-summary').innerHTML = `
+      <div class="summary-cards">
+        <div class="summary-card"><div class="lbl">得意先数</div><div class="val">${sorted.length}</div><div class="sub">社</div></div>
+        <div class="summary-card"><div class="lbl">期間合計</div><div class="val">${fmtShortYen(totalAmt)}</div><div class="sub">${totalCnt} 伝票</div></div>
+        <div class="summary-card"><div class="lbl">1社平均</div><div class="val">${fmtShortYen(avgPerCust)}</div><div class="sub">${r.ymList.length}ヶ月</div></div>
+        <div class="summary-card"><div class="lbl">トップ</div><div class="val">${sorted.length ? fmtShortYen(sorted[0][1].total) : '—'}</div><div class="sub">${sorted.length ? escHtml(sorted[0][0].slice(0,12)) : ''}</div></div>
+      </div>
+    `;
+    renderBcRanking(sorted, totalAmt);
+    renderBcPivot(sorted, r.ymList);
+  } catch(e) {
+    console.error(e);
+    document.getElementById('bc-ranking').innerHTML = '<div class="empty">取得失敗</div>';
+  }
+}
+function renderBcRanking(sorted, totalAmt) {
+  if (!sorted.length) { document.getElementById('bc-ranking').innerHTML = '<div class="empty">該当データなし</div>'; return; }
+  const maxAmt = sorted[0][1].total;
+  const top = sorted.slice(0, 30);
+  document.getElementById('bc-ranking').innerHTML = top.map(([name, v], i) => {
+    const rk = i + 1;
+    const rkIcon = rk === 1 ? '🥇' : rk === 2 ? '🥈' : rk === 3 ? '🥉' : '#' + rk;
+    const rkCls = rk === 1 ? 'gold' : rk === 2 ? 'silver' : rk === 3 ? 'bronze' : '';
+    return `
+      <div class="mo-row">
+        <div class="rk ${rkCls}">${rkIcon}</div>
+        <div class="nm" title="${escHtml(name)}">${escHtml(name)}<div style="font-size:9px;color:var(--muted);">${v.count}伝票 · 月平均${fmtShortYen(v.total / Math.max(1, v.perYm.size))}</div></div>
+        <div class="mini-bar"><div class="fill" style="width:${(v.total / maxAmt) * 100}%;"></div></div>
+        <div class="am">${fmtShortYen(v.total)}</div>
+        <div class="pct">${((v.total / totalAmt) * 100).toFixed(1)}%</div>
+      </div>
+    `;
+  }).join('') + (sorted.length > 30 ? `<div style="margin-top:10px;color:var(--muted);font-size:11px;text-align:center;">(上位30社のみ表示 / 全 ${sorted.length} 社)</div>` : '');
+}
+function renderBcPivot(sorted, ymList) {
+  if (!sorted.length) { document.getElementById('bc-pivot').innerHTML = '<div class="empty">データなし</div>'; return; }
+  // ヒートマップ用：最大値
+  let maxVal = 0;
+  for (const [, v] of sorted) for (const amt of v.perYm.values()) if (amt > maxVal) maxVal = amt;
+  const heatCls = (v) => {
+    if (!v) return 'pivot-heat-0';
+    const r = v / maxVal;
+    if (r > 0.5) return 'pivot-heat-4';
+    if (r > 0.25) return 'pivot-heat-3';
+    if (r > 0.1) return 'pivot-heat-2';
+    return 'pivot-heat-1';
+  };
+  const top = sorted.slice(0, 50);
+  const headYm = ymList.map(ym => `<th class="right">${ym.slice(2).replace('-','/')}</th>`).join('');
+  const totals = ymList.map(() => 0);
+  const rows = top.map(([name, v]) => {
+    const cells = ymList.map((ym, i) => {
+      const amt = v.perYm.get(ym) || 0;
+      totals[i] += amt;
+      return `<td class="right ${heatCls(amt)}">${amt ? fmtShort(amt) : ''}</td>`;
+    }).join('');
+    return `<tr><td class="name" title="${escHtml(name)}">${escHtml(name.slice(0, 24))}</td>${cells}<td class="right total-col">${fmtShort(v.total)}</td></tr>`;
+  }).join('');
+  const totalAll = totals.reduce((a, b) => a + b, 0);
+  const footer = `<tr><td class="name">合計</td>${totals.map(t => `<td class="right">${fmtShort(t)}</td>`).join('')}<td class="right total-col">${fmtShort(totalAll)}</td></tr>`;
+  document.getElementById('bc-pivot').innerHTML = `
+    <div class="pivot-wrap">
+      <table class="pivot-table">
+        <thead><tr><th class="name-col">得意先</th>${headYm}<th class="right">合計</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot>${footer}</tfoot>
+      </table>
+    </div>
+    ${top.length < sorted.length ? `<div style="margin-top:8px;color:var(--muted);font-size:11px;">(上位50社 / 全 ${sorted.length})</div>` : ''}
+  `;
+}
+
+/* ═══════════ 商品別集計 ═══════════ */
+let bpMode = 'category'; // category / hinmoku / brand / size / code
+const BP_TABS = [
+  { k: 'category', l: '🗂 カテゴリ' },
+  { k: 'hinmoku',  l: '📦 品目' },
+  { k: 'brand',    l: '🏷 銘柄' },
+  { k: 'size',     l: '📐 サイズ' },
+  { k: 'code',     l: '🔢 商品コード' },
+];
+function renderBpTabs() {
+  document.getElementById('bp-tabs').innerHTML = BP_TABS.map(t =>
+    `<button class="tag-btn ${bpMode === t.k ? 'active' : ''}" onclick="bpSetMode('${t.k}')">${t.l}</button>`
+  ).join('');
+}
+function bpSetMode(k) { bpMode = k; renderBpTabs(); if (bpCachedDetails) renderBpFromCache(); }
+let bpCachedDetails = null;
+let bpCachedRange = null;
+async function loadByProduct() {
+  const r = rangeToStrs('bp');
+  if (!r) { showToast('期間を選択してください'); return; }
+  document.getElementById('bp-ranking').innerHTML = '<div class="empty">📥 明細取得中...（期間が長いと数十秒かかります）</div>';
+  document.getElementById('bp-summary').innerHTML = '';
+  try {
+    const details = await queryDetailsByDate(r.fromStr, r.toStr);
+    bpCachedDetails = details;
+    bpCachedRange = r;
+    renderBpFromCache();
+  } catch(e) {
+    console.error(e);
+    document.getElementById('bp-ranking').innerHTML = '<div class="empty">取得失敗: ' + escHtml(e.message || e) + '</div>';
+  }
+}
+function renderBpFromCache() {
+  if (!bpCachedDetails) return;
+  const details = bpCachedDetails;
+  // サマリ
+  let totalAmt = 0, totalQty = 0;
+  for (const d of details) {
+    totalAmt += d.properties['税込小計']?.number || 0;
+    totalQty += d.properties['数量']?.number || 0;
+  }
+  document.getElementById('bp-summary').innerHTML = `
+    <div class="summary-cards">
+      <div class="summary-card"><div class="lbl">明細件数</div><div class="val">${details.length.toLocaleString()}</div><div class="sub">行</div></div>
+      <div class="summary-card"><div class="lbl">期間合計</div><div class="val">${fmtShortYen(totalAmt)}</div><div class="sub">税込</div></div>
+      <div class="summary-card"><div class="lbl">総数量</div><div class="val">${totalQty.toLocaleString()}</div><div class="sub">本/式</div></div>
+      <div class="summary-card"><div class="lbl">明細平均単価</div><div class="val">${details.length ? fmtShortYen(totalAmt / details.length) : '—'}</div><div class="sub">/ 明細</div></div>
+    </div>
+  `;
+  // グループ化
+  const agg = new Map();
+  for (const d of details) {
+    const hinmoku = d.properties['品目']?.select?.name || 'その他';
+    const code = d.properties['商品コード']?.rich_text?.[0]?.plain_text || '';
+    const size = d.properties['タイヤサイズ']?.rich_text?.[0]?.plain_text || '';
+    const brand = d.properties['タイヤ銘柄']?.rich_text?.[0]?.plain_text || '';
+    const amt = d.properties['税込小計']?.number || 0;
+    const qty = d.properties['数量']?.number || 0;
+    let key;
+    if (bpMode === 'category') key = catOf(hinmoku).cat;
+    else if (bpMode === 'hinmoku') key = hinmoku;
+    else if (bpMode === 'brand') key = brand || '(未設定)';
+    else if (bpMode === 'size') key = size || '(未設定)';
+    else if (bpMode === 'code') key = code || '(未設定)';
+    if (!agg.has(key)) agg.set(key, { amt: 0, qty: 0, count: 0, color: catOf(hinmoku).color });
+    const v = agg.get(key);
+    v.amt += amt; v.qty += qty; v.count++;
+  }
+  const sorted = [...agg.entries()].sort((a, b) => b[1].amt - a[1].amt);
+  document.getElementById('bp-main-title').textContent = '🏆 ' + (BP_TABS.find(t => t.k === bpMode)?.l || '') + ' 別ランキング';
+  if (!sorted.length) { document.getElementById('bp-ranking').innerHTML = '<div class="empty">データなし</div>'; return; }
+  const maxAmt = sorted[0][1].amt;
+  const top = sorted.slice(0, 50);
+  document.getElementById('bp-ranking').innerHTML = top.map(([key, v], i) => {
+    const rk = i + 1;
+    const rkIcon = rk === 1 ? '🥇' : rk === 2 ? '🥈' : rk === 3 ? '🥉' : '#' + rk;
+    const rkCls = rk === 1 ? 'gold' : rk === 2 ? 'silver' : rk === 3 ? 'bronze' : '';
+    return `
+      <div class="mo-row">
+        <div class="rk ${rkCls}">${rkIcon}</div>
+        <div class="nm" title="${escHtml(key)}">${escHtml(key)}<div style="font-size:9px;color:var(--muted);">${v.count}明細 · ${v.qty.toLocaleString()}本</div></div>
+        <div class="mini-bar"><div class="fill" style="width:${(v.amt / maxAmt) * 100}%;background:${v.color};"></div></div>
+        <div class="am">${fmtShortYen(v.amt)}</div>
+        <div class="pct">${((v.amt / totalAmt) * 100).toFixed(1)}%</div>
+      </div>
+    `;
+  }).join('') + (sorted.length > 50 ? `<div style="margin-top:10px;color:var(--muted);font-size:11px;text-align:center;">(上位50 / 全${sorted.length})</div>` : '');
 }
 
 function renderCategoriesFromDetails(details) {

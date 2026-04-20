@@ -2868,7 +2868,7 @@ function applySearchHistory(i) {
   execSearch();
 }
 
-function execSearch() {
+async function execSearch() {
   const car = document.getElementById('search-car').value.trim();
   const cust = document.getElementById('search-customer').value.trim();
   const size = document.getElementById('search-size').value.trim();

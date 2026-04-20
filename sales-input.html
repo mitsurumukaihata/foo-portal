@@ -4088,13 +4088,17 @@ function applyFormData(data) {
     { const _s = document.getElementById('selected-customer'); if (_s) _s.textContent = ''; document.getElementById('input-customer').style.background = ''; }
   }
   document.getElementById('input-car').value = data.car || '';
-  // エンドユーザーの復帰
-  state.selectedEndUser = data.endUser || null;
-  if (data.endUser && data.endUser.id) {
+  // エンドユーザーの復帰（旧形式=text, 新形式=オブジェクト の両方対応）
+  if (data.endUser && typeof data.endUser === 'object' && data.endUser.id) {
+    state.selectedEndUser = data.endUser;
     selectEndUser(data.endUser.id, data.endUser.name);
   } else {
+    state.selectedEndUser = null;
     const eu = document.getElementById('input-enduser');
-    if (eu) { eu.value = data.endUserText || ''; eu.style.background = ''; }
+    if (eu) {
+      eu.value = data.endUserText || (typeof data.endUser === 'string' ? data.endUser : '') || '';
+      eu.style.background = '';
+    }
   }
   const tr = document.querySelector('input[name="tax-type"][value="' + (data.taxType || '外税') + '"]');
   if (tr) tr.checked = true;

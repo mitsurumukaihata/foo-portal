@@ -3641,16 +3641,19 @@ function searchCustomer(q) {
   const el = document.getElementById('customer-results');
   if (!q || q.length < 1) { el.classList.remove('show'); return; }
   const lq = toHira(q);
-  const matches = state.customers.filter(c =>
+  let matches = state.customers.filter(c =>
     toHira(c.name).includes(lq) ||
     toHira(c.code).includes(lq) ||
     toHira(c.ryakushou).includes(lq) ||
     toHira(c.yomi).includes(lq)
-  ).slice(0, 20);
+  );
+  // 有効な顧客を優先してソート（先頭に）
+  matches.sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0));
+  matches = matches.slice(0, 20);
   if (!matches.length) { el.innerHTML = '<div style="padding:10px;color:var(--muted);font-size:12px;">該当なし</div>'; el.classList.add('show'); return; }
   el.innerHTML = matches.map(c => `
-    <div class="search-result" data-cid="${attrEsc(c.id)}" data-cname="${attrEsc(c.name)}" data-ccode="${attrEsc(c.code || '')}">
-      <div class="title">${escHtml(c.name)}</div>
+    <div class="search-result" data-cid="${attrEsc(c.id)}" data-cname="${attrEsc(c.name)}" data-ccode="${attrEsc(c.code || '')}" ${!c.active ? 'style="opacity:0.5;"' : ''}>
+      <div class="title">${escHtml(c.name)}${!c.active ? ' <span style="font-size:9px;color:var(--red);">[無効]</span>' : ''}</div>
       <div class="sub">${escHtml(c.code || '-')}${c.ryakushou ? ' · ' + escHtml(c.ryakushou) : ''}${c.yomi ? ' · ' + escHtml(c.yomi) : ''}</div>
     </div>
   `).join('');

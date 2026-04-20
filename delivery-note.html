@@ -27,8 +27,10 @@ html, body { background:#e4e4e4; font-family:'Noto Sans JP', sans-serif; color:#
 .doc-type-switcher button.active { background:#f0a500; color:#fff; border-color:#f0a500; font-weight:700; }
 
 /* ヘッダー */
-.head { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #f0a500; padding-bottom:10px; margin-bottom:14px; }
-.title { font-size:32px; font-weight:900; letter-spacing:0.2em; color:#333; }
+.head { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px double #f0a500; padding-bottom:10px; margin-bottom:14px; position:relative; }
+.head::after { content:''; position:absolute; left:0; right:0; bottom:-6px; height:1px; background:#f0a500; opacity:0.3; }
+.title { font-size:32px; font-weight:900; letter-spacing:0.2em; color:#333; display:inline-flex; align-items:center; gap:12px; }
+.title-logo { width:44px; height:44px; background:linear-gradient(135deg, #f0a500, #c97c00); color:#fff; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:24px; font-family:'Noto Sans JP', sans-serif; letter-spacing:0; box-shadow:0 4px 10px rgba(240,165,0,0.3); }
 .ship-to { font-size:13px; margin-top:6px; }
 .ship-to .name { font-size:20px; font-weight:700; border-bottom:1px solid #333; padding-bottom:2px; margin-top:4px; }
 .issue { text-align:right; font-size:11px; }
@@ -95,7 +97,7 @@ html, body { background:#e4e4e4; font-family:'Noto Sans JP', sans-serif; color:#
 <div class="sheet" id="sheet">
   <div class="head">
     <div>
-      <div class="title" id="doc-title">納　品　書</div>
+      <div class="title"><span class="title-logo">f</span><span id="doc-title">納　品　書</span></div>
       <div class="ship-to">
         <div class="name" id="customer-name">—</div>
         <span id="customer-suffix">御中</span>
@@ -106,9 +108,9 @@ html, body { background:#e4e4e4; font-family:'Noto Sans JP', sans-serif; color:#
       <div class="slip-no" id="slip-no">伝票 No. —</div>
       <div class="issuer">
         <div class="company">有限会社 タイヤマネージャー f.o.o</div>
-        <div>〒731-5124 広島県広島市佐伯区五日市○○</div>
-        <div>TEL 082-XXX-XXXX / FAX 082-XXX-XXXX</div>
-        <div>登録番号 T1234567890123</div>
+        <div>〒731-5124 広島県広島市佐伯区五日市中央</div>
+        <div>TEL 082-943-8929 / FAX 082-943-8925</div>
+        <div>登録番号 T5240002020358</div>
         <div id="issuer-staff">担当: —</div>
       </div>
     </div>

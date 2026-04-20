@@ -1267,6 +1267,12 @@ window.addEventListener('DOMContentLoaded', async () => {
       showPage(lastPage);
     }
   } catch(_) {}
+  // 5分ごとにダッシュボードの recentSlips を自動更新（dashboardページの時だけ）
+  setInterval(() => {
+    if (state.currentPage === 'dashboard' && navigator.onLine) {
+      loadRecentSlips(false).then(() => refreshDashboard()).catch(() => {});
+    }
+  }, 5 * 60 * 1000);
 });
 
 /* ════════════════════════════════════════

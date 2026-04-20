@@ -3403,6 +3403,34 @@ function refreshDraftBadge() {
   const badge = document.getElementById('draft-badge');
   if (cnt > 0) { badge.style.display=''; badge.textContent = cnt; } else { badge.style.display='none'; }
 }
+// 自動下書き保存(定期)
+let _autoDraftTimer = null;
+function scheduleAutoDraft() {
+  if (_autoDraftTimer) clearTimeout(_autoDraftTimer);
+  _autoDraftTimer = setTimeout(() => {
+    try {
+      if (state.currentPage !== 'sales') return;
+      const data = collectFormData();
+      const hasContent = data.customer || data.details.some(d => hasData(d));
+      if (!hasContent) return;
+      // 自動下書きは draftId = 'auto_current' 固定
+      const drafts = loadDraftList();
+      const autoId = 'auto_current_' + (loginUser || 'default');
+      data.details = (data.details || []).filter(d => hasData(d));
+      const item = { id: autoId, savedAt: new Date().toISOString(), data, isAuto: true };
+      const idx = drafts.findIndex(d => d.id === autoId);
+      if (idx >= 0) drafts[idx] = item; else drafts.push(item);
+      saveDraftList(drafts);
+    } catch(_) {}
+  }, 30000);
+}
+// 明細やフォーム変更で自動保存をスケジュール
+document.addEventListener('input', (e) => {
+  if (state.currentPage === 'sales' && (e.target.closest('.yayoi-grid') || e.target.closest('.yayoi-header'))) {
+    scheduleAutoDraft();
+  }
+});
+
 function saveDraft() {
   const data = collectFormData();
   data.details = (data.details || []).filter(d => hasData(d));

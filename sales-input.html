@@ -148,6 +148,18 @@ body::-webkit-scrollbar { display:none; }
 .list-table tr.clickable:hover { background:var(--s3); cursor:pointer; }
 .amount { color:var(--accent); font-weight:700; }
 
+/* ヘルプモーダル */
+.help-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999; display:none; align-items:center; justify-content:center; }
+.help-overlay.show { display:flex; }
+.help-modal { background:var(--s1); border-radius:14px; padding:24px 28px; max-width:640px; width:92%; max-height:85vh; overflow-y:auto; border:1px solid var(--border); box-shadow:0 20px 60px rgba(0,0,0,0.5); }
+.help-modal h2 { font-size:18px; font-weight:900; margin-bottom:16px; color:var(--accent); }
+.help-modal h3 { font-size:13px; font-weight:700; color:var(--text); margin:16px 0 8px; padding-bottom:4px; border-bottom:1px solid var(--border); }
+.help-modal table { width:100%; font-size:12px; }
+.help-modal td { padding:6px 0; vertical-align:top; }
+.help-modal td.k { width:180px; }
+.help-modal kbd { display:inline-block; padding:2px 7px; background:var(--s3); border:1px solid var(--border2); border-radius:4px; font-family:monospace; color:var(--accent); font-size:11px; margin:0 2px; }
+.help-modal .close-btn { position:absolute; top:10px; right:14px; background:none; border:none; color:var(--muted); font-size:24px; cursor:pointer; }
+
 /* Toast */
 .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--s3); color:var(--text); padding:12px 20px; border-radius:24px; font-size:13px; z-index:300; box-shadow:0 8px 24px rgba(0,0,0,0.3); border:1px solid var(--border); }
 
@@ -348,6 +360,17 @@ body::-webkit-scrollbar { display:none; }
 .summary-card .val { font-size:20px; font-weight:900; color:var(--accent); margin-top:3px; font-feature-settings:'tnum'; }
 .summary-card .sub { font-size:10px; color:var(--muted); margin-top:2px; }
 
+/* ダッシュボード ハイライト */
+.dash-highlight { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px; margin-bottom:16px; }
+.dash-highlight .hl-card { padding:14px 18px; border-radius:12px; position:relative; overflow:hidden; background:linear-gradient(135deg, #f0a500, #f5be40); color:#fff; box-shadow:0 6px 20px rgba(240,165,0,0.25); }
+.dash-highlight .hl-card.green { background:linear-gradient(135deg, #22c55e, #4ade80); box-shadow:0 6px 20px rgba(34,197,94,0.25); }
+.dash-highlight .hl-card.blue { background:linear-gradient(135deg, #3b82f6, #60a5fa); box-shadow:0 6px 20px rgba(59,130,246,0.25); }
+.dash-highlight .hl-card.purple { background:linear-gradient(135deg, #a855f7, #c084fc); box-shadow:0 6px 20px rgba(168,85,247,0.25); }
+.dash-highlight .hl-label { font-size:10px; font-weight:700; opacity:0.9; letter-spacing:0.08em; }
+.dash-highlight .hl-icon { position:absolute; top:10px; right:14px; font-size:26px; opacity:0.6; }
+.dash-highlight .hl-value { font-size:22px; font-weight:900; margin-top:4px; }
+.dash-highlight .hl-sub { font-size:11px; opacity:0.9; margin-top:2px; }
+
 /* ダッシュボード スパークライン */
 .dash-sparkline { display:flex; gap:3px; align-items:flex-end; height:100px; padding:10px 0; }
 .dash-sparkline .spk-day { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; min-width:0; }
@@ -389,7 +412,7 @@ body::-webkit-scrollbar { display:none; }
   <aside class="sidebar" id="sidebar">
     <div class="brand">
       <div class="brand-name">F.o.o <span>売上管理</span></div>
-      <div class="brand-sub">v2026.04.19.yayoi</div>
+      <div class="brand-sub">v2026.04.20.night</div>
     </div>
     <nav class="nav">
       <div class="nav-section">📊 概観</div>
@@ -415,6 +438,7 @@ body::-webkit-scrollbar { display:none; }
     </nav>
     <div class="sidebar-footer">
       <div id="login-info">読込中...</div>
+      <button class="btn-link" style="margin-top:8px;padding:4px 8px;font-size:11px;" onclick="showHelpOverlay()">⌨ ショートカット一覧</button>
     </div>
   </aside>
 
@@ -456,6 +480,9 @@ body::-webkit-scrollbar { display:none; }
           <div class="stat-sub" id="stat-unbilled-sub">件</div>
         </div>
       </div>
+
+      <!-- ハイライトウィジェット -->
+      <div id="dash-highlight" class="dash-highlight"></div>
 
       <!-- 週次スパークライン -->
       <div class="card">
@@ -894,6 +921,47 @@ body::-webkit-scrollbar { display:none; }
   </main>
 </div>
 
+<!-- ヘルプモーダル -->
+<div class="help-overlay" id="help-overlay" onclick="if(event.target===this)hideHelpOverlay()">
+  <div class="help-modal" style="position:relative;">
+    <button class="close-btn" onclick="hideHelpOverlay()">×</button>
+    <h2>⌨ キーボードショートカット一覧</h2>
+    <h3>💰 売上入力（スプレッドシート）</h3>
+    <table>
+      <tr><td class="k"><kbd>F8</kbd></td><td>伝票を登録</td></tr>
+      <tr><td class="k"><kbd>Esc</kbd></td><td>リセット（確認あり）</td></tr>
+      <tr><td class="k"><kbd>Tab</kbd> / <kbd>Enter</kbd></td><td>次のセルへ移動</td></tr>
+      <tr><td class="k"><kbd>Shift</kbd>+<kbd>Tab</kbd></td><td>前のセルへ移動</td></tr>
+      <tr><td class="k"><kbd>↑</kbd> / <kbd>↓</kbd></td><td>上下のセルへ移動（同じ列）</td></tr>
+      <tr><td class="k"><kbd>Ctrl</kbd>+<kbd>D</kbd></td><td>直上の行をコピー（商品コード等）</td></tr>
+    </table>
+    <h3>🔎 検索</h3>
+    <table>
+      <tr><td class="k">車番 <kbd>3415</kbd></td><td>→ 34-15 / 3-415 / 341-5 で自動OR検索</td></tr>
+      <tr><td class="k">得意先</td><td>コード / 名前 / 略称 / フリガナ（ひらがな可）で部分一致</td></tr>
+      <tr><td class="k">サイズ／銘柄</td><td>明細先行フィルタ → 伝票一覧</td></tr>
+    </table>
+    <h3>📊 ページ切替</h3>
+    <table>
+      <tr><td class="k">サイドバー</td><td>各ページへジャンプ</td></tr>
+      <tr><td class="k">得意先別集計</td><td>ランキング行クリック → 検索画面へ</td></tr>
+      <tr><td class="k">車両マスタ</td><td>行クリック → 検索画面へ</td></tr>
+      <tr><td class="k">ダッシュボード</td><td>💡未請求カードクリック → 検索（ステータス=未請求）</td></tr>
+    </table>
+    <h3>💾 キャッシュ</h3>
+    <table>
+      <tr><td class="k">月次集計</td><td>過去月はlocalStorageキャッシュ（30日TTL）</td></tr>
+      <tr><td class="k">更新ボタン</td><td>月次集計ページ上部「🔄 キャッシュ更新」で強制再取得</td></tr>
+    </table>
+    <h3>📄 納品書</h3>
+    <table>
+      <tr><td class="k">発行ボタン</td><td>登録成功時 / 伝票検索の明細展開内「📄 納品書を発行」</td></tr>
+      <tr><td class="k">上部スイッチ</td><td>納品書/納品書兼請求書/請求書/見積書 切替</td></tr>
+      <tr><td class="k"><kbd>Ctrl</kbd>+<kbd>P</kbd></td><td>ブラウザ印刷 → PDF保存</td></tr>
+    </table>
+  </div>
+</div>
+
 <script src="foo-common.js"></script>
 <script>
 /* ════════════════════════════════════════
@@ -987,6 +1055,8 @@ function showPage(page) {
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
 }
+function showHelpOverlay() { document.getElementById('help-overlay').classList.add('show'); }
+function hideHelpOverlay() { document.getElementById('help-overlay').classList.remove('show'); }
 function showToast(msg) {
   const t = document.createElement('div');
   t.className = 'toast'; t.textContent = msg;
@@ -1212,6 +1282,7 @@ function refreshDashboard() {
   if (draftBadge) draftBadge.textContent = drafts.length ? drafts.length + '件' : '';
   refreshDashboardUnbilled();
   renderDashboardSparkline();
+  renderDashboardHighlight();
   renderDashboardDrafts(drafts);
   // 直近10件
   const showEl = document.getElementById('dashboard-recent-list');
@@ -1253,6 +1324,64 @@ async function refreshDashboardUnbilled() {
       card.style.borderColor = (r.results || []).length > 0 ? 'var(--red)' : 'var(--border)';
     }
   } catch(e) { console.error(e); el.textContent = '?'; }
+}
+
+function renderDashboardHighlight() {
+  const el = document.getElementById('dash-highlight');
+  if (!el) return;
+  const today = new Date();
+  const ymPrefix = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0');
+  const monthSlips = state.recentSlips.filter(s => (s.date || '').startsWith(ymPrefix));
+  const monthAmount = monthSlips.reduce((sum, s) => sum + s.amount, 0);
+
+  const day = today.getDate();
+  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const progress = Math.round((day / daysInMonth) * 100);
+  const pace = day > 0 ? monthAmount / day : 0;
+  const projection = pace * daysInMonth;
+
+  // トップ得意先を抽出
+  const customerAmt = new Map();
+  for (const s of monthSlips) {
+    const name = (s.title.match(/\d{4}\/\d{1,2}\/\d{1,2}\s+(.+?)(\s+\S*\d+[-ー‐]\d+\S*)?$/) || [,''])[1] || '(不明)';
+    customerAmt.set(name, (customerAmt.get(name) || 0) + s.amount);
+  }
+  const topCust = [...customerAmt.entries()].sort((a, b) => b[1] - a[1])[0];
+
+  // 最大売上日
+  const dayAmt = new Map();
+  for (const s of state.recentSlips) if (s.date) dayAmt.set(s.date, (dayAmt.get(s.date) || 0) + s.amount);
+  const bestDay = [...dayAmt.entries()].sort((a, b) => b[1] - a[1])[0];
+
+  const greetings = ['今日もおつかれさま！', 'きょうも頑張ろう！', 'コツコツ積み上げ！', '今日も売上アップ！'];
+  const g = greetings[today.getDate() % greetings.length];
+
+  el.innerHTML = `
+    <div class="hl-card">
+      <div class="hl-icon">🎯</div>
+      <div class="hl-label">月次予測着地</div>
+      <div class="hl-value">${fmtShortYen(projection)}</div>
+      <div class="hl-sub">月${progress}%経過 · ペース${fmtShortYen(pace)}/日</div>
+    </div>
+    ${topCust ? `<div class="hl-card green">
+      <div class="hl-icon">🏆</div>
+      <div class="hl-label">今月のトップ得意先</div>
+      <div class="hl-value">${escHtml(topCust[0].slice(0, 14))}</div>
+      <div class="hl-sub">${fmtShortYen(topCust[1])}</div>
+    </div>` : ''}
+    ${bestDay ? `<div class="hl-card blue">
+      <div class="hl-icon">💎</div>
+      <div class="hl-label">直近のベスト日</div>
+      <div class="hl-value">${bestDay[0].slice(5).replace('-', '/')}</div>
+      <div class="hl-sub">${fmtShortYen(bestDay[1])}</div>
+    </div>` : ''}
+    <div class="hl-card purple">
+      <div class="hl-icon">💪</div>
+      <div class="hl-label">${loginUser}さんへ</div>
+      <div class="hl-value" style="font-size:16px;">${g}</div>
+      <div class="hl-sub">${today.toLocaleDateString('ja-JP', { weekday:'long' })}</div>
+    </div>
+  `;
 }
 
 function renderDashboardSparkline() {

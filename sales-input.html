@@ -476,6 +476,7 @@ body::-webkit-scrollbar { display:none; }
       <div id="net-status" style="margin-top:4px;font-size:10px;color:var(--muted);padding:2px 8px;">🟢 オンライン</div>
       <button class="btn-link" style="margin-top:8px;padding:4px 8px;font-size:11px;" onclick="showHelpOverlay()">⌨ ショートカット一覧</button>
       <button class="btn-link" style="margin-top:2px;padding:4px 8px;font-size:11px;" onclick="toggleTheme()" id="theme-btn">🌓 テーマ切替</button>
+      <button class="btn-link" style="margin-top:2px;padding:4px 8px;font-size:11px;" onclick="if(confirm('すべてのキャッシュを削除しますか？（下書き・ページ状態・テーマも削除）'))localStorage.clear(),location.reload()">🗑 キャッシュ完全リセット</button>
     </div>
   </aside>
 

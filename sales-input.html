@@ -2820,7 +2820,7 @@ function toggleHinmokuChip(h) {
   });
 }
 
-async // 検索履歴
+// 検索履歴
 function getSearchHistory() { try { return JSON.parse(localStorage.getItem('search-history') || '[]'); } catch(_) { return []; } }
 function saveSearchHistory(h) { try { localStorage.setItem('search-history', JSON.stringify(h.slice(0, 10))); } catch(_) {} }
 function addSearchHistory(filters) {

@@ -1402,7 +1402,7 @@ async function loadRecentSlips(forceFresh) {
   try {
     const r = await notionPost('/databases/' + SALES_DB + '/query', {
       sorts: [{ property: '売上日', direction: 'descending' }],
-      page_size: 100,  // ダッシュボードの3ヶ月ヒートマップのため多めに取得
+      page_size: 100,  // API一度の最大。ダッシュボードの3ヶ月ヒートマップで使う
     });
     state.recentSlips = (r.results || []).map(p => ({
       id: p.id,

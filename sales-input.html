@@ -525,6 +525,9 @@ body::-webkit-scrollbar { display:none; }
       <!-- ハイライトウィジェット -->
       <div id="dash-highlight" class="dash-highlight"></div>
 
+      <!-- 今月粗利ミニ -->
+      <div id="dash-profit-mini" style="display:none;"></div>
+
       <!-- 週次スパークライン -->
       <div class="card">
         <div class="card-title">📈 直近14日の売上推移</div>
@@ -1488,6 +1491,7 @@ function refreshDashboard() {
   renderWelcomeBanner();
   renderDashboardActions();
   renderDashboardTop3();
+  loadDashboardProfitMini();
   // 直近10件
   const showEl = document.getElementById('dashboard-recent-list');
   if (!showEl) return;
@@ -1530,6 +1534,42 @@ async function refreshDashboardUnbilled() {
     // アクションウィジェットを再描画（未請求数に依存）
     if (typeof renderDashboardActions === 'function') renderDashboardActions();
   } catch(e) { console.error(e); el.textContent = '?'; }
+}
+
+async function loadDashboardProfitMini() {
+  const el = document.getElementById('dash-profit-mini');
+  if (!el) return;
+  const today = new Date();
+  const y = today.getFullYear(), m = today.getMonth() + 1;
+  const fromStr = `${y}-${String(m).padStart(2,'0')}-01`;
+  const toStr = `${y}-${String(m).padStart(2,'0')}-${String(new Date(y, m, 0).getDate()).padStart(2,'0')}`;
+  try {
+    const purchRes = await notionPost('/databases/' + PURCHASE_SLIP_DB + '/query', {
+      filter: { and: [
+        { property: '仕入日', date: { on_or_after: fromStr } },
+        { property: '仕入日', date: { on_or_before: toStr } },
+      ]},
+      page_size: 100,
+    });
+    const purch = (purchRes.results || []).reduce((s, p) => s + (p.properties['税込合計']?.number || 0), 0);
+    const sales = state.recentSlips.filter(s => (s.date || '').startsWith(`${y}-${String(m).padStart(2,'0')}`)).reduce((sum, s) => sum + s.amount, 0);
+    const profit = sales - purch;
+    const pct = sales ? (profit / sales * 100) : 0;
+    if (!sales && !purch) { el.style.display = 'none'; return; }
+    el.style.display = 'block';
+    el.innerHTML = `
+      <div style="margin-bottom:16px; padding:12px 18px; background:linear-gradient(135deg, #fef9f1, #fdf6ee); border:1px solid var(--accent); border-radius:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div style="font-size:13px; font-weight:700; color:var(--accent);">💎 今月の粗利状況</div>
+          <div style="display:flex; gap:16px; font-size:12px; flex-wrap:wrap;">
+            <span>売上 <b>${fmtShortYen(sales)}</b></span>
+            <span>仕入 <b style="color:var(--red);">${fmtShortYen(purch)}</b></span>
+            <span>粗利 <b style="color:${profit >= 0 ? 'var(--green)' : 'var(--red)'};">${fmtShortYen(profit)} (${pct.toFixed(1)}%)</b></span>
+          </div>
+        </div>
+      </div>
+    `;
+  } catch(e) { console.error(e); el.style.display = 'none'; }
 }
 
 function renderDashboardTop3() {

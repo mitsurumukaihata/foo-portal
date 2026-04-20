@@ -90,7 +90,7 @@ body::-webkit-scrollbar { display:none; }
 
 /* Search dropdown */
 .search-wrap { position:relative; }
-.search-results { position:absolute; top:100%; left:0; right:0; background:var(--s1); border:1px solid var(--border); border-radius:8px; max-height:280px; overflow-y:auto; z-index:50; display:none; margin-top:2px; box-shadow:0 4px 16px rgba(0,0,0,0.3); }
+.search-results { position:absolute; top:100%; left:0; min-width:100%; width:max-content; max-width:520px; background:var(--s1); border:2px solid var(--accent); border-radius:8px; max-height:380px; overflow-y:auto; z-index:500; display:none; margin-top:6px; box-shadow:0 12px 32px rgba(0,0,0,0.5); }
 .search-results.show { display:block; }
 .search-result { padding:8px 12px; cursor:pointer; font-size:13px; border-bottom:0.5px solid var(--border); }
 .search-result:last-child { border-bottom:none; }
@@ -351,7 +351,7 @@ body::-webkit-scrollbar { display:none; }
           <div class="yh-cell span4">
             <div class="yh-label">得意先 <span style="color:var(--red);">*</span></div>
             <div class="search-wrap">
-              <input type="text" id="input-customer" class="yh-input" placeholder="コード or 名前 で検索（例: 0001、丸善）" autocomplete="off">
+              <input type="text" id="input-customer" class="yh-input" placeholder="コード or 名前 で検索（例: 0001、まるぜん、丸善）" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" name="cust_q_no_ime_history">
               <div class="search-results" id="customer-results"></div>
             </div>
           </div>
@@ -925,10 +925,22 @@ function newSale() {
   showPage('sales');
 }
 
-/* 検索イベント */
+/* 検索イベント — IME（日本語変換中）は候補を出さない */
+const _imeState = new WeakMap();
+document.addEventListener('compositionstart', (e) => {
+  if (e.target.id === 'input-customer' || e.target.id === 'input-car') {
+    _imeState.set(e.target, true);
+    document.querySelectorAll('.search-results').forEach(el => el.classList.remove('show'));
+  }
+});
+document.addEventListener('compositionend', (e) => {
+  if (e.target.id === 'input-customer') { _imeState.set(e.target, false); searchCustomer(e.target.value); }
+  if (e.target.id === 'input-car')      { _imeState.set(e.target, false); searchCar(e.target.value); }
+});
 document.addEventListener('input', (e) => {
+  // 変換中は何もしない
+  if (_imeState.get(e.target)) return;
   if (e.target.id === 'input-customer') {
-    // 値を編集したら前の選択を解除
     if (state.selectedCustomer) {
       const cur = e.target.value;
       const sel = state.selectedCustomer;

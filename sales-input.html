@@ -450,7 +450,7 @@ body::-webkit-scrollbar { display:none; }
           <div class="stat-value" id="stat-today-count">─</div>
           <div class="stat-sub" id="stat-today-sub">件</div>
         </div>
-        <div class="stat-card" id="stat-unbilled-card" style="cursor:pointer;" onclick="showPage('search');setTimeout(()=>{document.getElementById('search-from').value='';document.getElementById('search-to').value='';},10);">
+        <div class="stat-card" id="stat-unbilled-card" style="cursor:pointer;" onclick="showPage('search');initSearchIfNeeded();setTimeout(()=>{document.getElementById('search-from').value='';document.getElementById('search-to').value='';const s=document.getElementById('search-status');if(s){s.value='未請求';}execSearch();},50);">
           <div class="stat-label">💡 未請求伝票</div>
           <div class="stat-value" id="stat-unbilled">─</div>
           <div class="stat-sub" id="stat-unbilled-sub">件</div>
@@ -629,6 +629,18 @@ body::-webkit-scrollbar { display:none; }
           <div class="form-row">
             <div class="form-label">👤 担当者</div>
             <select id="search-staff" class="form-select"><option value="">（すべて）</option></select>
+          </div>
+          <div class="form-row">
+            <div class="form-label">📊 ステータス</div>
+            <select id="search-status" class="form-select">
+              <option value="">（すべて）</option>
+              <option>下書き</option>
+              <option>未請求</option>
+              <option>請求済</option>
+              <option>一部入金</option>
+              <option>入金済</option>
+              <option>キャンセル</option>
+            </select>
           </div>
           <div class="form-row">
             <div class="form-label">💰 金額 範囲（税込）</div>
@@ -2187,6 +2199,8 @@ async function execSearch() {
           : { or: variants.map(v => ({ property: '車番', rich_text: { contains: v } })) });
       }
       if (staff) sFilters.push({ property: '担当者', select: { equals: staff } });
+      const statusVal = document.getElementById('search-status')?.value;
+      if (statusVal) sFilters.push({ property: 'ステータス', select: { equals: statusVal } });
       const body = { sorts: [{ property: '売上日', direction: 'descending' }], page_size: 100 };
       if (sFilters.length === 1) body.filter = sFilters[0];
       else if (sFilters.length > 1) body.filter = { and: sFilters };
@@ -2315,6 +2329,7 @@ async function toggleSearchDetail(slipId, tr) {
 function clearSearch() {
   ['search-car','search-customer','search-size','search-brand','search-from','search-to','search-amt-min','search-amt-max'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('search-staff').value = '';
+  const _st = document.getElementById('search-status'); if (_st) _st.value = '';
   searchSelectedHinmoku.clear();
   document.querySelectorAll('.hinmoku-chip').forEach(el => el.classList.remove('on'));
   document.getElementById('search-results-area').innerHTML = '<div class="empty">条件を入力して「検索実行」</div>';

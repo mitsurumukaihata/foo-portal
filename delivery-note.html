@@ -196,6 +196,10 @@ async function load() {
     document.getElementById('customer-name').textContent = custName;
     document.getElementById('customer-suffix').textContent = p['宛先敬称']?.select?.name || '御中';
     document.getElementById('issue-date').textContent = (p['売上日']?.date?.start || '').replace(/-/g, '/');
+    // 伝票種類 から自動でドキュメント種別切替
+    const slipType = p['伝票種類']?.select?.name || '納品書';
+    const typeMap = { '納品書': 'delivery', '納品書兼請求書': 'delivery-invoice', '請求書': 'invoice', '見積書': 'estimate' };
+    if (typeMap[slipType]) setDocType(typeMap[slipType]);
     document.getElementById('slip-no').textContent = '伝票 No. ' + slipId.slice(-8);
     document.getElementById('issuer-staff').textContent = '担当: ' + (p['担当者']?.select?.name || '—');
     const zn = p['税抜合計']?.number || 0;

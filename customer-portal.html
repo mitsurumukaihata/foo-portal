@@ -38,6 +38,7 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP', sans
 .section-title { font-size:16px; font-weight:900; margin-bottom:14px; display:flex; align-items:center; gap:8px; border-left:4px solid var(--accent); padding-left:10px; }
 
 .vehicle-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:14px; }
+@media (max-width:600px) { .vehicle-grid { grid-template-columns:1fr; } .kpi-grid { grid-template-columns:1fr 1fr; } }
 .vehicle-card { background:#fdf6ee; border:1px solid var(--border); border-radius:10px; padding:14px; cursor:pointer; transition:all 0.15s; }
 .vehicle-card:hover { transform:translateY(-2px); box-shadow:0 8px 20px rgba(224,112,0,0.15); border-color:var(--accent); }
 .vehicle-card .vc-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px; }
@@ -182,6 +183,15 @@ async function load() {
     }));
     const totalAmount = slips.reduce((s, x) => s + x.amount, 0);
 
+    // 集計: サイズ・銘柄の使用頻度
+    const sizeCount = new Map();
+    const brandCount = new Map();
+    for (const v of vehicles) {
+      if (v.size前) sizeCount.set(v.size前, (sizeCount.get(v.size前) || 0) + 1);
+      if (v.size後) sizeCount.set(v.size後, (sizeCount.get(v.size後) || 0) + 1);
+    }
+    const sizeRank = [...sizeCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+
     // KPI + セクション描画
     const main = document.getElementById('main');
     main.innerHTML = `
@@ -191,6 +201,16 @@ async function load() {
         <div class="kpi"><div class="icon">📅</div><div class="label">直近1年の作業</div><div class="value">${slips.length}</div><div class="sub">回</div></div>
         <div class="kpi"><div class="icon">💴</div><div class="label">直近1年の取引額</div><div class="value">${fmtShort(totalAmount)}</div><div class="sub">税込</div></div>
       </div>
+      ${sizeRank.length ? `<div class="section">
+        <div class="section-title">📐 使用中のタイヤサイズ上位</div>
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+          ${sizeRank.map(([sz, n]) => `
+            <div style="background:#fdf6ee; border:1px solid var(--border); padding:8px 14px; border-radius:20px; font-size:12px;">
+              <b style="color:var(--accent);">${escH(sz)}</b> <span style="color:var(--muted);">${n}輪位置</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>` : ''}
       <div class="section">
         <div class="section-title">🚚 管理車両一覧</div>
         ${vehicles.length ? `<div class="vehicle-grid">${vehicles.map(v => `

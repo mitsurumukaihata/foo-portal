@@ -172,6 +172,11 @@ body::-webkit-scrollbar { display:none; }
 .help-modal kbd { display:inline-block; padding:2px 7px; background:var(--s3); border:1px solid var(--border2); border-radius:4px; font-family:monospace; color:var(--accent); font-size:11px; margin:0 2px; }
 .help-modal .close-btn { position:absolute; top:10px; right:14px; background:none; border:none; color:var(--muted); font-size:24px; cursor:pointer; }
 
+/* FAB (Floating Action Button) */
+.fab { position:fixed; bottom:24px; right:24px; width:56px; height:56px; border-radius:50%; background:linear-gradient(135deg, var(--accent), var(--accent2)); color:#fff; border:none; font-size:28px; font-weight:300; cursor:pointer; box-shadow:0 6px 20px rgba(240,165,0,0.4); z-index:200; transition:all 0.15s; }
+.fab:hover { transform:scale(1.1) rotate(90deg); box-shadow:0 10px 30px rgba(240,165,0,0.5); }
+@media print { .fab { display:none; } }
+
 /* Toast */
 .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--s3); color:var(--text); padding:12px 20px; border-radius:24px; font-size:13px; z-index:300; box-shadow:0 8px 24px rgba(0,0,0,0.3); border:1px solid var(--border); animation:toastIn 0.3s; }
 @keyframes toastIn { from { opacity:0; transform:translateX(-50%) translateY(20px); } to { opacity:1; transform:translateX(-50%); } }
@@ -421,6 +426,9 @@ body::-webkit-scrollbar { display:none; }
 <body>
 
 <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+
+<!-- フローティングアクションボタン（どこからでも新規入力） -->
+<button class="fab" onclick="newSale()" title="新規 売上入力 (Ctrl+N)">＋</button>
 
 <div class="app">
   <!-- ════════════ Sidebar ════════════ -->

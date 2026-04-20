@@ -406,6 +406,7 @@ body::-webkit-scrollbar { display:none; }
       <button class="nav-item" data-page="by-customer" onclick="showPage('by-customer')"><span class="icon">📑</span>得意先別集計</button>
       <button class="nav-item" data-page="by-product" onclick="showPage('by-product')"><span class="icon">🛞</span>商品別集計</button>
       <button class="nav-item" data-page="purchase" onclick="showPage('purchase')"><span class="icon">📥</span>仕入集計</button>
+      <button class="nav-item" data-page="vehicles" onclick="showPage('vehicles')"><span class="icon">🚚</span>車両マスタ</button>
 
       <div class="nav-section">⚙️ 設定</div>
       <button class="nav-item" data-page="drafts" onclick="showPage('drafts')"><span class="icon">📋</span>下書き一覧 <span class="badge" id="draft-badge" style="display:none;">0</span></button>
@@ -801,6 +802,48 @@ body::-webkit-scrollbar { display:none; }
       </div>
     </div>
 
+    <!-- ════════════ 車両マスタ ════════════ -->
+    <div class="page" id="page-vehicles">
+      <div class="page-header">
+        <div>
+          <div class="page-title">🚚 車両マスタ</div>
+          <div class="page-sub">全車両の一覧・車番や管理番号で検索 · クリックで過去履歴へ</div>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-secondary" onclick="loadVehicles(true)">🔄 再読込</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="form-grid cols-4">
+          <div class="form-row">
+            <div class="form-label">🔎 検索</div>
+            <input type="text" id="vh-q" class="form-input" placeholder="車番・管理番号・サイズ・銘柄" oninput="renderVehicles()">
+          </div>
+          <div class="form-row">
+            <div class="form-label">🏢 顧客</div>
+            <select id="vh-customer" class="form-select" onchange="renderVehicles()"><option value="">（すべて）</option></select>
+          </div>
+          <div class="form-row">
+            <div class="form-label">🚛 車種</div>
+            <select id="vh-type" class="form-select" onchange="renderVehicles()">
+              <option value="">（すべて）</option>
+              <option>大型</option><option>中型</option><option>小型</option><option>バン</option>
+              <option>リフト</option><option>トレーラー</option><option>その他</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-label">📐 サイズ</div>
+            <input type="text" id="vh-size" class="form-input" placeholder="245/70R19.5 等" oninput="renderVehicles()">
+          </div>
+        </div>
+      </div>
+      <div id="vh-summary"></div>
+      <div class="card">
+        <div class="card-title">🚚 車両一覧</div>
+        <div id="vh-list"><div class="empty">読み込み中...</div></div>
+      </div>
+    </div>
+
     <!-- ════════════ 下書き一覧 ════════════ -->
     <div class="page" id="page-drafts">
       <div class="page-header">
@@ -898,6 +941,7 @@ function showPage(page) {
   if (page === 'by-customer') initByCustomerIfNeeded();
   if (page === 'by-product') initByProductIfNeeded();
   if (page === 'search') initSearchIfNeeded();
+  if (page === 'vehicles') loadVehicles(false);
   if (page === 'drafts') renderDrafts();
   if (page === 'sales') { ensureYayoiRows(); setTimeout(() => { const el = document.getElementById('input-customer'); if (el && !el.value) el.focus(); }, 100); }
   window.scrollTo(0, 0);
@@ -2279,6 +2323,116 @@ function clearSearch() {
   document.querySelectorAll('.hinmoku-chip').forEach(el => el.classList.remove('on'));
   document.getElementById('search-results-area').innerHTML = '<div class="empty">条件を入力して「検索実行」</div>';
   document.getElementById('search-summary').textContent = '';
+}
+
+/* ═══════════ 車両マスタ ═══════════ */
+const VEHICLE_DB = '16f9f0df45e942069e032715fb2d37b2';
+let vehicleCache = null; // [{id, carNo, mgmtNo, customerName, customerId, size前, size後, 車種, 仕様, 本数, メモ}]
+async function loadVehicles(force) {
+  if (!force && vehicleCache) { renderVehicles(); return; }
+  const el = document.getElementById('vh-list');
+  el.innerHTML = '<div class="empty">📥 車両マスタ取得中...</div>';
+  try {
+    const all = []; let cursor = null;
+    do {
+      const body = { page_size: 100 };
+      if (cursor) body.start_cursor = cursor;
+      const r = await notionPost('/databases/' + VEHICLE_DB + '/query', body);
+      all.push(...(r.results || []));
+      cursor = r.has_more ? r.next_cursor : null;
+    } while (cursor);
+    vehicleCache = all.map(p => {
+      const custRel = p.properties['顧客']?.relation || [];
+      return {
+        id: p.id,
+        carNo: p.properties['車番']?.title?.[0]?.plain_text || '',
+        mgmtNo: p.properties['管理番号']?.rich_text?.[0]?.plain_text || '',
+        custId: custRel[0]?.id || '',
+        size前: p.properties['前輪サイズ']?.rich_text?.[0]?.plain_text || '',
+        size後: p.properties['後輪サイズ']?.rich_text?.[0]?.plain_text || '',
+        pat前: p.properties['前輪パターン']?.rich_text?.[0]?.plain_text || '',
+        pat後: p.properties['後輪パターン']?.rich_text?.[0]?.plain_text || '',
+        車種: p.properties['車種']?.select?.name || '',
+        仕様: p.properties['仕様']?.select?.name || '',
+        category: p.properties['タイヤカテゴリ']?.select?.name || '',
+        本数: p.properties['本数']?.number || 0,
+        メモ: p.properties['メモ']?.rich_text?.[0]?.plain_text || '',
+        バルブ交換日: p.properties['最終バルブ交換日']?.date?.start || '',
+      };
+    });
+    // 顧客プルダウン初期化（relation IDのユニーク）
+    const custSel = document.getElementById('vh-customer');
+    const custSet = new Map();
+    for (const v of vehicleCache) if (v.custId) custSet.set(v.custId, v.custId);
+    custSel.innerHTML = '<option value="">（すべて）</option>' + [...custSet.keys()].map(id => `<option value="${id}">${escHtml(id.slice(0,8))}</option>`).join('');
+    renderVehicles();
+  } catch(e) {
+    console.error(e);
+    el.innerHTML = '<div class="empty">取得失敗: ' + escHtml(e.message || e) + '</div>';
+  }
+}
+function renderVehicles() {
+  if (!vehicleCache) return;
+  const q = (document.getElementById('vh-q').value || '').trim().toLowerCase();
+  const qHira = toHira(q);
+  const cust = document.getElementById('vh-customer').value;
+  const type = document.getElementById('vh-type').value;
+  const size = (document.getElementById('vh-size').value || '').trim().toLowerCase();
+  let filtered = vehicleCache.filter(v => {
+    if (cust && v.custId !== cust) return false;
+    if (type && v.車種 !== type) return false;
+    if (size && !((v.size前 || '').toLowerCase().includes(size) || (v.size後 || '').toLowerCase().includes(size))) return false;
+    if (q) {
+      const blob = [v.carNo, v.mgmtNo, v.size前, v.size後, v.pat前, v.pat後, v.メモ, v.車種, v.仕様].join(' ');
+      if (!toHira(blob).includes(qHira) && !blob.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+  // 集計
+  const totalTires = filtered.reduce((s, v) => s + (v.本数 || 0), 0);
+  document.getElementById('vh-summary').innerHTML = `
+    <div class="summary-cards">
+      <div class="summary-card"><div class="lbl">車両数</div><div class="val">${filtered.length}</div><div class="sub">/ 全${vehicleCache.length}台</div></div>
+      <div class="summary-card"><div class="lbl">タイヤ総本数</div><div class="val">${totalTires.toLocaleString()}</div><div class="sub">本</div></div>
+    </div>
+  `;
+  if (!filtered.length) { document.getElementById('vh-list').innerHTML = '<div class="empty">該当車両なし</div>'; return; }
+  document.getElementById('vh-list').innerHTML = `
+    <table class="list-table">
+      <thead><tr>
+        <th>車番</th><th>管理#</th><th>車種</th><th>仕様</th>
+        <th>前輪サイズ</th><th>後輪サイズ</th><th class="right">本数</th><th>カテゴリ</th><th>最終バルブ</th>
+      </tr></thead>
+      <tbody>
+      ${filtered.slice(0, 200).map(v => `
+        <tr class="clickable" onclick="jumpToSearchByVehicle('${v.carNo.replace(/'/g, "\\'")}','${v.mgmtNo.replace(/'/g, "\\'")}')">
+          <td>${escHtml(v.carNo || '-')}</td>
+          <td style="font-family:monospace;color:var(--accent);font-weight:700;">${escHtml(v.mgmtNo || '-')}</td>
+          <td>${escHtml(v.車種 || '-')}</td>
+          <td style="font-size:10px;">${escHtml(v.仕様 || '-')}</td>
+          <td>${escHtml(v.size前 || '-')}${v.pat前 ? '<br><span style="font-size:9px;color:var(--muted);">' + escHtml(v.pat前) + '</span>' : ''}</td>
+          <td>${escHtml(v.size後 || '-')}${v.pat後 ? '<br><span style="font-size:9px;color:var(--muted);">' + escHtml(v.pat後) + '</span>' : ''}</td>
+          <td class="right">${v.本数 || '-'}</td>
+          <td style="font-size:10px;">${escHtml(v.category || '-')}</td>
+          <td style="font-size:10px;">${v.バルブ交換日 || '-'}</td>
+        </tr>
+      `).join('')}
+      </tbody>
+    </table>
+    ${filtered.length > 200 ? `<div style="margin-top:8px;color:var(--muted);font-size:11px;text-align:center;">(上位200 / 全${filtered.length})</div>` : ''}
+  `;
+}
+// 車両クリック → 検索画面へ（車番 or 管理番号）
+function jumpToSearchByVehicle(carNo, mgmtNo) {
+  showPage('search');
+  initSearchIfNeeded();
+  // 車番があれば優先、なければ管理番号で
+  if (carNo && !carNo.startsWith('管理#')) {
+    document.getElementById('search-car').value = carNo;
+  } else if (mgmtNo) {
+    document.getElementById('search-customer').value = mgmtNo;
+  }
+  execSearch();
 }
 
 // 得意先別集計のランキングから検索へジャンプ

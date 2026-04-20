@@ -747,6 +747,7 @@ body::-webkit-scrollbar { display:none; }
             <option value="36">直近36ヶ月</option>
           </select>
           <button class="btn btn-secondary" onclick="loadMonthly()">🔄 再読込</button>
+          <button class="btn btn-secondary" onclick="exportMonthlyCSV()">📥 CSV</button>
         </div>
       </div>
 
@@ -2085,10 +2086,29 @@ function renderBars(ymList, buckets, ymCurrent) {
   `;
 }
 
+// 月次CSV出力
+let _monthlyTableData = null;
+function exportMonthlyCSV() {
+  if (!_monthlyTableData) { showToast('先に集計を実行してください'); return; }
+  const { rows } = _monthlyTableData;
+  const csvRows = [['年月', '伝票数', '税込合計', '平均/件', '前年同月比']];
+  for (const r of rows) csvRows.push([r.ym, r.count, r.amount, r.avg, r.yoy]);
+  const csv = '\ufeff' + csvRows.map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `月次集計_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('📥 CSV ダウンロードしました');
+}
+
 function renderMonthlyTable(ymList, buckets) {
   const rowsDesc = [...ymList].reverse();
   const ymCurrent = new Date().toISOString().slice(0,7);
   let totalAmount = 0, totalCount = 0;
+  const csvRows = [];
   const rows = rowsDesc.map(ym => {
     const b = buckets.get(ym);
     totalAmount += b.amount; totalCount += b.count;
@@ -2097,11 +2117,14 @@ function renderMonthlyTable(ymList, buckets) {
     const prevYoY = `${y-1}-${String(m).padStart(2,'0')}`;
     const yoy = buckets.get(prevYoY);
     let yoyCell = '<span class="delta-flat">—</span>';
+    let yoyText = '';
     if (yoy && yoy.amount > 0) {
       const pct = ((b.amount - yoy.amount) / yoy.amount) * 100;
       const cls = pct >= 0 ? 'delta-up' : 'delta-down';
       yoyCell = `<span class="${cls}">${pct >= 0 ? '↑+' : '↓'}${pct.toFixed(1)}%</span><br><span style="font-size:10px;color:var(--muted);">(${fmtShort(yoy.amount)})</span>`;
+      yoyText = `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`;
     }
+    csvRows.push({ ym: ym.replace('-','/'), count: b.count, amount: b.amount, avg: b.count ? Math.round(b.amount / b.count) : 0, yoy: yoyText });
     const cls = ym === ymCurrent ? 'current' : '';
     return `<tr class="${cls}">
       <td>${ym.replace('-','/')}${ym === ymCurrent ? ' 🔥' : ''}</td>
@@ -2111,6 +2134,7 @@ function renderMonthlyTable(ymList, buckets) {
       <td class="right">${yoyCell}</td>
     </tr>`;
   }).join('');
+  _monthlyTableData = { rows: csvRows };
   document.getElementById('mo-table').innerHTML = `
     <div class="mo-table-wrap">
       <table class="mo-table">

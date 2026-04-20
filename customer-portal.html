@@ -61,6 +61,17 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP', sans
 .footer { text-align:center; padding:30px 20px; color:var(--muted); font-size:11px; border-top:1px solid var(--border); margin-top:20px; }
 .footer a { color:var(--accent); }
 
+/* 印刷スタイル */
+@media print {
+  body { background:#fff; }
+  .head { background:#fff !important; color:#000 !important; border-bottom:2px solid #f0a500; }
+  .head-brand .name, .head-cust .name { color:#1a1208; }
+  .head-brand .logo { background:#f0a500; color:#fff; }
+  .kpi { border:1px solid #ccc; break-inside:avoid; }
+  .section { break-inside:avoid; border:1px solid #ccc; }
+  .vehicle-card { break-inside:avoid; border:1px solid #ccc; background:#fff; }
+}
+
 .loading { text-align:center; padding:60px 20px; color:var(--muted); }
 .spinner { display:inline-block; width:32px; height:32px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite; }
 @keyframes spin { to { transform:rotate(360deg); } }

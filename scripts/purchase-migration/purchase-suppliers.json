@@ -1,0 +1,184 @@
+[
+  {
+    "code": "001",
+    "name": "(株)ﾄｰﾖｰﾀｲﾔｼﾞｬﾊﾟﾝ西中国販売広島営業所",
+    "count": 1062,
+    "totalAmount": 136233284,
+    "adequateCount": 1062
+  },
+  {
+    "code": "0036",
+    "name": "ブリヂストンタイヤジャパン",
+    "count": 511,
+    "totalAmount": 96353085,
+    "adequateCount": 511
+  },
+  {
+    "code": "0010",
+    "name": "(株)ﾄｰﾖｰﾀｲﾔｼﾞｬﾊﾟﾝ　志和倉庫",
+    "count": 102,
+    "totalAmount": 24161159,
+    "adequateCount": 102
+  },
+  {
+    "code": "0035",
+    "name": "ﾀﾞﾝﾛｯﾌﾟﾀｲﾔ中国(株)広島支店/広島営業所",
+    "count": 123,
+    "totalAmount": 14590070,
+    "adequateCount": 123
+  },
+  {
+    "code": "032",
+    "name": "TST株式会社",
+    "count": 32,
+    "totalAmount": 12379840,
+    "adequateCount": 32
+  },
+  {
+    "code": "002",
+    "name": "㈱ﾄｰﾖｰﾀｲﾔｼﾞｬﾊﾟﾝ中国販売福山営業所",
+    "count": 104,
+    "totalAmount": 11380358,
+    "adequateCount": 104
+  },
+  {
+    "code": "0014",
+    "name": "(株)ﾄｰﾖｰﾀｲﾔｼﾞｬﾊﾟﾝ西(営)高宮運送分",
+    "count": 15,
+    "totalAmount": 7403022,
+    "adequateCount": 15
+  },
+  {
+    "code": "016",
+    "name": "株式会社オレンジジャパン",
+    "count": 12,
+    "totalAmount": 6884790,
+    "adequateCount": 12
+  },
+  {
+    "code": "007",
+    "name": "ネット購入",
+    "count": 73,
+    "totalAmount": 4934910,
+    "adequateCount": 73
+  },
+  {
+    "code": "0028",
+    "name": "(株)下岡タイヤ産業",
+    "count": 36,
+    "totalAmount": 3965553,
+    "adequateCount": 36
+  },
+  {
+    "code": "0021",
+    "name": "㈱ﾄｰﾖｰﾀｲﾔｼﾞｬﾊﾟﾝ中国販売岡山営業所",
+    "count": 58,
+    "totalAmount": 3953158,
+    "adequateCount": 58
+  },
+  {
+    "code": "00111",
+    "name": "(株)ﾄｰﾖｰﾀｲﾔｼﾞｬﾊﾟﾝ　志和倉庫",
+    "count": 5,
+    "totalAmount": 2387088,
+    "adequateCount": 5
+  },
+  {
+    "code": "012",
+    "name": "有限会社アクトシステム",
+    "count": 57,
+    "totalAmount": 1788827,
+    "adequateCount": 57
+  },
+  {
+    "code": "036",
+    "name": "佐川急便(株)中国エリア",
+    "count": 37,
+    "totalAmount": 971731,
+    "adequateCount": 37
+  },
+  {
+    "code": "0011",
+    "name": "(株)ﾄｰﾖｰﾀｲﾔｼﾞｬﾊﾟﾝ西(営)オカケン用",
+    "count": 20,
+    "totalAmount": 742676,
+    "adequateCount": 20
+  },
+  {
+    "code": "021",
+    "name": "三菱ふそうトラック・バス(株)中国ふそう",
+    "count": 4,
+    "totalAmount": 689743,
+    "adequateCount": 4
+  },
+  {
+    "code": "006",
+    "name": "エス，スタイル",
+    "count": 2,
+    "totalAmount": 591567,
+    "adequateCount": 2
+  },
+  {
+    "code": "026",
+    "name": "有限会社　大豊商事",
+    "count": 1,
+    "totalAmount": 440000,
+    "adequateCount": 1
+  },
+  {
+    "code": "00293",
+    "name": "有限会社　タイヤショップミカミ　千代田店",
+    "count": 7,
+    "totalAmount": 275572,
+    "adequateCount": 7
+  },
+  {
+    "code": "035",
+    "name": "有限会社タイヤセンター尾道",
+    "count": 3,
+    "totalAmount": 235100,
+    "adequateCount": 3
+  },
+  {
+    "code": "033",
+    "name": "ナカタタイヤサービス",
+    "count": 17,
+    "totalAmount": 233075,
+    "adequateCount": 17
+  },
+  {
+    "code": "030",
+    "name": "三菱ふそうトラック・バス(株)",
+    "count": 1,
+    "totalAmount": 92400,
+    "adequateCount": 1
+  },
+  {
+    "code": "034",
+    "name": "(株)アップビレッジ",
+    "count": 1,
+    "totalAmount": 24431,
+    "adequateCount": 1
+  },
+  {
+    "code": "009",
+    "name": "株式会社　サンライズタイヤサービス",
+    "count": 2,
+    "totalAmount": 6600,
+    "adequateCount": 2
+  },
+  {
+    "code": "037",
+    "name": "郵便局",
+    "count": 1,
+    "totalAmount": 1150,
+    "adequateCount": 1
+  },
+  {
+    "code": "501",
+    "name": "在庫調整",
+    "count": 42,
+    "totalAmount": 0,
+    "adequateCount": 42
+  }
+]

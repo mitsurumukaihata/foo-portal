@@ -795,20 +795,44 @@ body::-webkit-scrollbar { display:none; }
       <div class="page-header">
         <div>
           <div class="page-title">📥 仕入集計</div>
-          <div class="page-sub">仕入先別・期間別の集計</div>
+          <div class="page-sub">仕入先別ランキング・月別推移・適格請求書区分・メーカー別集計</div>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-secondary" onclick="loadPurchase(true)">🔄 再読込</button>
         </div>
       </div>
-      <div class="card" style="text-align:center;padding:48px 20px;">
-        <div style="font-size:48px;margin-bottom:16px;">📥</div>
-        <div style="font-size:16px;font-weight:700;margin-bottom:8px;">仕入データ取り込み予定</div>
-        <div style="color:var(--muted);font-size:12px;line-height:1.8;">
-          2026/4/19 22:00 以降、仕入明細Excelの取り込み作業を実施します。<br>
-          取り込み完了後、このページで以下が見られるようになります：<br><br>
-          ✓ 仕入先別ランキング（TOYO/BRIDGESTONE/DUNLOP/MICHELIN/PIRELLI等）<br>
-          ✓ 月別推移＋売上との粗利計算<br>
-          ✓ 適格請求書フラグでの区分け<br>
-          ✓ 商品別 仕入→売上 の紐付け分析
+      <div class="card">
+        <div class="range-picker">
+          <div class="form-row"><div class="form-label">期間 開始</div><input type="month" id="pc-from" class="form-input"></div>
+          <div class="form-row"><div class="form-label">期間 終了</div><input type="month" id="pc-to" class="form-input"></div>
+          <div class="form-row" style="align-self:end;"><button class="btn btn-primary" onclick="loadPurchase()">🔍 集計実行</button></div>
+          <div class="form-row" style="align-self:end;"><button class="btn btn-secondary" onclick="quickRangePurchase('last12')">直近12ヶ月</button></div>
+          <div class="form-row" style="align-self:end;"><button class="btn btn-secondary" onclick="quickRangePurchase('thisfy')">今年度</button></div>
+          <div class="form-row" style="align-self:end;"><button class="btn btn-secondary" onclick="quickRangePurchase('all')">全期間</button></div>
         </div>
+      </div>
+      <div id="pc-summary"></div>
+      <div class="mo-split">
+        <div class="card">
+          <div class="card-title">🏭 仕入先ランキング（金額）</div>
+          <div id="pc-suppliers"><div class="empty">期間を指定して「集計実行」</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">🏷 メーカー別内訳</div>
+          <div id="pc-makers"><div class="empty">集計実行後に表示</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📊 月別推移（仕入税込）</div>
+        <div id="pc-chart"><div class="empty">集計実行後に表示</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📝 適格請求書区分</div>
+        <div id="pc-credit"><div class="empty">集計実行後に表示</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📅 月別詳細表</div>
+        <div id="pc-monthly-table"><div class="empty">集計実行後に表示</div></div>
       </div>
     </div>
 
@@ -955,6 +979,7 @@ function showPage(page) {
   if (page === 'by-product') initByProductIfNeeded();
   if (page === 'search') initSearchIfNeeded();
   if (page === 'vehicles') loadVehicles(false);
+  if (page === 'purchase') initPurchaseIfNeeded();
   if (page === 'drafts') renderDrafts();
   if (page === 'sales') { ensureYayoiRows(); setTimeout(() => { const el = document.getElementById('input-customer'); if (el && !el.value) el.focus(); }, 100); }
   window.scrollTo(0, 0);
@@ -2366,6 +2391,212 @@ function clearSearch() {
   document.querySelectorAll('.hinmoku-chip').forEach(el => el.classList.remove('on'));
   document.getElementById('search-results-area').innerHTML = '<div class="empty">条件を入力して「検索実行」</div>';
   document.getElementById('search-summary').textContent = '';
+}
+
+/* ═══════════ 仕入集計 ═══════════ */
+const PURCHASE_SLIP_DB = '1587357d69e047699615b962c7dab6db';
+const PURCHASE_DETAIL_DB = '7a92c7ee74aa4edbb8f8fd78aca41952';
+const SUPPLIER_DB = 'f994513a5f5646d7bf1a65abe4067264';
+let purchaseSuppliersCache = null;
+
+function initPurchaseIfNeeded() {
+  const f = document.getElementById('pc-from');
+  if (!f.value) { quickRangePurchase('last12'); }
+}
+function quickRangePurchase(mode) {
+  const today = new Date();
+  let from, to;
+  if (mode === 'last12') { from = new Date(today.getFullYear(), today.getMonth() - 11, 1); to = today; }
+  else if (mode === 'thisfy') {
+    const y = today.getMonth() >= 3 ? today.getFullYear() : today.getFullYear() - 1;
+    from = new Date(y, 3, 1); to = new Date(y + 1, 2, 31);
+  }
+  else if (mode === 'all') { from = new Date(2023, 3, 1); to = today; }
+  document.getElementById('pc-from').value = from.toISOString().slice(0, 7);
+  document.getElementById('pc-to').value = to.toISOString().slice(0, 7);
+  loadPurchase();
+}
+
+async function fetchPurchaseSuppliers() {
+  if (purchaseSuppliersCache) return purchaseSuppliersCache;
+  const all = []; let cursor = null;
+  do {
+    const body = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    const r = await notionPost('/databases/' + SUPPLIER_DB + '/query', body);
+    all.push(...(r.results || []));
+    cursor = r.has_more ? r.next_cursor : null;
+  } while (cursor);
+  const map = new Map();
+  for (const p of all) {
+    const name = p.properties['仕入先名']?.title?.[0]?.plain_text || '';
+    map.set(p.id, { name, code: p.properties['仕入先コード']?.rich_text?.[0]?.plain_text || '', adequate: p.properties['適格請求書事業者']?.checkbox });
+  }
+  purchaseSuppliersCache = map;
+  return map;
+}
+
+async function loadPurchase(force) {
+  const from = document.getElementById('pc-from').value;
+  const to = document.getElementById('pc-to').value;
+  if (!from || !to) { showToast('期間を選択してください'); return; }
+  const [fy, fm] = from.split('-').map(Number);
+  const [ty, tm] = to.split('-').map(Number);
+  const fromStr = `${fy}-${String(fm).padStart(2,'0')}-01`;
+  const toStr = `${ty}-${String(tm).padStart(2,'0')}-${String(new Date(ty, tm, 0).getDate()).padStart(2,'0')}`;
+
+  document.getElementById('pc-suppliers').innerHTML = '<div class="empty">📥 仕入先マスタ読み込み中...</div>';
+  document.getElementById('pc-summary').innerHTML = '';
+  document.getElementById('pc-makers').innerHTML = '<div class="empty">集計中...</div>';
+  document.getElementById('pc-chart').innerHTML = '<div class="empty">集計中...</div>';
+  document.getElementById('pc-credit').innerHTML = '<div class="empty">集計中...</div>';
+  document.getElementById('pc-monthly-table').innerHTML = '<div class="empty">集計中...</div>';
+
+  try {
+    const suppliers = await fetchPurchaseSuppliers();
+
+    // 伝票取得
+    document.getElementById('pc-suppliers').innerHTML = '<div class="empty">📥 仕入伝票取得中...</div>';
+    const slips = [];
+    let cursor = null;
+    do {
+      const body = { filter: { and: [
+        { property: '仕入日', date: { on_or_after: fromStr } },
+        { property: '仕入日', date: { on_or_before: toStr } },
+      ]}, page_size: 100 };
+      if (cursor) body.start_cursor = cursor;
+      const r = await notionPost('/databases/' + PURCHASE_SLIP_DB + '/query', body);
+      slips.push(...(r.results || []));
+      cursor = r.has_more ? r.next_cursor : null;
+    } while (cursor);
+
+    if (!slips.length) {
+      document.getElementById('pc-suppliers').innerHTML = '<div class="empty">期間内に仕入データなし（取り込み中の可能性あり）</div>';
+      return;
+    }
+
+    // 集計
+    let totalZeinuki = 0, totalZei = 0, totalZekomi = 0;
+    const bySupplier = new Map();   // supplierId → { name, total, count, maker }
+    const byMonth = new Map();      // YYYY-MM → total
+    const byCredit = new Map();     // type → { amount, count }
+    for (const s of slips) {
+      const p = s.properties;
+      const znk = p['税抜合計']?.number || 0;
+      const zei = p['消費税合計']?.number || 0;
+      const zkm = p['税込合計']?.number || 0;
+      const ym = (p['仕入日']?.date?.start || '').slice(0, 7);
+      const supId = p['仕入先']?.relation?.[0]?.id || '';
+      const credit = p['仕入税額控除']?.select?.name || '不明';
+      totalZeinuki += znk; totalZei += zei; totalZekomi += zkm;
+      if (ym) byMonth.set(ym, (byMonth.get(ym) || 0) + zkm);
+      const supInfo = suppliers.get(supId) || { name: '(不明)', adequate: false };
+      if (!bySupplier.has(supId || 'unknown')) bySupplier.set(supId || 'unknown', { name: supInfo.name, adequate: supInfo.adequate, total: 0, count: 0 });
+      const v = bySupplier.get(supId || 'unknown');
+      v.total += zkm; v.count++;
+      if (!byCredit.has(credit)) byCredit.set(credit, { amount: 0, count: 0 });
+      byCredit.get(credit).amount += zkm; byCredit.get(credit).count++;
+    }
+
+    // メーカー別集計（仕入先名から推定）
+    const byMaker = new Map();
+    for (const [, v] of bySupplier) {
+      const m = guessMaker(v.name);
+      if (!byMaker.has(m)) byMaker.set(m, { amount: 0, count: 0 });
+      byMaker.get(m).amount += v.total; byMaker.get(m).count += v.count;
+    }
+
+    // サマリカード
+    const months = byMonth.size;
+    const avgPerMonth = months ? totalZekomi / months : 0;
+    document.getElementById('pc-summary').innerHTML = `
+      <div class="summary-cards">
+        <div class="summary-card"><div class="lbl">期間合計(税込)</div><div class="val">${fmtShortYen(totalZekomi)}</div><div class="sub">${slips.length} 伝票</div></div>
+        <div class="summary-card"><div class="lbl">税抜</div><div class="val">${fmtShortYen(totalZeinuki)}</div><div class="sub">消費税 ${fmtShortYen(totalZei)}</div></div>
+        <div class="summary-card"><div class="lbl">月平均</div><div class="val">${fmtShortYen(avgPerMonth)}</div><div class="sub">${months}ヶ月</div></div>
+        <div class="summary-card"><div class="lbl">仕入先数</div><div class="val">${bySupplier.size}</div><div class="sub">社</div></div>
+      </div>
+    `;
+
+    // 仕入先ランキング
+    const supSorted = [...bySupplier.entries()].sort((a, b) => b[1].total - a[1].total);
+    const topSup = supSorted.slice(0, 20);
+    const maxSup = topSup[0]?.[1].total || 1;
+    document.getElementById('pc-suppliers').innerHTML = topSup.map(([, v], i) => {
+      const rk = i + 1;
+      const rkIcon = rk === 1 ? '🥇' : rk === 2 ? '🥈' : rk === 3 ? '🥉' : '#' + rk;
+      const rkCls = rk === 1 ? 'gold' : rk === 2 ? 'silver' : rk === 3 ? 'bronze' : '';
+      const maker = guessMaker(v.name);
+      return `<div class="mo-row"><div class="rk ${rkCls}">${rkIcon}</div><div class="nm" title="${escHtml(v.name)}">${escHtml(v.name)}${v.adequate ? ' <span style="font-size:9px;padding:1px 5px;background:var(--green);color:#fff;border-radius:6px;vertical-align:middle;">適格</span>' : ''}${maker !== 'その他' ? ` <span style="font-size:9px;padding:1px 5px;background:${makerColor(maker)};color:#fff;border-radius:6px;vertical-align:middle;">${maker}</span>` : ''}<div style="font-size:9px;color:var(--muted);">${v.count}伝票 · 平均${fmtShortYen(v.total / Math.max(1, v.count))}</div></div><div class="mini-bar"><div class="fill" style="width:${(v.total/maxSup)*100}%"></div></div><div class="am">${fmtShortYen(v.total)}</div><div class="pct">${((v.total/totalZekomi)*100).toFixed(1)}%</div></div>`;
+    }).join('');
+
+    // メーカー内訳
+    const mkSorted = [...byMaker.entries()].sort((a, b) => b[1].amount - a[1].amount);
+    const maxMk = mkSorted[0]?.[1].amount || 1;
+    document.getElementById('pc-makers').innerHTML = mkSorted.map(([m, v]) => `
+      <div class="mo-row">
+        <div class="nm">${escHtml(m)}<div style="font-size:9px;color:var(--muted);">${v.count}伝票</div></div>
+        <div class="mini-bar"><div class="fill" style="width:${(v.amount/maxMk)*100}%;background:${makerColor(m)};"></div></div>
+        <div class="am">${fmtShortYen(v.amount)}</div>
+        <div class="pct">${((v.amount/totalZekomi)*100).toFixed(1)}%</div>
+      </div>
+    `).join('');
+
+    // 月別棒グラフ
+    const ymList = [...byMonth.keys()].sort();
+    const maxMonth = Math.max(1, ...ymList.map(y => byMonth.get(y)));
+    const ymCurrent = new Date().toISOString().slice(0, 7);
+    document.getElementById('pc-chart').innerHTML = `
+      <div class="mo-bars">
+        ${ymList.map(ym => {
+          const amt = byMonth.get(ym) || 0;
+          const h = (amt / maxMonth) * 100;
+          const isCur = ym === ymCurrent;
+          return `<div class="mo-bar-wrap ${isCur ? 'current' : ''}" title="${ym.replace('-','/')}: ${fmtJPY(amt)}">
+            <div class="bar" style="height:${h}%;"><div class="bar-val">${fmtShort(amt)}</div></div>
+            <div class="lbl">${ym.slice(2).replace('-','/')}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    `;
+
+    // 適格区分
+    const credSorted = [...byCredit.entries()].sort((a, b) => b[1].amount - a[1].amount);
+    const maxCred = credSorted[0]?.[1].amount || 1;
+    const credColor = n => n.includes('100') ? 'var(--green)' : n.includes('80') ? '#eab308' : n.includes('50') ? 'var(--accent)' : n.includes('控除不可') ? 'var(--red)' : 'var(--muted)';
+    document.getElementById('pc-credit').innerHTML = credSorted.map(([k, v]) => `
+      <div class="mo-row">
+        <div class="nm">${escHtml(k)}<div style="font-size:9px;color:var(--muted);">${v.count}伝票</div></div>
+        <div class="mini-bar"><div class="fill" style="width:${(v.amount/maxCred)*100}%;background:${credColor(k)};"></div></div>
+        <div class="am">${fmtShortYen(v.amount)}</div>
+        <div class="pct">${((v.amount/totalZekomi)*100).toFixed(1)}%</div>
+      </div>
+    `).join('');
+
+    // 月別詳細表
+    const tableRows = [...ymList].reverse().map(ym => {
+      const amt = byMonth.get(ym) || 0;
+      const count = slips.filter(s => (s.properties['仕入日']?.date?.start || '').startsWith(ym)).length;
+      return `<tr><td>${ym.replace('-','/')}</td><td class="right">${count}</td><td class="right">${fmtJPY(amt)}</td><td class="right">${count ? fmtJPY(amt/count) : '—'}</td></tr>`;
+    }).join('');
+    document.getElementById('pc-monthly-table').innerHTML = `
+      <table class="mo-table">
+        <thead><tr><th>年月</th><th class="right">伝票数</th><th class="right">税込合計</th><th class="right">平均/件</th></tr></thead>
+        <tbody>${tableRows}</tbody>
+        <tfoot>
+          <tr style="background:var(--s3);font-weight:900;">
+            <td>合計 (${ymList.length}ヶ月)</td>
+            <td class="right">${slips.length}</td>
+            <td class="right">${fmtJPY(totalZekomi)}</td>
+            <td class="right">${fmtJPY(totalZekomi/Math.max(1, slips.length))}</td>
+          </tr>
+        </tfoot>
+      </table>
+    `;
+  } catch(e) {
+    console.error(e);
+    document.getElementById('pc-suppliers').innerHTML = '<div class="empty">取得失敗: ' + escHtml(e.message || e) + '</div>';
+  }
 }
 
 /* ═══════════ 車両マスタ ═══════════ */

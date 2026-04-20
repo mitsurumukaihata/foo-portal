@@ -1103,6 +1103,7 @@ let state = {
    ═══════════════════════════════════════ */
 function showPage(page) {
   state.currentPage = page;
+  try { localStorage.setItem('sales-input-last-page', page); } catch(_) {}
   document.querySelectorAll('.page').forEach(el => el.classList.remove('show'));
   const target = document.getElementById('page-' + page);
   if (target) target.classList.add('show');
@@ -1200,6 +1201,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   await Promise.all([loadCustomers(), loadRecentSlips(false), loadProducts(), loadEndUsers()]);
   refreshDashboard();
   refreshDraftBadge();
+  // 最後に見ていたページに戻る
+  try {
+    const lastPage = localStorage.getItem('sales-input-last-page');
+    if (lastPage && lastPage !== 'dashboard' && document.getElementById('page-' + lastPage)) {
+      showPage(lastPage);
+    }
+  } catch(_) {}
 });
 
 /* ════════════════════════════════════════

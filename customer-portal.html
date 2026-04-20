@@ -202,7 +202,7 @@ async function load() {
         <div class="kpi"><div class="icon">💴</div><div class="label">直近1年の取引額</div><div class="value">${fmtShort(totalAmount)}</div><div class="sub">税込</div></div>
       </div>
       ${sizeRank.length ? `<div class="section">
-        <div class="section-title">📐 使用中のタイヤサイズ上位</div>
+        <div class="section-title">📐 使用中のタイヤサイズ上位 (車両ベース)</div>
         <div style="display:flex; flex-wrap:wrap; gap:8px;">
           ${sizeRank.map(([sz, n]) => `
             <div style="background:#fdf6ee; border:1px solid var(--border); padding:8px 14px; border-radius:20px; font-size:12px;">

@@ -452,6 +452,7 @@ body::-webkit-scrollbar { display:none; }
         <div id="sidebar-today-amount" style="font-size:16px;font-weight:900;">—</div>
         <div id="sidebar-today-count" style="font-size:9px;opacity:0.85;"></div>
       </div>
+      <div id="net-status" style="margin-top:4px;font-size:10px;color:var(--muted);padding:2px 8px;">🟢 オンライン</div>
       <button class="btn-link" style="margin-top:8px;padding:4px 8px;font-size:11px;" onclick="showHelpOverlay()">⌨ ショートカット一覧</button>
     </div>
   </aside>
@@ -1371,6 +1372,20 @@ function renderRecentSlips() {
 /* ════════════════════════════════════════
    ダッシュボード
    ═══════════════════════════════════════ */
+function refreshNetStatus() {
+  const el = document.getElementById('net-status');
+  if (!el) return;
+  if (navigator.onLine) {
+    el.innerHTML = '🟢 オンライン';
+    el.style.color = 'var(--green)';
+  } else {
+    el.innerHTML = '🔴 オフライン';
+    el.style.color = 'var(--red)';
+  }
+}
+window.addEventListener('online', refreshNetStatus);
+window.addEventListener('offline', refreshNetStatus);
+
 function refreshSidebarToday() {
   const today = new Date();
   const ts = today.toISOString().slice(0,10);

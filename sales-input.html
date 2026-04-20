@@ -948,6 +948,7 @@ body::-webkit-scrollbar { display:none; }
           <div class="form-row" style="align-self:end;"><button class="btn btn-secondary" onclick="quickRangeProfit('last6')">直近6ヶ月</button></div>
           <div class="form-row" style="align-self:end;"><button class="btn btn-secondary" onclick="quickRangeProfit('last12')">直近12ヶ月</button></div>
           <div class="form-row" style="align-self:end;"><button class="btn btn-secondary" onclick="quickRangeProfit('thisfy')">今年度</button></div>
+          <div class="form-row" style="align-self:end;"><button class="btn btn-secondary" onclick="exportProfitCSV()">📥 CSV</button></div>
         </div>
       </div>
       <div id="pr-summary"></div>
@@ -3439,6 +3440,24 @@ function copyPortalUrl(id, name) {
   });
 }
 
+// 粗利CSV出力
+let _profitData = null;
+function exportProfitCSV() {
+  if (!_profitData) { showToast('先に分析実行してください'); return; }
+  const { rows } = _profitData;
+  const csvRows = [['年月', '売上税込', '仕入税込', '粗利', '粗利率']];
+  for (const r of rows) csvRows.push([r.ym, r.sales, r.purchase, r.profit, r.pct]);
+  const csv = '\ufeff' + csvRows.map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `粗利分析_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('📥 CSV ダウンロード');
+}
+
 /* ═══════════ 粗利分析 ═══════════ */
 function initProfitIfNeeded() {
   const f = document.getElementById('pr-from');
@@ -3570,6 +3589,7 @@ async function loadProfit() {
 
     // 月別表
     const rowsDesc = [...ymList].reverse();
+    const csvRows = [];
     document.getElementById('pr-monthly').innerHTML = `
       <table class="mo-table">
         <thead><tr>
@@ -3584,6 +3604,7 @@ async function loadProfit() {
           const v = byMonth.get(ym);
           const profit = v.sales - v.purchase;
           const pct = v.sales ? (profit / v.sales * 100) : 0;
+          csvRows.push({ ym, sales: Math.round(v.sales), purchase: Math.round(v.purchase), profit: Math.round(profit), pct: pct.toFixed(1) + '%' });
           const cls = profit >= 0 ? 'delta-up' : 'delta-down';
           return `<tr>
             <td>${ym.replace('-','/')}</td>
@@ -3605,6 +3626,7 @@ async function loadProfit() {
         </tfoot>
       </table>
     `;
+    _profitData = { rows: csvRows };
   } catch(e) {
     console.error(e);
     document.getElementById('pr-chart').innerHTML = '<div class="empty">取得失敗: ' + escHtml(e.message || e) + '</div>';

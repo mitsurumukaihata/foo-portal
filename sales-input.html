@@ -8,6 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <link rel="manifest" href="manifest-sales.json">
 <meta name="theme-color" content="#f0a500">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="売上管理">
 <title>売上管理 | f.o.o</title>
@@ -1107,16 +1108,19 @@ function aggregateMonthData(slips, details) {
   out.detailCount = details.length;
   return out;
 }
-async function fetchMonthData(ym) {
+async function fetchMonthData(ym, { withDetails = false } = {}) {
   const [y, m] = ym.split('-').map(Number);
   const fromStr = `${y}-${String(m).padStart(2,'0')}-01`;
   const toStr = `${y}-${String(m).padStart(2,'0')}-${String(new Date(y, m, 0).getDate()).padStart(2,'0')}`;
-  // まず月の伝票を取得（SALES_DBは売上日フィルタOK）
   const slips = await queryAllSlipsRange(fromStr, toStr);
-  // 明細は 売上伝票 relation の OR バッチで取得
-  // ※ 売上明細DBには売上日プロパティが無い（あるいはrollup）のでdate絞り込み不可
-  const details = await queryDetailsBySlipIds(slips.map(s => s.id));
-  return aggregateMonthData(slips, details);
+  // 明細は重いので必要なときだけ
+  let details = [];
+  if (withDetails) {
+    details = await queryDetailsBySlipIds(slips.map(s => s.id));
+  }
+  const agg = aggregateMonthData(slips, details);
+  agg.hasDetails = withDetails;
+  return agg;
 }
 
 async function queryDetailsBySlipIds(slipIds) {
@@ -1139,24 +1143,25 @@ async function queryDetailsBySlipIds(slipIds) {
   }
   return all;
 }
-async function getMonthAggregate(ym, { force = false } = {}) {
-  if (!force && !isRecentMonth(ym)) {
+async function getMonthAggregate(ym, { force = false, withDetails = false } = {}) {
+  if (!force) {
     const c = readCache(ym);
-    if (c) return c;
+    if (c && (!withDetails || c.hasDetails) && !isRecentMonth(ym)) return c;
   }
-  const agg = await fetchMonthData(ym);
+  const agg = await fetchMonthData(ym, { withDetails });
   agg.version = CACHE_VERSION;
   agg.ym = ym;
   agg.computedAt = new Date().toISOString();
   if (!isRecentMonth(ym)) writeCache(ym, agg);
   return agg;
 }
-async function getMonthAggregatesParallel(ymList, { force = false, concurrency = 1, onProgress } = {}) {
+async function getMonthAggregatesParallel(ymList, { force = false, withDetails = false, concurrency = 3, onProgress } = {}) {
   const result = new Map();
   let idx = 0, done = 0;
   let hits = 0, fetched = 0, failed = 0;
   for (const ym of ymList) {
-    if (!force && !isRecentMonth(ym) && readCache(ym)) hits++; else fetched++;
+    const c = !force && readCache(ym);
+    if (c && (!withDetails || c.hasDetails) && !isRecentMonth(ym)) hits++; else fetched++;
   }
   if (onProgress) onProgress({ done: 0, total: ymList.length, hits, fetched, failed });
   async function worker() {
@@ -1164,12 +1169,11 @@ async function getMonthAggregatesParallel(ymList, { force = false, concurrency =
       const i = idx++;
       const ym = ymList[i];
       try {
-        const agg = await getMonthAggregate(ym, { force });
+        const agg = await getMonthAggregate(ym, { force, withDetails });
         result.set(ym, agg);
       } catch(e) {
         console.error('agg fail', ym, e);
         failed++;
-        // 空のダミー（キャッシュには書き込まない＝次回再試行される）
         result.set(ym, { count: 0, amount: 0, zeinuki: 0, customers: {}, categories: {}, hinmoku: {}, brand: {}, size: {}, code: {}, detailCount: 0, ym });
       }
       done++;
@@ -1250,14 +1254,21 @@ async function loadMonthly() {
     renderBars(visibleYm, visibleBuckets, ymCurrent);
     renderMonthlyTable(visibleYm, buckets);
 
-    // 当月カテゴリ＋トップ得意先
+    // 当月のトップ得意先（伝票だけで出る）
     const targetYm = curB.count ? ymCurrent : (visibleYm.length ? visibleYm[visibleYm.length - 1] : null);
     if (targetYm) {
       const a = aggs.get(targetYm);
       document.getElementById('mo-cat-title').textContent = targetYm.replace('-','/') + ' のカテゴリ別内訳';
       document.getElementById('mo-top-title').textContent = targetYm.replace('-','/') + ' のトップ得意先';
-      renderCategoriesFromAggregate(a);
       renderTopCustomersFromAggregate(a);
+      // カテゴリは明細が要るので、明細付き集計を当月のみ追加取得
+      document.getElementById('mo-categories').innerHTML = '<div class="empty">📥 カテゴリ集計のため当月明細を取得中...</div>';
+      getMonthAggregate(targetYm, { force: true, withDetails: true }).then(aFull => {
+        renderCategoriesFromAggregate(aFull);
+      }).catch(e => {
+        console.error(e);
+        document.getElementById('mo-categories').innerHTML = '<div class="empty">カテゴリ取得失敗</div>';
+      });
     }
     // キャッシュ状況バッジ（前のがあれば削除）
     const st = cacheStats();
@@ -1682,6 +1693,8 @@ async function loadByProduct() {
   document.getElementById('bp-summary').innerHTML = '';
   try {
     const aggs = await getMonthAggregatesParallel(r.ymList, {
+      withDetails: true,
+      concurrency: 2,
       onProgress: ({ done, total, hits, fetched }) => {
         document.getElementById('bp-ranking').innerHTML = `<div class="empty">📥 集計中 ${done}/${total}ヶ月 (⚡${hits} / 🌐${fetched})</div>`;
       }

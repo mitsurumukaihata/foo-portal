@@ -1111,11 +1111,33 @@ async function fetchMonthData(ym) {
   const [y, m] = ym.split('-').map(Number);
   const fromStr = `${y}-${String(m).padStart(2,'0')}-01`;
   const toStr = `${y}-${String(m).padStart(2,'0')}-${String(new Date(y, m, 0).getDate()).padStart(2,'0')}`;
-  const [slips, details] = await Promise.all([
-    queryAllSlipsRange(fromStr, toStr),
-    queryDetailsByDate(fromStr, toStr),
-  ]);
+  // まず月の伝票を取得（SALES_DBは売上日フィルタOK）
+  const slips = await queryAllSlipsRange(fromStr, toStr);
+  // 明細は 売上伝票 relation の OR バッチで取得
+  // ※ 売上明細DBには売上日プロパティが無い（あるいはrollup）のでdate絞り込み不可
+  const details = await queryDetailsBySlipIds(slips.map(s => s.id));
   return aggregateMonthData(slips, details);
+}
+
+async function queryDetailsBySlipIds(slipIds) {
+  if (!slipIds.length) return [];
+  const BATCH = 30; // OR filter のサイズ上限余裕
+  const all = [];
+  for (let i = 0; i < slipIds.length; i += BATCH) {
+    const batch = slipIds.slice(i, i + BATCH);
+    const filter = batch.length === 1
+      ? { property: '売上伝票', relation: { contains: batch[0] } }
+      : { or: batch.map(id => ({ property: '売上伝票', relation: { contains: id } })) };
+    let cursor = null;
+    do {
+      const body = { filter, page_size: 100 };
+      if (cursor) body.start_cursor = cursor;
+      const r = await notionPost('/databases/' + DETAIL_DB + '/query', body);
+      all.push(...(r.results || []));
+      cursor = r.has_more ? r.next_cursor : null;
+    } while (cursor);
+  }
+  return all;
 }
 async function getMonthAggregate(ym, { force = false } = {}) {
   if (!force && !isRecentMonth(ym)) {

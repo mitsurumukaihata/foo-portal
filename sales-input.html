@@ -3452,13 +3452,14 @@ function renderDrafts() {
   if (!drafts.length) { el.innerHTML = '<div class="empty">下書きなし</div>'; return; }
   el.innerHTML = `
     <table class="list-table">
-      <thead><tr><th>保存日時</th><th>得意先</th><th>明細件数</th><th>備考</th><th>操作</th></tr></thead>
+      <thead><tr><th>種別</th><th>保存日時</th><th>得意先</th><th>明細件数</th><th>備考</th><th>操作</th></tr></thead>
       <tbody>
       ${drafts.map(d => `
         <tr>
+          <td>${d.isAuto ? '<span style="background:rgba(59,130,246,0.15);color:var(--blue);padding:2px 6px;border-radius:10px;font-size:10px;">🤖 自動</span>' : '<span style="background:rgba(240,165,0,0.15);color:var(--accent);padding:2px 6px;border-radius:10px;font-size:10px;">💾 手動</span>'}</td>
           <td>${new Date(d.savedAt).toLocaleString('ja-JP')}</td>
-          <td>${escHtml(d.data.customer ? d.data.customer.name : '-')}</td>
-          <td>${(d.data.details || []).length}件</td>
+          <td>${escHtml(d.data.customer ? d.data.customer.name : '(未選択)')}</td>
+          <td>${(d.data.details || []).filter(x => hasData(x)).length}件</td>
           <td>${escHtml((d.data.bikou || '').slice(0, 30))}</td>
           <td>
             <button class="btn-link" onclick="loadSpecificDraft('${d.id}')">▶ 開く</button>
@@ -3468,6 +3469,9 @@ function renderDrafts() {
       `).join('')}
       </tbody>
     </table>
+    <div style="margin-top:12px;font-size:11px;color:var(--muted);line-height:1.6;">
+      💡 ヒント: 💾手動下書きは「下書き保存」ボタン、🤖自動下書きは入力中の自動保存（30秒ごと）
+    </div>
   `;
 }
 function loadSpecificDraft(id) {

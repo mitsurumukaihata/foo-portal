@@ -914,7 +914,7 @@ function newSale() {
   state.details = [];
   document.getElementById('input-date').value = new Date().toISOString().slice(0,10);
   document.getElementById('input-customer').value = '';
-  document.getElementById('selected-customer').textContent = '';
+  { const _s = document.getElementById('selected-customer'); if (_s) _s.textContent = ''; document.getElementById('input-customer').style.background = ''; }
   document.getElementById('input-car').value = '';
   document.getElementById('input-enduser').value = '';
   document.getElementById('input-bikou').value = '';
@@ -926,7 +926,16 @@ function newSale() {
 
 /* 検索イベント */
 document.addEventListener('input', (e) => {
-  if (e.target.id === 'input-customer') searchCustomer(e.target.value);
+  if (e.target.id === 'input-customer') {
+    // 値を編集したら前の選択を解除
+    if (state.selectedCustomer) {
+      const cur = e.target.value;
+      const sel = state.selectedCustomer;
+      const expect = (sel.code ? sel.code + ' ' : '') + sel.name;
+      if (cur !== expect) { state.selectedCustomer = null; e.target.style.background = ''; }
+    }
+    searchCustomer(e.target.value);
+  }
   if (e.target.id === 'input-car') searchCar(e.target.value);
 });
 document.addEventListener('click', (e) => {
@@ -956,8 +965,11 @@ function searchCustomer(q) {
 }
 function selectCustomer(id, name, code) {
   state.selectedCustomer = { id, name, code };
-  document.getElementById('input-customer').value = name;
-  document.getElementById('selected-customer').innerHTML = '<span class="selected-tag">✓ ' + escHtml(name) + (code ? ' (' + escHtml(code) + ')' : '') + '</span>';
+  const inp = document.getElementById('input-customer');
+  inp.value = (code ? code + ' ' : '') + name;
+  inp.style.background = 'rgba(34,197,94,0.12)';
+  const sel = document.getElementById('selected-customer');
+  if (sel) sel.innerHTML = '<span class="selected-tag">✓ ' + escHtml(name) + (code ? ' (' + escHtml(code) + ')' : '') + '</span>';
   document.getElementById('customer-results').classList.remove('show');
 }
 async function searchCar(q) {
@@ -1169,11 +1181,10 @@ function applyFormData(data) {
   document.getElementById('input-worktype').value = data.workType || '来店';
   state.selectedCustomer = data.customer || null;
   if (data.customer) {
-    document.getElementById('input-customer').value = data.customer.name;
-    document.getElementById('selected-customer').innerHTML = '<span class="selected-tag">✓ ' + escHtml(data.customer.name) + (data.customer.code ? ' (' + escHtml(data.customer.code) + ')' : '') + '</span>';
+    selectCustomer(data.customer.id, data.customer.name, data.customer.code || '');
   } else {
     document.getElementById('input-customer').value = '';
-    document.getElementById('selected-customer').textContent = '';
+    { const _s = document.getElementById('selected-customer'); if (_s) _s.textContent = ''; document.getElementById('input-customer').style.background = ''; }
   }
   document.getElementById('input-car').value = data.car || '';
   document.getElementById('input-enduser').value = data.endUser || '';
@@ -1249,7 +1260,7 @@ async function submitSale() {
     state.details = [];
     state.selectedCustomer = null;
     document.getElementById('input-customer').value = '';
-    document.getElementById('selected-customer').textContent = '';
+    { const _s = document.getElementById('selected-customer'); if (_s) _s.textContent = ''; document.getElementById('input-customer').style.background = ''; }
     document.getElementById('input-car').value = '';
     document.getElementById('input-bikou').value = '';
     ensureYayoiRows();

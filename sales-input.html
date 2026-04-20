@@ -2886,12 +2886,12 @@ async function loadPurchase(force) {
     const supSorted = [...bySupplier.entries()].sort((a, b) => b[1].total - a[1].total);
     const topSup = supSorted.slice(0, 20);
     const maxSup = topSup[0]?.[1].total || 1;
-    document.getElementById('pc-suppliers').innerHTML = topSup.map(([, v], i) => {
+    document.getElementById('pc-suppliers').innerHTML = topSup.map(([supId, v], i) => {
       const rk = i + 1;
       const rkIcon = rk === 1 ? '🥇' : rk === 2 ? '🥈' : rk === 3 ? '🥉' : '#' + rk;
       const rkCls = rk === 1 ? 'gold' : rk === 2 ? 'silver' : rk === 3 ? 'bronze' : '';
       const maker = guessMaker(v.name);
-      return `<div class="mo-row"><div class="rk ${rkCls}">${rkIcon}</div><div class="nm" title="${escHtml(v.name)}">${escHtml(v.name)}${v.adequate ? ' <span style="font-size:9px;padding:1px 5px;background:var(--green);color:#fff;border-radius:6px;vertical-align:middle;">適格</span>' : ''}${maker !== 'その他' ? ` <span style="font-size:9px;padding:1px 5px;background:${makerColor(maker)};color:#fff;border-radius:6px;vertical-align:middle;">${maker}</span>` : ''}<div style="font-size:9px;color:var(--muted);">${v.count}伝票 · 平均${fmtShortYen(v.total / Math.max(1, v.count))}</div></div><div class="mini-bar"><div class="fill" style="width:${(v.total/maxSup)*100}%"></div></div><div class="am">${fmtShortYen(v.total)}</div><div class="pct">${((v.total/totalZekomi)*100).toFixed(1)}%</div></div>`;
+      return `<div class="mo-row" style="cursor:pointer;" onclick="showSupplierTimeline('${supId}', ${JSON.stringify(v.name).replace(/"/g,'&quot;')})"><div class="rk ${rkCls}">${rkIcon}</div><div class="nm" title="${escHtml(v.name)}">${escHtml(v.name)}${v.adequate ? ' <span style="font-size:9px;padding:1px 5px;background:var(--green);color:#fff;border-radius:6px;vertical-align:middle;">適格</span>' : ''}${maker !== 'その他' ? ` <span style="font-size:9px;padding:1px 5px;background:${makerColor(maker)};color:#fff;border-radius:6px;vertical-align:middle;">${maker}</span>` : ''}<div style="font-size:9px;color:var(--muted);">${v.count}伝票 · 平均${fmtShortYen(v.total / Math.max(1, v.count))} · 🔍 詳細</div></div><div class="mini-bar"><div class="fill" style="width:${(v.total/maxSup)*100}%"></div></div><div class="am">${fmtShortYen(v.total)}</div><div class="pct">${((v.total/totalZekomi)*100).toFixed(1)}%</div></div>`;
     }).join('');
 
     // メーカー内訳
@@ -2966,6 +2966,79 @@ async function loadPurchase(force) {
   } catch(e) {
     console.error(e);
     document.getElementById('pc-suppliers').innerHTML = '<div class="empty">取得失敗: ' + escHtml(e.message || e) + '</div>';
+  }
+}
+
+// 仕入先タイムラインモーダル
+async function showSupplierTimeline(supId, supName) {
+  if (supId === 'unknown') { showToast('仕入先不明の伝票'); return; }
+  let modal = document.getElementById('supplier-timeline-overlay');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'supplier-timeline-overlay';
+    modal.className = 'help-overlay';
+    modal.onclick = (e) => { if (e.target === modal) modal.classList.remove('show'); };
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `
+    <div class="help-modal" style="position:relative;max-width:900px;">
+      <button class="close-btn" onclick="document.getElementById('supplier-timeline-overlay').classList.remove('show')">×</button>
+      <h2>🏭 ${escHtml(supName)} の仕入履歴</h2>
+      <div id="st-content"><div class="empty loading">取得中...</div></div>
+    </div>
+  `;
+  modal.classList.add('show');
+  try {
+    // 期間内の伝票を取得
+    const from = document.getElementById('pc-from').value;
+    const to = document.getElementById('pc-to').value;
+    const [fy, fm] = from.split('-').map(Number);
+    const [ty, tm] = to.split('-').map(Number);
+    const fromStr = `${fy}-${String(fm).padStart(2,'0')}-01`;
+    const toStr = `${ty}-${String(tm).padStart(2,'0')}-${String(new Date(ty, tm, 0).getDate()).padStart(2,'0')}`;
+    const slips = [];
+    let cursor = null;
+    do {
+      const body = { filter: { and: [
+        { property: '仕入先', relation: { contains: supId } },
+        { property: '仕入日', date: { on_or_after: fromStr } },
+        { property: '仕入日', date: { on_or_before: toStr } },
+      ]}, sorts: [{ property: '仕入日', direction: 'descending' }], page_size: 100 };
+      if (cursor) body.start_cursor = cursor;
+      const r = await notionPost('/databases/' + PURCHASE_SLIP_DB + '/query', body);
+      slips.push(...(r.results || []));
+      cursor = r.has_more ? r.next_cursor : null;
+    } while (cursor);
+    if (!slips.length) { document.getElementById('st-content').innerHTML = '<div class="empty">期間内の仕入履歴なし</div>'; return; }
+    const total = slips.reduce((s, p) => s + (p.properties['税込合計']?.number || 0), 0);
+    document.getElementById('st-content').innerHTML = `
+      <div style="display:flex; gap:10px; margin-bottom:12px;">
+        <div style="flex:1; background:var(--s2); padding:10px; border-radius:8px; text-align:center;"><div style="font-size:10px; color:var(--muted);">伝票数</div><div style="font-size:20px; font-weight:900; color:var(--accent);">${slips.length}</div></div>
+        <div style="flex:1; background:var(--s2); padding:10px; border-radius:8px; text-align:center;"><div style="font-size:10px; color:var(--muted);">期間合計</div><div style="font-size:20px; font-weight:900; color:var(--accent);">${fmtShortYen(total)}</div></div>
+        <div style="flex:1; background:var(--s2); padding:10px; border-radius:8px; text-align:center;"><div style="font-size:10px; color:var(--muted);">平均/伝票</div><div style="font-size:20px; font-weight:900; color:var(--accent);">${fmtShortYen(total/slips.length)}</div></div>
+      </div>
+      <div style="max-height:500px; overflow-y:auto;">
+        <table class="list-table">
+          <thead><tr><th>仕入日</th><th>弥生#</th><th>仕入税額控除</th><th class="right">税抜</th><th class="right">消費税</th><th class="right">税込</th></tr></thead>
+          <tbody>
+          ${slips.map(s => {
+            const p = s.properties;
+            return `<tr class="clickable" onclick="window.open('https://www.notion.so/${s.id.replace(/-/g,'')}','_blank')">
+              <td>${(p['仕入日']?.date?.start || '').replace(/-/g, '/')}</td>
+              <td style="font-family:monospace;font-size:10px;">${escHtml(p['弥生伝票番号']?.rich_text?.[0]?.plain_text || '-')}</td>
+              <td style="font-size:10px;">${escHtml(p['仕入税額控除']?.select?.name || '-')}</td>
+              <td class="right">${fmtYen(p['税抜合計']?.number || 0)}</td>
+              <td class="right">${fmtYen(p['消費税合計']?.number || 0)}</td>
+              <td class="right amount">${fmtYen(p['税込合計']?.number || 0)}</td>
+            </tr>`;
+          }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch(e) {
+    console.error(e);
+    document.getElementById('st-content').innerHTML = '<div class="empty">取得失敗: ' + escHtml(e.message || e) + '</div>';
   }
 }
 

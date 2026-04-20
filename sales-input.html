@@ -2774,6 +2774,7 @@ async function loadVehicles(force) {
     el.innerHTML = '<div class="empty">取得失敗: ' + escHtml(e.message || e) + '</div>';
   }
 }
+let _lastVehicleFiltered = [];
 function renderVehicles() {
   if (!vehicleCache) return;
   const q = (document.getElementById('vh-q').value || '').trim().toLowerCase();
@@ -2791,6 +2792,7 @@ function renderVehicles() {
     }
     return true;
   });
+  _lastVehicleFiltered = filtered;
   // 集計
   const totalTires = filtered.reduce((s, v) => s + (v.本数 || 0), 0);
   document.getElementById('vh-summary').innerHTML = `
@@ -2807,8 +2809,8 @@ function renderVehicles() {
         <th>前輪サイズ</th><th>後輪サイズ</th><th class="right">本数</th><th>カテゴリ</th><th>最終バルブ</th>
       </tr></thead>
       <tbody>
-      ${filtered.slice(0, 200).map(v => `
-        <tr class="clickable" onclick="jumpToSearchByVehicle('${v.carNo.replace(/'/g, "\\'")}','${v.mgmtNo.replace(/'/g, "\\'")}')">
+      ${filtered.slice(0, 200).map((v, i) => `
+        <tr class="clickable" onclick="showVehicleTimeline(${i})">
           <td>${escHtml(v.carNo || '-')}</td>
           <td style="font-family:monospace;color:var(--accent);font-weight:700;">${escHtml(v.mgmtNo || '-')}</td>
           <td>${escHtml(v.車種 || '-')}</td>
@@ -2825,6 +2827,100 @@ function renderVehicles() {
     ${filtered.length > 200 ? `<div style="margin-top:8px;color:var(--muted);font-size:11px;text-align:center;">(上位200 / 全${filtered.length})</div>` : ''}
   `;
 }
+// 車両クリック → タイムラインモーダル表示
+async function showVehicleTimeline(idx) {
+  const v = _lastVehicleFiltered[idx];
+  if (!v) return;
+  let modal = document.getElementById('vehicle-timeline-overlay');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'vehicle-timeline-overlay';
+    modal.className = 'help-overlay';
+    modal.onclick = (e) => { if (e.target === modal) modal.classList.remove('show'); };
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `
+    <div class="help-modal" style="position:relative;max-width:900px;">
+      <button class="close-btn" onclick="document.getElementById('vehicle-timeline-overlay').classList.remove('show')">×</button>
+      <h2>🚚 ${escHtml(v.carNo || ('管理#' + v.mgmtNo))} のタイヤ履歴</h2>
+      <div style="background:var(--s2);padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:12px;line-height:1.7;">
+        ${v.mgmtNo ? `<div>🏷 管理番号: <b>${escHtml(v.mgmtNo)}</b></div>` : ''}
+        <div>🚛 車種/仕様: ${escHtml(v.車種 || '-')} / ${escHtml(v.仕様 || '-')}</div>
+        <div>📐 前輪: ${escHtml(v.size前 || '-')} / 後輪: ${escHtml(v.size後 || '-')}</div>
+        <div>🛞 タイヤ本数: ${v.本数 || '-'} 本 / カテゴリ: ${escHtml(v.category || '-')}</div>
+        ${v.バルブ交換日 ? `<div>🔧 最終バルブ交換: ${v.バルブ交換日}</div>` : ''}
+      </div>
+      <div id="vt-content"><div class="empty">📥 過去履歴取得中...</div></div>
+    </div>
+  `;
+  modal.classList.add('show');
+  // 履歴取得
+  try {
+    const searchKey = v.carNo && !v.carNo.startsWith('管理#') ? v.carNo : ('管理' + v.mgmtNo);
+    const isCarNum = v.carNo && !v.carNo.startsWith('管理#');
+    // 明細DBを検索
+    const filter = isCarNum
+      ? { property: '車番', rich_text: { contains: v.carNo } }
+      : { property: '備考', rich_text: { contains: v.mgmtNo } };
+    const r = await notionPost('/databases/' + DETAIL_DB + '/query', { filter, page_size: 100 });
+    // 伝票タイトルとタイトル情報も取得
+    const details = r.results || [];
+    // 伝票IDごとにグルーピング
+    const bySlip = new Map();
+    for (const d of details) {
+      const slipId = d.properties['売上伝票']?.relation?.[0]?.id;
+      if (!slipId) continue;
+      if (!bySlip.has(slipId)) bySlip.set(slipId, []);
+      bySlip.get(slipId).push(d);
+    }
+    if (!bySlip.size) {
+      document.getElementById('vt-content').innerHTML = '<div class="empty">過去の作業履歴なし</div>';
+      return;
+    }
+    // 伝票情報取得
+    const slipIds = [...bySlip.keys()];
+    const slipsData = await Promise.all(slipIds.map(id => notionPost('/pages/' + id).catch(() => null)));
+    const rows = slipsData.filter(Boolean).map(s => {
+      const date = s.properties['売上日']?.date?.start || '';
+      const title = s.properties['伝票タイトル']?.title?.[0]?.plain_text || '';
+      const amount = s.properties['税込合計']?.number || 0;
+      const dets = bySlip.get(s.id) || [];
+      return { date, title, amount, dets, slipId: s.id };
+    }).sort((a, b) => b.date.localeCompare(a.date));
+
+    const totalAmount = rows.reduce((s, r) => s + r.amount, 0);
+    const totalWork = rows.reduce((s, r) => s + r.dets.length, 0);
+    document.getElementById('vt-content').innerHTML = `
+      <div style="display:flex;gap:10px;margin-bottom:12px;">
+        <div style="flex:1;background:var(--s2);padding:10px;border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--muted);">作業回数</div><div style="font-size:20px;font-weight:900;color:var(--accent);">${rows.length}回</div></div>
+        <div style="flex:1;background:var(--s2);padding:10px;border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--muted);">累計作業明細</div><div style="font-size:20px;font-weight:900;color:var(--accent);">${totalWork}件</div></div>
+        <div style="flex:1;background:var(--s2);padding:10px;border-radius:8px;text-align:center;"><div style="font-size:10px;color:var(--muted);">累計金額</div><div style="font-size:20px;font-weight:900;color:var(--accent);">${fmtShortYen(totalAmount)}</div></div>
+      </div>
+      <div style="max-height:400px;overflow-y:auto;">
+      ${rows.map(r => `
+        <div style="border-left:3px solid var(--accent);padding:8px 12px;margin-bottom:10px;background:var(--s2);border-radius:0 8px 8px 0;cursor:pointer;" onclick="window.open('delivery-note.html?slip=${r.slipId}', '_blank')">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div style="font-weight:700;color:var(--accent);">📅 ${r.date}</div>
+            <div style="font-size:12px;color:var(--text);font-weight:700;">${fmtShortYen(r.amount)}</div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin:3px 0;">${escHtml(r.title)}</div>
+          <div style="font-size:11px;line-height:1.5;">${r.dets.map(d => {
+            const hin = d.properties['品目']?.select?.name || '';
+            const sz = d.properties['タイヤサイズ']?.rich_text?.[0]?.plain_text || '';
+            const br = d.properties['タイヤ銘柄']?.rich_text?.[0]?.plain_text || '';
+            const qty = d.properties['数量']?.number || 0;
+            return `<span style="display:inline-block;background:var(--s3);padding:1px 6px;border-radius:10px;margin:2px 3px 2px 0;">${escHtml(hin)}${sz?' '+escHtml(sz):''}${br?' '+escHtml(br):''} ×${qty}</span>`;
+          }).join('')}</div>
+        </div>
+      `).join('')}
+      </div>
+    `;
+  } catch(e) {
+    console.error(e);
+    document.getElementById('vt-content').innerHTML = '<div class="empty">取得失敗: ' + escHtml(e.message || e) + '</div>';
+  }
+}
+
 // 車両クリック → 検索画面へ（車番 or 管理番号）
 function jumpToSearchByVehicle(carNo, mgmtNo) {
   showPage('search');

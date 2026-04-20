@@ -805,25 +805,48 @@ function showToast(msg) {
 }
 function escHtml(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
 function fmtYen(n) { return Math.round(n).toLocaleString() + ' 円'; }
-async function notionPost(path, body, retries = 4) {
+async function notionPost(path, body, retries = 5) {
+  let lastErr;
   for (let i = 0; i <= retries; i++) {
     try {
       const r = await fetch(WORKER + path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-      if (r.ok) return await r.json();
+      const text = await r.text();
+      let json;
+      try { json = JSON.parse(text); } catch(_) { throw new Error('non-JSON response HTTP ' + r.status + ': ' + text.slice(0,120)); }
+      // Notion API はレート制限時に HTTP 200 で {object:'error', code:'rate_limited'} を返すことがある
+      if (json && json.object === 'error') {
+        const retriable = ['rate_limited', 'internal_server_error', 'service_unavailable', 'conflict_error'];
+        if (retriable.includes(json.code) && i < retries) {
+          const wait = Math.min(30000, 2000 * Math.pow(2, i)); // 2,4,8,16,30s (max)
+          console.warn(`[notionPost] ${json.code} retry ${i+1}/${retries} after ${wait}ms`);
+          await new Promise(res => setTimeout(res, wait));
+          continue;
+        }
+        throw new Error('Notion error ' + json.code + ': ' + (json.message || ''));
+      }
+      if (r.ok) return json;
       if ((r.status === 429 || r.status === 503 || r.status === 502) && i < retries) {
-        const wait = 1500 * Math.pow(2, i); // 1.5s, 3s, 6s, 12s
+        const wait = Math.min(30000, 2000 * Math.pow(2, i));
+        console.warn(`[notionPost] HTTP ${r.status} retry ${i+1}/${retries} after ${wait}ms`);
         await new Promise(res => setTimeout(res, wait));
         continue;
       }
-      throw new Error('HTTP ' + r.status);
+      throw new Error('HTTP ' + r.status + ': ' + (json.message || text.slice(0, 100)));
     } catch(e) {
-      if (i < retries && (e.message || '').includes('HTTP')) {
+      lastErr = e;
+      // network error等はリトライ
+      if (i < retries && (String(e).match(/NetworkError|Failed to fetch|timeout|aborted/i))) {
         await new Promise(res => setTimeout(res, 1500 * (i + 1)));
         continue;
       }
+      if (i >= retries) throw e;
+      // Notion error は上でリトライ済みなのでここでは throw
+      if ((e.message || '').startsWith('Notion error') || (e.message || '').startsWith('HTTP ')) throw e;
+      // それ以外は throw
       throw e;
     }
   }
+  throw lastErr || new Error('retries exhausted');
 }
 
 /* ════════════════════════════════════════
@@ -1106,7 +1129,7 @@ async function getMonthAggregate(ym, { force = false } = {}) {
   if (!isRecentMonth(ym)) writeCache(ym, agg);
   return agg;
 }
-async function getMonthAggregatesParallel(ymList, { force = false, concurrency = 2, onProgress } = {}) {
+async function getMonthAggregatesParallel(ymList, { force = false, concurrency = 1, onProgress } = {}) {
   const result = new Map();
   let idx = 0, done = 0;
   let hits = 0, fetched = 0, failed = 0;

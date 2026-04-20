@@ -3909,7 +3909,18 @@ function updateDetail(idx, key, val) {
   updateRowAmount(idx);
   calcTotals();
 }
-function hasData(d) { return d && (d.hinmoku || d.code || d.size || d.brand || d.qty || d.tanka || d.bikou); }
+function hasData(d) { return d && (d.hinmoku || d.code || d.size || d.brand || d.carNo || d.qty || d.tanka || d.bikou); }
+
+// 未保存データがある場合、ページ離脱警告
+window.addEventListener('beforeunload', (e) => {
+  try {
+    if (state.currentPage === 'sales' && state.details.some(d => hasData(d))) {
+      e.preventDefault();
+      e.returnValue = '入力中の売上伝票があります。保存せずに離れますか？';
+      return e.returnValue;
+    }
+  } catch(_) {}
+});
 function updateRowAmount(i) {
   const d = state.details[i]; if (!d) return;
   const sub = (parseFloat(d.qty) || 0) * (parseFloat(d.tanka) || 0);

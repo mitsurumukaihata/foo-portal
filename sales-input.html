@@ -1519,6 +1519,8 @@ async function refreshDashboardUnbilled() {
     if (card) {
       card.style.borderColor = (r.results || []).length > 0 ? 'var(--red)' : 'var(--border)';
     }
+    // アクションウィジェットを再描画（未請求数に依存）
+    if (typeof renderDashboardActions === 'function') renderDashboardActions();
   } catch(e) { console.error(e); el.textContent = '?'; }
 }
 

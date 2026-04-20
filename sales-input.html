@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>売上入力 | f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap');
+
+:root {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --red: #ef4444;
+  --blue: #3b82f6; --purple: #a855f7;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #fdf6ee; --s1: #ffffff; --s2: #fdf0e4; --s3: #f5e6d4;
+    --border: #e8d8c4; --border2: #d8c4a8; --text: #1a1208; --muted: #a08060;
+    --accent: #e07000; --accent2: #c05800; --green: #1a9e4a; --red: #dc2626;
+    --blue: #2563eb; --purple: #9333ea;
+  }
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; max-width:720px; margin:0 auto; padding-bottom:80px; }
+body::-webkit-scrollbar { display:none; }
+
+/* Header */
+.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 16px 10px; position:sticky; top:0; z-index:100; }
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+.header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+.header-back { font-size:11px; color:var(--muted); text-decoration:none; border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; }
+.header-title { font-size:17px; font-weight:900; letter-spacing:-0.02em; }
+.header-title span { color:var(--accent); }
+.version { font-size:9px; color:var(--muted); font-weight:400; margin-left:6px; }
+
+/* Screen containers */
+.screen { display:none; padding:16px; }
+.screen.show { display:block; }
+
+/* Home screen */
+.home-grid { display:grid; gap:10px; }
+.home-card { background:var(--s2); border:1px solid var(--border); border-radius:14px; padding:16px; cursor:pointer; transition:all 0.15s; display:flex; align-items:center; gap:14px; color:var(--text); text-decoration:none; }
+.home-card:hover { background:var(--s3); border-color:var(--accent); }
+.home-card:active { transform:scale(0.98); }
+.home-card .icon { font-size:30px; flex-shrink:0; }
+.home-card .label { flex:1; }
+.home-card .label .title { font-size:14px; font-weight:700; }
+.home-card .label .sub { font-size:11px; color:var(--muted); margin-top:2px; }
+.home-card .arrow { color:var(--muted); }
+
+.home-section { margin-top:24px; }
+.home-section-title { font-size:11px; color:var(--muted); font-weight:700; letter-spacing:0.06em; margin-bottom:8px; padding-left:4px; }
+.recent-list { display:flex; flex-direction:column; gap:6px; }
+.recent-item { background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:10px 12px; font-size:12px; cursor:pointer; }
+.recent-item:hover { background:var(--s3); }
+.recent-item .head { display:flex; justify-content:space-between; align-items:center; }
+.recent-item .title { font-weight:700; flex:1; }
+.recent-item .amount { color:var(--accent); font-weight:700; }
+.recent-item .meta { color:var(--muted); font-size:10px; margin-top:2px; }
+
+/* Form */
+.form-section { background:var(--s2); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:12px; }
+.form-row { margin-bottom:12px; }
+.form-row:last-child { margin-bottom:0; }
+.form-label { font-size:11px; font-weight:700; color:var(--muted); margin-bottom:5px; display:flex; align-items:center; gap:6px; }
+.form-label .req { color:var(--red); font-weight:900; }
+.form-input, .form-select { width:100%; padding:10px 12px; background:var(--s1); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:14px; font-family:inherit; }
+.form-input:focus, .form-select:focus { outline:none; border-color:var(--accent); }
+.form-textarea { width:100%; padding:10px 12px; background:var(--s1); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:13px; font-family:inherit; min-height:60px; resize:vertical; }
+
+/* Search dropdown */
+.search-wrap { position:relative; }
+.search-results { position:absolute; top:100%; left:0; right:0; background:var(--s1); border:1px solid var(--border); border-radius:8px; max-height:240px; overflow-y:auto; z-index:50; display:none; margin-top:2px; box-shadow:0 4px 16px rgba(0,0,0,0.2); }
+.search-results.show { display:block; }
+.search-result { padding:8px 12px; cursor:pointer; font-size:13px; border-bottom:0.5px solid var(--border); }
+.search-result:last-child { border-bottom:none; }
+.search-result:hover { background:var(--s3); }
+.search-result .title { font-weight:600; }
+.search-result .sub { font-size:11px; color:var(--muted); margin-top:2px; }
+
+/* Detail rows */
+.details-list { display:flex; flex-direction:column; gap:8px; }
+.detail-card { background:var(--s1); border:1px solid var(--border); border-radius:10px; padding:10px; position:relative; }
+.detail-card .row { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px; }
+.detail-card .row:last-child { margin-bottom:0; }
+.detail-card .row.full { grid-template-columns:1fr; }
+.detail-card .row.qty-tanka { grid-template-columns:80px 1fr 100px; }
+.detail-card label { font-size:9px; color:var(--muted); display:block; margin-bottom:2px; }
+.detail-card input, .detail-card select { width:100%; padding:6px 8px; background:var(--s2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:12px; font-family:inherit; }
+.detail-card .subtotal { font-size:13px; font-weight:700; color:var(--accent); text-align:right; padding:4px 0; }
+.detail-card .remove-btn { position:absolute; top:6px; right:6px; background:rgba(239,68,68,0.15); color:var(--red); border:none; border-radius:50%; width:22px; height:22px; cursor:pointer; font-size:11px; line-height:1; }
+.btn-add-detail { width:100%; padding:12px; background:var(--s1); border:1px dashed var(--border2); border-radius:10px; color:var(--accent); font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+.btn-add-detail:hover { background:var(--s3); }
+
+/* Total */
+.total-box { background:var(--s2); border:2px solid var(--accent); border-radius:14px; padding:14px; margin:14px 0; }
+.total-row { display:flex; justify-content:space-between; align-items:center; padding:4px 0; }
+.total-row.main { font-size:18px; font-weight:900; color:var(--accent); border-top:1px solid var(--border); padding-top:8px; margin-top:6px; }
+.total-row .label { font-size:12px; color:var(--muted); }
+.total-row .value { font-weight:700; }
+
+/* Action buttons */
+.action-bar { position:sticky; bottom:0; background:var(--bg); padding:14px 16px; border-top:0.5px solid var(--border); display:flex; gap:8px; }
+.btn-primary { flex:1; padding:14px; background:var(--accent); color:#fff; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; }
+.btn-primary:disabled { opacity:0.5; cursor:not-allowed; }
+.btn-secondary { padding:14px 18px; background:var(--s3); color:var(--muted); border:1px solid var(--border); border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+
+/* Toast */
+.toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:var(--s3); color:var(--text); padding:10px 16px; border-radius:20px; font-size:13px; z-index:200; box-shadow:0 4px 12px rgba(0,0,0,0.3); }
+
+/* Tax type */
+.tax-type-row { display:flex; gap:6px; }
+.tax-type-row label { flex:1; padding:6px 8px; background:var(--s1); border:1px solid var(--border); border-radius:6px; text-align:center; font-size:12px; cursor:pointer; }
+.tax-type-row label.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+.tax-type-row input { display:none; }
+
+/* Result screen */
+.result-icon { font-size:60px; text-align:center; margin:20px 0; }
+.result-title { font-size:18px; font-weight:700; text-align:center; margin-bottom:8px; }
+.result-amount { font-size:32px; font-weight:900; color:var(--accent); text-align:center; margin:14px 0; }
+.result-meta { background:var(--s2); border-radius:10px; padding:12px; font-size:13px; margin-bottom:16px; }
+.result-meta-row { display:flex; justify-content:space-between; padding:4px 0; }
+.result-meta-row .label { color:var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="header-brand">F.o.o · 売上</div>
+    <a class="header-back" href="index.html">← ポータル</a>
+  </div>
+  <div class="header-title">売上<span>入力</span><span class="version">v2026.04.20.0001</span></div>
+</div>
+
+<!-- ══════════════ Screen: Home ══════════════ -->
+<div class="screen show" id="screen-home">
+  <div class="home-grid">
+    <div class="home-card" onclick="newSale()">
+      <div class="icon">⭕</div>
+      <div class="label">
+        <div class="title">新規 売上入力</div>
+        <div class="sub">伝票を新しく作成</div>
+      </div>
+      <div class="arrow">›</div>
+    </div>
+    <div class="home-card" onclick="loadDraft()">
+      <div class="icon">📋</div>
+      <div class="label">
+        <div class="title">下書きの続きから入力</div>
+        <div class="sub" id="draft-info">下書き: 0件</div>
+      </div>
+      <div class="arrow">›</div>
+    </div>
+    <div class="home-card" onclick="searchByCar()">
+      <div class="icon">🔍</div>
+      <div class="label">
+        <div class="title">車番から過去伝票を検索</div>
+        <div class="sub">車番4桁で予測検索</div>
+      </div>
+      <div class="arrow">›</div>
+    </div>
+  </div>
+
+  <div class="home-section">
+    <div class="home-section-title">📊 直近の入力履歴</div>
+    <div class="recent-list" id="recent-list">
+      <div style="text-align:center;padding:14px;color:var(--muted);font-size:12px;">読み込み中...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ Screen: Form ══════════════ -->
+<div class="screen" id="screen-form">
+  <div class="form-section">
+    <div class="form-row">
+      <div class="form-label">📅 売上日 <span class="req">*</span></div>
+      <input type="date" id="input-date" class="form-input">
+    </div>
+    <div class="form-row">
+      <div class="form-label">👤 担当者</div>
+      <select id="input-staff" class="form-select"></select>
+    </div>
+    <div class="form-row">
+      <div class="form-label">🛒 作業区分</div>
+      <select id="input-worktype" class="form-select">
+        <option value="来店">来店</option>
+        <option value="出張作業">出張作業</option>
+        <option value="配達">配達</option>
+        <option value="引き取り">引き取り</option>
+        <option value="その他">その他</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-row">
+      <div class="form-label">🚚 得意先（請求先） <span class="req">*</span></div>
+      <div class="search-wrap">
+        <input type="text" id="input-customer" class="form-input" placeholder="得意先名で検索（例: トーヨー、CLO等）" autocomplete="off">
+        <div class="search-results" id="customer-results"></div>
+      </div>
+      <div id="selected-customer" style="font-size:11px;color:var(--accent);margin-top:4px;"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-label">🚗 車番（任意・予測検索）</div>
+      <div class="search-wrap">
+        <input type="text" id="input-car" class="form-input" placeholder="例: 広島100あ12-34、または下4桁" autocomplete="off">
+        <div class="search-results" id="car-results"></div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-label">🏢 顧客名（エンドユーザー・任意）</div>
+      <input type="text" id="input-enduser" class="form-input" placeholder="得意先と同じ場合は空でOK">
+    </div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-row">
+      <div class="form-label">💸 税区分</div>
+      <div class="tax-type-row" id="tax-type-row">
+        <label class="active"><input type="radio" name="tax-type" value="外税" checked>外税</label>
+        <label><input type="radio" name="tax-type" value="内税">内税</label>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-label">🛞 売上明細 <span class="req">*</span></div>
+      <div class="details-list" id="details-list"></div>
+      <button type="button" class="btn-add-detail" onclick="addDetail()" style="margin-top:8px;">+ 明細を追加</button>
+    </div>
+  </div>
+
+  <div class="total-box">
+    <div class="total-row">
+      <div class="label">税抜合計</div>
+      <div class="value" id="total-zeinuki">0 円</div>
+    </div>
+    <div class="total-row">
+      <div class="label">消費税合計</div>
+      <div class="value" id="total-zeigaku">0 円</div>
+    </div>
+    <div class="total-row main">
+      <div class="label">税込合計（請求額）</div>
+      <div class="value" id="total-zeikomi">0 円</div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-row">
+      <div class="form-label">📝 備考</div>
+      <textarea id="input-bikou" class="form-textarea" placeholder="顧客への申し送り・特記事項など（任意）"></textarea>
+    </div>
+  </div>
+
+  <div class="action-bar">
+    <button type="button" class="btn-secondary" onclick="saveDraft()">💾 下書き保存</button>
+    <button type="button" class="btn-secondary" onclick="cancelForm()">×</button>
+    <button type="button" class="btn-primary" id="btn-submit" onclick="submitSale()">✅ 売上計上</button>
+  </div>
+</div>
+
+<!-- ══════════════ Screen: Result ══════════════ -->
+<div class="screen" id="screen-result">
+  <div class="result-icon">✅</div>
+  <div class="result-title">売上伝票を作成しました</div>
+  <div class="result-amount" id="result-amount">0 円</div>
+  <div class="result-meta" id="result-meta"></div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <button class="btn-primary" onclick="newSale()">➕ 続けて入力</button>
+    <button class="btn-secondary" onclick="goHome()" style="text-align:center;">🏠 ホームに戻る</button>
+    <a id="result-notion-link" class="btn-secondary" target="_blank" style="text-align:center;text-decoration:none;">📗 Notionで詳細を見る</a>
+  </div>
+</div>
+
+<script src="foo-common.js"></script>
+<script>
+/* ════════════════════════════════════════
+   定数
+   ═══════════════════════════════════════ */
+const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
+const SALES_DB = '58cc4a13df03435db14b3439ef1f0a6f';      // 売上伝票DB
+const DETAIL_DB = '07bd22655e5849fd854bef1f4c4b5688';     // 売上明細DB
+const PRODUCT_DB = '21771ad9a3f0457ea97474b3499ca4a9';    // 商品マスタDB
+const CUSTOMER_DB = 'f632f512f12d49b2b11f2b3e45c70aec';   // 得意先マスタDB
+const EMPLOYEE_DB = '326a695f8e8880058ef8d3d452cea6af';   // 社員マスタ
+const DRAFT_KEY = 'sales-input-drafts';
+
+const HINMOKU_OPTIONS = [
+  '組替','脱着','Fバランス','バランス','廃タイヤ',
+  '出張(市内)','出張(市外)','タイヤ販売(新品)','タイヤ販売(中古)','タイヤ販売(更生)',
+  'ホイール','f.o.oパック','その他','タイヤ',
+];
+
+/* ログインユーザー取得 */
+let loginUser = '';
+(function(){
+  try {
+    const raw = localStorage.getItem('foo_portal_session');
+    if (raw) { const s = JSON.parse(raw); loginUser = s.name || ''; }
+  } catch(e) {}
+  if (!loginUser) loginUser = '向畑 充';
+})();
+
+/* 状態 */
+let state = {
+  customers: [],     // 得意先一覧キャッシュ
+  employees: [],     // 社員一覧
+  carHistory: [],    // 車番履歴（過去伝票から）
+  recentSlips: [],   // 直近伝票
+  selectedCustomer: null,    // {id, name}
+  draftId: null,             // 編集中の下書きID（null=新規）
+  details: [],               // 明細リスト
+};
+
+/* ════════════════════════════════════════
+   Utility
+   ═══════════════════════════════════════ */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(el => el.classList.remove('show'));
+  document.getElementById(id).classList.add('show');
+  window.scrollTo(0, 0);
+}
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+function escHtml(s) {
+  const d = document.createElement('div'); d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
+}
+function fmtYen(n) { return Math.round(n).toLocaleString() + ' 円'; }
+async function notionPost(path, body) {
+  const r = await fetch(WORKER + path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return await r.json();
+}
+
+/* ════════════════════════════════════════
+   起動
+   ═══════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded', async () => {
+  await Promise.all([
+    loadCustomers(),
+    loadEmployees(),
+    loadRecentSlips(),
+  ]);
+  refreshDraftInfo();
+  // 担当者初期値
+  const sel = document.getElementById('input-staff');
+  if (sel.querySelector('option[value="' + loginUser + '"]')) sel.value = loginUser;
+  // 売上日初期値: 今日
+  document.getElementById('input-date').value = new Date().toISOString().slice(0,10);
+});
+
+/* ════════════════════════════════════════
+   マスタ読込
+   ═══════════════════════════════════════ */
+async function loadCustomers() {
+  let all = []; let cursor = null;
+  try {
+    do {
+      const body = { page_size: 100 };
+      if (cursor) body.start_cursor = cursor;
+      const r = await notionPost('/databases/' + CUSTOMER_DB + '/query', body);
+      all = all.concat(r.results || []);
+      cursor = r.has_more ? r.next_cursor : null;
+    } while (cursor);
+    state.customers = all.map(p => ({
+      id: p.id,
+      name: p.properties['得意先名']?.title?.[0]?.plain_text || '',
+      code: p.properties['得意先コード']?.rich_text?.[0]?.plain_text || '',
+      ryakushou: p.properties['略称']?.rich_text?.[0]?.plain_text || '',
+    })).filter(c => c.name);
+  } catch(e) {
+    console.error('得意先取得失敗', e);
+  }
+}
+
+async function loadEmployees() {
+  // 社員マスタは取得しても使うかは次フェーズ。今は固定リスト + foo-common.js から流用
+  state.employees = [
+    '向畑 充', '矢島 明和', '大田 健', '中川 颯', '平野 春之',
+    '山根 祐司', '村田 良典', '岡崎 由美', '藤井 真理亜',
+  ];
+  const sel = document.getElementById('input-staff');
+  sel.innerHTML = state.employees.map(e => '<option value="' + escHtml(e) + '">' + escHtml(e) + '</option>').join('');
+}
+
+async function loadRecentSlips() {
+  try {
+    const r = await notionPost('/databases/' + SALES_DB + '/query', {
+      sorts: [{ property: '売上日', direction: 'descending' }],
+      page_size: 10,
+    });
+    state.recentSlips = (r.results || []).map(p => ({
+      id: p.id,
+      title: p.properties['伝票タイトル']?.title?.[0]?.plain_text || '(無題)',
+      date: p.properties['売上日']?.date?.start || '',
+      amount: p.properties['税込合計']?.number || 0,
+      car: p.properties['車番']?.rich_text?.[0]?.plain_text || '',
+    }));
+    renderRecentSlips();
+  } catch(e) { console.error(e); }
+}
+
+function renderRecentSlips() {
+  const el = document.getElementById('recent-list');
+  if (!state.recentSlips.length) { el.innerHTML = '<div style="text-align:center;padding:14px;color:var(--muted);font-size:12px;">直近の入力なし</div>'; return; }
+  el.innerHTML = state.recentSlips.map(s => `
+    <a class="recent-item" href="https://www.notion.so/${s.id.replace(/-/g,'')}" target="_blank" style="text-decoration:none;color:inherit;">
+      <div class="head">
+        <div class="title">${escHtml(s.title)}</div>
+        <div class="amount">${fmtYen(s.amount)}</div>
+      </div>
+      <div class="meta">${s.date}${s.car ? ' · ' + escHtml(s.car) : ''}</div>
+    </a>
+  `).join('');
+}
+
+/* ════════════════════════════════════════
+   下書き
+   ═══════════════════════════════════════ */
+function loadDraftList() {
+  try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || '[]'); } catch(_) { return []; }
+}
+function saveDraftList(list) { localStorage.setItem(DRAFT_KEY, JSON.stringify(list)); }
+function refreshDraftInfo() {
+  const drafts = loadDraftList();
+  document.getElementById('draft-info').textContent = '下書き: ' + drafts.length + '件';
+}
+
+function saveDraft() {
+  const data = collectFormData();
+  if (!data.details.length) { showToast('明細が空です'); return; }
+  const drafts = loadDraftList();
+  const id = state.draftId || ('d_' + Date.now());
+  const idx = drafts.findIndex(d => d.id === id);
+  const item = { id, savedAt: new Date().toISOString(), data };
+  if (idx >= 0) drafts[idx] = item; else drafts.push(item);
+  saveDraftList(drafts);
+  state.draftId = id;
+  showToast('下書き保存しました（' + drafts.length + '件）');
+  refreshDraftInfo();
+}
+
+function loadDraft() {
+  const drafts = loadDraftList();
+  if (!drafts.length) { showToast('下書きがありません'); return; }
+  // 一覧を簡易表示してユーザーに選んでもらう（最新を即ロード）
+  const latest = drafts.sort((a,b) => b.savedAt.localeCompare(a.savedAt))[0];
+  state.draftId = latest.id;
+  applyFormData(latest.data);
+  showScreen('screen-form');
+  showToast('下書きを読み込みました（' + new Date(latest.savedAt).toLocaleString() + '）');
+}
+
+function deleteCurrentDraft() {
+  if (!state.draftId) return;
+  const drafts = loadDraftList().filter(d => d.id !== state.draftId);
+  saveDraftList(drafts);
+  state.draftId = null;
+  refreshDraftInfo();
+}
+
+/* ════════════════════════════════════════
+   ホーム → 新規
+   ═══════════════════════════════════════ */
+function newSale() {
+  state.draftId = null;
+  state.selectedCustomer = null;
+  state.details = [];
+  document.getElementById('input-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('input-customer').value = '';
+  document.getElementById('selected-customer').textContent = '';
+  document.getElementById('input-car').value = '';
+  document.getElementById('input-enduser').value = '';
+  document.getElementById('input-bikou').value = '';
+  document.querySelector('input[name="tax-type"][value="外税"]').checked = true;
+  updateTaxTypeUI();
+  addDetail();  // 1件初期表示
+  showScreen('screen-form');
+}
+
+function goHome() {
+  loadRecentSlips();
+  refreshDraftInfo();
+  showScreen('screen-home');
+}
+
+function cancelForm() {
+  if (!confirm('入力中の内容は破棄されます。よろしいですか？')) return;
+  state.draftId = null;
+  goHome();
+}
+
+/* ════════════════════════════════════════
+   得意先・車番 検索
+   ═══════════════════════════════════════ */
+document.addEventListener('input', (e) => {
+  if (e.target.id === 'input-customer') searchCustomer(e.target.value);
+  if (e.target.id === 'input-car') searchCar(e.target.value);
+});
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.search-wrap')) {
+    document.querySelectorAll('.search-results').forEach(el => el.classList.remove('show'));
+  }
+});
+
+function searchCustomer(q) {
+  const el = document.getElementById('customer-results');
+  if (!q || q.length < 1) { el.classList.remove('show'); return; }
+  const lq = q.toLowerCase();
+  const matches = state.customers.filter(c =>
+    (c.name || '').toLowerCase().includes(lq) ||
+    (c.code || '').toLowerCase().includes(lq) ||
+    (c.ryakushou || '').toLowerCase().includes(lq)
+  ).slice(0, 12);
+  if (!matches.length) { el.innerHTML = '<div style="padding:10px;color:var(--muted);font-size:12px;">該当なし</div>'; el.classList.add('show'); return; }
+  el.innerHTML = matches.map(c => `
+    <div class="search-result" onclick="selectCustomer('${c.id}', '${escHtml(c.name)}', '${c.code || ''}')">
+      <div class="title">${escHtml(c.name)}</div>
+      <div class="sub">コード: ${escHtml(c.code || '-')}${c.ryakushou ? ' · ' + escHtml(c.ryakushou) : ''}</div>
+    </div>
+  `).join('');
+  el.classList.add('show');
+}
+
+function selectCustomer(id, name, code) {
+  state.selectedCustomer = { id, name, code };
+  document.getElementById('input-customer').value = name;
+  document.getElementById('selected-customer').textContent = '✓ 選択中: ' + name + (code ? ' (' + code + ')' : '');
+  document.getElementById('customer-results').classList.remove('show');
+}
+
+async function searchCar(q) {
+  const el = document.getElementById('car-results');
+  if (!q || q.length < 2) { el.classList.remove('show'); return; }
+  // Notionから過去伝票で車番一致するものを取得
+  try {
+    const r = await notionPost('/databases/' + SALES_DB + '/query', {
+      filter: { property: '車番', rich_text: { contains: q } },
+      sorts: [{ property: '売上日', direction: 'descending' }],
+      page_size: 10,
+    });
+    const results = (r.results || []).map(p => ({
+      id: p.id,
+      car: p.properties['車番']?.rich_text?.[0]?.plain_text || '',
+      title: p.properties['伝票タイトル']?.title?.[0]?.plain_text || '',
+      date: p.properties['売上日']?.date?.start || '',
+      amount: p.properties['税込合計']?.number || 0,
+    }));
+    if (!results.length) { el.innerHTML = '<div style="padding:10px;color:var(--muted);font-size:12px;">過去伝票なし</div>'; el.classList.add('show'); return; }
+    // ユニークな車番ごとに最新1件を取得
+    const uniq = new Map();
+    for (const r of results) if (!uniq.has(r.car)) uniq.set(r.car, r);
+    el.innerHTML = [...uniq.values()].slice(0, 8).map(r => `
+      <div class="search-result" onclick="selectCar('${escHtml(r.car)}', '${r.id}')">
+        <div class="title">${escHtml(r.car)}</div>
+        <div class="sub">${r.date} · ${escHtml(r.title.slice(0,30))} · ${fmtYen(r.amount)}</div>
+      </div>
+    `).join('');
+    el.classList.add('show');
+  } catch(e) { console.error(e); }
+}
+
+function selectCar(car, refSlipId) {
+  document.getElementById('input-car').value = car;
+  document.getElementById('car-results').classList.remove('show');
+  // 過去伝票の明細をコピーするか確認
+  if (confirm('この車番の過去伝票の明細をコピーしますか？\n（編集してから保存できます）')) {
+    copyDetailsFromSlip(refSlipId);
+  }
+}
+
+async function copyDetailsFromSlip(slipId) {
+  try {
+    const r = await notionPost('/databases/' + DETAIL_DB + '/query', {
+      filter: { property: '売上伝票', relation: { contains: slipId } }, page_size: 100,
+    });
+    const lines = (r.results || []).map(d => ({
+      hinmoku: d.properties['品目']?.select?.name || 'その他',
+      code: d.properties['商品コード']?.rich_text?.[0]?.plain_text || '',
+      size: d.properties['タイヤサイズ']?.rich_text?.[0]?.plain_text || '',
+      brand: d.properties['タイヤ銘柄']?.rich_text?.[0]?.plain_text || '',
+      qty: d.properties['数量']?.number || 1,
+      tanka: d.properties['単価']?.number || 0,
+      bikou: d.properties['備考']?.rich_text?.[0]?.plain_text || '',
+    }));
+    if (lines.length) {
+      state.details = lines;
+      renderDetails();
+      showToast('過去伝票から ' + lines.length + ' 明細をコピーしました');
+    }
+  } catch(e) { console.error(e); showToast('コピー失敗'); }
+}
+
+/* ════════════════════════════════════════
+   税区分
+   ═══════════════════════════════════════ */
+document.addEventListener('change', (e) => {
+  if (e.target.name === 'tax-type') { updateTaxTypeUI(); calcTotals(); }
+});
+function updateTaxTypeUI() {
+  document.querySelectorAll('.tax-type-row label').forEach(l => l.classList.remove('active'));
+  const checked = document.querySelector('input[name="tax-type"]:checked');
+  if (checked) checked.parentElement.classList.add('active');
+}
+
+/* ════════════════════════════════════════
+   明細
+   ═══════════════════════════════════════ */
+function addDetail() {
+  state.details.push({ hinmoku: '組替', code: '', size: '', brand: '', qty: 1, tanka: 0, bikou: '' });
+  renderDetails();
+}
+
+function removeDetail(idx) {
+  state.details.splice(idx, 1);
+  renderDetails();
+}
+
+function updateDetail(idx, key, val) {
+  if (key === 'qty' || key === 'tanka') val = parseFloat(val) || 0;
+  state.details[idx][key] = val;
+  calcTotals();
+}
+
+function renderDetails() {
+  const el = document.getElementById('details-list');
+  if (!state.details.length) { el.innerHTML = '<div style="text-align:center;padding:14px;color:var(--muted);font-size:12px;">明細を追加してください</div>'; calcTotals(); return; }
+  el.innerHTML = state.details.map((d, i) => `
+    <div class="detail-card">
+      <button type="button" class="remove-btn" onclick="removeDetail(${i})" title="削除">×</button>
+      <div class="row">
+        <div>
+          <label>品目</label>
+          <select onchange="updateDetail(${i},'hinmoku',this.value)">
+            ${HINMOKU_OPTIONS.map(o => `<option value="${o}" ${d.hinmoku === o ? 'selected' : ''}>${o}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label>商品コード（任意）</label>
+          <input type="text" value="${escHtml(d.code)}" onchange="updateDetail(${i},'code',this.value)" placeholder="例: LK01">
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>タイヤサイズ（任意）</label>
+          <input type="text" value="${escHtml(d.size)}" onchange="updateDetail(${i},'size',this.value)" placeholder="例: 245/70R19.5">
+        </div>
+        <div>
+          <label>タイヤ銘柄（任意）</label>
+          <input type="text" value="${escHtml(d.brand)}" onchange="updateDetail(${i},'brand',this.value)" placeholder="例: M646">
+        </div>
+      </div>
+      <div class="row qty-tanka">
+        <div>
+          <label>本数</label>
+          <input type="number" min="0" step="1" value="${d.qty}" onchange="updateDetail(${i},'qty',this.value)">
+        </div>
+        <div>
+          <label>単価（税抜）</label>
+          <input type="number" min="0" step="100" value="${d.tanka}" onchange="updateDetail(${i},'tanka',this.value)">
+        </div>
+        <div>
+          <label>小計</label>
+          <div class="subtotal" id="sub-${i}">${fmtYen(d.qty * d.tanka)}</div>
+        </div>
+      </div>
+      <div class="row full">
+        <div>
+          <label>備考（任意）</label>
+          <input type="text" value="${escHtml(d.bikou)}" onchange="updateDetail(${i},'bikou',this.value)" placeholder="例: ローテーション、車番、メモ">
+        </div>
+      </div>
+    </div>
+  `).join('');
+  calcTotals();
+}
+
+function calcTotals() {
+  let zeinuki = 0;
+  state.details.forEach((d, i) => {
+    const sub = (d.qty || 0) * (d.tanka || 0);
+    zeinuki += sub;
+    const subEl = document.getElementById('sub-' + i);
+    if (subEl) subEl.textContent = fmtYen(sub);
+  });
+  const taxType = (document.querySelector('input[name="tax-type"]:checked') || {}).value || '外税';
+  let zeigaku, zeikomi;
+  if (taxType === '内税') {
+    // 内税: 入力値が税込みとみなして逆算
+    zeikomi = zeinuki;
+    zeinuki = Math.round(zeikomi / 1.1);
+    zeigaku = zeikomi - zeinuki;
+  } else {
+    zeigaku = Math.round(zeinuki * 0.1);
+    zeikomi = zeinuki + zeigaku;
+  }
+  document.getElementById('total-zeinuki').textContent = fmtYen(zeinuki);
+  document.getElementById('total-zeigaku').textContent = fmtYen(zeigaku);
+  document.getElementById('total-zeikomi').textContent = fmtYen(zeikomi);
+  return { zeinuki, zeigaku, zeikomi };
+}
+
+/* ════════════════════════════════════════
+   フォームデータ収集・適用
+   ═══════════════════════════════════════ */
+function collectFormData() {
+  return {
+    date: document.getElementById('input-date').value,
+    staff: document.getElementById('input-staff').value,
+    workType: document.getElementById('input-worktype').value,
+    customer: state.selectedCustomer,
+    car: document.getElementById('input-car').value.trim(),
+    endUser: document.getElementById('input-enduser').value.trim(),
+    taxType: (document.querySelector('input[name="tax-type"]:checked') || {}).value || '外税',
+    details: state.details,
+    bikou: document.getElementById('input-bikou').value.trim(),
+  };
+}
+
+function applyFormData(data) {
+  document.getElementById('input-date').value = data.date || new Date().toISOString().slice(0,10);
+  document.getElementById('input-staff').value = data.staff || loginUser;
+  document.getElementById('input-worktype').value = data.workType || '来店';
+  state.selectedCustomer = data.customer || null;
+  if (data.customer) {
+    document.getElementById('input-customer').value = data.customer.name;
+    document.getElementById('selected-customer').textContent = '✓ 選択中: ' + data.customer.name + (data.customer.code ? ' (' + data.customer.code + ')' : '');
+  } else {
+    document.getElementById('input-customer').value = '';
+    document.getElementById('selected-customer').textContent = '';
+  }
+  document.getElementById('input-car').value = data.car || '';
+  document.getElementById('input-enduser').value = data.endUser || '';
+  const taxRadio = document.querySelector('input[name="tax-type"][value="' + (data.taxType || '外税') + '"]');
+  if (taxRadio) taxRadio.checked = true;
+  updateTaxTypeUI();
+  state.details = data.details || [];
+  renderDetails();
+  document.getElementById('input-bikou').value = data.bikou || '';
+}
+
+/* ════════════════════════════════════════
+   送信（Notion保存）
+   ═══════════════════════════════════════ */
+async function submitSale() {
+  const data = collectFormData();
+  if (!data.date) { showToast('売上日を入力してください'); return; }
+  if (!data.customer) { showToast('得意先を選択してください'); return; }
+  if (!data.details.length) { showToast('明細を1件以上追加してください'); return; }
+
+  const totals = calcTotals();
+  if (totals.zeinuki <= 0) {
+    if (!confirm('合計金額が0円ですが、本当に保存しますか？')) return;
+  }
+
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = true; btn.textContent = '保存中...';
+
+  try {
+    // 1. 伝票作成
+    const carNum = data.car.trim();
+    const ymd = data.date.replace(/-/g, '/');
+    const title = `${ymd} ${data.customer.name}${carNum ? ' ' + carNum : ''}`;
+    const slipProps = {
+      '伝票タイトル': { title: [{ text: { content: title.slice(0, 200) } }] },
+      '伝票種類': { select: { name: '納品書' } },
+      '売上日': { date: { start: data.date } },
+      '担当者': { select: { name: data.staff } },
+      '車番': { rich_text: [{ text: { content: carNum } }] },
+      '作業区分': { select: { name: data.workType } },
+      '支払い方法': { select: { name: '売掛' } },
+      '宛先敬称': { select: { name: '御中' } },
+      'ステータス': { select: { name: '未請求' } },
+      '備考': { rich_text: [{ text: { content: data.bikou.slice(0, 1900) } }] },
+      '税抜合計': { number: totals.zeinuki },
+      '消費税合計': { number: totals.zeigaku },
+      '税込合計': { number: totals.zeikomi },
+      '顧客名': { relation: [{ id: data.customer.id }] },
+    };
+    const slipRes = await fooNotionCreate(SALES_DB, slipProps);
+    const slipId = slipRes.id;
+
+    // 2. 明細を順次作成
+    const taxKb = data.taxType === '内税' ? '内税' : '外税';
+    let okCount = 0;
+    for (const d of data.details) {
+      try {
+        const lineZeinuki = data.taxType === '内税' ? Math.round((d.qty * d.tanka) / 1.1) : (d.qty * d.tanka);
+        const lineZeigaku = data.taxType === '内税' ? (d.qty * d.tanka) - lineZeinuki : Math.round((d.qty * d.tanka) * 0.1);
+        const lineZeikomi = lineZeinuki + lineZeigaku;
+        const props = {
+          '明細タイトル': { title: [{ text: { content: ((d.code ? d.code + ' ' : '') + d.hinmoku + (d.size ? ' ' + d.size : '') + (d.brand ? ' ' + d.brand : '')).slice(0, 200) } }] },
+          '商品コード': { rich_text: [{ text: { content: d.code || '' } }] },
+          '品目': { select: { name: d.hinmoku || 'その他' } },
+          'タイヤサイズ': { rich_text: [{ text: { content: d.size || '' } }] },
+          'タイヤ銘柄': { rich_text: [{ text: { content: d.brand || '' } }] },
+          '数量': { number: d.qty || 0 },
+          '単価': { number: d.tanka || 0 },
+          '税込小計': { number: lineZeikomi },
+          '税額': { number: lineZeigaku },
+          '税区分': { select: { name: taxKb } },
+          '売上伝票': { relation: [{ id: slipId }] },
+          '備考': { rich_text: [{ text: { content: (d.bikou || '').slice(0, 200) } }] },
+        };
+        await fooNotionCreate(DETAIL_DB, props);
+        okCount++;
+      } catch(e) { console.error('明細保存失敗', e); }
+    }
+
+    // 3. 下書き削除
+    deleteCurrentDraft();
+
+    // 4. 結果画面
+    showResultScreen(slipId, totals, okCount, data.details.length);
+  } catch(e) {
+    console.error(e);
+    alert('保存失敗: ' + (e.message || e));
+    btn.disabled = false; btn.textContent = '✅ 売上計上';
+  }
+}
+
+function showResultScreen(slipId, totals, okCount, totalCount) {
+  document.getElementById('result-amount').textContent = fmtYen(totals.zeikomi);
+  document.getElementById('result-meta').innerHTML = `
+    <div class="result-meta-row"><div class="label">税抜合計</div><div>${fmtYen(totals.zeinuki)}</div></div>
+    <div class="result-meta-row"><div class="label">消費税</div><div>${fmtYen(totals.zeigaku)}</div></div>
+    <div class="result-meta-row"><div class="label">明細件数</div><div>${okCount} / ${totalCount} 件</div></div>
+  `;
+  document.getElementById('result-notion-link').href = 'https://www.notion.so/' + slipId.replace(/-/g, '');
+  showScreen('screen-result');
+  // 直近一覧と下書きカウントもリフレッシュ
+  loadRecentSlips();
+  refreshDraftInfo();
+}
+
+/* ════════════════════════════════════════
+   車番から検索（ホーム → 検索専用フロー）
+   ═══════════════════════════════════════ */
+function searchByCar() {
+  const q = prompt('車番（または下4桁）を入力してください');
+  if (!q) return;
+  // 検索結果ページの代わりに、新規入力画面へ遷移して車番を入れて検索発火
+  newSale();
+  setTimeout(() => {
+    const el = document.getElementById('input-car');
+    el.value = q;
+    el.focus();
+    searchCar(q);
+  }, 100);
+}
+</script>
+
+</body>
+</html>

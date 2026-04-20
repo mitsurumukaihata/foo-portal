@@ -1045,6 +1045,7 @@ body::-webkit-scrollbar { display:none; }
       <tr><td class="k"><kbd>Ctrl</kbd>+<kbd>N</kbd></td><td>新規売上入力</td></tr>
       <tr><td class="k"><kbd>Ctrl</kbd>+<kbd>K</kbd></td><td>伝票検索を開く</td></tr>
       <tr><td class="k"><kbd>Ctrl</kbd>+<kbd>/</kbd></td><td>このヘルプを開く</td></tr>
+      <tr><td class="k"><kbd>Ctrl</kbd>+<kbd>1〜9</kbd></td><td>ダッシュボード/売上入力/検索/最近/月次/得意先別/商品別/仕入/粗利 へジャンプ</td></tr>
     </table>
     <h3>📊 ページ切替</h3>
     <table>
@@ -4318,6 +4319,12 @@ document.addEventListener('keydown', (e) => {
   if (e.ctrlKey && (e.key === 'n' || e.key === 'N')) { e.preventDefault(); newSale(); return; }
   if (e.ctrlKey && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); showPage('search'); initSearchIfNeeded(); setTimeout(() => { const el = document.getElementById('search-customer'); if (el) el.focus(); }, 100); return; }
   if (e.ctrlKey && (e.key === '/' )) { e.preventDefault(); showHelpOverlay(); return; }
+  // Ctrl+1〜9 で各ページへ
+  if (e.ctrlKey && e.key >= '1' && e.key <= '9') {
+    const pages = ['dashboard', 'sales', 'search', 'recent', 'monthly', 'by-customer', 'by-product', 'purchase', 'profit'];
+    const idx = parseInt(e.key) - 1;
+    if (pages[idx]) { e.preventDefault(); showPage(pages[idx]); return; }
+  }
 
   if (state.currentPage !== 'sales') return;
   if (e.key === 'F8') { e.preventDefault(); submitSale(); }

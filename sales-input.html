@@ -797,8 +797,34 @@ const DRAFT_KEY = 'sales-input-drafts';
 const HINMOKU_OPTIONS = [
   '組替','脱着','Fバランス','バランス','廃タイヤ',
   '出張(市内)','出張(市外)','タイヤ販売(新品)','タイヤ販売(中古)','タイヤ販売(更生)',
-  'ホイール','f.o.oパック','その他','タイヤ',
+  'ホイール','バルブ交換','f.o.oパック','その他','タイヤ',
 ];
+
+// 業界慣習の並び（納品書・検索展開で使う）
+// タイヤ → ホイール → 組替 → 脱着 → バルブ交換 → バランス → 廃タイヤ → 出張 → その他
+const HINMOKU_DISPLAY_ORDER = [
+  'タイヤ販売(新品)', 'タイヤ販売(中古)', 'タイヤ販売(更生)', 'タイヤ',
+  'ホイール',
+  '組替',
+  '脱着',
+  'バルブ交換',
+  'バランス', 'Fバランス',
+  '廃タイヤ',
+  '出張(市内)', '出張(市外)',
+  'f.o.oパック',
+  'その他',
+];
+function hinmokuOrder(name) {
+  const idx = HINMOKU_DISPLAY_ORDER.indexOf(name || '');
+  return idx === -1 ? 999 : idx;
+}
+function sortDetailsByDisplayOrder(arr) {
+  return [...arr].sort((a, b) => {
+    const ha = a.properties?.['品目']?.select?.name || a.hinmoku || '';
+    const hb = b.properties?.['品目']?.select?.name || b.hinmoku || '';
+    return hinmokuOrder(ha) - hinmokuOrder(hb);
+  });
+}
 
 let loginUser = '';
 (function(){
@@ -2021,7 +2047,8 @@ async function toggleSearchDetail(slipId, tr) {
   newRow.innerHTML = `<td colspan="7"><div class="sr-detail-wrap"><div style="color:var(--muted);font-size:11px;">📥 明細取得中...</div></div></td>`;
   tr.parentNode.insertBefore(newRow, tr.nextSibling);
   try {
-    const details = await queryDetailsBySlipIds([slipId]);
+    const detailsRaw = await queryDetailsBySlipIds([slipId]);
+    const details = sortDetailsByDisplayOrder(detailsRaw);
     const hinHighlight = searchSelectedHinmoku;
     const size = document.getElementById('search-size').value.trim().toLowerCase();
     const brand = document.getElementById('search-brand').value.trim().toLowerCase();

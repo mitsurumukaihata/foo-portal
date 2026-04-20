@@ -233,6 +233,15 @@ body::-webkit-scrollbar { display:none; }
 .yf-keys { text-align:left; padding:8px 12px; background:var(--s1); border-radius:8px; font-size:10px; color:var(--muted); line-height:1.6; }
 .yf-keys kbd { display:inline-block; padding:1px 6px; background:var(--s3); border:1px solid var(--border2); border-radius:3px; font-family:monospace; color:var(--accent); font-size:10px; margin:0 2px; }
 
+/* 商品コードサジェスト */
+.product-suggest { position:absolute; top:100%; left:0; background:var(--s1); border:2px solid var(--accent); border-radius:6px; max-height:280px; overflow-y:auto; z-index:500; display:none; min-width:360px; box-shadow:0 10px 24px rgba(0,0,0,0.4); }
+.product-suggest.show { display:block; }
+.product-suggest .ps-item { padding:7px 10px; font-size:12px; cursor:pointer; border-bottom:0.5px solid var(--border); display:grid; grid-template-columns:80px 1fr 80px; gap:6px; align-items:center; }
+.product-suggest .ps-item:hover, .product-suggest .ps-item.hl { background:var(--s3); }
+.product-suggest .ps-item .cd { font-weight:700; color:var(--accent); font-family:monospace; font-size:11px; }
+.product-suggest .ps-item .nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.product-suggest .ps-item .pr { text-align:right; font-weight:700; color:var(--green); font-size:11px; }
+
 /* オートコンプリート（セル下） */
 .cell-suggest { position:absolute; background:var(--s1); border:1px solid var(--accent); border-radius:6px; max-height:240px; overflow-y:auto; z-index:200; box-shadow:0 8px 24px rgba(0,0,0,0.4); min-width:280px; display:none; }
 .cell-suggest.show { display:block; }
@@ -338,6 +347,19 @@ body::-webkit-scrollbar { display:none; }
 .summary-card .val { font-size:20px; font-weight:900; color:var(--accent); margin-top:3px; font-feature-settings:'tnum'; }
 .summary-card .sub { font-size:10px; color:var(--muted); margin-top:2px; }
 
+/* ダッシュボード スパークライン */
+.dash-sparkline { display:flex; gap:3px; align-items:flex-end; height:100px; padding:10px 0; }
+.dash-sparkline .spk-day { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; min-width:0; }
+.dash-sparkline .spk-bar { width:100%; max-width:40px; background:linear-gradient(180deg, var(--accent), var(--accent2)); border-radius:3px 3px 0 0; min-height:2px; position:relative; }
+.dash-sparkline .spk-day.today .spk-bar { background:linear-gradient(180deg, #22c55e, #4ade80); box-shadow:0 0 10px rgba(34,197,94,0.4); }
+.dash-sparkline .spk-day.weekend .spk-bar { opacity:0.6; }
+.dash-sparkline .spk-lbl { font-size:9px; color:var(--muted); }
+.dash-sparkline .spk-day.today .spk-lbl { color:var(--green); font-weight:700; }
+.dash-sparkline .spk-val { font-size:9px; color:var(--text); font-weight:700; }
+
+/* 未請求カード */
+.stat-card#stat-unbilled-card:hover { background:var(--s3); transition:background 0.15s; }
+
 /* 検索チップ */
 .hinmoku-chip { display:inline-flex; align-items:center; padding:5px 10px; background:var(--s3); border:1px solid var(--border); border-radius:14px; font-size:11px; cursor:pointer; user-select:none; }
 .hinmoku-chip.on { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:700; }
@@ -402,13 +424,14 @@ body::-webkit-scrollbar { display:none; }
       <div class="page-header">
         <div>
           <div class="page-title">📊 ダッシュボード</div>
-          <div class="page-sub">今月の売上状況と直近の入力履歴</div>
+          <div class="page-sub">今日の状況・週次推移・未請求警告・直近入力</div>
         </div>
         <div class="page-actions">
           <button class="btn btn-primary" onclick="showPage('sales')">＋ 新規 売上入力</button>
         </div>
       </div>
 
+      <!-- KPIカード -->
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-label">📅 今月の売上（税込）</div>
@@ -423,19 +446,30 @@ body::-webkit-scrollbar { display:none; }
         <div class="stat-card">
           <div class="stat-label">📊 今日の入力</div>
           <div class="stat-value" id="stat-today-count">─</div>
-          <div class="stat-sub">件</div>
+          <div class="stat-sub" id="stat-today-sub">件</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">📋 下書き</div>
-          <div class="stat-value" id="stat-drafts">0</div>
-          <div class="stat-sub">件保存中</div>
+        <div class="stat-card" id="stat-unbilled-card" style="cursor:pointer;" onclick="showPage('search');setTimeout(()=>{document.getElementById('search-from').value='';document.getElementById('search-to').value='';},10);">
+          <div class="stat-label">💡 未請求伝票</div>
+          <div class="stat-value" id="stat-unbilled">─</div>
+          <div class="stat-sub" id="stat-unbilled-sub">件</div>
         </div>
       </div>
 
+      <!-- 週次スパークライン -->
       <div class="card">
-        <div class="card-title">📋 直近の入力履歴（10件）</div>
-        <div id="dashboard-recent-list">
-          <div class="empty">読み込み中...</div>
+        <div class="card-title">📈 直近14日の売上推移</div>
+        <div id="dash-sparkline"><div class="empty">集計中...</div></div>
+      </div>
+
+      <!-- 2カラム: 直近入力 / 下書き -->
+      <div class="mo-split">
+        <div class="card">
+          <div class="card-title">📋 直近の入力履歴（10件）</div>
+          <div id="dashboard-recent-list"><div class="empty">読み込み中...</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">💾 下書き <span id="stat-drafts-badge" style="background:var(--accent);color:#fff;font-size:10px;padding:1px 6px;border-radius:8px;margin-left:4px;"></span></div>
+          <div id="dashboard-drafts-list"><div class="empty">下書きなし</div></div>
         </div>
       </div>
     </div>
@@ -792,6 +826,7 @@ const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
 const SALES_DB = '58cc4a13df03435db14b3439ef1f0a6f';
 const DETAIL_DB = '07bd22655e5849fd854bef1f4c4b5688';
 const CUSTOMER_DB = 'f632f512f12d49b2b11f2b3e45c70aec';
+const PRODUCT_DB = '21771ad9a3f0457ea97474b3499ca4a9';
 const DRAFT_KEY = 'sales-input-drafts';
 
 const HINMOKU_OPTIONS = [
@@ -837,6 +872,7 @@ let loginUser = '';
 
 let state = {
   customers: [],
+  products: [],
   employees: ['向畑 充', '矢島 明和', '大田 健', '中川 颯', '平野 春之', '山根 祐司', '村田 良典', '岡崎 由美', '藤井 真理亜'],
   recentSlips: [],
   selectedCustomer: null,
@@ -938,7 +974,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('search-from').value = ymStart;
   document.getElementById('search-to').value = today.toISOString().slice(0,10);
   // データロード
-  await Promise.all([loadCustomers(), loadRecentSlips(false)]);
+  await Promise.all([loadCustomers(), loadRecentSlips(false), loadProducts()]);
   refreshDashboard();
   refreshDraftBadge();
 });
@@ -946,6 +982,47 @@ window.addEventListener('DOMContentLoaded', async () => {
 /* ════════════════════════════════════════
    マスタ読込
    ═══════════════════════════════════════ */
+async function loadProducts() {
+  const all = []; let cursor = null;
+  try {
+    do {
+      const body = { page_size: 100 };
+      if (cursor) body.start_cursor = cursor;
+      const r = await notionPost('/databases/' + PRODUCT_DB + '/query', body);
+      all.push(...(r.results || []));
+      cursor = r.has_more ? r.next_cursor : null;
+    } while (cursor);
+    const firstProp = all[0]?.properties || {};
+    const findTitle = (p) => {
+      for (const k in p) if (p[k]?.type === 'title') return p[k].title?.[0]?.plain_text || '';
+      return '';
+    };
+    state.products = all.map(p => {
+      const name = findTitle(p.properties);
+      // ありそうなフィールドを拾う（DBによって揺れがある）
+      const get = (key, type) => {
+        const pp = p.properties[key];
+        if (!pp) return '';
+        if (type === 'rich_text') return pp.rich_text?.[0]?.plain_text || '';
+        if (type === 'number') return pp.number || 0;
+        if (type === 'select') return pp.select?.name || '';
+        return '';
+      };
+      return {
+        id: p.id,
+        name: name,
+        code: get('商品コード', 'rich_text') || get('コード', 'rich_text') || name,
+        size: get('サイズ', 'rich_text') || get('タイヤサイズ', 'rich_text') || get('サイズ', 'select'),
+        brand: get('銘柄', 'rich_text') || get('タイヤ銘柄', 'rich_text') || get('パターン名', 'select') || get('パターン名', 'rich_text'),
+        price: get('標準単価', 'number') || get('単価', 'number') || 0,
+        maker: get('メーカー', 'select'),
+        category: get('カテゴリ', 'select'),
+      };
+    }).filter(p => p.name || p.code);
+    console.log('[sales-input] 商品マスタ読込:', state.products.length, '件');
+  } catch(e) { console.error('商品マスタ取得失敗', e); }
+}
+
 async function loadCustomers() {
   let all = []; let cursor = null;
   try {
@@ -1016,29 +1093,110 @@ function refreshDashboard() {
   const todayStr = today.toISOString().slice(0,10);
   const monthSlips = state.recentSlips.filter(s => (s.date || '').startsWith(ymPrefix));
   const todaySlips = state.recentSlips.filter(s => s.date === todayStr);
-  document.getElementById('stat-month-amount').textContent = monthSlips.length ? fmtYen(monthSlips.reduce((sum, s) => sum + s.amount, 0)) : '─';
+  const todayAmount = todaySlips.reduce((s,x) => s + x.amount, 0);
+  document.getElementById('stat-month-amount').textContent = monthSlips.length ? fmtJPY(monthSlips.reduce((sum, s) => sum + s.amount, 0)) : '─';
   document.getElementById('stat-month-count').textContent = monthSlips.length || '0';
   document.getElementById('stat-today-count').textContent = todaySlips.length || '0';
+  document.getElementById('stat-today-sub').textContent = todaySlips.length ? '件 · ' + fmtShortYen(todayAmount) : '件';
   document.getElementById('stat-month-period').textContent = ymPrefix.replace('-', '/');
-  document.getElementById('stat-drafts').textContent = loadDraftList().length;
-  // 直近10件のリスト
+  const drafts = loadDraftList();
+  const draftBadge = document.getElementById('stat-drafts-badge');
+  if (draftBadge) draftBadge.textContent = drafts.length ? drafts.length + '件' : '';
+  refreshDashboardUnbilled();
+  renderDashboardSparkline();
+  renderDashboardDrafts(drafts);
+  // 直近10件
   const showEl = document.getElementById('dashboard-recent-list');
   if (!showEl) return;
   const top10 = state.recentSlips.slice(0, 10);
   if (!top10.length) { showEl.innerHTML = '<div class="empty">入力履歴なし。「新規 売上入力」から始めましょう</div>'; return; }
   showEl.innerHTML = `
     <table class="list-table">
-      <thead><tr><th>日付</th><th>タイトル</th><th>車番</th><th>担当</th><th class="right">税込</th></tr></thead>
+      <thead><tr><th>日付</th><th>タイトル</th><th>車番</th><th class="right">税込</th></tr></thead>
       <tbody>
       ${top10.map(s => `
         <tr class="clickable" onclick="window.open('https://www.notion.so/${s.id.replace(/-/g,'')}', '_blank')">
           <td>${s.date}</td>
-          <td>${escHtml(s.title)}</td>
+          <td>${escHtml(s.title.replace(/^\d{4}\/\d{1,2}\/\d{1,2}\s*/, ''))}</td>
           <td>${escHtml(s.car || '-')}</td>
-          <td>${escHtml(s.staff || '-')}</td>
           <td class="right amount">${fmtYen(s.amount)}</td>
         </tr>
       `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+async function refreshDashboardUnbilled() {
+  const el = document.getElementById('stat-unbilled');
+  const subEl = document.getElementById('stat-unbilled-sub');
+  if (!el) return;
+  try {
+    const r = await notionPost('/databases/' + SALES_DB + '/query', {
+      filter: { property: 'ステータス', select: { equals: '未請求' } },
+      page_size: 100,
+    });
+    const count = (r.results || []).length + (r.has_more ? '+' : '');
+    const total = (r.results || []).reduce((s, p) => s + (p.properties['税込合計']?.number || 0), 0);
+    el.textContent = count;
+    subEl.textContent = total > 0 ? '件 · ' + fmtShortYen(total) : '件';
+    const card = document.getElementById('stat-unbilled-card');
+    if (card) {
+      card.style.borderColor = (r.results || []).length > 0 ? 'var(--red)' : 'var(--border)';
+    }
+  } catch(e) { console.error(e); el.textContent = '?'; }
+}
+
+function renderDashboardSparkline() {
+  const el = document.getElementById('dash-sparkline');
+  if (!el) return;
+  const today = new Date();
+  const days = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const ds = d.toISOString().slice(0, 10);
+    const dayW = d.getDay();
+    const amt = state.recentSlips.filter(s => s.date === ds).reduce((sum, x) => sum + x.amount, 0);
+    const cnt = state.recentSlips.filter(s => s.date === ds).length;
+    days.push({ date: ds, amt, cnt, weekend: (dayW === 0 || dayW === 6), today: i === 0, d: d.getDate(), w: ['日','月','火','水','木','金','土'][dayW] });
+  }
+  const max = Math.max(1, ...days.map(d => d.amt));
+  el.innerHTML = `<div class="dash-sparkline">
+    ${days.map(d => `
+      <div class="spk-day ${d.today ? 'today' : ''} ${d.weekend ? 'weekend' : ''}" title="${d.date}: ${fmtJPY(d.amt)} (${d.cnt}件)">
+        <div class="spk-val">${d.amt ? fmtShort(d.amt) : ''}</div>
+        <div class="spk-bar" style="height:${(d.amt / max) * 100}%;"></div>
+        <div class="spk-lbl">${d.d}</div>
+        <div class="spk-lbl" style="font-size:8px;">${d.w}</div>
+      </div>
+    `).join('')}
+  </div>`;
+}
+
+function renderDashboardDrafts(drafts) {
+  const el = document.getElementById('dashboard-drafts-list');
+  if (!el) return;
+  if (!drafts.length) { el.innerHTML = '<div class="empty">下書きなし</div>'; return; }
+  el.innerHTML = `
+    <table class="list-table">
+      <thead><tr><th>保存</th><th>得意先</th><th>明細</th><th></th></tr></thead>
+      <tbody>
+      ${drafts.slice(0, 10).map(d => {
+        const saveTime = new Date(d.savedAt);
+        const today = new Date();
+        const todayStr = today.toISOString().slice(0,10);
+        const isToday = saveTime.toISOString().slice(0,10) === todayStr;
+        const timeStr = isToday ? saveTime.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}) : saveTime.toLocaleDateString('ja-JP');
+        return `
+          <tr class="clickable" onclick="loadSpecificDraft('${d.id}')">
+            <td>${timeStr}</td>
+            <td>${escHtml((d.data.customer ? d.data.customer.name : '(未選択)').slice(0, 14))}</td>
+            <td>${(d.data.details || []).filter(x => x.qty || x.tanka).length}件</td>
+            <td><button class="btn-link" onclick="event.stopPropagation();deleteDraft('${d.id}')">削除</button></td>
+          </tr>
+        `;
+      }).join('')}
       </tbody>
     </table>
   `;
@@ -1757,17 +1915,50 @@ function renderBpTabs() {
 }
 function bpSetMode(k) { bpMode = k; renderBpTabs(); if (bpCachedDetails) renderBpFromCache(); }
 let bpCachedAggs = null;
+
+// メーカー推定（foo-common.jsと同等の簡易版）
+function guessMaker(s) {
+  if (!s) return '';
+  const u = s.toUpperCase();
+  if (/^M|V03E|V02E|VAN01|G-8|G-15|RTM626/.test(u)) return 'TOYO';
+  if (/^W|R225|R241|G539|LV01|W300|RTM|RTW|RTG/.test(u)) return 'BRIDGESTONE';
+  if (/SP|SPLT|LT01|SV01|POWERTRAX/.test(u)) return 'DUNLOP';
+  if (/XJE4|XDW/.test(u)) return 'MICHELIN';
+  if (/FR01|TR01|R02|R01|TG01|ALL ROADS|WINTER D|ADR26|GU01/.test(u)) return 'PIRELLI';
+  return '';
+}
+function makerColor(m) {
+  return { TOYO:'#ef4444', BRIDGESTONE:'#3b82f6', DUNLOP:'#eab308', MICHELIN:'#0ea5e9', PIRELLI:'#22c55e' }[m] || '#9ca3af';
+}
+
 async function loadByProduct() {
   const r = rangeToStrs('bp');
   if (!r) { showToast('期間を選択してください'); return; }
-  document.getElementById('bp-ranking').innerHTML = '<div class="empty">📥 集計準備中...</div>';
+  // 先に cache 状況を表示
+  let detailHits = 0, detailMissing = 0;
+  for (const ym of r.ymList) {
+    const c = readCache(ym);
+    if (c && c.hasDetails && !isRecentMonth(ym)) detailHits++; else detailMissing++;
+  }
+  document.getElementById('bp-ranking').innerHTML = `<div class="empty">📥 準備: ⚡明細キャッシュ済 ${detailHits}ヶ月 / 🌐要取得 ${detailMissing}ヶ月</div>`;
   document.getElementById('bp-summary').innerHTML = '';
+  const startTime = Date.now();
   try {
     const aggs = await getMonthAggregatesParallel(r.ymList, {
       withDetails: true,
       concurrency: 2,
-      onProgress: ({ done, total, hits, fetched }) => {
-        document.getElementById('bp-ranking').innerHTML = `<div class="empty">📥 集計中 ${done}/${total}ヶ月 (⚡${hits} / 🌐${fetched})</div>`;
+      onProgress: ({ done, total, hits, fetched, failed }) => {
+        const elapsed = Math.round((Date.now() - startTime) / 1000);
+        const pct = Math.round((done / total) * 100);
+        document.getElementById('bp-ranking').innerHTML = `
+          <div class="empty">
+            <div style="margin-bottom:6px;">📥 集計中 ${done}/${total}ヶ月 (${pct}%)</div>
+            <div style="width:80%;margin:0 auto;height:6px;background:var(--s3);border-radius:3px;overflow:hidden;">
+              <div style="width:${pct}%;height:100%;background:var(--accent);transition:width 0.3s;"></div>
+            </div>
+            <div style="margin-top:8px;font-size:10px;">⚡ ${hits}ヶ月キャッシュ · 🌐 ${fetched}ヶ月Notion · ⏱ ${elapsed}秒経過${failed ? ' · ❌' + failed + '失敗' : ''}</div>
+          </div>
+        `;
       }
     });
     bpCachedAggs = aggs;
@@ -1813,10 +2004,11 @@ function renderBpFromCache() {
     const rk = i + 1;
     const rkIcon = rk === 1 ? '🥇' : rk === 2 ? '🥈' : rk === 3 ? '🥉' : '#' + rk;
     const rkCls = rk === 1 ? 'gold' : rk === 2 ? 'silver' : rk === 3 ? 'bronze' : '';
+    const maker = (bpMode === 'brand' || bpMode === 'size' || bpMode === 'code') ? guessMaker(key) : '';
     return `
       <div class="mo-row">
         <div class="rk ${rkCls}">${rkIcon}</div>
-        <div class="nm" title="${escHtml(key)}">${escHtml(key)}<div style="font-size:9px;color:var(--muted);">${v.count}明細 · ${v.qty.toLocaleString()}本</div></div>
+        <div class="nm" title="${escHtml(key)}">${escHtml(key)}${maker ? ` <span style="font-size:9px;padding:1px 5px;background:${makerColor(maker)};color:#fff;border-radius:6px;vertical-align:middle;">${maker}</span>` : ''}<div style="font-size:9px;color:var(--muted);">${v.count}明細 · ${v.qty.toLocaleString()}本 · 平均${fmtShortYen(v.amt / Math.max(1, v.count))}</div></div>
         <div class="mini-bar"><div class="fill" style="width:${(v.amt / maxAmt) * 100}%;background:${v.color};"></div></div>
         <div class="am">${fmtShortYen(v.amt)}</div>
         <div class="pct">${((v.amt / totalAmt) * 100).toFixed(1)}%</div>
@@ -2423,7 +2615,7 @@ function renderDetails() {
           ${HINMOKU_OPTIONS.map(o => `<option value="${o}" ${d.hinmoku === o ? 'selected' : ''}>${o}</option>`).join('')}
         </select>
       </td>
-      <td><input type="text" data-cell="code" data-row="${i}" value="${escHtml(d.code)}" oninput="updateDetail(${i},'code',this.value)" onkeydown="onCellKey(event,${i},'code')" placeholder=""></td>
+      <td style="position:relative;"><input type="text" data-cell="code" data-row="${i}" value="${escHtml(d.code)}" oninput="onProductCodeInput(${i},this)" onkeydown="onCellKey(event,${i},'code')" onblur="setTimeout(()=>hideProductSuggest(${i}),200)" placeholder=""><div class="product-suggest" id="prod-sug-${i}"></div></td>
       <td><input type="text" data-cell="size" data-row="${i}" value="${escHtml(d.size)}" oninput="updateDetail(${i},'size',this.value)" onkeydown="onCellKey(event,${i},'size')" placeholder=""></td>
       <td><input type="text" data-cell="brand" data-row="${i}" value="${escHtml(d.brand)}" oninput="updateDetail(${i},'brand',this.value)" onkeydown="onCellKey(event,${i},'brand')"></td>
       <td>
@@ -2439,6 +2631,51 @@ function renderDetails() {
     </tr>`;
   }).join('');
   calcTotals();
+}
+
+/* 商品コード入力→商品マスタサジェスト */
+function onProductCodeInput(i, inp) {
+  updateDetail(i, 'code', inp.value);
+  const q = (inp.value || '').trim().toLowerCase();
+  const sug = document.getElementById('prod-sug-' + i);
+  if (!sug) return;
+  if (!q) { sug.classList.remove('show'); sug.innerHTML = ''; return; }
+  const lq = toHira(q);
+  const matches = state.products.filter(p =>
+    (p.code || '').toLowerCase().includes(q) ||
+    toHira(p.name).includes(lq) ||
+    toHira(p.brand).includes(lq) ||
+    (p.size || '').toLowerCase().includes(q)
+  ).slice(0, 15);
+  if (!matches.length) { sug.classList.remove('show'); sug.innerHTML = ''; return; }
+  sug.innerHTML = matches.map((p, idx) => `
+    <div class="ps-item" data-pid="${escHtml(p.id)}" data-idx="${idx}" onmousedown="applyProductSuggest(${i},'${escHtml(p.id)}')">
+      <div class="cd">${escHtml(p.code || '-')}</div>
+      <div class="nm" title="${escHtml(p.name)}">${escHtml(p.name)}<div style="font-size:9px;color:var(--muted);">${escHtml(p.size || '')}${p.brand ? ' · ' + escHtml(p.brand) : ''}${p.maker ? ' · ' + escHtml(p.maker) : ''}</div></div>
+      <div class="pr">${p.price ? fmtYen(p.price) : '—'}</div>
+    </div>
+  `).join('');
+  sug.classList.add('show');
+}
+function hideProductSuggest(i) {
+  const sug = document.getElementById('prod-sug-' + i);
+  if (sug) { sug.classList.remove('show'); }
+}
+function applyProductSuggest(rowIdx, pid) {
+  const p = state.products.find(x => x.id === pid);
+  if (!p) return;
+  const d = state.details[rowIdx];
+  if (!d) return;
+  if (p.code) d.code = p.code;
+  if (p.size && !d.size) d.size = p.size;
+  if (p.brand && !d.brand) d.brand = p.brand;
+  if (p.price && !d.tanka) d.tanka = p.price;
+  // 品目が未設定かつタイヤ系ならタイヤ販売(新品)を暫定
+  if (!d.hinmoku && (p.size || p.brand)) d.hinmoku = 'タイヤ販売(新品)';
+  renderDetails();
+  hideProductSuggest(rowIdx);
+  // サイズ欄に移動
+  focusCell(rowIdx, 'size');
 }
 
 /* セル間ナビゲーション（Tab/Enter） */

@@ -607,20 +607,20 @@ async function renderHome() {
 
       <div class="screen-label">チェック項目（該当するものにチェック）</div>
       <div class="checks">
-        <div class="check-item" onclick="homeToggleCheck(this,'yukyu')" id="home-chk-yukyu">
+        <div class="check-item${selectedDateRecord?.properties?.['有給使用']?.checkbox?' on':''}" onclick="homeToggleCheck(this,'yukyu')" id="home-chk-yukyu">
           <div class="check-box"><svg class="check-mark" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
           <div class="check-label">有給使用</div>
         </div>
-        <div class="check-item" onclick="homeToggleCheck(this,'kekkin')" id="home-chk-kekkin">
+        <div class="check-item${selectedDateRecord?.properties?.['欠勤']?.checkbox?' on':''}" onclick="homeToggleCheck(this,'kekkin')" id="home-chk-kekkin">
           <div class="check-box"><svg class="check-mark" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
           <div class="check-label">欠勤</div>
         </div>
-        <div class="check-item" onclick="homeToggleCheck(this,'rousai')" id="home-chk-rousai">
+        <div class="check-item${selectedDateRecord?.properties?.['労災扱い']?.checkbox?' on':''}" onclick="homeToggleCheck(this,'rousai')" id="home-chk-rousai">
           <div class="check-box"><svg class="check-mark" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
           <div class="check-label">労災扱い</div>
         </div>
       </div>
-      <div id="home-yukyu-wrap" style="display:none;padding:10px 12px;background:rgba(240,165,0,0.08);border:1px solid rgba(240,165,0,0.25);border-radius:8px;margin-top:8px;">
+      <div id="home-yukyu-wrap" style="display:${selectedDateRecord?.properties?.['有給使用']?.checkbox?'block':'none'};padding:10px 12px;background:rgba(240,165,0,0.08);border:1px solid rgba(240,165,0,0.25);border-radius:8px;margin-top:8px;">
         <div id="home-yukyu-calc" style="font-size:12px;color:var(--accent2);line-height:1.6;"></div>
       </div>
       <div class="screen-label">備考（任意）</div>
@@ -664,7 +664,16 @@ async function renderHome() {
   if (!isOld) {
     window._homeDigits = { s: sDig.slice(), t: tDig.slice() };
     window._homeFocus = !syukkinDisp ? 's' : 't';
-    window._homeChecks = { yukyu: false, kekkin: false, rousai: false, yukyuTime: '' };
+    // 既存レコードがあればそのチェック状態を引き継ぐ（有給などNotion側で設定済の内容を反映）
+    const _rec = selectedDateRecord?.properties;
+    window._homeChecks = {
+      yukyu:     _rec?.['有給使用']?.checkbox || false,
+      kekkin:    _rec?.['欠勤']?.checkbox     || false,
+      rousai:    _rec?.['労災扱い']?.checkbox || false,
+      yukyuTime: ''
+    };
+    // 有給プレビュー再描画
+    if (window._homeChecks.yukyu) { setTimeout(() => calcYukyuPreview(), 50); }
 
     document.getElementById('home-numpad')?.querySelectorAll('.np-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -999,7 +1008,15 @@ async function submitModify(type) {
 
 // ─── 出勤打刻画面 ──────────────────────────────────────────────────────────
 function goSyukkin() {
-  timeDigits = []; checks = { yukyu:false, yukyuTime:'', kekkin:false, rousai:false }; memo = '';
+  timeDigits = [];
+  // 既存レコードのチェック状態を引き継ぐ
+  const _r = selectedDateRecord?.properties;
+  checks = {
+    yukyu: _r?.['有給使用']?.checkbox || false, yukyuTime: '',
+    kekkin: _r?.['欠勤']?.checkbox || false,
+    rousai: _r?.['労災扱い']?.checkbox || false
+  };
+  memo = _r?.['備考']?.rich_text?.[0]?.plain_text || '';
   renderSyukkin();
 }
 
@@ -1012,7 +1029,15 @@ function renderSyukkin() {
 
 // ─── 退勤打刻画面 ──────────────────────────────────────────────────────────
 function goTaikin() {
-  timeDigits = []; checks = { yukyu:false, yukyuTime:'', kekkin:false, rousai:false }; memo = '';
+  timeDigits = [];
+  // 既存レコードのチェック状態を引き継ぐ
+  const _r = selectedDateRecord?.properties;
+  checks = {
+    yukyu: _r?.['有給使用']?.checkbox || false, yukyuTime: '',
+    kekkin: _r?.['欠勤']?.checkbox || false,
+    rousai: _r?.['労災扱い']?.checkbox || false
+  };
+  memo = _r?.['備考']?.rich_text?.[0]?.plain_text || '';
   renderTaikin();
 }
 

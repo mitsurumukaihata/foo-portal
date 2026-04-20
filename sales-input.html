@@ -2641,7 +2641,8 @@ async function searchCar(q) {
       // 名前から「有限会社」「株式会社」「(株)」「(有)」を除いた短縮版でも引く
       const shortName = (c.name || '').replace(/(有限会社|株式会社|\(株\)|\(有\)|㈱|㈲|（株）|（有）)/g, '').trim();
       const orF = [
-        { property: '顧客名', relation: { contains: c.id } },
+        { property: '請求先', relation: { contains: c.id } },  // 2026/4/20 追加: 新規伝票用
+        { property: '顧客名', relation: { contains: c.id } },  // 旧データ用
         { property: '伝票タイトル', title: { contains: c.name } },
       ];
       if (shortName && shortName !== c.name) orF.push({ property: '伝票タイトル', title: { contains: shortName } });
@@ -3010,8 +3011,11 @@ async function submitSale() {
       '税抜合計': { number: totals.zeinuki },
       '消費税合計': { number: totals.zeigaku },
       '税込合計': { number: totals.zeikomi },
-      '顧客名': { relation: [{ id: data.customer.id }] },
+      '請求先': { relation: [{ id: data.customer.id }] },
     };
+    // エンドユーザーは「顧客名」relation (顧客情報DB) に入る。
+    // ユーザーがアプリ上で指定できるようになるまでは、得意先と同名があれば自動紐付けも検討（後日）。
+    // 現状は 請求先のみ設定、顧客名は空で送信
     const slipRes = await fooNotionCreate(SALES_DB, slipProps);
     const slipId = slipRes.id;
     const taxKb = data.taxType === '内税' ? '内税' : '外税';
@@ -3035,9 +3039,9 @@ async function submitSale() {
           '売上伝票': { relation: [{ id: slipId }] },
           '備考': { rich_text: [{ text: { content: (d.bikou || '').slice(0, 200) } }] },
         };
-        // 車番プロパティが存在していれば保存（夜の作業でプロパティ追加予定）
+        // 車番プロパティ（2026/4/20 夜作業で追加済み）
         if (d.carNo) {
-          try { props['車番'] = { rich_text: [{ text: { content: d.carNo } }] }; } catch(_) {}
+          props['車番'] = { rich_text: [{ text: { content: d.carNo } }] };
         }
         await fooNotionCreate(DETAIL_DB, props);
         okCount++;

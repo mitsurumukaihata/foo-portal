@@ -531,8 +531,11 @@ body::-webkit-scrollbar { display:none; }
             <select id="input-staff" class="yh-input"></select>
           </div>
           <div class="yh-cell span4">
-            <div class="yh-label">エンドユーザー（任意・明細の車番で検索も可）</div>
-            <input type="text" id="input-enduser" class="yh-input" placeholder="個人名・屋号・元請けと同じなら空でOK">
+            <div class="yh-label">エンドユーザー（顧客情報DB · 請求先と同じなら自動）</div>
+            <div class="search-wrap">
+              <input type="text" id="input-enduser" class="yh-input" placeholder="名前で検索（請求先と同一なら自動入力）" autocomplete="off" autocorrect="off" spellcheck="false">
+              <div class="search-results" id="enduser-results"></div>
+            </div>
           </div>
           <div class="yh-cell span6">
             <div class="yh-label">摘要</div>
@@ -876,6 +879,7 @@ const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
 const SALES_DB = '58cc4a13df03435db14b3439ef1f0a6f';
 const DETAIL_DB = '07bd22655e5849fd854bef1f4c4b5688';
 const CUSTOMER_DB = 'f632f512f12d49b2b11f2b3e45c70aec';
+const ENDUSER_DB  = '1ca8d122be214e3892879932147143c9';  // 顧客情報DB = エンドユーザー
 const PRODUCT_DB = '21771ad9a3f0457ea97474b3499ca4a9';
 const DRAFT_KEY = 'sales-input-drafts';
 
@@ -922,6 +926,8 @@ let loginUser = '';
 
 let state = {
   customers: [],
+  endUsers: [],
+  selectedEndUser: null,
   products: [],
   employees: ['向畑 充', '矢島 明和', '大田 健', '中川 颯', '平野 春之', '山根 祐司', '村田 良典', '岡崎 由美', '藤井 真理亜'],
   recentSlips: [],
@@ -1025,7 +1031,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('search-from').value = ymStart;
   document.getElementById('search-to').value = today.toISOString().slice(0,10);
   // データロード
-  await Promise.all([loadCustomers(), loadRecentSlips(false), loadProducts()]);
+  await Promise.all([loadCustomers(), loadRecentSlips(false), loadProducts(), loadEndUsers()]);
   refreshDashboard();
   refreshDraftBadge();
 });
@@ -1072,6 +1078,32 @@ async function loadProducts() {
     }).filter(p => p.name || p.code);
     console.log('[sales-input] 商品マスタ読込:', state.products.length, '件');
   } catch(e) { console.error('商品マスタ取得失敗', e); }
+}
+
+async function loadEndUsers() {
+  let all = []; let cursor = null;
+  try {
+    do {
+      const body = { page_size: 100 };
+      if (cursor) body.start_cursor = cursor;
+      const r = await notionPost('/databases/' + ENDUSER_DB + '/query', body);
+      all = all.concat(r.results || []);
+      cursor = r.has_more ? r.next_cursor : null;
+    } while (cursor);
+  } catch(e) { console.error('エンドユーザー取得失敗', e); return; }
+  // 顧客情報DBはスキーマが不明な場合が多いので、title と一部テキストを拾う
+  state.endUsers = all.map(p => {
+    let name = '';
+    for (const k in p.properties) {
+      if (p.properties[k]?.type === 'title') { name = p.properties[k].title?.[0]?.plain_text || ''; break; }
+    }
+    const yomi = p.properties['フリガナ']?.rich_text?.[0]?.plain_text
+              || p.properties['ふりがな']?.rich_text?.[0]?.plain_text || '';
+    const code = p.properties['コード']?.rich_text?.[0]?.plain_text
+              || p.properties['顧客コード']?.rich_text?.[0]?.plain_text || '';
+    return { id: p.id, name, yomi, code };
+  }).filter(x => x.name);
+  console.log('[sales-input] 顧客情報DB(エンドユーザー):', state.endUsers.length, '件');
 }
 
 async function loadCustomers() {
@@ -2532,12 +2564,13 @@ function deleteCurrentDraft() {
 function newSale() {
   state.draftId = null;
   state.selectedCustomer = null;
+  state.selectedEndUser = null;
   state.details = [];
   document.getElementById('input-date').value = new Date().toISOString().slice(0,10);
   document.getElementById('input-customer').value = '';
   { const _s = document.getElementById('selected-customer'); if (_s) _s.textContent = ''; document.getElementById('input-customer').style.background = ''; }
   document.getElementById('input-car').value = '';
-  document.getElementById('input-enduser').value = '';
+  { const eu = document.getElementById('input-enduser'); if (eu) { eu.value = ''; eu.style.background = ''; } }
   document.getElementById('input-bikou').value = '';
   document.querySelector('input[name="tax-type"][value="外税"]').checked = true;
   updateTaxTypeUI();
@@ -2553,7 +2586,7 @@ document.addEventListener('focusin', (e) => {
   }
 });
 document.addEventListener('compositionstart', (e) => {
-  if (e.target.id === 'input-customer' || e.target.id === 'input-car') {
+  if (e.target.id === 'input-customer' || e.target.id === 'input-car' || e.target.id === 'input-enduser') {
     _imeState.set(e.target, true);
     document.querySelectorAll('.search-results').forEach(el => el.classList.remove('show'));
   }
@@ -2561,6 +2594,7 @@ document.addEventListener('compositionstart', (e) => {
 document.addEventListener('compositionend', (e) => {
   if (e.target.id === 'input-customer') { _imeState.set(e.target, false); searchCustomer(e.target.value); }
   if (e.target.id === 'input-car')      { _imeState.set(e.target, false); searchCar(e.target.value); }
+  if (e.target.id === 'input-enduser')  { _imeState.set(e.target, false); searchEndUser(e.target.value); }
 });
 document.addEventListener('input', (e) => {
   // 変換中は何もしない
@@ -2575,6 +2609,14 @@ document.addEventListener('input', (e) => {
     searchCustomer(e.target.value);
   }
   if (e.target.id === 'input-car') searchCar(e.target.value);
+  if (e.target.id === 'input-enduser') {
+    // 値を編集したら前の選択解除
+    if (state.selectedEndUser) {
+      const sel = state.selectedEndUser;
+      if (e.target.value !== sel.name) { state.selectedEndUser = null; e.target.style.background = ''; }
+    }
+    searchEndUser(e.target.value);
+  }
 });
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.search-wrap')) document.querySelectorAll('.search-results').forEach(el => el.classList.remove('show'));
@@ -2612,7 +2654,9 @@ document.addEventListener('mousedown', (e) => {
   const r = e.target.closest('#customer-results .search-result');
   if (r) { e.preventDefault(); selectCustomer(r.dataset.cid, r.dataset.cname, r.dataset.ccode); return; }
   const cr = e.target.closest('#car-results .search-result');
-  if (cr) { e.preventDefault(); selectCar(cr.dataset.car, cr.dataset.sid); }
+  if (cr) { e.preventDefault(); selectCar(cr.dataset.car, cr.dataset.sid); return; }
+  const er = e.target.closest('#enduser-results .search-result');
+  if (er) { e.preventDefault(); selectEndUser(er.dataset.uid, er.dataset.uname); }
 });
 function selectCustomer(id, name, code) {
   state.selectedCustomer = { id, name, code };
@@ -2622,6 +2666,47 @@ function selectCustomer(id, name, code) {
   const sel = document.getElementById('selected-customer');
   if (sel) sel.innerHTML = '<span class="selected-tag">✓ ' + escHtml(name) + (code ? ' (' + escHtml(code) + ')' : '') + '</span>';
   document.getElementById('customer-results').classList.remove('show');
+  // 請求先選択 → 同名 or 類似エンドユーザーを自動プリセット
+  autoPresetEndUser(name);
+}
+
+function autoPresetEndUser(custName) {
+  if (!custName || !state.endUsers?.length) return;
+  const enduserInp = document.getElementById('input-enduser');
+  if (!enduserInp || enduserInp.value || state.selectedEndUser) return; // すでに入力済なら触らない
+  const shortName = custName.replace(/(有限会社|株式会社|\(株\)|\(有\)|㈱|㈲|（株）|（有）)/g, '').trim();
+  const targetH = toHira(shortName);
+  // 完全一致優先 → 短縮一致
+  let match = state.endUsers.find(u => u.name === custName);
+  if (!match) match = state.endUsers.find(u => toHira(u.name.replace(/(有限会社|株式会社|\(株\)|\(有\)|㈱|㈲|（株）|（有）)/g, '').trim()) === targetH);
+  if (match) selectEndUser(match.id, match.name);
+}
+
+function searchEndUser(q) {
+  const el = document.getElementById('enduser-results');
+  if (!q || q.length < 1) { el.classList.remove('show'); return; }
+  const lq = toHira(q);
+  const matches = state.endUsers.filter(u =>
+    toHira(u.name).includes(lq) ||
+    toHira(u.yomi).includes(lq) ||
+    (u.code || '').toLowerCase().includes(q.toLowerCase())
+  ).slice(0, 15);
+  if (!matches.length) { el.innerHTML = '<div style="padding:10px;color:var(--muted);font-size:12px;">該当なし（新規の場合は空でOK）</div>'; el.classList.add('show'); return; }
+  el.innerHTML = matches.map(u => `
+    <div class="search-result" data-uid="${attrEsc(u.id)}" data-uname="${attrEsc(u.name)}">
+      <div class="title">${escHtml(u.name)}</div>
+      ${u.yomi ? '<div class="sub">' + escHtml(u.yomi) + '</div>' : ''}
+    </div>
+  `).join('');
+  el.classList.add('show');
+}
+
+function selectEndUser(id, name) {
+  state.selectedEndUser = { id, name };
+  const inp = document.getElementById('input-enduser');
+  inp.value = name;
+  inp.style.background = 'rgba(34,197,94,0.12)';
+  document.getElementById('enduser-results')?.classList.remove('show');
 }
 // "3415" → ["3415", "34-15"]、"341" → ["341", "3-41", "34-1"]、文字含み → そのまま
 function carSearchVariants(q) {
@@ -2967,8 +3052,9 @@ function collectFormData() {
     staff: document.getElementById('input-staff').value,
     workType: document.getElementById('input-worktype').value,
     customer: state.selectedCustomer,
+    endUser: state.selectedEndUser,
     car: document.getElementById('input-car').value.trim(),
-    endUser: document.getElementById('input-enduser').value.trim(),
+    endUserText: document.getElementById('input-enduser').value.trim(),
     taxType: (document.querySelector('input[name="tax-type"]:checked') || {}).value || '外税',
     details: state.details,
     bikou: document.getElementById('input-bikou').value.trim(),
@@ -2986,7 +3072,14 @@ function applyFormData(data) {
     { const _s = document.getElementById('selected-customer'); if (_s) _s.textContent = ''; document.getElementById('input-customer').style.background = ''; }
   }
   document.getElementById('input-car').value = data.car || '';
-  document.getElementById('input-enduser').value = data.endUser || '';
+  // エンドユーザーの復帰
+  state.selectedEndUser = data.endUser || null;
+  if (data.endUser && data.endUser.id) {
+    selectEndUser(data.endUser.id, data.endUser.name);
+  } else {
+    const eu = document.getElementById('input-enduser');
+    if (eu) { eu.value = data.endUserText || ''; eu.style.background = ''; }
+  }
   const tr = document.querySelector('input[name="tax-type"][value="' + (data.taxType || '外税') + '"]');
   if (tr) tr.checked = true;
   updateTaxTypeUI();
@@ -3028,9 +3121,10 @@ async function submitSale() {
       '税込合計': { number: totals.zeikomi },
       '請求先': { relation: [{ id: data.customer.id }] },
     };
-    // エンドユーザーは「顧客名」relation (顧客情報DB) に入る。
-    // ユーザーがアプリ上で指定できるようになるまでは、得意先と同名があれば自動紐付けも検討（後日）。
-    // 現状は 請求先のみ設定、顧客名は空で送信
+    // エンドユーザーが選択されていれば 顧客名 relation (顧客情報DB) にも入れる
+    if (state.selectedEndUser && state.selectedEndUser.id) {
+      slipProps['顧客名'] = { relation: [{ id: state.selectedEndUser.id }] };
+    }
     const slipRes = await fooNotionCreate(SALES_DB, slipProps);
     const slipId = slipRes.id;
     const taxKb = data.taxType === '内税' ? '内税' : '外税';
@@ -3070,9 +3164,11 @@ async function submitSale() {
     // 続けて入力できるようリセット & ダッシュボードへ
     state.details = [];
     state.selectedCustomer = null;
+    state.selectedEndUser = null;
     document.getElementById('input-customer').value = '';
     { const _s = document.getElementById('selected-customer'); if (_s) _s.textContent = ''; document.getElementById('input-customer').style.background = ''; }
     document.getElementById('input-car').value = '';
+    { const eu = document.getElementById('input-enduser'); if (eu) { eu.value = ''; eu.style.background = ''; } }
     document.getElementById('input-bikou').value = '';
     ensureYayoiRows();
     await loadRecentSlips();

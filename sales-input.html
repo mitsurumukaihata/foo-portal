@@ -210,6 +210,7 @@ body::-webkit-scrollbar { display:none; }
 
 /* 列幅 */
 .col-no { width:34px; }
+.col-car { width:120px; }
 .col-hin { width:110px; }
 .col-code { width:90px; }
 .col-pname { min-width:180px; }
@@ -529,16 +530,9 @@ body::-webkit-scrollbar { display:none; }
             <div class="yh-label">担当者</div>
             <select id="input-staff" class="yh-input"></select>
           </div>
-          <div class="yh-cell span2">
-            <div class="yh-label">🚗 車番</div>
-            <div class="search-wrap">
-              <input type="text" id="input-car" class="yh-input" placeholder="下4桁等" autocomplete="off">
-              <div class="search-results" id="car-results"></div>
-            </div>
-          </div>
-          <div class="yh-cell span2">
-            <div class="yh-label">エンドユーザー</div>
-            <input type="text" id="input-enduser" class="yh-input" placeholder="任意">
+          <div class="yh-cell span4">
+            <div class="yh-label">エンドユーザー（任意・明細の車番で検索も可）</div>
+            <input type="text" id="input-enduser" class="yh-input" placeholder="個人名・屋号・元請けと同じなら空でOK">
           </div>
           <div class="yh-cell span6">
             <div class="yh-label">摘要</div>
@@ -552,6 +546,7 @@ body::-webkit-scrollbar { display:none; }
             <thead>
               <tr>
                 <th class="col-no">No</th>
+                <th class="col-car">🚗車番/管理#</th>
                 <th class="col-hin">内訳/品目</th>
                 <th class="col-code">商品コード</th>
                 <th class="col-size">サイズ</th>
@@ -2306,6 +2301,7 @@ async function toggleSearchDetail(slipId, tr) {
         <tbody>${rows || '<tr><td colspan="8" style="text-align:center;color:var(--muted);">明細なし</td></tr>'}</tbody>
       </table>
       <div class="sr-actions">
+        <button class="btn-link" onclick="window.open('delivery-note.html?slip=${slipId}', '_blank')">📄 納品書を発行</button>
         <button class="btn-link" onclick="window.open('https://www.notion.so/${slipId.replace(/-/g,'')}', '_blank')">🔗 Notionで開く</button>
         <span style="color:var(--muted);font-size:10px;">${details.length} 明細</span>
       </div>
@@ -2723,13 +2719,20 @@ function updateTaxTypeUI() {
 const SOKO_OPTIONS = ['', '五日市倉庫', '志和倉庫', '海田倉庫', '外注', '直送'];
 const YAYOI_MIN_ROWS = 12;
 
-function emptyDetail() { return { hinmoku: '', code: '', size: '', brand: '', soko: '', qty: '', tanka: '', bikou: '' }; }
+function emptyDetail() { return { carNo: '', hinmoku: '', code: '', size: '', brand: '', soko: '', qty: '', tanka: '', bikou: '' }; }
 function ensureYayoiRows() {
   if (!Array.isArray(state.details)) state.details = [];
   while (state.details.length < YAYOI_MIN_ROWS) state.details.push(emptyDetail());
   renderDetails();
 }
-function addDetail() { state.details.push(emptyDetail()); renderDetails(); }
+function addDetail() {
+  const last = state.details[state.details.length - 1];
+  const d = emptyDetail();
+  // 直前の行の車番を自動継承（同じ車の連続作業のため）
+  if (last && last.carNo && hasData(last)) d.carNo = last.carNo;
+  state.details.push(d);
+  renderDetails();
+}
 function removeDetail(idx) {
   state.details.splice(idx, 1);
   if (state.details.length < YAYOI_MIN_ROWS) state.details.push(emptyDetail());
@@ -2739,8 +2742,12 @@ function updateDetail(idx, key, val) {
   if (key === 'qty' || key === 'tanka') val = val === '' ? '' : (parseFloat(val) || 0);
   state.details[idx][key] = val;
   // 商品コード入力時に商品マスタからサジェスト → 簡易: 既存の過去明細から類推（顧客別単価マスタ未実装のため）
-  // 自動で末尾に空行を保つ
-  if (idx === state.details.length - 1 && hasData(state.details[idx])) state.details.push(emptyDetail());
+  // 自動で末尾に空行を保つ＋車番継承
+  if (idx === state.details.length - 1 && hasData(state.details[idx])) {
+    const newRow = emptyDetail();
+    if (state.details[idx].carNo) newRow.carNo = state.details[idx].carNo;
+    state.details.push(newRow);
+  }
   // 行内金額のみ更新（再描画しない）
   updateRowAmount(idx);
   calcTotals();
@@ -2763,6 +2770,7 @@ function renderDetails() {
     return `
     <tr id="y-row-${i}" class="${hasData(d) ? 'has-data' : ''}">
       <td class="row-no">${i + 1}</td>
+      <td style="position:relative;"><input type="text" data-cell="carNo" data-row="${i}" value="${escHtml(d.carNo)}" oninput="onCarNoInput(${i},this)" onkeydown="onCellKey(event,${i},'carNo')" onblur="setTimeout(()=>hideCarSuggest(${i}),200)" placeholder="車番/管理#"><div class="product-suggest" id="car-sug-${i}"></div></td>
       <td>
         <select data-cell="hinmoku" data-row="${i}" onchange="updateDetail(${i},'hinmoku',this.value)">
           <option value=""></option>
@@ -2785,6 +2793,46 @@ function renderDetails() {
     </tr>`;
   }).join('');
   calcTotals();
+}
+
+/* 明細の車番入力→車両マスタサジェスト */
+function onCarNoInput(i, inp) {
+  updateDetail(i, 'carNo', inp.value);
+  const q = (inp.value || '').trim().toLowerCase();
+  const sug = document.getElementById('car-sug-' + i);
+  if (!sug) return;
+  if (!q || !vehicleCache) { sug.classList.remove('show'); sug.innerHTML = ''; return; }
+  // 車番 or 管理番号で検索
+  const matches = vehicleCache.filter(v => {
+    const blob = (v.carNo + ' ' + v.mgmtNo + ' ' + v.メモ).toLowerCase();
+    return blob.includes(q) || (/^\d+$/.test(q) && v.mgmtNo && v.mgmtNo.includes(q));
+  }).slice(0, 15);
+  if (!matches.length) { sug.classList.remove('show'); sug.innerHTML = ''; return; }
+  sug.innerHTML = matches.map(v => `
+    <div class="ps-item" onmousedown="applyCarSuggest(${i},'${escHtml(v.id)}')">
+      <div class="cd">${escHtml(v.carNo || ('#' + v.mgmtNo))}</div>
+      <div class="nm">${escHtml(v.車種 || '-')} · ${escHtml(v.size前 || '-')}<div style="font-size:9px;color:var(--muted);">Rr:${escHtml(v.size後 || '-')} · ${escHtml((v.メモ || '').slice(0,40))}</div></div>
+      <div class="pr">${v.本数 || '-'}本</div>
+    </div>
+  `).join('');
+  sug.classList.add('show');
+}
+function hideCarSuggest(i) {
+  const sug = document.getElementById('car-sug-' + i);
+  if (sug) sug.classList.remove('show');
+}
+function applyCarSuggest(rowIdx, vehicleId) {
+  const v = vehicleCache.find(x => x.id === vehicleId);
+  if (!v) return;
+  const d = state.details[rowIdx];
+  if (!d) return;
+  d.carNo = v.carNo || ('管理#' + v.mgmtNo);
+  if (v.size前 && !d.size) d.size = v.size前;
+  if (v.pat前 && !d.brand) d.brand = v.pat前;
+  // 後輪のタイヤ交換だった場合は size後 を使いたい -> 次行に情報残して後から切り替えられる
+  renderDetails();
+  hideCarSuggest(rowIdx);
+  focusCell(rowIdx, 'hinmoku');
 }
 
 /* 商品コード入力→商品マスタサジェスト */
@@ -2833,7 +2881,7 @@ function applyProductSuggest(rowIdx, pid) {
 }
 
 /* セル間ナビゲーション（Tab/Enter） */
-const CELL_ORDER = ['hinmoku','code','size','brand','soko','qty','tanka','bikou'];
+const CELL_ORDER = ['carNo','hinmoku','code','size','brand','soko','qty','tanka','bikou'];
 function onCellKey(e, row, cell) {
   if (e.key === 'Enter') {
     e.preventDefault();
@@ -2942,9 +2990,12 @@ async function submitSale() {
   const btn = document.getElementById('btn-submit');
   btn.disabled = true; btn.textContent = '保存中...';
   try {
-    const carNum = data.car.trim();
     const ymd = data.date.replace(/-/g, '/');
-    const title = `${ymd} ${data.customer.name}${carNum ? ' ' + carNum : ''}`;
+    // 明細の車番ユニーク数を数える
+    const uniqCars = [...new Set(data.details.map(d => d.carNo).filter(Boolean))];
+    const carSuffix = uniqCars.length === 0 ? '' : uniqCars.length === 1 ? ' ' + uniqCars[0] : ` (${uniqCars.length}台)`;
+    const title = `${ymd} ${data.customer.name}${carSuffix}`;
+    const carNum = uniqCars[0] || '';
     const slipProps = {
       '伝票タイトル': { title: [{ text: { content: title.slice(0, 200) } }] },
       '伝票種類': { select: { name: '納品書' } },
@@ -2984,6 +3035,10 @@ async function submitSale() {
           '売上伝票': { relation: [{ id: slipId }] },
           '備考': { rich_text: [{ text: { content: (d.bikou || '').slice(0, 200) } }] },
         };
+        // 車番プロパティが存在していれば保存（夜の作業でプロパティ追加予定）
+        if (d.carNo) {
+          try { props['車番'] = { rich_text: [{ text: { content: d.carNo } }] }; } catch(_) {}
+        }
         await fooNotionCreate(DETAIL_DB, props);
         okCount++;
       } catch(e) { console.error('明細保存失敗', e); }
@@ -2991,6 +3046,8 @@ async function submitSale() {
     deleteCurrentDraft();
     btn.disabled = false; btn.textContent = '✅ 売上計上';
     showToast('✅ 伝票作成完了: ' + fmtYen(totals.zeikomi) + '（明細 ' + okCount + ' 件）');
+    // 納品書を新タブで開くボタンを確認ダイアログで
+    setTimeout(() => { if (confirm('納品書を開きますか？\n（新タブで表示→印刷/PDF保存可能）')) window.open('delivery-note.html?slip=' + slipId, '_blank'); }, 300);
     // 続けて入力できるようリセット & ダッシュボードへ
     state.details = [];
     state.selectedCustomer = null;

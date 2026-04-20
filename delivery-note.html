@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>納品書 - f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap');
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { background:#e4e4e4; font-family:'Noto Sans JP', sans-serif; color:#1a1208; font-size:12px; }
+.sheet {
+  width:210mm; min-height:297mm; margin:10mm auto; padding:15mm 15mm 12mm;
+  background:#fff; box-shadow:0 2px 10px rgba(0,0,0,0.15); position:relative;
+}
+@media print {
+  html, body { background:none; }
+  .sheet { margin:0; box-shadow:none; width:auto; min-height:auto; }
+  .no-print { display:none !important; }
+  @page { size:A4; margin:10mm; }
+}
+.no-print { position:fixed; top:10px; right:10px; display:flex; gap:6px; z-index:100; }
+.no-print button { padding:8px 14px; background:#f0a500; color:#fff; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+.no-print button.sec { background:#666; }
+
+/* ヘッダー */
+.head { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #f0a500; padding-bottom:10px; margin-bottom:14px; }
+.title { font-size:32px; font-weight:900; letter-spacing:0.2em; color:#333; }
+.ship-to { font-size:13px; margin-top:6px; }
+.ship-to .name { font-size:20px; font-weight:700; border-bottom:1px solid #333; padding-bottom:2px; margin-top:4px; }
+.issue { text-align:right; font-size:11px; }
+.issue .date { font-size:16px; font-weight:700; margin-bottom:6px; }
+.issue .slip-no { color:#666; margin-top:3px; }
+.issuer { background:#fdf6ee; padding:10px 14px; border-radius:6px; margin-top:8px; font-size:11px; line-height:1.6; }
+.issuer .company { font-size:14px; font-weight:900; color:#f0a500; }
+
+/* 車両ブロック */
+.vehicle-block { margin-bottom:16px; border:1px solid #ddd; border-radius:6px; overflow:hidden; }
+.vehicle-head { background:linear-gradient(90deg, #f0a500, #f5be40); color:#fff; padding:6px 12px; font-weight:700; font-size:13px; display:flex; justify-content:space-between; align-items:center; }
+.vehicle-head .meta { font-size:10px; opacity:0.9; }
+
+.items { width:100%; border-collapse:collapse; font-size:11px; }
+.items th { background:#fdf6ee; padding:6px 8px; text-align:left; border-bottom:1px solid #ccc; font-weight:700; color:#666; font-size:10px; }
+.items th.right { text-align:right; }
+.items th.center { text-align:center; }
+.items td { padding:6px 8px; border-bottom:0.5px solid #eee; vertical-align:top; }
+.items td.right { text-align:right; font-variant-numeric:tabular-nums; }
+.items td.center { text-align:center; }
+.items tr:last-child td { border-bottom:none; }
+.items .item-name { font-weight:500; }
+.items .item-sub { font-size:9px; color:#888; margin-top:1px; }
+.items .code { color:#f0a500; font-family:monospace; font-size:10px; font-weight:700; }
+
+/* フッター合計 */
+.total-box { margin-top:12px; display:flex; justify-content:flex-end; }
+.total-table { border-collapse:collapse; font-size:12px; }
+.total-table td { padding:4px 16px; border:0.5px solid #ccc; }
+.total-table td.label { background:#fdf6ee; font-weight:700; color:#666; font-size:10px; text-align:right; width:120px; }
+.total-table td.value { text-align:right; font-variant-numeric:tabular-nums; min-width:120px; font-weight:700; }
+.total-table tr.grand td { background:#f0a500; color:#fff; font-size:14px; font-weight:900; padding:8px 16px; }
+
+.remarks { margin-top:16px; padding:10px 14px; background:#fdf6ee; border-left:3px solid #f0a500; font-size:11px; line-height:1.6; }
+.remarks .label { font-size:10px; color:#666; font-weight:700; margin-bottom:4px; }
+.sig-area { margin-top:30px; display:flex; justify-content:flex-end; gap:20px; }
+.sig-area .sig { width:100px; height:60px; border:1px solid #999; border-radius:4px; position:relative; }
+.sig-area .sig::before { content:attr(data-label); position:absolute; top:-14px; left:0; font-size:9px; color:#666; }
+
+.footer { margin-top:20px; text-align:center; font-size:9px; color:#999; padding-top:10px; border-top:0.5px solid #ddd; }
+</style>
+</head>
+<body>
+
+<div class="no-print">
+  <button onclick="window.print()">🖨 印刷 / PDF保存</button>
+  <button class="sec" onclick="window.close()">閉じる</button>
+</div>
+
+<div class="sheet" id="sheet">
+  <div class="head">
+    <div>
+      <div class="title">納　品　書</div>
+      <div class="ship-to">
+        <div class="name" id="customer-name">—</div>
+        <span id="customer-suffix">御中</span>
+      </div>
+    </div>
+    <div class="issue">
+      <div class="date" id="issue-date">—</div>
+      <div class="slip-no" id="slip-no">伝票 No. —</div>
+      <div class="issuer">
+        <div class="company">有限会社 タイヤマネージャー f.o.o</div>
+        <div>〒731-5124 広島県広島市佐伯区五日市○○</div>
+        <div>TEL 082-XXX-XXXX / FAX 082-XXX-XXXX</div>
+        <div>登録番号 T1234567890123</div>
+        <div id="issuer-staff">担当: —</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="vehicle-blocks"></div>
+
+  <div class="total-box">
+    <table class="total-table">
+      <tr><td class="label">税抜合計</td><td class="value" id="total-zeinuki">0 円</td></tr>
+      <tr><td class="label">消費税</td><td class="value" id="total-zeigaku">0 円</td></tr>
+      <tr class="grand"><td class="label" style="background:#c97c00;color:#fff;">合計金額</td><td class="value" id="total-zeikomi">0 円</td></tr>
+    </table>
+  </div>
+
+  <div class="remarks" id="remarks-box" style="display:none;">
+    <div class="label">備考</div>
+    <div id="remarks-text"></div>
+  </div>
+
+  <div class="sig-area">
+    <div class="sig" data-label="御確認印"></div>
+  </div>
+
+  <div class="footer">
+    f.o.o タイヤマネジメント · 上記の通り納品いたしました · 本書は適格請求書の要件を満たしております
+  </div>
+</div>
+
+<script>
+// URLクエリから伝票ID取得
+const params = new URLSearchParams(location.search);
+const slipId = params.get('slip');
+
+const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
+const SALES_DB = '58cc4a13df03435db14b3439ef1f0a6f';
+const DETAIL_DB = '07bd22655e5849fd854bef1f4c4b5688';
+
+// 業界並び順
+const HINMOKU_ORDER = [
+  'タイヤ販売(新品)','タイヤ販売(中古)','タイヤ販売(更生)','タイヤ',
+  'ホイール','組替','脱着','バルブ交換','バランス','Fバランス',
+  '廃タイヤ','出張(市内)','出張(市外)','f.o.oパック','その他',
+];
+function hinOrder(n) { const i = HINMOKU_ORDER.indexOf(n || ''); return i === -1 ? 999 : i; }
+function fmtYen(n) { return Math.round(n || 0).toLocaleString() + ' 円'; }
+function escH(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+
+async function load() {
+  if (!slipId) { document.getElementById('customer-name').textContent = '(伝票IDなし)'; return; }
+  try {
+    // 伝票取得
+    const slipRes = await fetch(WORKER + '/pages/' + slipId).then(r => r.json());
+    const p = slipRes.properties || {};
+    const title = p['伝票タイトル']?.title?.[0]?.plain_text || '';
+    const custName = (title.match(/\d{4}\/\d{1,2}\/\d{1,2}\s+(.+?)(\s+\S*\d+[-ー‐]\d+\S*)?(\s+\(\d+台\))?$/) || [,title])[1] || title;
+    document.getElementById('customer-name').textContent = custName;
+    document.getElementById('customer-suffix').textContent = p['宛先敬称']?.select?.name || '御中';
+    document.getElementById('issue-date').textContent = (p['売上日']?.date?.start || '').replace(/-/g, '/');
+    document.getElementById('slip-no').textContent = '伝票 No. ' + slipId.slice(-8);
+    document.getElementById('issuer-staff').textContent = '担当: ' + (p['担当者']?.select?.name || '—');
+    const zn = p['税抜合計']?.number || 0;
+    const zg = p['消費税合計']?.number || 0;
+    const zk = p['税込合計']?.number || 0;
+    document.getElementById('total-zeinuki').textContent = fmtYen(zn);
+    document.getElementById('total-zeigaku').textContent = fmtYen(zg);
+    document.getElementById('total-zeikomi').textContent = fmtYen(zk);
+    const bikou = p['備考']?.rich_text?.[0]?.plain_text || '';
+    if (bikou) { document.getElementById('remarks-box').style.display = ''; document.getElementById('remarks-text').textContent = bikou; }
+
+    // 明細取得
+    const detRes = await fetch(WORKER + '/databases/' + DETAIL_DB + '/query', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filter: { property: '売上伝票', relation: { contains: slipId } }, page_size: 100 }),
+    }).then(r => r.json());
+    const details = (detRes.results || []).map(d => ({
+      hinmoku: d.properties['品目']?.select?.name || '',
+      code: d.properties['商品コード']?.rich_text?.[0]?.plain_text || '',
+      size: d.properties['タイヤサイズ']?.rich_text?.[0]?.plain_text || '',
+      brand: d.properties['タイヤ銘柄']?.rich_text?.[0]?.plain_text || '',
+      qty: d.properties['数量']?.number || 0,
+      tanka: d.properties['単価']?.number || 0,
+      zeikomi: d.properties['税込小計']?.number || 0,
+      bikou: d.properties['備考']?.rich_text?.[0]?.plain_text || '',
+      carNo: d.properties['車番']?.rich_text?.[0]?.plain_text || '',
+    }));
+
+    // 車番でグルーピング
+    const groups = new Map();
+    for (const d of details) {
+      const key = d.carNo || '（車番なし）';
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(d);
+    }
+    // 各グループ内を業界順にソート
+    for (const [, arr] of groups) arr.sort((a, b) => hinOrder(a.hinmoku) - hinOrder(b.hinmoku));
+
+    // 車両ブロック描画
+    const container = document.getElementById('vehicle-blocks');
+    container.innerHTML = [...groups.entries()].map(([carNo, items]) => {
+      const subTotal = items.reduce((s, x) => s + x.zeikomi, 0);
+      return `
+        <div class="vehicle-block">
+          <div class="vehicle-head">
+            <span>🚚 ${escH(carNo)}</span>
+            <span class="meta">${items.length} 明細 · ${fmtYen(subTotal)}</span>
+          </div>
+          <table class="items">
+            <thead><tr>
+              <th style="width:80px;">品目</th>
+              <th style="width:70px;">コード</th>
+              <th>内容</th>
+              <th class="center" style="width:40px;">数量</th>
+              <th class="right" style="width:70px;">単価</th>
+              <th class="right" style="width:80px;">金額</th>
+            </tr></thead>
+            <tbody>
+            ${items.map(d => `
+              <tr>
+                <td>${escH(d.hinmoku)}</td>
+                <td class="code">${escH(d.code)}</td>
+                <td><div class="item-name">${escH(d.size || '')}${d.brand ? ' ' + escH(d.brand) : ''}</div>${d.bikou ? '<div class="item-sub">' + escH(d.bikou) + '</div>' : ''}</td>
+                <td class="center">${d.qty || ''}</td>
+                <td class="right">${d.tanka ? fmtYen(d.tanka).replace(' 円','') : ''}</td>
+                <td class="right">${d.zeikomi ? fmtYen(d.zeikomi) : ''}</td>
+              </tr>
+            `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }).join('');
+  } catch(e) {
+    console.error(e);
+    document.getElementById('customer-name').textContent = '取得失敗: ' + (e.message || e);
+  }
+}
+load();
+</script>
+
+</body>
+</html>

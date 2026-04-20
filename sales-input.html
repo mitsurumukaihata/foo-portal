@@ -3814,9 +3814,8 @@ function renderVehicles() {
   for (const v of vehicleCache) if (v.custId && v.customerName && !nameMap.has(v.custId)) nameMap.set(v.custId, v.customerName);
 
   const rowHtml = (v) => {
-    const idx = vehicleCache.indexOf(v);
     return `
-      <tr class="clickable" onclick="showVehicleTimeline(${idx})">
+      <tr class="clickable" onclick="showVehicleTimeline('${v.id}')">
         <td>${escHtml(v.carNo || '-')}</td>
         <td style="font-family:monospace;color:var(--accent);font-weight:700;">${escHtml(v.mgmtNo || '-')}</td>
         <td>${escHtml(v.車種 || '-')}</td>
@@ -3915,9 +3914,21 @@ function showCustomerPortalPicker() {
 }
 
 // 車両クリック → タイムラインモーダル表示
-async function showVehicleTimeline(idx) {
-  const v = _lastVehicleFiltered[idx];
+async function showVehicleTimeline(idOrIdx) {
+  // 後方互換: 数値インデックス or 車両ID どちらも受け付け
+  let v;
+  if (typeof idOrIdx === 'number') {
+    v = _lastVehicleFiltered?.[idOrIdx];
+  } else {
+    v = (vehicleCache || []).find(x => x.id === idOrIdx);
+  }
   if (!v) return;
+  // 顧客名解決
+  const nameMap = new Map();
+  for (const c of (state.customers || [])) if (c.id) nameMap.set(c.id, c.name);
+  for (const u of (state.endUsers || [])) if (u.id && !nameMap.has(u.id)) nameMap.set(u.id, u.name);
+  for (const vv of (vehicleCache || [])) if (vv.custId && vv.customerName && !nameMap.has(vv.custId)) nameMap.set(vv.custId, vv.customerName);
+  const custName = (v.custId && nameMap.get(v.custId)) || v.customerName || '(顧客未紐付け)';
   let modal = document.getElementById('vehicle-timeline-overlay');
   if (!modal) {
     modal = document.createElement('div');
@@ -3930,6 +3941,7 @@ async function showVehicleTimeline(idx) {
     <div class="help-modal" style="position:relative;max-width:900px;">
       <button class="close-btn" onclick="document.getElementById('vehicle-timeline-overlay').classList.remove('show')">×</button>
       <h2>🚚 ${escHtml(v.carNo || ('管理#' + v.mgmtNo))} のタイヤ履歴</h2>
+      <div style="font-size:13px;font-weight:700;color:var(--accent);margin:-8px 0 10px 0;">🏢 ${escHtml(custName)}</div>
       <div style="background:var(--s2);padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:12px;line-height:1.7;">
         ${v.mgmtNo ? `<div>🏷 管理番号: <b>${escHtml(v.mgmtNo)}</b></div>` : ''}
         <div>🚛 車種/仕様: ${escHtml(v.車種 || '-')} / ${escHtml(v.仕様 || '-')}</div>
@@ -3943,12 +3955,22 @@ async function showVehicleTimeline(idx) {
   modal.classList.add('show');
   // 履歴取得
   try {
-    const searchKey = v.carNo && !v.carNo.startsWith('管理#') ? v.carNo : ('管理' + v.mgmtNo);
     const isCarNum = v.carNo && !v.carNo.startsWith('管理#');
-    // 明細DBを検索
-    const filter = isCarNum
-      ? { property: '車番', rich_text: { contains: v.carNo } }
-      : { property: '備考', rich_text: { contains: v.mgmtNo } };
+    // 明細DBを検索: 2026/4/20以降は 車番 フィールド、それ以前は 備考欄 に記載があるため両方OR検索
+    const orFilters = [];
+    if (isCarNum) {
+      orFilters.push({ property: '車番', rich_text: { contains: v.carNo } });
+      orFilters.push({ property: '備考', rich_text: { contains: v.carNo } });
+    }
+    if (v.mgmtNo) {
+      orFilters.push({ property: '備考', rich_text: { contains: v.mgmtNo } });
+      orFilters.push({ property: '車番', rich_text: { contains: v.mgmtNo } });
+    }
+    if (!orFilters.length) {
+      document.getElementById('vt-content').innerHTML = '<div class="empty">検索キー（車番/管理番号）がありません</div>';
+      return;
+    }
+    const filter = orFilters.length === 1 ? orFilters[0] : { or: orFilters };
     // ページネーション対応で全件取得
     const details = [];
     let cursor = null;

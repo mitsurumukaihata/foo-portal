@@ -927,6 +927,11 @@ function newSale() {
 
 /* 検索イベント — IME（日本語変換中）は候補を出さない */
 const _imeState = new WeakMap();
+document.addEventListener('focusin', (e) => {
+  if (e.target.id === 'input-car' && state.selectedCustomer && !e.target.value) {
+    searchCar('');
+  }
+});
 document.addEventListener('compositionstart', (e) => {
   if (e.target.id === 'input-customer' || e.target.id === 'input-car') {
     _imeState.set(e.target, true);
@@ -1021,12 +1026,27 @@ function carSearchVariants(q) {
 
 async function searchCar(q) {
   const el = document.getElementById('car-results');
-  if (!q || q.length < 2) { el.classList.remove('show'); return; }
+  const hasCustomer = state.selectedCustomer && state.selectedCustomer.id;
+  // 得意先選択中なら空でも出す。未選択なら2文字以上必要
+  if (!hasCustomer && (!q || q.length < 2)) { el.classList.remove('show'); return; }
   try {
-    const variants = carSearchVariants(q.trim());
-    const orFilters = variants.map(v => ({ property: '車番', rich_text: { contains: v } }));
+    let filter;
+    if (q && q.trim()) {
+      const variants = carSearchVariants(q.trim());
+      const orFilters = variants.map(v => ({ property: '車番', rich_text: { contains: v } }));
+      const carFilter = orFilters.length === 1 ? orFilters[0] : { or: orFilters };
+      filter = hasCustomer
+        ? { and: [ carFilter, { property: '顧客名', relation: { contains: state.selectedCustomer.id } } ] }
+        : carFilter;
+    } else {
+      // 空入力 + 顧客選択中 → その顧客の最近の伝票
+      filter = { and: [
+        { property: '顧客名', relation: { contains: state.selectedCustomer.id } },
+        { property: '車番', rich_text: { is_not_empty: true } },
+      ]};
+    }
     const r = await notionPost('/databases/' + SALES_DB + '/query', {
-      filter: orFilters.length === 1 ? orFilters[0] : { or: orFilters },
+      filter,
       sorts: [{ property: '売上日', direction: 'descending' }],
       page_size: 20,
     });

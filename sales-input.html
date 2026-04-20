@@ -989,6 +989,131 @@ async function queryAllSlips(fromStr) {
   return all;
 }
 
+/* ═══════════ 月次キャッシュ（重要） ═══════════
+ * 過去月は変化しない前提で localStorage にキャッシュ。
+ * 今月・前月のみ毎回取得。それ以前は30日TTL・キャッシュヒット時はNotion呼ばず即返し。
+ */
+const CACHE_VERSION = 2;
+const CACHE_PREFIX = 'sales_month_cache_v' + CACHE_VERSION + ':';
+const CACHE_TTL_MS = 30 * 24 * 3600 * 1000;
+function cacheKey(ym) { return CACHE_PREFIX + ym; }
+function isRecentMonth(ym) {
+  const today = new Date();
+  const curYm = today.toISOString().slice(0,7);
+  const prev = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const prevYm = prev.toISOString().slice(0,7);
+  return ym === curYm || ym === prevYm;
+}
+function readCache(ym) {
+  try {
+    const raw = localStorage.getItem(cacheKey(ym));
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (data.version !== CACHE_VERSION) return null;
+    if (Date.now() - new Date(data.computedAt).getTime() > CACHE_TTL_MS) return null;
+    return data;
+  } catch(_) { return null; }
+}
+function writeCache(ym, agg) {
+  try { localStorage.setItem(cacheKey(ym), JSON.stringify(agg)); } catch(_) {}
+}
+function clearAllMonthCache() {
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(CACHE_PREFIX)) keys.push(k);
+  }
+  keys.forEach(k => localStorage.removeItem(k));
+  return keys.length;
+}
+function cacheStats() {
+  let n = 0, bytes = 0;
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(CACHE_PREFIX)) { n++; bytes += (localStorage.getItem(k) || '').length; }
+  }
+  return { n, kb: Math.round(bytes / 1024) };
+}
+function aggregateMonthData(slips, details) {
+  const out = {
+    amount: 0, zeinuki: 0, count: 0,
+    customers: {}, categories: {}, hinmoku: {}, brand: {}, size: {}, code: {}, detailCount: 0,
+  };
+  for (const s of slips) {
+    const amt = s.properties['税込合計']?.number || 0;
+    const zeinuki = s.properties['税抜合計']?.number || 0;
+    out.amount += amt; out.zeinuki += zeinuki; out.count++;
+    const title = s.properties['伝票タイトル']?.title?.[0]?.plain_text || '';
+    const name = parseTitleCustomer(title) || '(不明)';
+    if (!out.customers[name]) out.customers[name] = { amount: 0, count: 0 };
+    out.customers[name].amount += amt; out.customers[name].count++;
+  }
+  const accum = (obj, key, amt, qty) => {
+    if (!key) key = '(未設定)';
+    if (!obj[key]) obj[key] = { amount: 0, count: 0, qty: 0 };
+    obj[key].amount += amt; obj[key].count++; obj[key].qty += qty;
+  };
+  for (const d of details) {
+    const amt = d.properties['税込小計']?.number || 0;
+    const qty = d.properties['数量']?.number || 0;
+    const hin = d.properties['品目']?.select?.name || 'その他';
+    const cd = d.properties['商品コード']?.rich_text?.[0]?.plain_text || '';
+    const sz = d.properties['タイヤサイズ']?.rich_text?.[0]?.plain_text || '';
+    const br = d.properties['タイヤ銘柄']?.rich_text?.[0]?.plain_text || '';
+    accum(out.categories, catOf(hin).cat, amt, qty);
+    accum(out.hinmoku, hin, amt, qty);
+    accum(out.brand, br, amt, qty);
+    accum(out.size, sz, amt, qty);
+    accum(out.code, cd, amt, qty);
+  }
+  out.detailCount = details.length;
+  return out;
+}
+async function fetchMonthData(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  const fromStr = `${y}-${String(m).padStart(2,'0')}-01`;
+  const toStr = `${y}-${String(m).padStart(2,'0')}-${String(new Date(y, m, 0).getDate()).padStart(2,'0')}`;
+  const [slips, details] = await Promise.all([
+    queryAllSlipsRange(fromStr, toStr),
+    queryDetailsByDate(fromStr, toStr),
+  ]);
+  return aggregateMonthData(slips, details);
+}
+async function getMonthAggregate(ym, { force = false } = {}) {
+  if (!force && !isRecentMonth(ym)) {
+    const c = readCache(ym);
+    if (c) return c;
+  }
+  const agg = await fetchMonthData(ym);
+  agg.version = CACHE_VERSION;
+  agg.ym = ym;
+  agg.computedAt = new Date().toISOString();
+  if (!isRecentMonth(ym)) writeCache(ym, agg);
+  return agg;
+}
+async function getMonthAggregatesParallel(ymList, { force = false, concurrency = 4, onProgress } = {}) {
+  const result = new Map();
+  let idx = 0, done = 0;
+  let hits = 0, fetched = 0;
+  // キャッシュヒット数を先にカウント
+  for (const ym of ymList) {
+    if (!force && !isRecentMonth(ym) && readCache(ym)) hits++; else fetched++;
+  }
+  if (onProgress) onProgress({ done: 0, total: ymList.length, hits, fetched });
+  async function worker() {
+    while (idx < ymList.length) {
+      const i = idx++;
+      const ym = ymList[i];
+      try { result.set(ym, await getMonthAggregate(ym, { force })); }
+      catch(e) { console.error('agg', ym, e); result.set(ym, aggregateMonthData([],[])); }
+      done++;
+      if (onProgress) onProgress({ done, total: ymList.length, hits, fetched });
+    }
+  }
+  await Promise.all(Array(Math.min(concurrency, ymList.length)).fill(0).map(() => worker()));
+  return result;
+}
+
 async function queryDetailsByDate(fromStr, toStr) {
   const all = [];
   let cursor = null;
@@ -1009,14 +1134,21 @@ async function queryDetailsByDate(fromStr, toStr) {
 async function loadMonthly() {
   const months = parseInt(document.getElementById('mo-range')?.value || '24');
   const today = new Date();
-  // 表示は months ヶ月、但し前年同月比を全期間に出すため +12ヶ月前から取得
   const displayFrom = new Date(today.getFullYear(), today.getMonth() - (months - 1), 1);
   const fetchFrom = new Date(today.getFullYear(), today.getMonth() - (months - 1) - 12, 1);
-  const fromStr = fetchFrom.toISOString().slice(0,10);
   const displayFromYm = displayFrom.toISOString().slice(0,7);
+  // 全対象月リスト(表示分+前年比分)
+  const ymList = [];
+  const cur = new Date(fetchFrom);
+  const endYm = today.toISOString().slice(0,7);
+  while (cur.toISOString().slice(0,7) <= endYm) {
+    ymList.push(cur.toISOString().slice(0,7));
+    cur.setMonth(cur.getMonth() + 1);
+  }
 
-  // リセット
-  document.getElementById('mo-hero').innerHTML = '<div class="mo-hero-skeleton">📥 ' + months + 'ヶ月 + 前年比用12ヶ月 = 計' + (months + 12) + 'ヶ月分の伝票を取得中...</div>';
+  // プログレス表示
+  const stats = cacheStats();
+  document.getElementById('mo-hero').innerHTML = `<div class="mo-hero-skeleton">📥 集計準備中... (キャッシュ: ${stats.n}ヶ月 / ${stats.kb}KB)</div>`;
   document.getElementById('mo-kpi').innerHTML = '';
   document.getElementById('mo-chart').innerHTML = '<div class="empty">集計中...</div>';
   document.getElementById('mo-categories').innerHTML = '<div class="empty">集計中...</div>';
@@ -1024,64 +1156,82 @@ async function loadMonthly() {
   document.getElementById('mo-table').innerHTML = '<div class="empty">集計中...</div>';
 
   try {
-    // 伝票を一括取得
-    const slips = await queryAllSlips(fromStr);
-    // 月ごと集計
-    const buckets = new Map();
-    for (const p of slips) {
-      const date = p.properties['売上日']?.date?.start || '';
-      if (!date) continue;
-      const ym = date.slice(0, 7);
-      const amount = p.properties['税込合計']?.number || 0;
-      const zeinuki = p.properties['税抜合計']?.number || 0;
-      if (!buckets.has(ym)) buckets.set(ym, { count: 0, amount: 0, zeinuki: 0, slips: [] });
-      const b = buckets.get(ym);
-      b.count++; b.amount += amount; b.zeinuki += zeinuki;
-      b.slips.push(p);
-    }
+    const aggs = await getMonthAggregatesParallel(ymList, {
+      onProgress: ({ done, total, hits, fetched }) => {
+        document.getElementById('mo-hero').innerHTML = `<div class="mo-hero-skeleton">📥 集計中 ${done}/${total}ヶ月 (⚡キャッシュ ${hits} / 🌐Notion ${fetched})</div>`;
+      }
+    });
 
-    // 表示は displayFromYm 以降のみ（bucketsには前年分も含まれる）
-    const allYmList = [...buckets.keys()].sort();
-    const ymList = allYmList.filter(ym => ym >= displayFromYm);
+    // 表示月フィルタ
+    const visibleYm = ymList.filter(ym => ym >= displayFromYm);
     const ymCurrent = today.toISOString().slice(0,7);
     const ymPrev = (() => { const d = new Date(today.getFullYear(), today.getMonth() - 1, 1); return d.toISOString().slice(0,7); })();
     const ymYoY = (() => { const d = new Date(today.getFullYear() - 1, today.getMonth(), 1); return d.toISOString().slice(0,7); })();
+    const curB = aggs.get(ymCurrent) || { count: 0, amount: 0, zeinuki: 0 };
+    const yoyB = aggs.get(ymYoY);
+    const prevB = aggs.get(ymPrev);
 
-    const curB = buckets.get(ymCurrent) || { count: 0, amount: 0, zeinuki: 0, slips: [] };
-    const yoyB = buckets.get(ymYoY);
-    const prevB = buckets.get(ymPrev);
+    // buckets互換オブジェクトに変換
+    const buckets = new Map();
+    for (const [ym, a] of aggs.entries()) buckets.set(ym, { count: a.count, amount: a.amount, zeinuki: a.zeinuki });
 
-    // Hero
     renderHero(ymCurrent, curB, yoyB, today);
-
-    // KPI
     renderKPI(buckets, ymCurrent, ymPrev, ymYoY, curB, prevB, yoyB);
+    // renderKPI / renderBars は visibleYm のみ
+    const visibleBuckets = new Map();
+    for (const ym of visibleYm) visibleBuckets.set(ym, buckets.get(ym));
+    renderKPI(visibleBuckets, ymCurrent, ymPrev, ymYoY, curB, prevB, yoyB);
+    renderBars(visibleYm, visibleBuckets, ymCurrent);
+    renderMonthlyTable(visibleYm, buckets);
 
-    // 棒グラフ
-    renderBars(ymList, buckets, ymCurrent);
-
-    // 月別表（前年比付き）
-    renderMonthlyTable(ymList, buckets);
-
-    // カテゴリ＋トップ得意先（当月 or 最新月）
-    const targetYm = curB.count ? ymCurrent : (ymList.length ? ymList[ymList.length - 1] : null);
+    // 当月カテゴリ＋トップ得意先
+    const targetYm = curB.count ? ymCurrent : (visibleYm.length ? visibleYm[visibleYm.length - 1] : null);
     if (targetYm) {
-      renderTopCustomersFromSlips(targetYm, buckets.get(targetYm).slips);
-      // 明細取得（当月分のみ）
-      const [y, m] = targetYm.split('-').map(Number);
-      const fromS = `${y}-${String(m).padStart(2,'0')}-01`;
-      const toS   = `${y}-${String(m).padStart(2,'0')}-${String(new Date(y, m, 0).getDate()).padStart(2,'0')}`;
+      const a = aggs.get(targetYm);
       document.getElementById('mo-cat-title').textContent = targetYm.replace('-','/') + ' のカテゴリ別内訳';
       document.getElementById('mo-top-title').textContent = targetYm.replace('-','/') + ' のトップ得意先';
-      queryDetailsByDate(fromS, toS).then(details => renderCategoriesFromDetails(details)).catch(e => {
-        console.error(e);
-        document.getElementById('mo-categories').innerHTML = '<div class="empty">カテゴリ取得失敗</div>';
-      });
+      renderCategoriesFromAggregate(a);
+      renderTopCustomersFromAggregate(a);
     }
+    // キャッシュ状況バッジ
+    const st = cacheStats();
+    const cacheInfo = document.createElement('div');
+    cacheInfo.style.cssText = 'text-align:right;font-size:11px;color:var(--muted);margin-top:4px;';
+    cacheInfo.innerHTML = `⚡ キャッシュ ${st.n}ヶ月 (${st.kb}KB) · <button class="btn-link" onclick="if(confirm('キャッシュをクリアして再取得しますか？過去月に修正があったときに使います。'))clearAllMonthCache(),loadMonthly()">🔄 キャッシュ更新</button>`;
+    const hero = document.getElementById('mo-hero');
+    if (hero.nextSibling) hero.parentNode.insertBefore(cacheInfo, hero.nextSibling);
   } catch(e) {
     console.error(e);
     document.getElementById('mo-hero').innerHTML = '<div class="mo-hero-skeleton">❌ 取得失敗: ' + escHtml(e.message || e) + '</div>';
   }
+}
+
+function renderTopCustomersFromAggregate(a) {
+  const entries = Object.entries(a.customers || {}).map(([n, v]) => [n, v]).sort((a,b) => b[1].amount - a[1].amount);
+  const top = entries.slice(0, 10);
+  if (!top.length) { document.getElementById('mo-top-customers').innerHTML = '<div class="empty">データなし</div>'; return; }
+  const maxAmt = top[0][1].amount;
+  const total = top.reduce((s, [, v]) => s + v.amount, 0);
+  document.getElementById('mo-top-customers').innerHTML = top.map(([name, v], i) => {
+    const rk = i + 1;
+    const rkIcon = rk === 1 ? '🥇' : rk === 2 ? '🥈' : rk === 3 ? '🥉' : '#' + rk;
+    const rkCls = rk === 1 ? 'gold' : rk === 2 ? 'silver' : rk === 3 ? 'bronze' : '';
+    return `<div class="mo-row"><div class="rk ${rkCls}">${rkIcon}</div><div class="nm" title="${escHtml(name)}">${escHtml(name)}</div><div class="mini-bar"><div class="fill" style="width:${(v.amount/maxAmt)*100}%"></div></div><div class="am">${fmtShortYen(v.amount)}</div><div class="pct">${((v.amount/total)*100).toFixed(1)}%</div></div>`;
+  }).join('');
+}
+function renderCategoriesFromAggregate(a) {
+  const entries = Object.entries(a.categories || {}).sort((a,b) => b[1].amount - a[1].amount);
+  if (!entries.length) { document.getElementById('mo-categories').innerHTML = '<div class="empty">データなし</div>'; return; }
+  const maxAmt = entries[0][1].amount;
+  const total = entries.reduce((s, [, v]) => s + v.amount, 0);
+  document.getElementById('mo-categories').innerHTML = entries.map(([cat, v]) => `
+    <div class="mo-row">
+      <div class="nm">${escHtml(cat)}<div style="font-size:9px;color:var(--muted);">${v.count}件 · ${v.qty.toLocaleString()}本</div></div>
+      <div class="mini-bar"><div class="fill" style="width:${(v.amount/maxAmt)*100}%"></div></div>
+      <div class="am">${fmtShortYen(v.amount)}</div>
+      <div class="pct">${((v.amount/total)*100).toFixed(1)}%</div>
+    </div>
+  `).join('') + `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);text-align:right;">合計: <span style="color:var(--accent);font-weight:700;">${fmtJPY(total)}</span> · ${a.detailCount || 0} 明細</div>`;
 }
 
 function renderHero(ym, cur, yoy, today) {
@@ -1335,29 +1485,29 @@ async function queryAllSlipsRange(fromStr, toStr) {
   return all;
 }
 
-/* ═══════════ 得意先別集計 ═══════════ */
+/* ═══════════ 得意先別集計（キャッシュ経由） ═══════════ */
 async function loadByCustomer() {
   const r = rangeToStrs('bc');
   if (!r) { showToast('期間を選択してください'); return; }
-  document.getElementById('bc-ranking').innerHTML = '<div class="empty">📥 伝票取得中...</div>';
+  document.getElementById('bc-ranking').innerHTML = '<div class="empty">📥 集計準備中...</div>';
   document.getElementById('bc-pivot').innerHTML = '<div class="empty">集計中...</div>';
   document.getElementById('bc-summary').innerHTML = '';
   try {
-    const slips = await queryAllSlipsRange(r.fromStr, r.toStr);
-    // 顧客集計
+    const aggs = await getMonthAggregatesParallel(r.ymList, {
+      onProgress: ({ done, total, hits, fetched }) => {
+        document.getElementById('bc-ranking').innerHTML = `<div class="empty">📥 集計中 ${done}/${total}ヶ月 (⚡${hits} / 🌐${fetched})</div>`;
+      }
+    });
     const agg = new Map();
     let totalAmt = 0, totalCnt = 0;
-    for (const s of slips) {
-      const date = s.properties['売上日']?.date?.start || '';
-      const ym = date.slice(0, 7);
-      const amt = s.properties['税込合計']?.number || 0;
-      const title = s.properties['伝票タイトル']?.title?.[0]?.plain_text || '';
-      const name = parseTitleCustomer(title) || '(不明)';
-      totalAmt += amt; totalCnt++;
-      if (!agg.has(name)) agg.set(name, { total: 0, count: 0, perYm: new Map() });
-      const v = agg.get(name);
-      v.total += amt; v.count++;
-      v.perYm.set(ym, (v.perYm.get(ym) || 0) + amt);
+    for (const [ym, a] of aggs.entries()) {
+      for (const [name, v] of Object.entries(a.customers || {})) {
+        totalAmt += v.amount; totalCnt += v.count;
+        if (!agg.has(name)) agg.set(name, { total: 0, count: 0, perYm: new Map() });
+        const cv = agg.get(name);
+        cv.total += v.amount; cv.count += v.count;
+        cv.perYm.set(ym, (cv.perYm.get(ym) || 0) + v.amount);
+      }
     }
     const sorted = [...agg.entries()].sort((a, b) => b[1].total - a[1].total);
     // サマリ
@@ -1449,17 +1599,19 @@ function renderBpTabs() {
   ).join('');
 }
 function bpSetMode(k) { bpMode = k; renderBpTabs(); if (bpCachedDetails) renderBpFromCache(); }
-let bpCachedDetails = null;
-let bpCachedRange = null;
+let bpCachedAggs = null;
 async function loadByProduct() {
   const r = rangeToStrs('bp');
   if (!r) { showToast('期間を選択してください'); return; }
-  document.getElementById('bp-ranking').innerHTML = '<div class="empty">📥 明細取得中...（期間が長いと数十秒かかります）</div>';
+  document.getElementById('bp-ranking').innerHTML = '<div class="empty">📥 集計準備中...</div>';
   document.getElementById('bp-summary').innerHTML = '';
   try {
-    const details = await queryDetailsByDate(r.fromStr, r.toStr);
-    bpCachedDetails = details;
-    bpCachedRange = r;
+    const aggs = await getMonthAggregatesParallel(r.ymList, {
+      onProgress: ({ done, total, hits, fetched }) => {
+        document.getElementById('bp-ranking').innerHTML = `<div class="empty">📥 集計中 ${done}/${total}ヶ月 (⚡${hits} / 🌐${fetched})</div>`;
+      }
+    });
+    bpCachedAggs = aggs;
     renderBpFromCache();
   } catch(e) {
     console.error(e);
@@ -1467,40 +1619,31 @@ async function loadByProduct() {
   }
 }
 function renderBpFromCache() {
-  if (!bpCachedDetails) return;
-  const details = bpCachedDetails;
+  if (!bpCachedAggs) return;
+  const aggs = bpCachedAggs;
   // サマリ
-  let totalAmt = 0, totalQty = 0;
-  for (const d of details) {
-    totalAmt += d.properties['税込小計']?.number || 0;
-    totalQty += d.properties['数量']?.number || 0;
+  let totalAmt = 0, totalQty = 0, totalCount = 0;
+  for (const a of aggs.values()) {
+    const src = a[bpMode] || {};
+    for (const v of Object.values(src)) { totalAmt += v.amount; totalQty += v.qty; totalCount += v.count; }
   }
   document.getElementById('bp-summary').innerHTML = `
     <div class="summary-cards">
-      <div class="summary-card"><div class="lbl">明細件数</div><div class="val">${details.length.toLocaleString()}</div><div class="sub">行</div></div>
+      <div class="summary-card"><div class="lbl">明細件数</div><div class="val">${totalCount.toLocaleString()}</div><div class="sub">行</div></div>
       <div class="summary-card"><div class="lbl">期間合計</div><div class="val">${fmtShortYen(totalAmt)}</div><div class="sub">税込</div></div>
       <div class="summary-card"><div class="lbl">総数量</div><div class="val">${totalQty.toLocaleString()}</div><div class="sub">本/式</div></div>
-      <div class="summary-card"><div class="lbl">明細平均単価</div><div class="val">${details.length ? fmtShortYen(totalAmt / details.length) : '—'}</div><div class="sub">/ 明細</div></div>
+      <div class="summary-card"><div class="lbl">明細平均単価</div><div class="val">${totalCount ? fmtShortYen(totalAmt / totalCount) : '—'}</div><div class="sub">/ 明細</div></div>
     </div>
   `;
   // グループ化
   const agg = new Map();
-  for (const d of details) {
-    const hinmoku = d.properties['品目']?.select?.name || 'その他';
-    const code = d.properties['商品コード']?.rich_text?.[0]?.plain_text || '';
-    const size = d.properties['タイヤサイズ']?.rich_text?.[0]?.plain_text || '';
-    const brand = d.properties['タイヤ銘柄']?.rich_text?.[0]?.plain_text || '';
-    const amt = d.properties['税込小計']?.number || 0;
-    const qty = d.properties['数量']?.number || 0;
-    let key;
-    if (bpMode === 'category') key = catOf(hinmoku).cat;
-    else if (bpMode === 'hinmoku') key = hinmoku;
-    else if (bpMode === 'brand') key = brand || '(未設定)';
-    else if (bpMode === 'size') key = size || '(未設定)';
-    else if (bpMode === 'code') key = code || '(未設定)';
-    if (!agg.has(key)) agg.set(key, { amt: 0, qty: 0, count: 0, color: catOf(hinmoku).color });
-    const v = agg.get(key);
-    v.amt += amt; v.qty += qty; v.count++;
+  for (const a of aggs.values()) {
+    const src = a[bpMode] || {};
+    for (const [key, v] of Object.entries(src)) {
+      if (!agg.has(key)) agg.set(key, { amt: 0, qty: 0, count: 0, color: '#f0a500' });
+      const g = agg.get(key);
+      g.amt += v.amount; g.qty += v.qty; g.count += v.count;
+    }
   }
   const sorted = [...agg.entries()].sort((a, b) => b[1].amt - a[1].amt);
   document.getElementById('bp-main-title').textContent = '🏆 ' + (BP_TABS.find(t => t.k === bpMode)?.l || '') + ' 別ランキング';

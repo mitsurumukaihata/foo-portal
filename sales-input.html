@@ -497,22 +497,22 @@ body::-webkit-scrollbar { display:none; }
 
       <!-- KPIカード -->
       <div class="stats-grid">
-        <div class="stat-card">
+        <div class="stat-card" title="今月（1日〜末日）の全伝票の税込合計額">
           <div class="stat-label">📅 今月の売上（税込）</div>
           <div class="stat-value" id="stat-month-amount">─</div>
           <div class="stat-sub" id="stat-month-period"></div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card" title="今月に作成された売上伝票の総数">
           <div class="stat-label">📋 今月の伝票数</div>
           <div class="stat-value" id="stat-month-count">─</div>
           <div class="stat-sub">件</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card" title="今日入力された売上伝票の数と合計金額">
           <div class="stat-label">📊 今日の入力</div>
           <div class="stat-value" id="stat-today-count">─</div>
           <div class="stat-sub" id="stat-today-sub">件</div>
         </div>
-        <div class="stat-card" id="stat-unbilled-card" style="cursor:pointer;" onclick="showPage('search');initSearchIfNeeded();setTimeout(()=>{document.getElementById('search-from').value='';document.getElementById('search-to').value='';const s=document.getElementById('search-status');if(s){s.value='未請求';}execSearch();},50);">
+        <div class="stat-card" title="ステータスが「未請求」の伝票数。クリックで検索画面へ。" id="stat-unbilled-card" style="cursor:pointer;" onclick="showPage('search');initSearchIfNeeded();setTimeout(()=>{document.getElementById('search-from').value='';document.getElementById('search-to').value='';const s=document.getElementById('search-status');if(s){s.value='未請求';}execSearch();},50);">
           <div class="stat-label">💡 未請求伝票</div>
           <div class="stat-value" id="stat-unbilled">─</div>
           <div class="stat-sub" id="stat-unbilled-sub">件</div>

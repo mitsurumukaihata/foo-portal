@@ -721,6 +721,7 @@ body::-webkit-scrollbar { display:none; }
           <div id="search-summary" style="margin-left:auto;font-size:12px;color:var(--muted);"></div>
         </div>
       </div>
+      <div id="search-history" style="margin-bottom:10px;"></div>
       <div class="card">
         <div class="card-title">検索結果</div>
         <div id="search-results-area"><div class="empty">条件を入力して「検索実行」</div></div>
@@ -2603,6 +2604,7 @@ let searchInitialized = false;
 function initSearchIfNeeded() {
   if (searchInitialized) return;
   searchInitialized = true;
+  renderSearchHistory();
   // 品目チップ
   const chipsEl = document.getElementById('search-hinmoku-chips');
   chipsEl.innerHTML = SEARCH_HINMOKU.map(h =>
@@ -2619,7 +2621,55 @@ function toggleHinmokuChip(h) {
   });
 }
 
-async function execSearch() {
+async // 検索履歴
+function getSearchHistory() { try { return JSON.parse(localStorage.getItem('search-history') || '[]'); } catch(_) { return []; } }
+function saveSearchHistory(h) { try { localStorage.setItem('search-history', JSON.stringify(h.slice(0, 10))); } catch(_) {} }
+function addSearchHistory(filters) {
+  const history = getSearchHistory();
+  const key = JSON.stringify(filters);
+  const existing = history.findIndex(h => JSON.stringify(h.filters) === key);
+  if (existing >= 0) history.splice(existing, 1);
+  history.unshift({ filters, ts: new Date().toISOString() });
+  saveSearchHistory(history);
+  renderSearchHistory();
+}
+function renderSearchHistory() {
+  const el = document.getElementById('search-history');
+  if (!el) return;
+  const history = getSearchHistory();
+  if (!history.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div style="padding:8px 14px; background:var(--s2); border-radius:8px; font-size:11px;">
+      <span style="color:var(--muted);">🕐 最近の検索:</span>
+      ${history.slice(0, 5).map((h, i) => {
+        const parts = [];
+        if (h.filters.customer) parts.push('🚚' + h.filters.customer);
+        if (h.filters.car) parts.push('🚗' + h.filters.car);
+        if (h.filters.size) parts.push('📐' + h.filters.size);
+        if (h.filters.brand) parts.push('🏷' + h.filters.brand);
+        if (h.filters.hinmoku && h.filters.hinmoku.length) parts.push('💼' + h.filters.hinmoku.join('/'));
+        return `<button class="btn-link" style="padding:2px 6px; font-size:11px; margin:0 2px;" onclick='applySearchHistory(${i})'>${escHtml(parts.slice(0, 3).join(' '))}</button>`;
+      }).join('')}
+    </div>
+  `;
+}
+function applySearchHistory(i) {
+  const h = getSearchHistory()[i];
+  if (!h) return;
+  const f = h.filters;
+  document.getElementById('search-customer').value = f.customer || '';
+  document.getElementById('search-car').value = f.car || '';
+  document.getElementById('search-size').value = f.size || '';
+  document.getElementById('search-brand').value = f.brand || '';
+  document.getElementById('search-from').value = f.from || '';
+  document.getElementById('search-to').value = f.to || '';
+  document.getElementById('search-staff').value = f.staff || '';
+  searchSelectedHinmoku = new Set(f.hinmoku || []);
+  document.querySelectorAll('.hinmoku-chip').forEach(el => el.classList.toggle('on', searchSelectedHinmoku.has(el.dataset.h)));
+  execSearch();
+}
+
+function execSearch() {
   const car = document.getElementById('search-car').value.trim();
   const cust = document.getElementById('search-customer').value.trim();
   const size = document.getElementById('search-size').value.trim();
@@ -2633,6 +2683,8 @@ async function execSearch() {
 
   const hasAnyFilter = car || cust || size || brand || from || to || staff || amtMin || amtMax || hinSet.size;
   if (!hasAnyFilter) { showToast('検索条件を1つ以上入力してください'); return; }
+  // 検索履歴に追加
+  addSearchHistory({ customer: cust, car, size, brand, from, to, staff, hinmoku: [...hinSet] });
 
   const el = document.getElementById('search-results-area');
   el.innerHTML = '<div class="empty">🔍 検索中...</div>';

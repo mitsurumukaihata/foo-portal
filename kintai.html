@@ -666,14 +666,20 @@ async function renderHome() {
     window._homeFocus = !syukkinDisp ? 's' : 't';
     // 既存レコードがあればそのチェック状態を引き継ぐ（有給などNotion側で設定済の内容を反映）
     const _rec = selectedDateRecord?.properties;
-    window._homeChecks = {
-      yukyu:     _rec?.['有給使用']?.checkbox || false,
-      kekkin:    _rec?.['欠勤']?.checkbox     || false,
-      rousai:    _rec?.['労災扱い']?.checkbox || false,
-      yukyuTime: ''
-    };
+    const _yukyu  = _rec?.['有給使用']?.checkbox === true;
+    const _kekkin = _rec?.['欠勤']?.checkbox === true;
+    const _rousai = _rec?.['労災扱い']?.checkbox === true;
+    console.log('[kintai] 既存レコード反映:', { yukyu: _yukyu, kekkin: _kekkin, rousai: _rousai, recordId: selectedDateRecord?.id });
+    window._homeChecks = { yukyu: _yukyu, kekkin: _kekkin, rousai: _rousai, yukyuTime: '' };
+    // DOM に直接 .on を付与（初期HTMLテンプレートで取りこぼした場合のフォールバック）
+    if (_yukyu)  document.getElementById('home-chk-yukyu')?.classList.add('on');
+    if (_kekkin) document.getElementById('home-chk-kekkin')?.classList.add('on');
+    if (_rousai) document.getElementById('home-chk-rousai')?.classList.add('on');
+    // 有給ラップの表示
+    const _yukyuWrap = document.getElementById('home-yukyu-wrap');
+    if (_yukyuWrap) _yukyuWrap.style.display = _yukyu ? 'block' : 'none';
     // 有給プレビュー再描画
-    if (window._homeChecks.yukyu) { setTimeout(() => calcYukyuPreview(), 50); }
+    if (_yukyu) setTimeout(() => calcYukyuPreview(), 50);
 
     document.getElementById('home-numpad')?.querySelectorAll('.np-btn').forEach(btn => {
       btn.addEventListener('click', () => {

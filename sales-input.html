@@ -173,6 +173,72 @@ body::-webkit-scrollbar { display:none; }
 
 /* Selected customer indicator */
 .selected-tag { display:inline-block; padding:3px 8px; background:rgba(240,165,0,0.15); color:var(--accent); border-radius:12px; font-size:11px; font-weight:600; margin-top:4px; }
+
+/* ════════════ 弥生風 売上入力 ════════════ */
+.yayoi-wrap { background:var(--s1); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.yayoi-header { background:var(--s2); border-bottom:2px solid var(--accent); padding:10px 14px; display:grid; grid-template-columns:repeat(12, 1fr); gap:10px 14px; align-items:end; }
+.yayoi-header .yh-cell { display:flex; flex-direction:column; gap:3px; min-width:0; }
+.yayoi-header .yh-cell.span2 { grid-column:span 2; }
+.yayoi-header .yh-cell.span3 { grid-column:span 3; }
+.yayoi-header .yh-cell.span4 { grid-column:span 4; }
+.yayoi-header .yh-cell.span6 { grid-column:span 6; }
+.yayoi-header .yh-cell.span12 { grid-column:span 12; }
+.yh-label { font-size:10px; color:var(--muted); font-weight:700; letter-spacing:0.04em; }
+.yh-input { width:100%; padding:6px 8px; background:var(--s1); border:1px solid var(--border); border-radius:5px; color:var(--text); font-size:12px; font-family:inherit; }
+.yh-input:focus { outline:none; border-color:var(--accent); background:#fff8e8; color:#1a1208; }
+@media (prefers-color-scheme:dark) { .yh-input:focus { background:#3a2a08; color:#fff; } }
+.yh-input.readonly { background:var(--s3); color:var(--muted); }
+.yh-mini-radio { display:flex; gap:0; border:1px solid var(--border); border-radius:5px; overflow:hidden; }
+.yh-mini-radio label { flex:1; padding:5px 8px; font-size:11px; text-align:center; cursor:pointer; background:var(--s1); color:var(--text); }
+.yh-mini-radio label.active { background:var(--accent); color:#fff; font-weight:700; }
+.yh-mini-radio input { display:none; }
+
+/* スプレッドシート */
+.yayoi-grid { width:100%; border-collapse:collapse; font-size:12px; background:var(--s1); }
+.yayoi-grid thead { background:var(--s3); position:sticky; top:0; z-index:5; }
+.yayoi-grid th { padding:6px 4px; text-align:center; font-weight:700; font-size:10px; color:var(--muted); border:1px solid var(--border); white-space:nowrap; }
+.yayoi-grid td { padding:0; border:1px solid var(--border); height:30px; vertical-align:middle; }
+.yayoi-grid td.row-no { text-align:center; color:var(--muted); font-size:10px; background:var(--s2); width:34px; user-select:none; }
+.yayoi-grid td input, .yayoi-grid td select { width:100%; height:28px; padding:0 6px; background:transparent; border:none; color:var(--text); font-size:12px; font-family:inherit; box-sizing:border-box; }
+.yayoi-grid td input:focus, .yayoi-grid td select:focus { outline:2px solid var(--accent); outline-offset:-2px; background:#fff8e8; color:#1a1208; }
+@media (prefers-color-scheme:dark) { .yayoi-grid td input:focus, .yayoi-grid td select:focus { background:#3a2a08; color:#fff; } }
+.yayoi-grid td.num input { text-align:right; }
+.yayoi-grid td.cen input { text-align:center; }
+.yayoi-grid tr:hover td:not(.row-no) { background:rgba(240,165,0,0.05); }
+.yayoi-grid tr.has-data td.row-no { color:var(--accent); font-weight:700; background:var(--s3); }
+
+/* 列幅 */
+.col-no { width:34px; }
+.col-hin { width:110px; }
+.col-code { width:90px; }
+.col-pname { min-width:180px; }
+.col-size { width:120px; }
+.col-brand { width:110px; }
+.col-soko { width:100px; }
+.col-num { width:60px; }
+.col-tanka { width:90px; }
+.col-kingaku { width:100px; }
+.col-bikou { min-width:120px; }
+.col-act { width:30px; }
+
+/* フッター */
+.yayoi-footer { background:var(--s2); border-top:2px solid var(--accent); padding:14px 18px; display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr 1.3fr; gap:14px; align-items:center; }
+.yf-cell { text-align:right; }
+.yf-cell .yf-label { font-size:10px; color:var(--muted); font-weight:700; letter-spacing:0.04em; }
+.yf-cell .yf-value { font-size:18px; font-weight:900; color:var(--text); margin-top:2px; font-feature-settings:'tnum'; }
+.yf-cell.total .yf-value { color:var(--accent); font-size:24px; }
+.yf-cell.gross .yf-value { color:var(--green); }
+.yf-cell.gross.minus .yf-value { color:var(--red); }
+.yf-keys { text-align:left; padding:8px 12px; background:var(--s1); border-radius:8px; font-size:10px; color:var(--muted); line-height:1.6; }
+.yf-keys kbd { display:inline-block; padding:1px 6px; background:var(--s3); border:1px solid var(--border2); border-radius:3px; font-family:monospace; color:var(--accent); font-size:10px; margin:0 2px; }
+
+/* オートコンプリート（セル下） */
+.cell-suggest { position:absolute; background:var(--s1); border:1px solid var(--accent); border-radius:6px; max-height:240px; overflow-y:auto; z-index:200; box-shadow:0 8px 24px rgba(0,0,0,0.4); min-width:280px; display:none; }
+.cell-suggest.show { display:block; }
+.cell-suggest .item { padding:7px 10px; font-size:12px; cursor:pointer; border-bottom:0.5px solid var(--border); }
+.cell-suggest .item:hover, .cell-suggest .item.hl { background:var(--s3); }
+.cell-suggest .item .t { font-weight:600; }
+.cell-suggest .item .s { font-size:10px; color:var(--muted); margin-top:2px; }
 </style>
 </head>
 <body>
@@ -184,7 +250,7 @@ body::-webkit-scrollbar { display:none; }
   <aside class="sidebar" id="sidebar">
     <div class="brand">
       <div class="brand-name">F.o.o <span>売上管理</span></div>
-      <div class="brand-sub">v2026.04.20.0100</div>
+      <div class="brand-sub">v2026.04.19.yayoi</div>
     </div>
     <nav class="nav">
       <div class="nav-section">📊 概観</div>
@@ -257,34 +323,41 @@ body::-webkit-scrollbar { display:none; }
       </div>
     </div>
 
-    <!-- ════════════ 売上入力 ════════════ -->
+    <!-- ════════════ 売上入力（弥生販売風） ════════════ -->
     <div class="page" id="page-sales">
       <div class="page-header">
         <div>
           <div class="page-title">💰 売上入力</div>
-          <div class="page-sub">日々の作業 売上を伝票として登録</div>
+          <div class="page-sub">弥生販売風スプレッドシート · <kbd style="font-size:10px;">F8</kbd>=登録 / <kbd style="font-size:10px;">Esc</kbd>=閉じる / <kbd style="font-size:10px;">Tab</kbd>=次セル</div>
         </div>
         <div class="page-actions">
           <button class="btn btn-secondary" onclick="newSale()">🔄 リセット</button>
-          <button class="btn btn-secondary" onclick="saveDraft()">💾 下書き保存</button>
-          <button class="btn btn-primary" id="btn-submit" onclick="submitSale()">✅ 売上計上</button>
+          <button class="btn btn-secondary" onclick="saveDraft()">💾 下書き</button>
+          <button class="btn btn-primary" id="btn-submit" onclick="submitSale()">✅ 登録 (F8)</button>
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-title">📅 基本情報</div>
-        <div class="form-grid cols-3">
-          <div class="form-row">
-            <div class="form-label">売上日 <span class="req">*</span></div>
-            <input type="date" id="input-date" class="form-input">
+      <div class="yayoi-wrap">
+        <!-- ヘッダー：売上日・伝票No・得意先・取引区分・税転嫁・担当者・摘要 -->
+        <div class="yayoi-header">
+          <div class="yh-cell span2">
+            <div class="yh-label">売上日 <span style="color:var(--red);">*</span></div>
+            <input type="date" id="input-date" class="yh-input">
           </div>
-          <div class="form-row">
-            <div class="form-label">担当者</div>
-            <select id="input-staff" class="form-select"></select>
+          <div class="yh-cell span2">
+            <div class="yh-label">伝票番号</div>
+            <input type="text" id="input-slip-no" class="yh-input readonly" readonly placeholder="自動採番">
           </div>
-          <div class="form-row">
-            <div class="form-label">作業区分</div>
-            <select id="input-worktype" class="form-select">
+          <div class="yh-cell span4">
+            <div class="yh-label">得意先 <span style="color:var(--red);">*</span></div>
+            <div class="search-wrap">
+              <input type="text" id="input-customer" class="yh-input" placeholder="コード or 名前 で検索（例: 0001、丸善）" autocomplete="off">
+              <div class="search-results" id="customer-results"></div>
+            </div>
+          </div>
+          <div class="yh-cell span2">
+            <div class="yh-label">取引区分</div>
+            <select id="input-worktype" class="yh-input">
               <option value="来店">来店</option>
               <option value="出張作業">出張作業</option>
               <option value="配達">配達</option>
@@ -292,85 +365,79 @@ body::-webkit-scrollbar { display:none; }
               <option value="その他">その他</option>
             </select>
           </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">🚚 得意先・車番</div>
-        <div class="form-grid cols-2">
-          <div class="form-row">
-            <div class="form-label">得意先（請求先） <span class="req">*</span></div>
-            <div class="search-wrap">
-              <input type="text" id="input-customer" class="form-input" placeholder="得意先名で検索（名前・コード・略称）" autocomplete="off">
-              <div class="search-results" id="customer-results"></div>
-            </div>
-            <div id="selected-customer"></div>
-          </div>
-          <div class="form-row">
-            <div class="form-label">🚗 車番（任意）</div>
-            <div class="search-wrap">
-              <input type="text" id="input-car" class="form-input" placeholder="例: 広島100あ12-34、または下4桁" autocomplete="off">
-              <div class="search-results" id="car-results"></div>
-            </div>
-          </div>
-        </div>
-        <div class="form-grid cols-2" style="margin-top:14px;">
-          <div class="form-row">
-            <div class="form-label">🏢 顧客名（エンドユーザー・任意）</div>
-            <input type="text" id="input-enduser" class="form-input" placeholder="得意先と同じ場合は空でOK">
-          </div>
-          <div class="form-row">
-            <div class="form-label">💸 税区分</div>
-            <div class="tax-type-row" id="tax-type-row">
+          <div class="yh-cell span2">
+            <div class="yh-label">税転嫁</div>
+            <div class="yh-mini-radio" id="tax-type-row">
               <label class="active"><input type="radio" name="tax-type" value="外税" checked>外税</label>
               <label><input type="radio" name="tax-type" value="内税">内税</label>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div class="card">
-        <div class="card-title">🛞 売上明細 <span class="req" style="color:var(--red);">*</span></div>
-        <div id="details-container">
-          <table class="details-table">
+          <div class="yh-cell span2">
+            <div class="yh-label">担当者</div>
+            <select id="input-staff" class="yh-input"></select>
+          </div>
+          <div class="yh-cell span2">
+            <div class="yh-label">🚗 車番</div>
+            <div class="search-wrap">
+              <input type="text" id="input-car" class="yh-input" placeholder="下4桁等" autocomplete="off">
+              <div class="search-results" id="car-results"></div>
+            </div>
+          </div>
+          <div class="yh-cell span2">
+            <div class="yh-label">エンドユーザー</div>
+            <input type="text" id="input-enduser" class="yh-input" placeholder="任意">
+          </div>
+          <div class="yh-cell span6">
+            <div class="yh-label">摘要</div>
+            <input type="text" id="input-bikou" class="yh-input" placeholder="特記事項（任意）">
+          </div>
+        </div>
+
+        <!-- 明細スプレッドシート -->
+        <div style="overflow-x:auto;">
+          <table class="yayoi-grid" id="yayoi-grid">
             <thead>
               <tr>
-                <th style="width:140px;">品目</th>
-                <th style="width:90px;">商品コード</th>
-                <th>サイズ</th>
-                <th>銘柄</th>
-                <th class="col-qty center">本数</th>
-                <th class="col-tanka right">単価(税抜)</th>
-                <th class="col-sub">小計</th>
-                <th>備考</th>
-                <th class="col-action"></th>
+                <th class="col-no">No</th>
+                <th class="col-hin">内訳/品目</th>
+                <th class="col-code">商品コード</th>
+                <th class="col-size">サイズ</th>
+                <th class="col-brand">銘柄</th>
+                <th class="col-soko">倉庫</th>
+                <th class="col-num">数量</th>
+                <th class="col-tanka">単価</th>
+                <th class="col-kingaku">金額</th>
+                <th class="col-bikou">備考</th>
+                <th class="col-act"></th>
               </tr>
             </thead>
-            <tbody id="details-tbody">
-              <!-- rows here -->
-            </tbody>
+            <tbody id="yayoi-tbody"></tbody>
           </table>
         </div>
-        <button type="button" class="btn-add-detail" onclick="addDetail()">+ 明細を追加</button>
-      </div>
 
-      <div class="form-grid cols-2">
-        <div class="card">
-          <div class="card-title">📝 備考</div>
-          <textarea id="input-bikou" class="form-textarea" placeholder="顧客への申し送り・特記事項など（任意）" style="min-height:120px;"></textarea>
-        </div>
-        <div class="total-box">
-          <div class="total-row">
-            <div class="label">税抜合計</div>
-            <div class="value" id="total-zeinuki">0 円</div>
+        <!-- フッター：粗利益・税抜・消費税・合計 -->
+        <div class="yayoi-footer">
+          <div class="yf-keys">
+            <div><kbd>F8</kbd> 登録 　<kbd>Esc</kbd> リセット</div>
+            <div><kbd>Tab</kbd>/<kbd>Enter</kbd> 次セル　<kbd>Shift+Tab</kbd> 前セル</div>
+            <div><kbd>Ctrl+D</kbd> 上行コピー　<kbd>Alt+↑/↓</kbd> 行入替</div>
           </div>
-          <div class="total-row">
-            <div class="label">消費税合計</div>
-            <div class="value" id="total-zeigaku">0 円</div>
+          <div class="yf-cell gross" id="yf-gross-cell">
+            <div class="yf-label">粗利益（任意）</div>
+            <div class="yf-value" id="yf-gross">―</div>
           </div>
-          <div class="total-row main">
-            <div class="label">税込合計</div>
-            <div class="value" id="total-zeikomi">0 円</div>
+          <div class="yf-cell">
+            <div class="yf-label">税抜額</div>
+            <div class="yf-value" id="total-zeinuki">0</div>
+          </div>
+          <div class="yf-cell">
+            <div class="yf-label">消費税額</div>
+            <div class="yf-value" id="total-zeigaku">0</div>
+          </div>
+          <div class="yf-cell total">
+            <div class="yf-label">合計（税込）</div>
+            <div class="yf-value" id="total-zeikomi">0</div>
           </div>
         </div>
       </div>
@@ -510,7 +577,7 @@ function showPage(page) {
   if (page === 'recent') loadRecentSlips(true);
   if (page === 'monthly') loadMonthly();
   if (page === 'drafts') renderDrafts();
-  if (page === 'sales' && !state.details.length) addDetail();
+  if (page === 'sales') { ensureYayoiRows(); setTimeout(() => { const el = document.getElementById('input-customer'); if (el && !el.value) el.focus(); }, 100); }
   window.scrollTo(0, 0);
 }
 function toggleSidebar() {
@@ -778,6 +845,7 @@ function refreshDraftBadge() {
 }
 function saveDraft() {
   const data = collectFormData();
+  data.details = (data.details || []).filter(d => hasData(d));
   if (!data.details.length) { showToast('明細が空です'); return; }
   const drafts = loadDraftList();
   const id = state.draftId || ('d_' + Date.now());
@@ -852,7 +920,7 @@ function newSale() {
   document.getElementById('input-bikou').value = '';
   document.querySelector('input[name="tax-type"][value="外税"]').checked = true;
   updateTaxTypeUI();
-  addDetail();
+  ensureYayoiRows();
   showPage('sales');
 }
 
@@ -949,45 +1017,111 @@ function updateTaxTypeUI() {
   if (ck) ck.parentElement.classList.add('active');
 }
 
-function addDetail() {
-  state.details.push({ hinmoku: '組替', code: '', size: '', brand: '', qty: 1, tanka: 0, bikou: '' });
+/* ─── Yayoi グリッド ─── */
+const SOKO_OPTIONS = ['', '五日市倉庫', '志和倉庫', '海田倉庫', '外注', '直送'];
+const YAYOI_MIN_ROWS = 12;
+
+function emptyDetail() { return { hinmoku: '', code: '', size: '', brand: '', soko: '', qty: '', tanka: '', bikou: '' }; }
+function ensureYayoiRows() {
+  if (!Array.isArray(state.details)) state.details = [];
+  while (state.details.length < YAYOI_MIN_ROWS) state.details.push(emptyDetail());
   renderDetails();
 }
-function removeDetail(idx) { state.details.splice(idx, 1); renderDetails(); }
+function addDetail() { state.details.push(emptyDetail()); renderDetails(); }
+function removeDetail(idx) {
+  state.details.splice(idx, 1);
+  if (state.details.length < YAYOI_MIN_ROWS) state.details.push(emptyDetail());
+  renderDetails();
+}
 function updateDetail(idx, key, val) {
-  if (key === 'qty' || key === 'tanka') val = parseFloat(val) || 0;
+  if (key === 'qty' || key === 'tanka') val = val === '' ? '' : (parseFloat(val) || 0);
   state.details[idx][key] = val;
+  // 商品コード入力時に商品マスタからサジェスト → 簡易: 既存の過去明細から類推（顧客別単価マスタ未実装のため）
+  // 自動で末尾に空行を保つ
+  if (idx === state.details.length - 1 && hasData(state.details[idx])) state.details.push(emptyDetail());
+  // 行内金額のみ更新（再描画しない）
+  updateRowAmount(idx);
   calcTotals();
 }
+function hasData(d) { return d && (d.hinmoku || d.code || d.size || d.brand || d.qty || d.tanka || d.bikou); }
+function updateRowAmount(i) {
+  const d = state.details[i]; if (!d) return;
+  const sub = (parseFloat(d.qty) || 0) * (parseFloat(d.tanka) || 0);
+  const el = document.getElementById('y-sub-' + i);
+  if (el) el.value = sub ? Math.round(sub).toLocaleString() : '';
+  const tr = document.getElementById('y-row-' + i);
+  if (tr) tr.classList.toggle('has-data', !!hasData(d));
+}
 function renderDetails() {
-  const tbody = document.getElementById('details-tbody');
-  if (!state.details.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--muted);font-size:12px;">明細を追加してください</td></tr>'; calcTotals(); return; }
-  tbody.innerHTML = state.details.map((d, i) => `
-    <tr>
+  const tbody = document.getElementById('yayoi-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = state.details.map((d, i) => {
+    const sub = (parseFloat(d.qty) || 0) * (parseFloat(d.tanka) || 0);
+    const subStr = sub ? Math.round(sub).toLocaleString() : '';
+    return `
+    <tr id="y-row-${i}" class="${hasData(d) ? 'has-data' : ''}">
+      <td class="row-no">${i + 1}</td>
       <td>
-        <select onchange="updateDetail(${i},'hinmoku',this.value)">
+        <select data-cell="hinmoku" data-row="${i}" onchange="updateDetail(${i},'hinmoku',this.value)">
+          <option value=""></option>
           ${HINMOKU_OPTIONS.map(o => `<option value="${o}" ${d.hinmoku === o ? 'selected' : ''}>${o}</option>`).join('')}
         </select>
       </td>
-      <td><input type="text" value="${escHtml(d.code)}" onchange="updateDetail(${i},'code',this.value)" placeholder="LK01等"></td>
-      <td><input type="text" value="${escHtml(d.size)}" onchange="updateDetail(${i},'size',this.value)" placeholder="245/70R19.5"></td>
-      <td><input type="text" value="${escHtml(d.brand)}" onchange="updateDetail(${i},'brand',this.value)" placeholder="M646等"></td>
-      <td><input type="number" min="0" step="1" value="${d.qty}" onchange="updateDetail(${i},'qty',this.value)" style="text-align:center;"></td>
-      <td><input type="number" min="0" step="100" value="${d.tanka}" onchange="updateDetail(${i},'tanka',this.value)" style="text-align:right;"></td>
-      <td class="col-sub" id="sub-${i}">${fmtYen(d.qty * d.tanka)}</td>
-      <td><input type="text" value="${escHtml(d.bikou)}" onchange="updateDetail(${i},'bikou',this.value)" placeholder="車番・メモ等"></td>
-      <td class="col-action"><button class="remove-btn" onclick="removeDetail(${i})" title="削除">×</button></td>
-    </tr>
-  `).join('');
+      <td><input type="text" data-cell="code" data-row="${i}" value="${escHtml(d.code)}" oninput="updateDetail(${i},'code',this.value)" onkeydown="onCellKey(event,${i},'code')" placeholder=""></td>
+      <td><input type="text" data-cell="size" data-row="${i}" value="${escHtml(d.size)}" oninput="updateDetail(${i},'size',this.value)" onkeydown="onCellKey(event,${i},'size')" placeholder=""></td>
+      <td><input type="text" data-cell="brand" data-row="${i}" value="${escHtml(d.brand)}" oninput="updateDetail(${i},'brand',this.value)" onkeydown="onCellKey(event,${i},'brand')"></td>
+      <td>
+        <select data-cell="soko" data-row="${i}" onchange="updateDetail(${i},'soko',this.value)">
+          ${SOKO_OPTIONS.map(o => `<option value="${o}" ${d.soko === o ? 'selected' : ''}>${o || '―'}</option>`).join('')}
+        </select>
+      </td>
+      <td class="num"><input type="number" min="0" step="1" data-cell="qty" data-row="${i}" value="${d.qty}" oninput="updateDetail(${i},'qty',this.value)" onkeydown="onCellKey(event,${i},'qty')"></td>
+      <td class="num"><input type="number" min="0" step="100" data-cell="tanka" data-row="${i}" value="${d.tanka}" oninput="updateDetail(${i},'tanka',this.value)" onkeydown="onCellKey(event,${i},'tanka')"></td>
+      <td class="num"><input type="text" id="y-sub-${i}" value="${subStr}" readonly tabindex="-1" style="color:var(--accent);font-weight:700;background:var(--s2);"></td>
+      <td><input type="text" data-cell="bikou" data-row="${i}" value="${escHtml(d.bikou)}" oninput="updateDetail(${i},'bikou',this.value)" onkeydown="onCellKey(event,${i},'bikou')"></td>
+      <td class="cen"><button onclick="removeDetail(${i})" title="削除" tabindex="-1" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;">×</button></td>
+    </tr>`;
+  }).join('');
   calcTotals();
+}
+
+/* セル間ナビゲーション（Tab/Enter） */
+const CELL_ORDER = ['hinmoku','code','size','brand','soko','qty','tanka','bikou'];
+function onCellKey(e, row, cell) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    moveCell(row, cell, e.shiftKey ? -1 : 1);
+  } else if (e.key === 'ArrowDown' && !e.shiftKey) {
+    e.preventDefault(); focusCell(row + 1, cell);
+  } else if (e.key === 'ArrowUp' && !e.shiftKey) {
+    e.preventDefault(); focusCell(row - 1, cell);
+  } else if (e.ctrlKey && e.key === 'd' && row > 0) {
+    e.preventDefault();
+    state.details[row] = { ...state.details[row - 1] };
+    if (row === state.details.length - 1) state.details.push(emptyDetail());
+    renderDetails(); focusCell(row, cell);
+  }
+}
+function moveCell(row, cell, dir) {
+  const idx = CELL_ORDER.indexOf(cell);
+  let nextIdx = idx + dir;
+  let nextRow = row;
+  if (nextIdx >= CELL_ORDER.length) { nextIdx = 0; nextRow++; }
+  if (nextIdx < 0) { nextIdx = CELL_ORDER.length - 1; nextRow--; }
+  focusCell(nextRow, CELL_ORDER[nextIdx]);
+}
+function focusCell(row, cell) {
+  if (row < 0) return;
+  if (row >= state.details.length) { state.details.push(emptyDetail()); renderDetails(); }
+  const sel = `[data-row="${row}"][data-cell="${cell}"]`;
+  const el = document.querySelector(sel);
+  if (el) { el.focus(); if (el.select) el.select(); }
 }
 function calcTotals() {
   let zeinuki = 0;
-  state.details.forEach((d, i) => {
-    const sub = (d.qty || 0) * (d.tanka || 0);
+  state.details.forEach((d) => {
+    const sub = (parseFloat(d.qty) || 0) * (parseFloat(d.tanka) || 0);
     zeinuki += sub;
-    const subEl = document.getElementById('sub-' + i);
-    if (subEl) subEl.textContent = fmtYen(sub);
   });
   const taxType = (document.querySelector('input[name="tax-type"]:checked') || {}).value || '外税';
   let zeigaku, zeikomi;
@@ -999,11 +1133,22 @@ function calcTotals() {
     zeigaku = Math.round(zeinuki * 0.1);
     zeikomi = zeinuki + zeigaku;
   }
-  document.getElementById('total-zeinuki').textContent = fmtYen(zeinuki);
-  document.getElementById('total-zeigaku').textContent = fmtYen(zeigaku);
-  document.getElementById('total-zeikomi').textContent = fmtYen(zeikomi);
+  const fmt = n => Math.round(n).toLocaleString();
+  document.getElementById('total-zeinuki').textContent = fmt(zeinuki);
+  document.getElementById('total-zeigaku').textContent = fmt(zeigaku);
+  document.getElementById('total-zeikomi').textContent = fmt(zeikomi);
   return { zeinuki, zeigaku, zeikomi };
 }
+
+/* F8=登録 / Esc=リセット */
+document.addEventListener('keydown', (e) => {
+  if (state.currentPage !== 'sales') return;
+  if (e.key === 'F8') { e.preventDefault(); submitSale(); }
+  else if (e.key === 'Escape') {
+    if (e.target && e.target.tagName === 'INPUT' && e.target.value) return; // 入力中は無効化
+    if (confirm('入力をリセットしますか？')) newSale();
+  }
+});
 
 function collectFormData() {
   return {
@@ -1044,7 +1189,8 @@ async function submitSale() {
   const data = collectFormData();
   if (!data.date) { showToast('売上日を入力してください'); showPage('sales'); return; }
   if (!data.customer) { showToast('得意先を選択してください'); showPage('sales'); return; }
-  if (!data.details.length) { showToast('明細を1件以上追加してください'); showPage('sales'); return; }
+  data.details = data.details.filter(d => d && (parseFloat(d.qty) || 0) > 0 && (parseFloat(d.tanka) || 0) >= 0 && (d.hinmoku || d.code || d.size || d.brand));
+  if (!data.details.length) { showToast('明細を1件以上入力してください（数量・品目）'); showPage('sales'); return; }
   const totals = calcTotals();
   if (totals.zeinuki <= 0) { if (!confirm('合計金額が0円ですが、本当に保存しますか？')) return; }
   const btn = document.getElementById('btn-submit');
@@ -1106,7 +1252,7 @@ async function submitSale() {
     document.getElementById('selected-customer').textContent = '';
     document.getElementById('input-car').value = '';
     document.getElementById('input-bikou').value = '';
-    addDetail();
+    ensureYayoiRows();
     await loadRecentSlips();
     if (confirm('保存完了。\n[OK] ダッシュボードを見る\n[キャンセル] 続けて入力')) showPage('dashboard');
   } catch(e) {

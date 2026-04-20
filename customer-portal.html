@@ -231,6 +231,30 @@ async function load() {
         `).join('')}</div>` : '<p style="color:var(--muted);">管理車両はありません</p>'}
       </div>
       <div class="section">
+        <div class="section-title">📊 月別取引推移（過去1年）</div>
+        ${(() => {
+          const byM = new Map();
+          for (const s of slips) {
+            const m = (s.date || '').slice(0, 7);
+            if (m) byM.set(m, (byM.get(m) || 0) + s.amount);
+          }
+          const months = [...byM.keys()].sort();
+          if (!months.length) return '<p style="color:var(--muted);">データなし</p>';
+          const max = Math.max(...months.map(m => byM.get(m)));
+          return `<div style="display:flex; gap:6px; align-items:flex-end; height:140px; padding:10px 0 26px; border-bottom:1px solid var(--border);">
+            ${months.map(m => {
+              const amt = byM.get(m);
+              const h = (amt / max) * 100;
+              return `<div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; min-width:0;" title="${m.replace('-','/')}: ${fmtYen(amt)}">
+                <div style="font-size:9px; color:var(--muted);">${fmtShort(amt).replace('¥','')}</div>
+                <div style="width:100%; height:${h}%; background:linear-gradient(180deg, var(--accent), var(--accent2)); border-radius:3px 3px 0 0;"></div>
+                <div style="font-size:9px; color:var(--muted);">${m.slice(2).replace('-','/')}</div>
+              </div>`;
+            }).join('')}
+          </div>`;
+        })()}
+      </div>
+      <div class="section">
         <div class="section-title">📜 直近の作業履歴（過去1年）</div>
         ${slips.length ? `<div class="timeline">${slips.map(s => `
           <div class="tl-item">

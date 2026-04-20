@@ -3798,16 +3798,24 @@ function showCustomerPortalPicker() {
     modal.onclick = (e) => { if (e.target === modal) modal.classList.remove('show'); };
     document.body.appendChild(modal);
   }
-  const sorted = [...byCust.entries()].sort((a, b) => b[1].count - a[1].count);
+  // 顧客名をstate.customers / state.endUsersから引く
+  const nameMap = new Map();
+  for (const c of (state.customers || [])) if (c.id) nameMap.set(c.id, c.name);
+  for (const u of (state.endUsers || [])) if (u.id && !nameMap.has(u.id)) nameMap.set(u.id, u.name);
+  // 車両マスタからも名前情報（無い場合用）
+  for (const v of vehicleCache || []) {
+    if (v.custId && !nameMap.has(v.custId) && v.customerName) nameMap.set(v.custId, v.customerName);
+  }
+  const sorted = [...byCust.entries()].map(([id, v]) => [id, { ...v, name: nameMap.get(id) || '(' + id.slice(0,8) + '...)' }]).sort((a, b) => b[1].count - a[1].count);
   modal.innerHTML = `
     <div class="help-modal" style="position:relative;max-width:640px;">
       <button class="close-btn" onclick="document.getElementById('portal-picker-overlay').classList.remove('show')">×</button>
       <h2>🌐 顧客ポータルを開く</h2>
-      <p style="color:var(--muted);font-size:12px;margin-bottom:14px;">顧客を選ぶと、その顧客専用のポータルページが新タブで開きます（将来は元請けに直接URL共有可能なビュー）</p>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:14px;">顧客を選ぶと、その顧客専用のポータルページが新タブで開きます（元請けに直接URL共有可能）</p>
       <div style="max-height:500px;overflow-y:auto;">
       ${sorted.map(([id, v]) => `
         <div style="padding:10px 14px;background:var(--s2);border-radius:8px;margin-bottom:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;" onclick="window.open('customer-portal.html?customer='+encodeURIComponent('${id}'), '_blank');">
-          <div style="font-size:13px;font-weight:600;">${escHtml(id.slice(0, 12))}...</div>
+          <div style="font-size:13px;font-weight:600;">${escHtml(v.name)}</div>
           <div style="font-size:11px;color:var(--muted);">${v.count}台 🔗</div>
         </div>
       `).join('')}

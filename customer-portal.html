@@ -154,7 +154,7 @@ async function load() {
     const name = Object.values(custData.properties).find(p => p.type === 'title')?.title?.[0]?.plain_text || custName || '';
     document.getElementById('cust-name').textContent = name || '(不明)';
     document.getElementById('cust-sub').textContent = '管理車両一覧';
-    document.title = name + ' - f.o.o タイヤ管理ポータル';
+    document.title = name + ' の管理タイヤ - f.o.o';
 
     // 車両取得
     const vehicleRes = await np('/databases/' + VEHICLE_DB + '/query', {

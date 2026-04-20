@@ -3747,11 +3747,20 @@ async function loadVehicles(force) {
         バルブ交換日: p.properties['最終バルブ交換日']?.date?.start || '',
       };
     });
-    // 顧客プルダウン初期化（relation IDのユニーク）
+    // 顧客プルダウン初期化（実際の顧客名を表示）
     const custSel = document.getElementById('vh-customer');
-    const custSet = new Map();
-    for (const v of vehicleCache) if (v.custId) custSet.set(v.custId, v.custId);
-    custSel.innerHTML = '<option value="">（すべて）</option>' + [...custSet.keys()].map(id => `<option value="${id}">${escHtml(id.slice(0,8))}</option>`).join('');
+    const custIdMap = new Map();  // id → { name, count }
+    for (const v of vehicleCache) if (v.custId) {
+      if (!custIdMap.has(v.custId)) custIdMap.set(v.custId, { name: null, count: 0 });
+      custIdMap.get(v.custId).count++;
+    }
+    // 名前を引く
+    const nameLookup = new Map();
+    for (const c of (state.customers || [])) if (c.id) nameLookup.set(c.id, c.name);
+    for (const u of (state.endUsers || [])) if (u.id && !nameLookup.has(u.id)) nameLookup.set(u.id, u.name);
+    for (const [id, v] of custIdMap) v.name = nameLookup.get(id) || ('不明 ' + id.slice(0,6));
+    const sortedCusts = [...custIdMap.entries()].sort((a, b) => b[1].count - a[1].count);
+    custSel.innerHTML = '<option value="">（すべて）</option>' + sortedCusts.map(([id, v]) => `<option value="${id}">${escHtml(v.name)} (${v.count}台)</option>`).join('');
     renderVehicles();
   } catch(e) {
     console.error(e);

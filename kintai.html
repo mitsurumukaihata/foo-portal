@@ -536,13 +536,18 @@ async function renderHome() {
     selectedDateRecord = recs.length > 0
       ? recs.slice().sort((a,b) => scoreRec(b) - scoreRec(a))[0]
       : null;
-    console.log('[kintai] 選択日レコード:', selectedDateRecord ? {
-      id: selectedDateRecord.id.slice(0,8),
-      found: recs.length,
-      有給: selectedDateRecord.properties?.['有給使用']?.checkbox,
-      労災: selectedDateRecord.properties?.['労災扱い']?.checkbox,
-      欠勤: selectedDateRecord.properties?.['欠勤']?.checkbox,
-    } : 'none');
+    if (selectedDateRecord) {
+      const _p = selectedDateRecord.properties || {};
+      console.log(
+        `[kintai] 選択日=${selectedDate} user=${USER.name} ` +
+        `found=${recs.length} id=${selectedDateRecord.id.slice(0,8)} ` +
+        `有給=${_p['有給使用']?.checkbox} 労災=${_p['労災扱い']?.checkbox} ` +
+        `欠勤=${_p['欠勤']?.checkbox} 指定休=${_p['指定休']?.checkbox} ` +
+        `出勤=${_p['出勤']?.number} 退勤=${_p['退勤']?.number}`
+      );
+    } else {
+      console.log(`[kintai] 選択日=${selectedDate} user=${USER.name} - NO RECORD`);
+    }
     if (selectedDate === todayStr()) todayRecord = selectedDateRecord;
 
     // 過去5日分の指定休を取得（初回のみ or 日付が変わった場合）
@@ -709,7 +714,7 @@ async function renderHome() {
     const _yukyu  = _rec?.['有給使用']?.checkbox === true;
     const _kekkin = _rec?.['欠勤']?.checkbox === true;
     const _rousai = _rec?.['労災扱い']?.checkbox === true;
-    console.log('[kintai] 既存レコード反映:', { yukyu: _yukyu, kekkin: _kekkin, rousai: _rousai, recordId: selectedDateRecord?.id });
+    console.log(`[kintai] チェック状態反映: 有給=${_yukyu} 欠勤=${_kekkin} 労災=${_rousai} recordId=${selectedDateRecord?.id?.slice(0,8)}`);
     window._homeChecks = { yukyu: _yukyu, kekkin: _kekkin, rousai: _rousai, yukyuTime: '' };
     // DOM に直接 .on を付与（初期HTMLテンプレートで取りこぼした場合のフォールバック）
     if (_yukyu)  document.getElementById('home-chk-yukyu')?.classList.add('on');

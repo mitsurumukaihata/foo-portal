@@ -393,6 +393,9 @@ let memo = '';
 // 全員閲覧状態
 let allViewMode = 'date'; // 'date' | 'staff'
 let homeShiteikyuDates = new Set(); // 過去5日の指定休日付キャッシュ
+let homeYukyuuDates = new Set();    // 過去5日の有給日付キャッシュ
+let homeRousaiDates = new Set();    // 過去5日の労災日付キャッシュ
+let homeKekkinDates = new Set();    // 過去5日の欠勤日付キャッシュ
 let allViewDate = '';
 let allViewStaff = '';
 
@@ -550,24 +553,31 @@ async function renderHome() {
     }
     if (selectedDate === todayStr()) todayRecord = selectedDateRecord;
 
-    // 過去5日分の指定休を取得（初回のみ or 日付が変わった場合）
+    // 過去5日分のレコードを取得し、指定休・有給・労災・欠勤を各日別に集計
     const days5 = getLast5Days();
     const from5 = days5[days5.length - 1].iso;
-    const shiteiRes = await notionAPI('POST', `/databases/${KINTAI_DB}/query`, {
+    const recentRes = await notionAPI('POST', `/databases/${KINTAI_DB}/query`, {
       filter: {
         and: [
           { property: '社員名', select: { equals: USER.name } },
-          { property: '指定休', checkbox: { equals: true } },
           { property: '日付', date: { on_or_after: from5 } },
           { property: '日付', date: { on_or_before: todayStr() } }
         ]
-      }, page_size: 20
+      }, page_size: 40
     });
-    homeShiteikyuDates = new Set(
-      (shiteiRes.results || [])
-        .map(r => r.properties?.['日付']?.date?.start?.slice(0, 10))
-        .filter(Boolean)
-    );
+    homeShiteikyuDates = new Set();
+    homeYukyuuDates = new Set();
+    homeRousaiDates = new Set();
+    homeKekkinDates = new Set();
+    for (const r of (recentRes.results || [])) {
+      const d = r.properties?.['日付']?.date?.start?.slice(0, 10);
+      if (!d) continue;
+      if (r.properties['指定休']?.checkbox) homeShiteikyuDates.add(d);
+      if (r.properties['有給使用']?.checkbox) homeYukyuuDates.add(d);
+      if (r.properties['労災扱い']?.checkbox) homeRousaiDates.add(d);
+      if (r.properties['欠勤']?.checkbox) homeKekkinDates.add(d);
+    }
+    console.log('[kintai] 過去5日状態: 指定休=', [...homeShiteikyuDates], '有給=', [...homeYukyuuDates], '労災=', [...homeRousaiDates], '欠勤=', [...homeKekkinDates]);
   } catch(e) { selectedDateRecord = null; }
 
   const syukkin = selectedDateRecord?.properties?.['出勤']?.number;
@@ -586,11 +596,19 @@ async function renderHome() {
 
   const dateChips = days.map(d => {
     const isShitei = homeShiteikyuDates.has(d.iso);
+    const isYukyu  = homeYukyuuDates.has(d.iso);
+    const isRousai = homeRousaiDates.has(d.iso);
+    const isKekkin = homeKekkinDates.has(d.iso);
     const isActive = selectedDate === d.iso;
+    let badge = '';
+    if (isShitei) badge = '<div class="dc-shitei">指定休</div>';
+    else if (isYukyu) badge = '<div class="dc-shitei" style="background:#f5a623;color:#fff;">🏖 有給</div>';
+    else if (isRousai) badge = '<div class="dc-shitei" style="background:#e74c3c;color:#fff;">🚑 労災</div>';
+    else if (isKekkin) badge = '<div class="dc-shitei" style="background:#95a5a6;color:#fff;">欠勤</div>';
     return `<div class="date-chip${isActive?' active':''}${isShitei?' shitei':''}" onclick="selectKintaiDate('${d.iso}')">
       <div class="dc-date">${d.d}</div>
       <div class="dc-day">${d.label}（${d.day}）</div>
-      ${isShitei ? '<div class="dc-shitei">指定休</div>' : ''}
+      ${badge}
     </div>`;
   }).join('');
 

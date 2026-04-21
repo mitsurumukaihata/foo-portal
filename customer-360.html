@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>👤 顧客360°ビュー | f.o.o</title>
+<style>
+  :root {
+    --bg: #fdf6ec;
+    --surface: #fff;
+    --surface2: #faf2e5;
+    --border: #ead7bd;
+    --text: #3d2c16;
+    --muted: #8a6a3e;
+    --accent: #f0a500;
+    --accent2: #d18800;
+    --green: #2e7d32;
+    --red: #c62828;
+    --blue: #1976d2;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system,'Hiragino Sans',sans-serif; background:var(--bg); color:var(--text); font-size:13px; }
+  header {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    padding: 14px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  header h1 { margin:0; font-size:18px; }
+  .container { padding: 16px; max-width: 1200px; margin: 0 auto; }
+
+  .search-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .search-bar input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    background: var(--surface2);
+  }
+  .search-bar button {
+    padding: 8px 16px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 6px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .search-results {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 14px;
+  }
+  .result-item {
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .result-item:hover { background: var(--surface2); }
+  .result-item:last-child { border-bottom: none; }
+
+  .customer-header {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 14px;
+  }
+  .customer-header h2 { margin:0 0 6px; font-size: 24px; }
+  .customer-header .meta { font-size: 11px; opacity: 0.9; }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    text-align: center;
+  }
+  .kpi-card .lbl { font-size: 10px; color: var(--muted); }
+  .kpi-card .val { font-size: 22px; font-weight: 900; color: var(--accent); margin: 4px 0; }
+  .kpi-card .sub { font-size: 10px; color: var(--muted); }
+
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .section h3 { margin: 0 0 10px; font-size: 14px; color: var(--accent2); }
+  table.data { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.data th, table.data td { padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+  table.data th { background: var(--surface2); font-size: 10px; color: var(--muted); text-transform: uppercase; }
+  table.data td.num { text-align: right; font-family: 'DM Mono', monospace; }
+
+  .loading { text-align: center; padding: 40px; color: var(--muted); }
+  .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .empty { text-align: center; padding: 30px; color: var(--muted); }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  .tag {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    margin-right: 4px;
+  }
+  .tag.active { background: rgba(46,125,50,0.15); color: var(--green); }
+  .tag.inactive { background: rgba(120,120,120,0.15); color: var(--muted); }
+  .tag.dormant { background: rgba(198,40,40,0.15); color: var(--red); }
+  .tag.vip { background: rgba(155,39,176,0.15); color: #7b1fa2; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>👤 顧客360°ビュー</h1>
+  <span style="font-size:11px;opacity:0.85;">顧客情報・取引履歴・車両・動向を一画面に</span>
+  <span style="float:right;font-size:11px;"><a href="index.html" style="color:#fff;text-decoration:none;">← ポータル</a></span>
+</header>
+
+<div class="container">
+
+  <div class="search-bar">
+    <input id="search-input" placeholder="顧客名・ふりがな・電話番号で検索..." oninput="onSearch()" autofocus>
+    <button onclick="onSearch()">🔎 検索</button>
+  </div>
+
+  <div class="search-results" id="search-results" style="display:none;"></div>
+
+  <div id="customer-content">
+    <div class="empty">
+      顧客を検索・選択してください<br>
+      <small style="font-size:11px;">例: トーヨー / イドム / ネオワークス</small>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
+
+async function sql(q, params=[]) {
+  const res = await fetch(WORKER + '/d1/sql', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ sql: q, params })
+  });
+  return await res.json();
+}
+
+function yen(n) {
+  if (n === null || n === undefined) return '—';
+  return '¥' + Math.round(n).toLocaleString();
+}
+function yenShort(n) {
+  if (!n) return '¥0';
+  if (Math.abs(n) >= 100000000) return '¥' + (n / 100000000).toFixed(1) + '億';
+  if (Math.abs(n) >= 10000) return '¥' + (n / 10000).toFixed(0) + '万';
+  return '¥' + Math.round(n).toLocaleString();
+}
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+let searchTimer = null;
+async function onSearch() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(doSearch, 300);
+}
+
+async function doSearch() {
+  const q = document.getElementById('search-input').value.trim();
+  const el = document.getElementById('search-results');
+  if (!q) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = '<div class="loading"><div class="spinner"></div> 検索中...</div>';
+  try {
+    const r = await sql(`
+      SELECT id, 得意先名 AS name, ふりがな, 有効, TEL, '得意先' AS type FROM 得意先マスタ
+      WHERE 得意先名 LIKE ? OR ふりがな LIKE ? OR TEL LIKE ?
+      UNION ALL
+      SELECT id, 顧客名 AS name, ふりがな, 1 AS 有効, TEL, 'エンドユーザー' AS type FROM 顧客情報DB
+      WHERE 顧客名 LIKE ? OR ふりがな LIKE ? OR TEL LIKE ?
+      LIMIT 30
+    `, [`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`]);
+    const rows = r.results || [];
+    if (!rows.length) { el.innerHTML = '<div class="empty">該当なし</div>'; return; }
+    el.innerHTML = rows.map(r => `
+      <div class="result-item" onclick="selectCustomer('${r.id}')">
+        <div><b>${esc(r.name || '—')}</b>
+          <span class="tag ${r.有効 ? 'active' : 'inactive'}">${r.有効 ? 'アクティブ' : '非アクティブ'}</span>
+          <span class="tag" style="background:#eee;color:#666;">${r.type}</span>
+        </div>
+        <div style="font-size:11px;color:var(--muted);">${esc(r.ふりがな || '')} ${r.TEL ? '· ☎ ' + esc(r.TEL) : ''}</div>
+      </div>
+    `).join('');
+  } catch(e) {
+    el.innerHTML = '<div class="empty">エラー: ' + e.message + '</div>';
+  }
+}
+
+async function selectCustomer(id) {
+  document.getElementById('search-results').style.display = 'none';
+  document.getElementById('search-input').value = '';
+  const el = document.getElementById('customer-content');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div> データ取得中...</div>';
+
+  try {
+    // 得意先マスタ or 顧客情報DB から情報取得
+    const custR = await sql(`
+      SELECT 'customer' AS src, id, 得意先名 AS name, ふりがな, 弥生得意先コード, 有効, 取引区分, 住所, TEL, FAX, メモ FROM 得意先マスタ WHERE id = ?
+      UNION ALL
+      SELECT 'enduser' AS src, id, 顧客名 AS name, ふりがな, NULL, 1, NULL, 住所, TEL, NULL, メモ FROM 顧客情報DB WHERE id = ?
+    `, [id, id]);
+    const cust = custR.results?.[0];
+    if (!cust) { el.innerHTML = '<div class="empty">顧客情報が見つかりません</div>'; return; }
+
+    // KPI
+    const kpiR = await sql(`
+      SELECT
+        (SELECT COUNT(*) FROM 売上伝票 WHERE 請求先ID = ?) AS 総取引件数,
+        (SELECT COALESCE(SUM(税込合計),0) FROM 売上伝票 WHERE 請求先ID = ?) AS 総売上,
+        (SELECT MAX(売上日) FROM 売上伝票 WHERE 請求先ID = ?) AS 最終取引,
+        (SELECT MIN(売上日) FROM 売上伝票 WHERE 請求先ID = ?) AS 初取引,
+        (SELECT COUNT(*) FROM 車両マスタ WHERE 顧客ID = ?) AS 管理車両数,
+        (SELECT SUM(本数) FROM 車両マスタ WHERE 顧客ID = ?) AS 総タイヤ本数,
+        (SELECT COUNT(*) FROM 売上伝票 WHERE 請求先ID = ? AND 売上日 >= date('now', '-1 year')) AS 直近1年件数,
+        (SELECT COALESCE(SUM(税込合計),0) FROM 売上伝票 WHERE 請求先ID = ? AND 売上日 >= date('now', '-1 year')) AS 直近1年売上
+    `, [id, id, id, id, id, id, id, id]);
+    const kpi = kpiR.results?.[0] || {};
+
+    // 月別売上（過去24ヶ月）
+    const monthR = await sql(`
+      SELECT substr(売上日,1,7) AS ym, COUNT(*) AS 件数, SUM(税込合計) AS 合計
+      FROM 売上伝票 WHERE 請求先ID = ? AND 売上日 >= date('now','-24 months')
+      GROUP BY ym ORDER BY ym DESC LIMIT 24
+    `, [id]);
+
+    // 直近の伝票
+    const recentR = await sql(`
+      SELECT 売上日, 伝票タイトル, 税込合計, ステータス, 車番
+      FROM 売上伝票 WHERE 請求先ID = ?
+      ORDER BY 売上日 DESC LIMIT 15
+    `, [id]);
+
+    // 主要商品
+    const productR = await sql(`
+      SELECT d.品目, d.タイヤサイズ, COUNT(*) AS 件数, SUM(d.数量) AS 本数, SUM(d.税込小計) AS 金額
+      FROM 売上明細 d
+      LEFT JOIN 売上伝票 s ON d.売上伝票ID = s.id
+      WHERE s.請求先ID = ?
+      GROUP BY d.品目, d.タイヤサイズ
+      ORDER BY 金額 DESC LIMIT 15
+    `, [id]);
+
+    // 車両リスト
+    const vehR = await sql(`
+      SELECT 車番, 管理番号, 車種, 前輪サイズ, 後輪サイズ, 本数
+      FROM 車両マスタ WHERE 顧客ID = ?
+      ORDER BY 車番 LIMIT 50
+    `, [id]);
+
+    // 判定タグ
+    let tag = 'active';
+    let tagLabel = 'アクティブ';
+    if (!kpi.最終取引) { tag = 'inactive'; tagLabel = '取引なし'; }
+    else {
+      const daysSince = (Date.now() - new Date(kpi.最終取引).getTime()) / (86400000);
+      if (daysSince > 180) { tag = 'dormant'; tagLabel = '休眠中'; }
+    }
+    if (kpi.総売上 > 10000000) { tag = 'vip'; tagLabel = 'VIP (¥1000万+)'; }
+
+    // 描画
+    let html = `
+      <div class="customer-header">
+        <h2>${esc(cust.name)}</h2>
+        <div class="meta">
+          ${cust.ふりがな ? esc(cust.ふりがな) + ' · ' : ''}
+          <span class="tag ${tag}" style="background:rgba(255,255,255,0.25);color:#fff;">${tagLabel}</span>
+          ${cust.弥生得意先コード ? '弥生: ' + esc(cust.弥生得意先コード) : ''}
+          ${cust.TEL ? ' · ☎ ' + esc(cust.TEL) : ''}
+        </div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="lbl">💰 総売上</div><div class="val">${yenShort(kpi.総売上)}</div><div class="sub">累計 ${kpi.総取引件数 || 0}件</div></div>
+        <div class="kpi-card"><div class="lbl">📅 直近1年</div><div class="val">${yenShort(kpi.直近1年売上)}</div><div class="sub">${kpi.直近1年件数 || 0}件</div></div>
+        <div class="kpi-card"><div class="lbl">🚚 管理車両</div><div class="val">${kpi.管理車両数 || 0}</div><div class="sub">${kpi.総タイヤ本数 || 0}本</div></div>
+        <div class="kpi-card"><div class="lbl">📆 最終取引</div><div class="val" style="font-size:14px;">${kpi.最終取引 || '—'}</div><div class="sub">初: ${kpi.初取引 || '—'}</div></div>
+      </div>
+    `;
+
+    // 月別売上
+    const monthRows = (monthR.results || []).reverse();
+    if (monthRows.length) {
+      const max = Math.max(...monthRows.map(r => r.合計));
+      html += `
+        <div class="section">
+          <h3>📈 月別売上推移（過去24ヶ月）</h3>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            ${monthRows.map(r => `
+              <div style="display:flex;gap:8px;align-items:center;font-size:12px;">
+                <div style="width:80px;">${r.ym}</div>
+                <div style="flex:1;height:16px;background:var(--surface2);border-radius:3px;overflow:hidden;">
+                  <div style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:${(r.合計/max)*100}%"></div>
+                </div>
+                <div style="width:100px;text-align:right;font-family:'DM Mono',monospace;">${yenShort(r.合計)}</div>
+                <div style="width:40px;text-align:right;color:var(--muted);">${r.件数}件</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // 直近伝票
+    html += `
+      <div class="grid-2">
+        <div class="section">
+          <h3>📝 直近の伝票 TOP15</h3>
+          ${(recentR.results || []).length ? `
+            <table class="data">
+              <thead><tr><th>日付</th><th>内容</th><th class="num">金額</th></tr></thead>
+              <tbody>${recentR.results.map(r => `
+                <tr>
+                  <td>${r.売上日}</td>
+                  <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;" title="${esc(r.伝票タイトル)}">${esc(r.伝票タイトル || '')}</td>
+                  <td class="num">${yen(r.税込合計)}</td>
+                </tr>
+              `).join('')}</tbody>
+            </table>
+          ` : '<div class="empty">取引履歴なし</div>'}
+        </div>
+
+        <div class="section">
+          <h3>🛞 主要商品/サービス</h3>
+          ${(productR.results || []).length ? `
+            <table class="data">
+              <thead><tr><th>品目</th><th>サイズ</th><th class="num">本数</th><th class="num">金額</th></tr></thead>
+              <tbody>${productR.results.map(r => `
+                <tr>
+                  <td>${esc(r.品目 || '')}</td>
+                  <td style="font-size:10px;">${esc(r.タイヤサイズ || '—')}</td>
+                  <td class="num">${r.本数 || 0}</td>
+                  <td class="num">${yenShort(r.金額)}</td>
+                </tr>
+              `).join('')}</tbody>
+            </table>
+          ` : '<div class="empty">取引明細なし</div>'}
+        </div>
+      </div>
+    `;
+
+    // 車両リスト
+    if ((vehR.results || []).length) {
+      html += `
+        <div class="section">
+          <h3>🚚 管理車両（${vehR.results.length}台）</h3>
+          <table class="data">
+            <thead><tr><th>車番</th><th>管理#</th><th>車種</th><th>前輪</th><th>後輪</th><th class="num">本数</th></tr></thead>
+            <tbody>${vehR.results.map(v => `
+              <tr>
+                <td><b>${esc(v.車番 || '—')}</b></td>
+                <td style="font-family:'DM Mono',monospace;color:var(--accent);">${esc(v.管理番号 || '')}</td>
+                <td>${esc(v.車種 || '')}</td>
+                <td>${esc(v.前輪サイズ || '')}</td>
+                <td>${esc(v.後輪サイズ || '')}</td>
+                <td class="num">${v.本数 || 0}</td>
+              </tr>
+            `).join('')}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    // メモ
+    if (cust.メモ) {
+      html += `
+        <div class="section">
+          <h3>📝 メモ</h3>
+          <div style="white-space:pre-wrap;font-size:12px;">${esc(cust.メモ)}</div>
+        </div>
+      `;
+    }
+
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '<div class="empty">エラー: ' + e.message + '</div>';
+  }
+}
+</script>
+
+</body>
+</html>

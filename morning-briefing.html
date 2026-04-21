@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>☀️ 朝のブリーフィング | f.o.o</title>
+<style>
+  :root {
+    --bg: #fdf6ec;
+    --surface: #fff;
+    --surface2: #faf2e5;
+    --border: #ead7bd;
+    --text: #3d2c16;
+    --muted: #8a6a3e;
+    --accent: #f0a500;
+    --accent2: #d18800;
+    --green: #2e7d32;
+    --red: #c62828;
+    --blue: #1976d2;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, 'Hiragino Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .header {
+    background: linear-gradient(135deg, #f0a500 0%, #ff6b35 100%);
+    color: #fff;
+    padding: 28px 24px;
+    text-align: center;
+  }
+  .header h1 { margin: 0 0 6px; font-size: 24px; }
+  .header .date { font-size: 13px; opacity: 0.9; }
+  .container { padding: 20px; max-width: 1000px; margin: 0 auto; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+  }
+  .card h2 { margin: 0 0 12px; font-size: 16px; color: var(--accent2); }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .hero-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    text-align: center;
+  }
+  .hero-item.highlight {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    border-color: transparent;
+  }
+  .hero-item .lbl { font-size: 10px; opacity: 0.85; }
+  .hero-item .val { font-size: 22px; font-weight: 900; margin: 4px 0; }
+  .hero-item .sub { font-size: 10px; opacity: 0.85; }
+  table.data {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  table.data th, table.data td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+  }
+  table.data th { background: var(--surface2); font-size: 10px; color: var(--muted); text-transform: uppercase; }
+  table.data td.num { text-align: right; font-family: 'DM Mono', monospace; }
+  .insight {
+    background: rgba(240,165,0,0.1);
+    border-left: 3px solid var(--accent);
+    padding: 10px 14px;
+    border-radius: 4px;
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+  .action-card {
+    background: #fff8eb;
+    border: 1px dashed var(--accent);
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    cursor: pointer;
+  }
+  .action-card:hover { background: var(--surface2); }
+  .action-card .title { font-weight: 700; color: var(--accent2); margin-bottom: 4px; }
+  .action-card .desc { font-size: 12px; color: var(--muted); }
+  .loading { text-align: center; padding: 20px; color: var(--muted); }
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>☀️ おはようございます！</h1>
+  <div class="date" id="today-date"></div>
+  <div style="font-size:11px;margin-top:8px;opacity:0.8;">f.o.o の朝のブリーフィング — D1駆動でリアルタイム</div>
+</div>
+
+<div class="container">
+
+  <!-- Hero Metrics -->
+  <div class="hero-grid" id="hero"></div>
+
+  <!-- Today's Focus -->
+  <div class="card">
+    <h2>🎯 今日の注目アクション</h2>
+    <div id="actions"></div>
+  </div>
+
+  <!-- 今月の進捗 -->
+  <div class="card">
+    <h2>📈 今月ここまで</h2>
+    <div id="month-progress"></div>
+  </div>
+
+  <!-- 休眠顧客 -->
+  <div class="card">
+    <h2>😴 要フォロー休眠顧客（過去6ヶ月取引なし）</h2>
+    <div id="dormant"></div>
+  </div>
+
+  <!-- 直近の高額取引 -->
+  <div class="card">
+    <h2>💎 直近の高額取引 TOP10</h2>
+    <div id="high-value"></div>
+  </div>
+
+  <!-- タイヤ需要トレンド -->
+  <div class="card">
+    <h2>🛞 売上トレンド（タイヤサイズ別、直近3ヶ月 vs 昨年同期）</h2>
+    <div id="trend"></div>
+  </div>
+
+  <!-- データヘルス -->
+  <div class="card">
+    <h2>💾 データヘルス</h2>
+    <div id="data-health"></div>
+  </div>
+
+  <div style="text-align:center;margin:20px 0;color:var(--muted);font-size:11px;">
+    <a href="index.html" style="color:var(--accent);">← ポータル</a> ·
+    <a href="analytics.html" style="color:var(--accent);">詳細分析</a> ·
+    <a href="d1-admin.html" style="color:var(--accent);">D1 Admin</a>
+  </div>
+
+</div>
+
+<script>
+const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
+
+async function sql(q, params=[]) {
+  const res = await fetch(WORKER + '/d1/sql', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ sql: q, params })
+  });
+  return await res.json();
+}
+
+function yenShort(n) {
+  if (n === null || n === undefined) return '—';
+  const abs = Math.abs(n);
+  if (abs >= 100000000) return '¥' + (n / 100000000).toFixed(1) + '億';
+  if (abs >= 10000) return '¥' + (n / 10000).toFixed(0) + '万';
+  return '¥' + Math.round(n).toLocaleString();
+}
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+const today = new Date();
+const dow = ['日','月','火','水','木','金','土'][today.getDay()];
+document.getElementById('today-date').textContent = `${today.getFullYear()}年${today.getMonth()+1}月${today.getDate()}日(${dow})`;
+
+async function loadHero() {
+  const r = await sql(`
+    SELECT
+      (SELECT COUNT(*) FROM 売上伝票 WHERE substr(売上日,1,7) = strftime('%Y-%m','now')) AS 今月件数,
+      (SELECT COALESCE(SUM(税込合計),0) FROM 売上伝票 WHERE substr(売上日,1,7) = strftime('%Y-%m','now')) AS 今月売上,
+      (SELECT COALESCE(SUM(税込合計),0) FROM 売上伝票 WHERE substr(売上日,1,7) = strftime('%Y-%m','now','-1 month')) AS 先月売上,
+      (SELECT COUNT(DISTINCT 請求先ID) FROM 売上伝票 WHERE 売上日 >= date('now','-30 days')) AS 取引顧客30日
+  `);
+  const d = r.results[0];
+  const pct = d.先月売上 > 0 ? Math.round((d.今月売上 - d.先月売上) * 100 / d.先月売上) : 0;
+  const trendIcon = pct >= 0 ? '📈' : '📉';
+  const pctStr = pct >= 0 ? '+' + pct : pct;
+  document.getElementById('hero').innerHTML = `
+    <div class="hero-item highlight">
+      <div class="lbl">💰 今月の売上</div>
+      <div class="val">${yenShort(d.今月売上)}</div>
+      <div class="sub">${d.今月件数}件</div>
+    </div>
+    <div class="hero-item">
+      <div class="lbl">${trendIcon} 前月比</div>
+      <div class="val" style="color:${pct >= 0 ? 'var(--green)' : 'var(--red)'}">${pctStr}%</div>
+      <div class="sub">先月: ${yenShort(d.先月売上)}</div>
+    </div>
+    <div class="hero-item">
+      <div class="lbl">👥 直近30日取引</div>
+      <div class="val">${d.取引顧客30日}</div>
+      <div class="sub">アクティブ顧客</div>
+    </div>
+  `;
+}
+
+async function loadActions() {
+  const actions = [];
+
+  // 休眠顧客数
+  try {
+    const r = await sql(`
+      SELECT COUNT(*) AS c FROM 得意先マスタ c
+      WHERE 有効 = 1 AND c.id IN (SELECT DISTINCT 請求先ID FROM 売上伝票)
+      AND NOT EXISTS (SELECT 1 FROM 売上伝票 WHERE 請求先ID = c.id AND 売上日 >= date('now','-6 months'))
+    `);
+    const c = r.results?.[0]?.c || 0;
+    if (c > 0) actions.push({ title: `😴 ${c}社 の休眠顧客にフォロー`, desc: `過去6ヶ月取引なし・アクティブ扱い顧客。下にリスト有` });
+  } catch(e) {}
+
+  // 未請求伝票
+  try {
+    const r = await sql(`SELECT COUNT(*) AS c FROM 売上伝票 WHERE ステータス = '未請求'`);
+    const c = r.results?.[0]?.c || 0;
+    if (c > 0) actions.push({ title: `🧾 ${c}件 の未請求伝票`, desc: 'sales-input.htmlの伝票検索から確認・請求書発行' });
+  } catch(e) {}
+
+  // 本日作業予定
+  try {
+    const r = await sql(`SELECT COUNT(*) AS c FROM 勤怠管理 WHERE 日付 = date('now') AND 指定休 = 0`);
+    const c = r.results?.[0]?.c || 0;
+    if (c > 0) actions.push({ title: `💪 本日勤務予定 ${c}名`, desc: '出勤簿で確認' });
+  } catch(e) {}
+
+  // 今週の指定休
+  try {
+    const r = await sql(`SELECT 社員名, 日付 FROM 勤怠管理 WHERE 指定休 = 1 AND 日付 BETWEEN date('now') AND date('now','+7 days') ORDER BY 日付`);
+    if (r.results?.length > 0) {
+      actions.push({ title: `🏖 今週の指定休 ${r.results.length}件`, desc: r.results.map(x => `${x.日付}: ${x.社員名}`).join(' / ') });
+    }
+  } catch(e) {}
+
+  const el = document.getElementById('actions');
+  if (!actions.length) {
+    el.innerHTML = '<div class="loading">今日は特にアクション必要なし！ よい1日を。</div>';
+  } else {
+    el.innerHTML = actions.map(a => `<div class="action-card"><div class="title">${a.title}</div><div class="desc">${esc(a.desc)}</div></div>`).join('');
+  }
+}
+
+async function loadMonthProgress() {
+  const r = await sql(`
+    SELECT
+      COUNT(*) AS 件数,
+      SUM(税込合計) AS 売上,
+      AVG(税込合計) AS 平均単価,
+      MAX(税込合計) AS 最高額,
+      COUNT(DISTINCT 請求先ID) AS 顧客数,
+      COUNT(DISTINCT 売上日) AS 営業日
+    FROM 売上伝票 WHERE substr(売上日,1,7) = strftime('%Y-%m','now')
+  `);
+  const d = r.results?.[0];
+  if (!d || !d.件数) {
+    document.getElementById('month-progress').innerHTML = '<div class="loading">今月はまだ取引がありません</div>';
+    return;
+  }
+  document.getElementById('month-progress').innerHTML = `
+    <table class="data">
+      <tbody>
+        <tr><td>📝 件数</td><td class="num">${d.件数}件</td></tr>
+        <tr><td>💰 売上合計</td><td class="num"><b>${yenShort(d.売上)}</b></td></tr>
+        <tr><td>📊 平均単価</td><td class="num">${yenShort(d.平均単価)}</td></tr>
+        <tr><td>🏆 最高額取引</td><td class="num">${yenShort(d.最高額)}</td></tr>
+        <tr><td>👥 取引顧客数</td><td class="num">${d.顧客数}社</td></tr>
+        <tr><td>📅 営業日数</td><td class="num">${d.営業日}日</td></tr>
+      </tbody>
+    </table>
+  `;
+}
+
+async function loadDormant() {
+  const r = await sql(`
+    SELECT c.得意先名, MAX(s.売上日) AS 最終取引, COUNT(s.id) AS 累計件数, SUM(s.税込合計) AS 累計額
+    FROM 得意先マスタ c
+    LEFT JOIN 売上伝票 s ON s.請求先ID = c.id
+    WHERE c.有効 = 1
+    GROUP BY c.id
+    HAVING (MAX(s.売上日) < date('now','-6 months') OR MAX(s.売上日) IS NULL)
+       AND COUNT(s.id) > 0
+    ORDER BY 累計額 DESC
+    LIMIT 10
+  `);
+  const rows = r.results || [];
+  if (!rows.length) {
+    document.getElementById('dormant').innerHTML = '<div class="loading">該当なし（全員アクティブ）</div>';
+    return;
+  }
+  document.getElementById('dormant').innerHTML = `
+    <table class="data">
+      <thead><tr><th>顧客</th><th>最終取引</th><th class="num">累計件数</th><th class="num">過去売上</th></tr></thead>
+      <tbody>${rows.map(r => `
+        <tr>
+          <td>${esc(r.得意先名)}</td>
+          <td style="color:var(--red);">${r.最終取引 || '—'}</td>
+          <td class="num">${r.累計件数}</td>
+          <td class="num">${yenShort(r.累計額)}</td>
+        </tr>
+      `).join('')}</tbody>
+    </table>
+    <div style="font-size:10px;color:var(--muted);margin-top:6px;">🎯 ¥金額大きい順: 過去の優良顧客で再獲得価値が高い</div>
+  `;
+}
+
+async function loadHighValue() {
+  const r = await sql(`
+    SELECT s.売上日, s.伝票タイトル, s.税込合計, COALESCE(c.得意先名, '?') AS 顧客
+    FROM 売上伝票 s
+    LEFT JOIN 得意先マスタ c ON s.請求先ID = c.id
+    WHERE s.売上日 >= date('now','-30 days')
+    ORDER BY s.税込合計 DESC
+    LIMIT 10
+  `);
+  const rows = r.results || [];
+  if (!rows.length) {
+    document.getElementById('high-value').innerHTML = '<div class="loading">直近30日の取引なし</div>';
+    return;
+  }
+  document.getElementById('high-value').innerHTML = `
+    <table class="data">
+      <thead><tr><th>日付</th><th>顧客</th><th class="num">金額</th></tr></thead>
+      <tbody>${rows.map(r => `
+        <tr>
+          <td>${r.売上日}</td>
+          <td>${esc(r.顧客)}</td>
+          <td class="num"><b>${yenShort(r.税込合計)}</b></td>
+        </tr>
+      `).join('')}</tbody>
+    </table>
+  `;
+}
+
+async function loadTrend() {
+  const r = await sql(`
+    SELECT d.タイヤサイズ,
+      SUM(CASE WHEN s.売上日 >= date('now','-3 months') THEN d.税込小計 ELSE 0 END) AS 直近3ヶ月,
+      SUM(CASE WHEN s.売上日 >= date('now','-15 months') AND s.売上日 < date('now','-12 months') THEN d.税込小計 ELSE 0 END) AS 昨年同期
+    FROM 売上明細 d
+    LEFT JOIN 売上伝票 s ON d.売上伝票ID = s.id
+    WHERE d.タイヤサイズ != '' AND s.売上日 IS NOT NULL
+    GROUP BY d.タイヤサイズ
+    HAVING 直近3ヶ月 > 0 OR 昨年同期 > 0
+    ORDER BY 直近3ヶ月 DESC
+    LIMIT 10
+  `);
+  const rows = r.results || [];
+  if (!rows.length) {
+    document.getElementById('trend').innerHTML = '<div class="loading">データ不足</div>';
+    return;
+  }
+  document.getElementById('trend').innerHTML = `
+    <table class="data">
+      <thead><tr><th>サイズ</th><th class="num">直近3ヶ月</th><th class="num">昨年同期</th><th class="num">前年比</th></tr></thead>
+      <tbody>${rows.map(r => {
+        const pct = r.昨年同期 > 0 ? Math.round((r.直近3ヶ月 - r.昨年同期) * 100 / r.昨年同期) : null;
+        const color = pct === null ? 'var(--muted)' : pct >= 0 ? 'var(--green)' : 'var(--red)';
+        const pctStr = pct === null ? '—' : (pct >= 0 ? '+' : '') + pct + '%';
+        return `
+        <tr>
+          <td><b>${esc(r.タイヤサイズ)}</b></td>
+          <td class="num">${yenShort(r.直近3ヶ月)}</td>
+          <td class="num" style="color:var(--muted);">${yenShort(r.昨年同期)}</td>
+          <td class="num" style="color:${color};font-weight:700;">${pctStr}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>
+  `;
+}
+
+async function loadDataHealth() {
+  const tables = ['売上伝票','売上明細','仕入伝票','仕入明細','車両マスタ','得意先マスタ','顧客情報DB','商品マスタ','勤怠管理','発注管理'];
+  const rows = [];
+  for (const t of tables) {
+    try {
+      const r = await sql(`SELECT COUNT(*) AS c FROM "${t}"`);
+      rows.push({ name: t, count: r.results?.[0]?.c || 0 });
+    } catch(e) {
+      rows.push({ name: t, count: 'ERR' });
+    }
+  }
+  document.getElementById('data-health').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;">
+      ${rows.map(r => `
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;">
+          <div style="font-size:10px;color:var(--muted);">${r.name}</div>
+          <div style="font-size:16px;font-weight:900;color:var(--accent);">${typeof r.count === 'number' ? r.count.toLocaleString() : r.count}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+async function loadAll() {
+  document.querySelectorAll('.card > div:last-child').forEach(d => {
+    if (d.id) d.innerHTML = '<div class="loading"><div class="spinner"></div> 読込中...</div>';
+  });
+  document.getElementById('hero').innerHTML = '<div class="loading"><div class="spinner"></div> 読込中...</div>';
+  try {
+    await Promise.all([
+      loadHero(),
+      loadActions(),
+      loadMonthProgress(),
+      loadDormant(),
+      loadHighValue(),
+      loadTrend(),
+      loadDataHealth(),
+    ]);
+  } catch(e) { console.error(e); }
+}
+loadAll();
+</script>
+
+</body>
+</html>

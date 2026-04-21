@@ -106,6 +106,11 @@ body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-
 .badge-mid { background:rgba(240,165,0,0.12); color:var(--accent2); }
 .badge-none { background:var(--s3); color:var(--muted); }
 .badge-shiteikyu { background:rgba(59,130,246,0.12); color:var(--blue); }
+/* 全員確認ビュー用 (kr-badge.yukyu 等) */
+.kr-badge.yukyu { background:rgba(240,165,0,0.18); color:#f5a623; border:1px solid rgba(240,165,0,0.3); }
+.kr-badge.rousai { background:rgba(231,76,60,0.15); color:#e74c3c; border:1px solid rgba(231,76,60,0.3); }
+.kr-badge.kekkin { background:rgba(120,120,120,0.2); color:#888; border:1px solid rgba(120,120,120,0.3); }
+.kr-badge.shiteikyu { background:rgba(59,130,246,0.15); color:var(--blue); border:1px solid rgba(59,130,246,0.3); }
 
 /* ── 修正依頼 ── */
 .request-old { background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); border-radius:10px; padding:14px; margin-bottom:16px; font-size:12px; color:var(--red); line-height:1.8; }
@@ -2068,12 +2073,14 @@ async function renderAllView() {
         const isYukyu   = p['有給使用']?.checkbox;
         const isKekkin  = p['欠勤']?.checkbox;
         const isShitei  = p['指定休']?.checkbox;
+        const isRousai  = p['労災扱い']?.checkbox;
         return `
           <div class="kintai-row">
             <div class="kr-top">
               <div class="kr-name">${allViewMode==='date' ? name : formatDate(dateVal)}</div>
-              <div style="display:flex;gap:4px;align-items:center;">
-                ${isYukyu  ? '<span class="kr-badge yukyu">有給</span>' : ''}
+              <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
+                ${isYukyu  ? '<span class="kr-badge yukyu">🏖 有給</span>' : ''}
+                ${isRousai ? '<span class="kr-badge rousai">🚑 労災</span>' : ''}
                 ${isKekkin ? '<span class="kr-badge kekkin">欠勤</span>' : ''}
                 ${isShitei ? '<span class="kr-badge shiteikyu">指定休</span>' : ''}
               </div>

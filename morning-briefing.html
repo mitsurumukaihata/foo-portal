@@ -181,6 +181,12 @@
     <div id="new-customers"></div>
   </div>
 
+  <!-- タイヤ交換予測: 長期間未作業の優良車両 -->
+  <div class="card">
+    <h2>🚚 再来店チャンス — 長期未作業の優良車両</h2>
+    <div id="overdue-vehicles"></div>
+  </div>
+
   <!-- 休眠顧客 -->
   <div class="card">
     <h2>😴 要フォロー休眠顧客（過去6ヶ月取引なし）</h2>
@@ -479,6 +485,60 @@ async function loadYearlyKPI() {
         <tr><td>🏆 顧客あたり年間売上</td><td class="num">${yenShort(perCust)}/社</td></tr>
       </tbody>
     </table>
+  `;
+}
+
+async function loadOverdueVehicles() {
+  const r = await sql(`
+    WITH last_service AS (
+      SELECT d.車番,
+        MAX(s.売上日) AS 最終,
+        COUNT(DISTINCT s.id) AS 回数,
+        SUM(d.税込小計) AS 累計,
+        MAX(s.請求先ID) AS 最新請求先
+      FROM 売上明細 d
+      JOIN 売上伝票 s ON d.売上伝票ID = s.id
+      WHERE d.車番 IS NOT NULL AND d.車番 != ''
+      GROUP BY d.車番
+      HAVING 回数 >= 3 AND julianday('now')-julianday(MAX(s.売上日)) BETWEEN 365 AND 1100
+    )
+    SELECT ls.車番,
+      COALESCE(c.得意先名,'—') AS 請求先,
+      ls.回数,
+      ls.最終,
+      CAST(julianday('now')-julianday(ls.最終) AS INTEGER) AS 経過日数,
+      ls.累計
+    FROM last_service ls
+    LEFT JOIN 得意先マスタ c ON ls.最新請求先 = c.id
+    ORDER BY ls.累計 DESC
+    LIMIT 15
+  `);
+  const rows = r.results || [];
+  if (!rows.length) {
+    document.getElementById('overdue-vehicles').innerHTML = '<div class="loading">該当車両なし</div>';
+    return;
+  }
+  document.getElementById('overdue-vehicles').innerHTML = `
+    <table class="data">
+      <thead><tr><th>車番</th><th>請求先</th><th class="num">作業回数</th><th>最終作業</th><th class="num">経過</th><th class="num">過去累計</th></tr></thead>
+      <tbody>${rows.map(r => {
+        const months = Math.round(r.経過日数 / 30);
+        return `
+        <tr>
+          <td><b>🚚 ${esc(r.車番)}</b></td>
+          <td>${esc(r.請求先)}</td>
+          <td class="num">${r.回数}</td>
+          <td style="color:var(--red);">${r.最終}</td>
+          <td class="num" style="color:var(--red);font-weight:700;">${months}ヶ月</td>
+          <td class="num">${yenShort(r.累計)}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>
+    <div class="insight" style="margin-top:10px;">
+      🎯 <b>過去3回以上作業した車両で1年以上未作業</b>のものをリスト化。
+      過去累計の大きい順で、<b>再アプローチ価値が高い順</b>に並んでいます。
+      請求先への1本の電話で大型受注につながる可能性。
+    </div>
   `;
 }
 
@@ -836,6 +896,7 @@ async function loadAll() {
       loadMonthForecast(),
       loadMovers(),
       loadNewCustomers(),
+      loadOverdueVehicles(),
       loadDormant(),
       loadHighValue(),
       loadTrend(),

@@ -661,9 +661,9 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
     if (url.pathname === '/d1/sql' && request.method === 'POST' && env.DB) {
       try {
         const { sql, params } = await request.json();
-        // 安全のため SELECT のみ許可
-        if (!/^\s*SELECT\s/i.test(sql)) {
-          return new Response(JSON.stringify({ error: 'Only SELECT allowed' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        // 安全のため読み取り系 (SELECT / WITH) のみ許可
+        if (!/^\s*(SELECT|WITH)\s/i.test(sql)) {
+          return new Response(JSON.stringify({ error: 'Only SELECT/WITH allowed' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
         }
         const stmt = env.DB.prepare(sql).bind(...(params || []));
         const res = await stmt.all();

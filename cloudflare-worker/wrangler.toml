@@ -2,3 +2,9 @@ name = "notion-proxy"
 main = "worker.js"
 compatibility_date = "2024-09-23"
 account_id = "0f8f7fc9f1f353c30d4407cc05954f00"
+
+# D1 データベース: Notion からの移行先
+[[d1_databases]]
+binding = "DB"
+database_name = "foo-portal-db"
+database_id = "5abde5a4-c104-419e-a88a-d879af9356cc"

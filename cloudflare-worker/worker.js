@@ -587,11 +587,56 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       return new Response(HTML, { headers: { "Content-Type": "text/html; charset=utf-8" } });
     }
     const token = env.NOTION_TOKEN;
+    const NOTION_VERSION = "2025-09-03";
+    const NOTION_VERSION_LEGACY = "2022-06-28";
+    const baseHeaders = { "Authorization": "Bearer " + token, "Content-Type": "application/json" };
+
+    // DB→data_source_id マップ（Worker isolate 内メモリキャッシュ）
+    if (!globalThis.__dbToDsCache) globalThis.__dbToDsCache = new Map();
+    const dsCache = globalThis.__dbToDsCache;
+
+    async function resolveDataSourceId(dbId) {
+      if (dsCache.has(dbId)) return dsCache.get(dbId);
+      // 新API: GET /v1/databases/{id} は data_sources[] を返す
+      const r = await fetch("https://api.notion.com/v1/databases/" + dbId, {
+        method: "GET",
+        headers: { ...baseHeaders, "Notion-Version": NOTION_VERSION },
+      });
+      if (!r.ok) return null;
+      const j = await r.json();
+      const dsId = j?.data_sources?.[0]?.id || null;
+      if (dsId) dsCache.set(dbId, dsId);
+      return dsId;
+    }
+
+    // /databases/{id}/query → /data_sources/{ds_id}/query に自動変換
+    const dbQueryMatch = url.pathname.match(/^\/(?:v1\/)?databases\/([a-f0-9-]+)\/query$/i);
+    if (dbQueryMatch && request.method === "POST") {
+      const dbId = dbQueryMatch[1];
+      try {
+        const dsId = await resolveDataSourceId(dbId);
+        if (dsId) {
+          const body2 = await request.text();
+          const res2 = await fetch("https://api.notion.com/v1/data_sources/" + dsId + "/query" + url.search, {
+            method: "POST",
+            headers: { ...baseHeaders, "Notion-Version": NOTION_VERSION },
+            body: body2,
+          });
+          const text2 = await res2.text();
+          return new Response(text2, { status: res2.status, headers: { ...cors, "Content-Type": "application/json" } });
+        }
+      } catch (e) {
+        // フォールバック: 旧API
+      }
+    }
+
+    // それ以外 or フォールバック: 旧APIパスをそのまま通す（従来互換）
     const notionUrl = "https://api.notion.com/v1" + url.pathname + url.search;
     const body = ["POST", "PATCH", "PUT"].includes(request.method) ? await request.text() : void 0;
+    // pages/*, databases/{id} GET, その他は新バージョンでも旧パス有効
     const res = await fetch(notionUrl, {
       method: request.method,
-      headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json", "Notion-Version": "2022-06-28" },
+      headers: { ...baseHeaders, "Notion-Version": NOTION_VERSION },
       body
     });
     const text = await res.text();

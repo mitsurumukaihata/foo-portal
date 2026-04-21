@@ -1,0 +1,4 @@
+name = "notion-proxy"
+main = "worker.js"
+compatibility_date = "2024-09-23"
+account_id = "0f8f7fc9f1f353c30d4407cc05954f00"

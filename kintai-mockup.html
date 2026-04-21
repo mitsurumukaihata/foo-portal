@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>出勤簿UI案 | f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #18181f; --s1: #101015; --s2: #1e1e26; --s3: #26262f;
+  --border: #2c2c38; --border2: #3c3c4a; --text: #f0f0f2; --muted: #68687a;
+  --accent: #f0a500; --accent2: #f5be40; --green: #22c55e; --red: #ef4444; --blue: #3b82f6;
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { background:#0e0e14; color:var(--text); font-family:'Noto Sans JP',sans-serif; }
+
+/* ── パターン選択タブ ── */
+.pattern-nav { position:sticky; top:0; z-index:100; background:#0e0e14; border-bottom:1px solid var(--border); padding:12px 16px 0; }
+.pattern-nav h1 { font-size:14px; color:var(--accent); margin-bottom:8px; letter-spacing:0.05em; }
+.pattern-tabs { display:flex; gap:4px; }
+.ptab { flex:1; padding:10px 8px; background:var(--s2); border:1.5px solid var(--border); border-bottom:none; border-radius:10px 10px 0 0; font-size:13px; font-weight:700; color:var(--muted); cursor:pointer; text-align:center; transition:all 0.15s; font-family:'Noto Sans JP',sans-serif; }
+.ptab.active { background:var(--bg); border-color:var(--accent); color:var(--accent); }
+.ptab .ptab-sub { font-size:9px; font-weight:400; margin-top:2px; }
+
+/* ── モック端末フレーム ── */
+.mock-frame { max-width:400px; margin:0 auto; background:var(--bg); min-height:calc(100vh - 80px); }
+.pattern-panel { display:none; }
+.pattern-panel.active { display:block; }
+
+/* ── 共通部品 ── */
+.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; }
+.header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:2px; }
+.header-title { font-size:17px; font-weight:900; }
+.header-title span { color:var(--accent); }
+.content { padding:20px; }
+.screen-label { font-size:10px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:6px; }
+.screen-title { font-size:20px; font-weight:900; letter-spacing:-0.02em; margin-bottom:16px; line-height:1.2; }
+.btn-primary { width:100%; background:var(--accent); border:none; border-radius:10px; padding:15px; color:#fff; font-size:14px; font-weight:700; cursor:pointer; margin-top:10px; font-family:'Noto Sans JP',sans-serif; }
+.btn-secondary { width:100%; background:transparent; border:1.5px solid var(--border2); border-radius:10px; padding:12px; color:var(--text); font-size:14px; font-family:'Noto Sans JP',sans-serif; cursor:pointer; margin-top:6px; font-weight:500; }
+.info-box { background:rgba(240,165,0,0.08); border:1px solid rgba(240,165,0,0.25); border-radius:8px; padding:12px 14px; margin-bottom:12px; font-size:12px; color:var(--accent2); line-height:1.7; }
+
+/* 日付チップ */
+.date-selector { display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:16px; scrollbar-width:none; }
+.date-selector::-webkit-scrollbar { display:none; }
+.date-chip { flex-shrink:0; background:var(--s2); border:1.5px solid var(--border); border-radius:20px; padding:7px 14px; font-size:12px; font-weight:500; color:var(--muted); text-align:center; }
+.date-chip.active { border-color:var(--accent); background:rgba(240,165,0,0.1); color:var(--accent); }
+.dc-date { font-family:'DM Mono',monospace; font-size:13px; font-weight:700; }
+.dc-day { font-size:10px; margin-top:1px; }
+
+/* テンキー */
+.numpad { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:10px 0; }
+.np-btn { background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:14px 0; font-size:20px; font-weight:700; color:var(--text); text-align:center; font-family:'DM Mono',monospace; cursor:pointer; transition:all 0.1s; }
+.np-btn:active { background:var(--accent); color:#fff; transform:scale(0.96); }
+.np-btn.del { font-size:14px; color:var(--muted); }
+.np-btn.empty { visibility:hidden; }
+
+/* 時刻表示 */
+.time-disp { background:var(--s2); border:1.5px solid var(--border); border-radius:12px; padding:14px; text-align:center; cursor:pointer; transition:all 0.15s; }
+.time-disp.focus { border-color:var(--accent); background:rgba(240,165,0,0.06); }
+.time-val { font-family:'DM Mono',monospace; font-size:32px; font-weight:700; letter-spacing:0.08em; }
+.time-val.empty { color:var(--muted); font-size:14px; font-weight:400; letter-spacing:0; }
+.time-unit { font-size:10px; color:var(--muted); margin-top:4px; }
+
+/* チェック */
+.checks { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+.check-item { display:flex; align-items:center; gap:6px; background:var(--s2); border:1.5px solid var(--border); border-radius:8px; padding:8px 12px; font-size:12px; cursor:pointer; }
+.check-item.on { border-color:var(--accent); background:rgba(240,165,0,0.1); }
+.check-box { width:16px; height:16px; border:1.5px solid var(--border2); border-radius:4px; display:flex; align-items:center; justify-content:center; }
+.check-item.on .check-box { background:var(--accent); border-color:var(--accent); }
+.check-mark { width:10px; height:10px; display:none; }
+.check-item.on .check-mark { display:block; }
+
+.memo-input { width:100%; background:var(--s2); border:1.5px solid var(--border); border-radius:8px; padding:10px 12px; color:var(--text); font-size:13px; font-family:'Noto Sans JP',sans-serif; resize:none; height:48px; }
+
+.kyukei-note { background:rgba(240,165,0,0.05); border:0.5px solid rgba(240,165,0,0.2); border-radius:8px; padding:10px 12px; font-size:11px; color:var(--muted); line-height:1.7; margin-bottom:12px; }
+
+/* ========== パターンA 固有 ========== */
+.a-time-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:6px; }
+.a-time-box { background:var(--s2); border:1.5px solid var(--border); border-radius:12px; padding:14px 10px; text-align:center; cursor:pointer; transition:all 0.15s; }
+.a-time-box.focus { border-color:var(--accent); background:rgba(240,165,0,0.06); }
+.a-time-box .label { font-size:10px; color:var(--muted); margin-bottom:4px; letter-spacing:0.08em; }
+.a-time-box .value { font-family:'DM Mono',monospace; font-size:28px; font-weight:700; }
+.a-time-box .value.empty { color:var(--muted); font-size:13px; font-weight:400; }
+.a-time-box .value.filled { color:var(--accent); }
+.a-active-indicator { font-size:10px; text-align:center; color:var(--accent); margin-bottom:4px; font-weight:700; }
+
+/* ========== パターンB 固有 ========== */
+.b-inline-row { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+.b-inline-label { font-size:13px; font-weight:700; color:var(--muted); white-space:nowrap; min-width:36px; }
+.b-inline-input { flex:1; background:var(--s2); border:1.5px solid var(--border); border-radius:10px; padding:12px; font-family:'DM Mono',monospace; font-size:22px; font-weight:700; color:var(--text); text-align:center; letter-spacing:0.1em; cursor:pointer; transition:all 0.15s; }
+.b-inline-input.focus { border-color:var(--accent); background:rgba(240,165,0,0.06); }
+.b-inline-input .empty-text { font-size:12px; color:var(--muted); font-weight:400; letter-spacing:0; font-family:'Noto Sans JP',sans-serif; }
+.b-arrow { color:var(--muted); font-size:18px; }
+.b-done-badge { background:rgba(34,197,94,0.12); color:var(--green); font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; white-space:nowrap; }
+
+/* ========== パターンC 固有 ========== */
+.c-card { background:var(--s2); border:1.5px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:10px; }
+.c-card.focus { border-color:var(--accent); }
+.c-card-header { display:flex; justify-content:space-between; align-items:center; padding:12px 16px 8px; }
+.c-card-label { font-size:12px; font-weight:700; color:var(--muted); }
+.c-card-label.active { color:var(--accent); }
+.c-card-badge { font-size:9px; font-weight:700; padding:2px 8px; border-radius:10px; }
+.c-card-badge.empty { background:rgba(104,104,122,0.15); color:var(--muted); }
+.c-card-badge.done { background:rgba(34,197,94,0.12); color:var(--green); }
+.c-card-badge.editing { background:rgba(240,165,0,0.15); color:var(--accent); }
+.c-card-time { padding:0 16px 14px; font-family:'DM Mono',monospace; font-size:36px; font-weight:700; text-align:center; }
+.c-card-time.empty { font-size:13px; color:var(--muted); font-weight:400; padding-bottom:16px; }
+.c-card-time.editing { color:var(--accent); }
+.c-numpad-mini { display:grid; grid-template-columns:repeat(6,1fr); gap:4px; padding:0 16px 12px; }
+.c-np-btn { background:var(--s3); border:1px solid var(--border); border-radius:8px; padding:10px 0; font-size:16px; font-weight:700; color:var(--text); text-align:center; font-family:'DM Mono',monospace; cursor:pointer; }
+.c-np-btn:active { background:var(--accent); color:#fff; }
+.c-np-btn.del { font-size:11px; color:var(--muted); }
+
+/* 概要ラベル */
+.pattern-desc { background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.2); border-radius:10px; padding:14px 16px; margin:16px 0; font-size:12px; line-height:1.8; color:rgba(200,210,240,0.9); }
+.pattern-desc strong { color:var(--blue); }
+.pros-cons { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+.pro { color:var(--green); } .con { color:var(--red); }
+</style>
+</head>
+<body>
+
+<div class="pattern-nav">
+  <h1>出勤簿 打刻UIリニューアル — 3パターン比較</h1>
+  <div class="pattern-tabs">
+    <div class="ptab active" onclick="showPattern('a')">
+      A案
+      <div class="ptab-sub">横並び統合</div>
+    </div>
+    <div class="ptab" onclick="showPattern('b')">
+      B案
+      <div class="ptab-sub">インライン</div>
+    </div>
+    <div class="ptab" onclick="showPattern('c')">
+      C案
+      <div class="ptab-sub">カード切替</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== パターンA ==================== -->
+<div class="pattern-panel active" id="panel-a">
+<div class="mock-frame">
+  <div class="header">
+    <div class="header-brand">f.o.o · 出勤簿</div>
+    <div class="header-title">勤怠<span>打刻</span></div>
+  </div>
+  <div class="content">
+    <div class="pattern-desc">
+      <strong>A案：横並び統合テンキー</strong><br>
+      出勤・退勤を横に並べ、タップで切替。テンキーは共通1つ。<br>
+      今の画面遷移をなくし、1画面で完結する最もシンプルな案。
+      <div class="pros-cons">
+        <div><span class="pro">◎</span> 画面遷移なし</div>
+        <div><span class="pro">◎</span> 操作が直感的</div>
+        <div><span class="pro">◎</span> 退勤時にまとめて打てる</div>
+        <div><span class="con">△</span> テンキーのフォーカス切替が必要</div>
+      </div>
+    </div>
+
+    <div class="screen-label">日付を選択</div>
+    <div class="date-selector">
+      <div class="date-chip active"><div class="dc-date">3/24</div><div class="dc-day">今日（月）</div></div>
+      <div class="date-chip"><div class="dc-date">3/23</div><div class="dc-day">昨日（日）</div></div>
+      <div class="date-chip"><div class="dc-date">3/22</div><div class="dc-day">2日前（土）</div></div>
+      <div class="date-chip"><div class="dc-date">3/21</div><div class="dc-day">3日前（金）</div></div>
+    </div>
+
+    <div class="a-active-indicator" id="a-indicator">▼ 出勤を入力中</div>
+    <div class="a-time-row">
+      <div class="a-time-box focus" id="a-syukkin-box" onclick="aFocus('syukkin')">
+        <div class="label">出勤</div>
+        <div class="value" id="a-syukkin-val">08:30</div>
+      </div>
+      <div class="a-time-box" id="a-taikin-box" onclick="aFocus('taikin')">
+        <div class="label">退勤</div>
+        <div class="value empty" id="a-taikin-val">タップして入力</div>
+      </div>
+    </div>
+
+    <div class="numpad">
+      <div class="np-btn" onclick="aKey('1')">1</div><div class="np-btn" onclick="aKey('2')">2</div><div class="np-btn" onclick="aKey('3')">3</div>
+      <div class="np-btn" onclick="aKey('4')">4</div><div class="np-btn" onclick="aKey('5')">5</div><div class="np-btn" onclick="aKey('6')">6</div>
+      <div class="np-btn" onclick="aKey('7')">7</div><div class="np-btn" onclick="aKey('8')">8</div><div class="np-btn" onclick="aKey('9')">9</div>
+      <div class="np-btn empty"></div><div class="np-btn" onclick="aKey('0')">0</div><div class="np-btn del" onclick="aKey('del')">⌫ 削除</div>
+    </div>
+
+    <div class="kyukei-note">
+      <strong style="color:var(--accent2);">休憩1時間未満の場合</strong><br>
+      退勤時刻をずらして入力（例：9:30〜15:00 休憩30分 → <strong>15:30</strong>）
+    </div>
+
+    <div class="screen-label">チェック項目</div>
+    <div class="checks">
+      <div class="check-item" onclick="this.classList.toggle('on')">
+        <div class="check-box"><svg class="check-mark" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+        <div class="check-label">有給使用</div>
+      </div>
+      <div class="check-item" onclick="this.classList.toggle('on')">
+        <div class="check-box"><svg class="check-mark" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+        <div class="check-label">欠勤</div>
+      </div>
+      <div class="check-item" onclick="this.classList.toggle('on')">
+        <div class="check-box"><svg class="check-mark" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+        <div class="check-label">労災扱い</div>
+      </div>
+    </div>
+    <div class="screen-label">備考（任意）</div>
+    <textarea class="memo-input" placeholder="例）休憩30分のため15:30打刻"></textarea>
+    <button class="btn-primary">出勤・退勤をまとめて記録</button>
+  </div>
+</div>
+</div>
+
+<!-- ==================== パターンB ==================== -->
+<div class="pattern-panel" id="panel-b">
+<div class="mock-frame">
+  <div class="header">
+    <div class="header-brand">f.o.o · 出勤簿</div>
+    <div class="header-title">勤怠<span>打刻</span></div>
+  </div>
+  <div class="content">
+    <div class="pattern-desc">
+      <strong>B案：インライン入力（コンパクト）</strong><br>
+      出勤・退勤を縦に1行ずつ並べ、タップしたほうにテンキーが展開。<br>
+      全体が見渡しやすく、打刻状況が一目でわかる。
+      <div class="pros-cons">
+        <div><span class="pro">◎</span> 状態が一目瞭然</div>
+        <div><span class="pro">◎</span> スクロール少ない</div>
+        <div><span class="pro">◎</span> 片方だけの打刻も自然</div>
+        <div><span class="con">△</span> テンキーが小さめ</div>
+      </div>
+    </div>
+
+    <div class="screen-label">日付を選択</div>
+    <div class="date-selector">
+      <div class="date-chip active"><div class="dc-date">3/24</div><div class="dc-day">今日（月）</div></div>
+      <div class="date-chip"><div class="dc-date">3/23</div><div class="dc-day">昨日（日）</div></div>
+      <div class="date-chip"><div class="dc-date">3/22</div><div class="dc-day">2日前（土）</div></div>
+      <div class="date-chip"><div class="dc-date">3/21</div><div class="dc-day">3日前（金）</div></div>
+    </div>
+
+    <div class="screen-title" style="font-size:16px;margin-bottom:12px;">2026年3月24日（月）の<span style="color:var(--accent);">打刻</span></div>
+
+    <!-- 出勤行 -->
+    <div class="b-inline-row" id="b-row-syukkin" onclick="bFocus('syukkin')">
+      <div class="b-inline-label">出勤</div>
+      <div class="b-inline-input focus" id="b-syukkin-input">08:30</div>
+      <div class="b-done-badge">記録済</div>
+    </div>
+
+    <!-- テンキー（出勤用 - 展開状態） -->
+    <div id="b-numpad-syukkin" style="margin-bottom:12px;">
+      <div class="numpad" style="max-width:280px;margin:0 auto;">
+        <div class="np-btn">1</div><div class="np-btn">2</div><div class="np-btn">3</div>
+        <div class="np-btn">4</div><div class="np-btn">5</div><div class="np-btn">6</div>
+        <div class="np-btn">7</div><div class="np-btn">8</div><div class="np-btn">9</div>
+        <div class="np-btn empty"></div><div class="np-btn">0</div><div class="np-btn del">⌫</div>
+      </div>
+    </div>
+
+    <!-- 矢印 -->
+    <div style="text-align:center;margin:-4px 0 8px;"><span class="b-arrow">↓</span></div>
+
+    <!-- 退勤行 -->
+    <div class="b-inline-row" id="b-row-taikin" onclick="bFocus('taikin')">
+      <div class="b-inline-label">退勤</div>
+      <div class="b-inline-input" id="b-taikin-input"><span class="empty-text">タップして入力</span></div>
+    </div>
+
+    <div class="kyukei-note" style="margin-top:12px;">
+      <strong style="color:var(--accent2);">休憩1時間未満の場合</strong><br>
+      退勤時刻をずらして入力（例：9:30〜15:00 休憩30分 → <strong>15:30</strong>）
+    </div>
+
+    <div class="screen-label">チェック項目</div>
+    <div class="checks">
+      <div class="check-item" onclick="this.classList.toggle('on')">
+        <div class="check-box"><svg class="check-mark" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+        <div class="check-label">有給使用</div>
+      </div>
+      <div class="check-item" onclick="this.classList.toggle('on')">
+        <div class="check-box"><svg class="check-mark" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+        <div class="check-label">欠勤</div>
+      </div>
+      <div class="check-item" onclick="this.classList.toggle('on')">
+        <div class="check-box"><svg class="check-mark" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+        <div class="check-label">労災扱い</div>
+      </div>
+    </div>
+    <div class="screen-label">備考（任意）</div>
+    <textarea class="memo-input" placeholder="例）休憩30分"></textarea>
+    <button class="btn-primary">記録する</button>
+  </div>
+</div>
+</div>
+
+<!-- ==================== パターンC ==================== -->
+<div class="pattern-panel" id="panel-c">
+<div class="mock-frame">
+  <div class="header">
+    <div class="header-brand">f.o.o · 出勤簿</div>
+    <div class="header-title">勤怠<span>打刻</span></div>
+  </div>
+  <div class="content">
+    <div class="pattern-desc">
+      <strong>C案：カード内テンキー</strong><br>
+      出勤・退勤を個別カードにし、選択中のカード内にテンキーが展開。<br>
+      カードごとに完結するので状態が明確。テンキーも大きめ。
+      <div class="pros-cons">
+        <div><span class="pro">◎</span> テンキーが大きく押しやすい</div>
+        <div><span class="pro">◎</span> 入力中のカードが明確</div>
+        <div><span class="pro">◎</span> 今のUIに近い安心感</div>
+        <div><span class="con">△</span> 縦に長くなる</div>
+      </div>
+    </div>
+
+    <div class="screen-label">日付を選択</div>
+    <div class="date-selector">
+      <div class="date-chip active"><div class="dc-date">3/24</div><div class="dc-day">今日（月）</div></div>
+      <div class="date-chip"><div class="dc-date">3/23</div><div class="dc-day">昨日（日）</div></div>
+      <div class="date-chip"><div class="dc-date">3/22</div><div class="dc-day">2日前（土）</div></div>
+      <div class="date-chip"><div class="dc-date">3/21</div><div class="dc-day">3日前（金）</div></div>
+    </div>
+
+    <!-- 出勤カード（入力済み状態） -->
+    <div class="c-card" id="c-card-syukkin" onclick="cFocus('syukkin')">
+      <div class="c-card-header">
+        <div class="c-card-label">出勤</div>
+        <div class="c-card-badge done">記録済み</div>
+      </div>
+      <div class="c-card-time">08:30</div>
+    </div>
+
+    <!-- 退勤カード（入力中状態 - テンキー展開） -->
+    <div class="c-card focus" id="c-card-taikin">
+      <div class="c-card-header">
+        <div class="c-card-label active">退勤</div>
+        <div class="c-card-badge editing">入力中…</div>
+      </div>
+      <div class="c-card-time editing" id="c-taikin-val">17:__</div>
+      <div class="c-numpad-mini">
+        <div class="c-np-btn">1</div><div class="c-np-btn">2</div><div class="c-np-btn">3</div>
+        <div class="c-np-btn">4</div><div class="c-np-btn">5</div><div class="c-np-btn">6</div>
+        <div class="c-np-btn">7</div><div class="c-np-btn">8</div><div class="c-np-btn">9</div>
+        <div class="c-np-btn empty" style="visibility:hidden;"></div><div class="c-np-btn">0</div><div class="c-np-btn del">⌫</div>
+      </div>
+    </div>
+
+    <div class="kyukei-note">
+      <strong style="color:var(--accent2);">休憩1時間未満の場合</strong><br>
+      退勤時刻をずらして入力（例：9:30〜15:00 休憩30分 → <strong>15:30</strong>）
+    </div>
+
+    <div class="screen-label">チェック項目</div>
+    <div class="checks">
+      <div class="check-item" onclick="this.classList.toggle('on')">
+        <div class="check-box"><svg class="check-mark" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+        <div class="check-label">有給使用</div>
+      </div>
+      <div class="check-item" onclick="this.classList.toggle('on')">
+        <div class="check-box"><svg class="check-mark" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+        <div class="check-label">欠勤</div>
+      </div>
+      <div class="check-item" onclick="this.classList.toggle('on')">
+        <div class="check-box"><svg class="check-mark" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+        <div class="check-label">労災扱い</div>
+      </div>
+    </div>
+    <div class="screen-label">備考（任意）</div>
+    <textarea class="memo-input" placeholder="例）休憩30分"></textarea>
+    <button class="btn-primary">出勤・退勤をまとめて記録</button>
+  </div>
+</div>
+</div>
+
+<script>
+// パターン切替
+function showPattern(id) {
+  document.querySelectorAll('.pattern-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.ptab').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// A案：フォーカス切替デモ
+let aActive = 'syukkin';
+let aDigits = { syukkin: ['0','8','3','0'], taikin: [] };
+function aFocus(type) {
+  aActive = type;
+  document.getElementById('a-syukkin-box').classList.toggle('focus', type === 'syukkin');
+  document.getElementById('a-taikin-box').classList.toggle('focus', type === 'taikin');
+  document.getElementById('a-indicator').textContent = type === 'syukkin' ? '▼ 出勤を入力中' : '▼ 退勤を入力中';
+  document.getElementById('a-indicator').style.color = 'var(--accent)';
+}
+function aKey(v) {
+  const arr = aDigits[aActive];
+  if (v === 'del') arr.pop();
+  else if (arr.length < 4) arr.push(v);
+  const el = document.getElementById('a-' + aActive + '-val');
+  if (arr.length === 0) { el.className = 'value empty'; el.textContent = 'タップして入力'; }
+  else {
+    const s = arr.join('').padEnd(4,'_');
+    el.className = 'value filled';
+    el.textContent = s.slice(0,2) + ':' + s.slice(2,4);
+  }
+  // 出勤入力完了 → 自動で退勤にフォーカス
+  if (arr.length === 4 && aActive === 'syukkin' && aDigits.taikin.length === 0) {
+    setTimeout(() => aFocus('taikin'), 300);
+  }
+}
+
+// B案：フォーカス切替
+function bFocus(type) {
+  document.getElementById('b-syukkin-input').classList.toggle('focus', type === 'syukkin');
+  document.getElementById('b-taikin-input').classList.toggle('focus', type === 'taikin');
+  const sp = document.getElementById('b-numpad-syukkin');
+  // デモでは展開/折畳みを切り替え
+  sp.style.display = type === 'syukkin' ? 'block' : 'none';
+}
+
+// C案：カードフォーカス
+function cFocus(type) {
+  document.getElementById('c-card-syukkin').classList.toggle('focus', type === 'syukkin');
+  document.getElementById('c-card-taikin').classList.toggle('focus', type === 'taikin');
+}
+</script>
+</body>
+</html>

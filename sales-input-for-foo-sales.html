@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>売上入力 - f.o.o tire sales</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --dark-bg: #18181f;
+            --dark-accent: #f0a500;
+            --light-bg: #fdf6ee;
+            --light-accent: #e07000;
+            --dark-border: #2d2d38;
+            --light-border: #e8dfd2;
+            --dark-text: #e0e0e0;
+            --light-text: #1a1a1a;
+        }
+
+        html {
+            --bg: var(--dark-bg);
+            --accent: var(--dark-accent);
+            --border: var(--dark-border);
+            --text: var(--dark-text);
+            --input-bg: #1f1f29;
+            --input-border: #3a3a45;
+            --error: #ef4444;
+            --success: #10b981;
+        }
+
+        html.light-theme {
+            --bg: var(--light-bg);
+            --accent: var(--light-accent);
+            --border: var(--light-border);
+            --text: var(--light-text);
+            --input-bg: #ffffff;
+            --input-border: #d4c5b9;
+            --error: #dc2626;
+            --success: #059669;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            max-width: 520px;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        .logo {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 2px;
+        }
+
+        .header-title {
+            flex: 1;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .header-right {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .icon-btn {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            background-color: var(--accent);
+            color: var(--bg);
+            border-color: var(--accent);
+        }
+
+        .icon-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Card / Section */
+        .card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        html.light-theme .card {
+            background: linear-gradient(135deg, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0.01) 100%);
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent);
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* Form Group */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text);
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px 12px;
+            background-color: var(--input-bg);
+            border: 1px solid var(--input-border);
+            color: var(--text);
+            border-radius: 8px;
+            font-family: 'Noto Sans JP', sans-serif;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(240, 165, 0, 0.1);
+        }
+
+        html.light-theme input:focus,
+        html.light-theme select:focus,
+        html.light-theme textarea:focus {
+            box-shadow: 0 0 0 2px rgba(224, 112, 0, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        /* Inline Flex for Two Columns */
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .form-row.full {
+            grid-template-columns: 1fr;
+        }
+
+        /* Suggestions Dropdown */
+        .suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+        }
+
+        .suggestions.active {
+            display: block;
+        }
+
+        .suggestion-item {
+            padding: 12px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+            transition: background-color 0.2s;
+        }
+
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .suggestion-item:hover {
+            background-color: var(--border);
+        }
+
+        .suggestion-item-title {
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .suggestion-item-meta {
+            font-size: 12px;
+            color: var(--accent);
+        }
+
+        /* Input Group with Clear Button */
+        .input-group {
+            position: relative;
+        }
+
+        .input-group-content {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .input-group-content input {
+            flex: 1;
+        }
+
+        .clear-btn {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .clear-btn:hover {
+            background-color: var(--error);
+            border-color: var(--error);
+            color: white;
+        }
+
+        /* Detail Lines */
+        .detail-line {
+            background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        html.light-theme .detail-line {
+            background: linear-gradient(135deg, rgba(0,0,0,0.01) 0%, rgba(0,0,0,0.005) 100%);
+        }
+
+        .detail-line-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .detail-line-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .delete-btn {
+            background: none;
+            border: 1px solid var(--error);
+            color: var(--error);
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .delete-btn:hover {
+            background-color: var(--error);
+            color: white;
+        }
+
+        .detail-line-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .detail-line-grid.full {
+            grid-template-columns: 1fr;
+        }
+
+        .detail-line-field label {
+            font-size: 11px;
+            margin-bottom: 4px;
+        }
+
+        .detail-line-field input,
+        .detail-line-field select {
+            font-size: 13px;
+            padding: 8px 10px;
+        }
+
+        /* Subtotal & Summary */
+        .detail-subtotal {
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            text-align: right;
+            font-size: 13px;
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, rgba(240, 165, 0, 0.1) 0%, rgba(240, 165, 0, 0.05) 100%);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        html.light-theme .summary-card {
+            background: linear-gradient(135deg, rgba(224, 112, 0, 0.08) 0%, rgba(224, 112, 0, 0.04) 100%);
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .summary-row:last-child {
+            margin-bottom: 0;
+            padding-top: 8px;
+            border-top: 1px solid var(--border);
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .summary-label {
+            color: var(--text);
+        }
+
+        .summary-value {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 12px 16px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Noto Sans JP', sans-serif;
+        }
+
+        .btn-primary {
+            background-color: var(--accent);
+            color: var(--bg);
+            width: 100%;
+            margin-top: 12px;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(240, 165, 0, 0.3);
+        }
+
+        .btn-primary:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--accent);
+            color: var(--bg);
+        }
+
+        .btn-add {
+            width: 100%;
+            background-color: transparent;
+            border: 2px dashed var(--accent);
+            color: var(--accent);
+            padding: 12px;
+            margin-top: 16px;
+        }
+
+        .btn-add:hover {
+            background-color: rgba(240, 165, 0, 0.05);
+        }
+
+        /* Bottom Navigation */
+        nav {
+            display: flex;
+            justify-content: space-around;
+            border-top: 1px solid var(--border);
+            padding: 12px 0;
+            margin-top: 32px;
+            gap: 8px;
+        }
+
+        nav a, nav button {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 8px;
+            text-decoration: none;
+            color: var(--text);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        nav a.active, nav button.active {
+            background-color: var(--border);
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        nav a:hover, nav button:hover {
+            background-color: var(--border);
+        }
+
+        /* Messages */
+        .message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            display: none;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .message.error {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            border: 1px solid var(--error);
+        }
+
+        .message.success {
+            background-color: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        /* Modal / Success State */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 32px 24px;
+            max-width: 320px;
+            text-align: center;
+        }
+
+        .modal-content h2 {
+            font-size: 18px;
+            margin-bottom: 16px;
+        }
+
+        .modal-content p {
+            font-size: 13px;
+            margin-bottom: 24px;
+            color: var(--text);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            flex-direction: column;
+        }
+
+        /* Loading State */
+        .spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .container {
+                padding: 0 12px;
+            }
+
+            header {
+                padding: 12px 0;
+            }
+
+            .card {
+                padding: 16px;
+            }
+
+            .form-row {
+                gap: 10px;
+            }
+        }
+
+        /* Utility */
+        .text-right {
+            text-align: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .mt-24 {
+            margin-top: 24px;
+        }
+
+        .mb-16 {
+            margin-bottom: 16px;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="logo">f.o.o</div>
+            <div class="header-title">売上入力</div>
+            <div class="header-right">
+                <button class="icon-btn" id="themeToggle" title="テーマ切り替え">🌙</button>
+                <a href="index.html" class="icon-btn" title="ホームに戻る">🏠</a>
+            </div>
+        </header>
+
+        <!-- Messages -->
+        <div id="errorMessage" class="message error"></div>
+        <div id="successMessage" class="message success"></div>
+
+        <!-- Form -->
+        <form id="salesForm">
+            <!-- Section 1: Basic Info -->
+            <div class="card">
+                <div class="section-title">基本情報</div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="salesDate">売上日</label>
+                        <input type="date" id="salesDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="carNumber">車番</label>
+                        <input type="text" id="carNumber" placeholder="12-34">
+                    </div>
+                </div>
+
+                <!-- Car Number Suggestions -->
+                <div id="carSuggestions" class="suggestions"></div>
+
+                <div class="form-group">
+                    <label for="customerName">顧客名 <span style="color: var(--error);">*</span></label>
+                    <div class="input-group">
+                        <div class="input-group-content">
+                            <input type="text" id="customerName" placeholder="会社名で検索" required>
+                            <button type="button" class="clear-btn" id="clearCustomer" style="display: none;">クリア</button>
+                        </div>
+                    </div>
+                    <div id="customerSuggestions" class="suggestions"></div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="staff">担当者</label>
+                        <select id="staff">
+                            <option value="">-- 選択してください --</option>
+                            <option value="向畑 充">向畑 充</option>
+                            <option value="矢島 明和">矢島 明和</option>
+                            <option value="大田 健">大田 健</option>
+                            <option value="中川 颯">中川 颯</option>
+                            <option value="平野 春之">平野 春之</option>
+                            <option value="山根 祐司">山根 祐司</option>
+                            <option value="村田 良典">村田 良典</option>
+                            <option value="岡崎 由美">岡崎 由美</option>
+                            <option value="藤井 真理亜">藤井 真理亜</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="adminNumber">管理番号</label>
+                        <input type="text" id="adminNumber" placeholder="ドア番号">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="slipType">伝票種類</label>
+                        <select id="slipType">
+                            <option value="納品書">納品書</option>
+                            <option value="見積書">見積書</option>
+                            <option value="請求書">請求書</option>
+                            <option value="納品書兼請求書">納品書兼請求書</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="workType">作業区分</label>
+                        <select id="workType">
+                            <option value="来店">来店</option>
+                            <option value="配達">配達</option>
+                            <option value="引き取り">引き取り</option>
+                            <option value="その他">その他</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="paymentMethod">支払い方法</label>
+                        <select id="paymentMethod">
+                            <option value="売掛">売掛</option>
+                            <option value="現金">現金</option>
+                            <option value="クレジットカード">クレジットカード</option>
+                            <option value="電子決済">電子決済</option>
+                            <option value="その他">その他</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="honorific">宛先敬称</label>
+                        <select id="honorific">
+                            <option value="御中">御中</option>
+                            <option value="様">様</option>
+                            <option value="殿">殿</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="subject">件名 (見積書時など)</label>
+                    <input type="text" id="subject" placeholder="オプション">
+                </div>
+
+                <div class="form-group">
+                    <label for="notes">備考</label>
+                    <textarea id="notes" placeholder="オプション"></textarea>
+                </div>
+            </div>
+
+            <!-- Section 2: Detail Lines -->
+            <div class="card">
+                <div class="section-title">明細</div>
+                <div id="detailLines"></div>
+
+                <button type="button" class="btn btn-add" id="addDetailBtn">+ 明細行を追加</button>
+
+                <!-- Summary -->
+                <div class="summary-card">
+                    <div class="summary-row">
+                        <span class="summary-label">小計（税抜）</span>
+                        <span class="summary-value" id="subtotal">¥0</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">消費税（10%）</span>
+                        <span class="summary-value" id="tax10">¥0</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">消費税（8%）</span>
+                        <span class="summary-value" id="tax8">¥0</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">合計（税込）</span>
+                        <span class="summary-value" id="total">¥0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save Button -->
+            <button type="submit" class="btn btn-primary" id="saveBtn">💾 保存してNotionに登録</button>
+        </form>
+
+        <!-- Bottom Navigation -->
+        <nav>
+            <a href="index.html" title="ホーム">
+                <span>🏠</span>
+                <span>ホーム</span>
+            </a>
+            <button class="active" title="売上入力">
+                <span>📝</span>
+                <span>売上入力</span>
+            </button>
+            <button disabled title="検索">
+                <span>🔍</span>
+                <span>検索</span>
+            </button>
+            <button disabled title="設定">
+                <span>⚙️</span>
+                <span>設定</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="modal">
+        <div class="modal-content">
+            <h2>✓ 保存完了</h2>
+            <p id="successMessage2">伝票が登録されました。</p>
+            <p id="slipNumber" style="font-weight: 700; color: var(--accent); font-size: 14px;"></p>
+            <div class="modal-buttons">
+                <button type="button" class="btn btn-primary" id="continueBtn">続けて入力</button>
+                <button type="button" class="btn btn-secondary" id="homeBtn">ホームに戻る</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== CONFIG ====================
+        const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
+        const DB = {
+            sales:    '58cc4a13-df03-435d-b14b-3439ef1f0a6f',
+            details:  '07bd2265-5e58-49fd-854b-ef1f4c4b5688',
+            payments: 'a43b48a8-4808-4be3-bc16-841ec0c8603a',
+            products: '21771ad9-a3f0-457e-a974-74b3499ca4a9',
+            customer: '1ca8d122-be21-4e38-9287-9932147143c9',
+            staff:    '277c2e91-fe10-46fe-bf55-f924a9726cbb'
+        };
+
+        const STAFF_LIST = [
+            '向畑 充', '矢島 明和', '大田 健', '中川 颯',
+            '平野 春之', '山根 祐司', '村田 良典', '岡崎 由美', '藤井 真理亜'
+        ];
+
+        const ITEMS = [
+            '組替', '脱着', 'Fバランス', 'バランス', '廃タイヤ',
+            '出張(市内)', '出張(市外)', 'タイヤ販売(新品)', 'タイヤ販売(中古)',
+            'タイヤ販売(更生)', 'ホイール', 'その他'
+        ];
+
+        const UNITS = ['本', '件', 'セット', '式', '個'];
+        const TAX_TYPES = ['課税(10%)', '非課税', '軽減税率(8%)'];
+
+        // ==================== STATE ====================
+        let detailLineCount = 0;
+        let detailLines = [];
+        let selectedCustomerId = null;
+        let loginUser = '';
+
+        // ==================== API HELPERS ====================
+        async function notionPost(path, body) {
+            const res = await fetch(`${WORKER}${path}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (!res.ok) throw new Error(`API ${res.status}: ${res.statusText}`);
+            return res.json();
+        }
+
+        async function notionGet(path) {
+            const res = await fetch(`${WORKER}${path}`, {
+                headers: { 'Content-Type': 'application/json' }
+            });
+            if (!res.ok) throw new Error(`API ${res.status}: ${res.statusText}`);
+            return res.json();
+        }
+
+        async function queryDB(dbId, filter, sorts, pageSize = 50, startCursor = null) {
+            const body = {
+                filter: filter || undefined,
+                sorts: sorts || undefined,
+                page_size: pageSize,
+                start_cursor: startCursor || undefined
+            };
+            return notionPost(`/v1/databases/${dbId}/query`, body);
+        }
+
+        // ==================== SESSION & THEME ====================
+        function checkSession() {
+            const session = localStorage.getItem('foo_sales_session');
+            if (!session) {
+                window.location.href = 'index.html';
+                return;
+            }
+            const data = JSON.parse(session);
+            const now = Date.now();
+            if (now - data.ts > 30 * 24 * 60 * 60 * 1000) {
+                localStorage.removeItem('foo_sales_session');
+                window.location.href = 'index.html';
+                return;
+            }
+            loginUser = data.name || '不明';
+            document.getElementById('staff').value = loginUser;
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('foo_portal_theme');
+            if (savedTheme === 'light') {
+                document.documentElement.classList.add('light-theme');
+                document.getElementById('themeToggle').textContent = '☀️';
+            } else {
+                document.documentElement.classList.remove('light-theme');
+                document.getElementById('themeToggle').textContent = '🌙';
+            }
+        }
+
+        function toggleTheme() {
+            const isLight = document.documentElement.classList.toggle('light-theme');
+            localStorage.setItem('foo_portal_theme', isLight ? 'light' : 'dark');
+            document.getElementById('themeToggle').textContent = isLight ? '☀️' : '🌙';
+        }
+
+        // ==================== MESSAGE HELPERS ====================
+        function showError(message) {
+            const el = document.getElementById('errorMessage');
+            el.textContent = message;
+            el.classList.add('show');
+            setTimeout(() => el.classList.remove('show'), 5000);
+        }
+
+        function showSuccess(message) {
+            const el = document.getElementById('successMessage');
+            el.textContent = message;
+            el.classList.add('show');
+            setTimeout(() => el.classList.remove('show'), 5000);
+        }
+
+        // ==================== DEBOUNCE ====================
+        function debounce(fn, delay) {
+            let timeout;
+            return function (...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => fn(...args), delay);
+            };
+        }
+
+        // ==================== CAR NUMBER SEARCH ====================
+        const handleCarNumberInput = debounce(async (value) => {
+            const container = document.getElementById('carSuggestions');
+            if (!value.trim()) {
+                container.classList.remove('active');
+                return;
+            }
+            try {
+                const result = await queryDB(DB.sales, {
+                    property: '車番',
+                    rich_text: { contains: value }
+                }, null, 10);
+
+                if (result.results.length === 0) {
+                    container.classList.remove('active');
+                    return;
+                }
+
+                // 顧客IDを収集して名前を解決
+                const customerIds = new Set();
+                result.results.forEach(page => {
+                    const rels = page.properties['顧客名']?.relation || [];
+                    rels.forEach(r => customerIds.add(r.id));
+                });
+                const customerMap = {};
+                for (const cid of customerIds) {
+                    try {
+                        const pg = await notionGet(`/v1/pages/${cid}`);
+                        const t = pg.properties?.['会社名']?.title;
+                        if (t && t.length > 0) customerMap[cid] = t[0].plain_text;
+                    } catch {}
+                }
+
+                // 重複除去（同じ車番×顧客の組み合わせ）
+                const seen = new Set();
+                const unique = result.results.filter(page => {
+                    const carNum = page.properties['車番']?.rich_text?.[0]?.plain_text || '';
+                    const custId = page.properties['顧客名']?.relation?.[0]?.id || '';
+                    const key = `${carNum}|${custId}`;
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                });
+
+                const html = unique.map(page => {
+                    const props = page.properties;
+                    const carNum = props['車番']?.rich_text?.[0]?.plain_text || '';
+                    const custId = props['顧客名']?.relation?.[0]?.id || '';
+                    const custName = customerMap[custId] || '顧客不明';
+                    const lastDate = props['売上日']?.date?.start || '';
+
+                    return `
+                        <div class="suggestion-item" data-car="${carNum}" data-customer-id="${custId}" data-customer-name="${custName}">
+                            <div class="suggestion-item-title">${custName}</div>
+                            <div class="suggestion-item-meta">車番: ${carNum} | ${lastDate}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                container.innerHTML = html;
+                container.classList.add('active');
+
+                container.querySelectorAll('.suggestion-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        document.getElementById('carNumber').value = item.dataset.car;
+                        document.getElementById('customerName').value = item.dataset.customerName;
+                        selectedCustomerId = item.dataset.customerId;
+                        document.getElementById('clearCustomer').style.display = 'block';
+                        container.classList.remove('active');
+                    });
+                });
+            } catch (err) {
+                console.error('Car search error:', err);
+            }
+        }, 500);
+
+        document.getElementById('carNumber').addEventListener('input', (e) => {
+            handleCarNumberInput(e.target.value);
+        });
+
+        // ==================== CUSTOMER SEARCH ====================
+        const handleCustomerSearch = debounce(async (value) => {
+            const container = document.getElementById('customerSuggestions');
+            if (!value.trim()) {
+                container.classList.remove('active');
+                return;
+            }
+            try {
+                const result = await queryDB(DB.customer, {
+                    property: '会社名',
+                    title: { contains: value }
+                }, null, 10);
+
+                if (result.results.length === 0) {
+                    container.classList.remove('active');
+                    return;
+                }
+
+                const html = result.results.map(page => {
+                    const title = page.properties['会社名']?.title?.[0]?.plain_text || '名称なし';
+                    return `
+                        <div class="suggestion-item" data-customer-id="${page.id}">
+                            <div class="suggestion-item-title">${title}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                container.innerHTML = html;
+                container.classList.add('active');
+
+                container.querySelectorAll('.suggestion-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const id = item.dataset.customerId;
+                        const title = item.querySelector('.suggestion-item-title').textContent;
+                        document.getElementById('customerName').value = title;
+                        selectedCustomerId = id;
+                        document.getElementById('clearCustomer').style.display = 'block';
+                        container.classList.remove('active');
+                    });
+                });
+            } catch (err) {
+                console.error('Customer search error:', err);
+            }
+        }, 500);
+
+        document.getElementById('customerName').addEventListener('input', (e) => {
+            handleCustomerSearch(e.target.value);
+        });
+
+        document.getElementById('clearCustomer').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('customerName').value = '';
+            selectedCustomerId = null;
+            document.getElementById('clearCustomer').style.display = 'none';
+        });
+
+        // Close suggestions when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.form-group') && !e.target.closest('.input-group')) {
+                document.getElementById('carSuggestions').classList.remove('active');
+                document.getElementById('customerSuggestions').classList.remove('active');
+            }
+        });
+
+        // ==================== DETAIL LINES ====================
+        function createDetailLine(index) {
+            const lineId = `detail-${detailLineCount}`;
+            detailLineCount++;
+
+            return `
+                <div class="detail-line" data-line-id="${lineId}">
+                    <div class="detail-line-header">
+                        <span class="detail-line-title">明細行 #${index + 1}</span>
+                        <button type="button" class="delete-btn" data-line-id="${lineId}">🗑️ 削除</button>
+                    </div>
+                    <div class="detail-line-grid">
+                        <div class="detail-line-field">
+                            <label>品目 *</label>
+                            <select data-field="item" required>
+                                <option value="">-- 選択 --</option>
+                                ${ITEMS.map(i => `<option value="${i}">${i}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="detail-line-field">
+                            <label>商品コード</label>
+                            <input type="text" data-field="productCode" placeholder="TK03">
+                        </div>
+                    </div>
+                    <div class="detail-line-grid">
+                        <div class="detail-line-field">
+                            <label>タイヤサイズ</label>
+                            <input type="text" data-field="tireSize" placeholder="245/70R19.5">
+                        </div>
+                        <div class="detail-line-field">
+                            <label>タイヤ銘柄</label>
+                            <input type="text" data-field="tireBrand" placeholder="M966">
+                        </div>
+                    </div>
+                    <div class="detail-line-grid">
+                        <div class="detail-line-field">
+                            <label>数量 *</label>
+                            <input type="number" data-field="quantity" value="1" min="1" required>
+                        </div>
+                        <div class="detail-line-field">
+                            <label>単位</label>
+                            <select data-field="unit">
+                                ${UNITS.map(u => `<option value="${u}" ${u === '本' ? 'selected' : ''}>${u}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="detail-line-grid">
+                        <div class="detail-line-field">
+                            <label>単価（税抜） *</label>
+                            <input type="number" data-field="price" value="0" min="0" step="0.01" required>
+                        </div>
+                        <div class="detail-line-field">
+                            <label>税区分</label>
+                            <select data-field="taxType">
+                                ${TAX_TYPES.map(t => `<option value="${t}" ${t === '課税(10%)' ? 'selected' : ''}>${t}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="detail-line-grid">
+                        <div class="detail-line-field">
+                            <label>小計</label>
+                            <div class="detail-subtotal" data-subtotal="${lineId}">¥0</div>
+                        </div>
+                    </div>
+                    <div class="detail-line-grid full">
+                        <div class="detail-line-field">
+                            <label>備考</label>
+                            <input type="text" data-field="lineNotes" placeholder="オプション">
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function addDetailLine() {
+            const container = document.getElementById('detailLines');
+            const newIndex = detailLines.length;
+            const html = createDetailLine(newIndex);
+            container.insertAdjacentHTML('beforeend', html);
+
+            const lineId = `detail-${detailLineCount - 1}`;
+            const lineEl = document.querySelector(`[data-line-id="${lineId}"]`);
+
+            // Delete handler
+            lineEl.querySelector('.delete-btn').addEventListener('click', (e) => {
+                e.preventDefault();
+                lineEl.remove();
+                detailLines = detailLines.filter(l => l.id !== lineId);
+                updateSummary();
+            });
+
+            // Price/quantity change handler
+            const quantityInput = lineEl.querySelector('[data-field="quantity"]');
+            const priceInput = lineEl.querySelector('[data-field="price"]');
+            const subtotalDisplay = lineEl.querySelector('[data-subtotal]');
+
+            const updateSubtotal = () => {
+                const qty = parseFloat(quantityInput.value) || 0;
+                const price = parseFloat(priceInput.value) || 0;
+                const subtotal = qty * price;
+                subtotalDisplay.textContent = `¥${subtotal.toLocaleString('ja-JP', { minimumFractionDigits: 0 })}`;
+                updateSummary();
+            };
+
+            quantityInput.addEventListener('input', updateSubtotal);
+            priceInput.addEventListener('input', updateSubtotal);
+            lineEl.querySelector('[data-field="taxType"]').addEventListener('change', () => updateSummary());
+
+            detailLines.push({ id: lineId, el: lineEl });
+        }
+
+        function updateSummary() {
+            let subtotal = 0;
+            let tax10 = 0;
+            let tax8 = 0;
+
+            document.querySelectorAll('[data-line-id]').forEach(lineEl => {
+                const qty = parseFloat(lineEl.querySelector('[data-field="quantity"]').value) || 0;
+                const price = parseFloat(lineEl.querySelector('[data-field="price"]').value) || 0;
+                const taxType = lineEl.querySelector('[data-field="taxType"]').value;
+                const lineSubtotal = qty * price;
+
+                subtotal += lineSubtotal;
+
+                if (taxType === '課税(10%)') {
+                    tax10 += lineSubtotal * 0.10;
+                } else if (taxType === '軽減税率(8%)') {
+                    tax8 += lineSubtotal * 0.08;
+                }
+            });
+
+            tax10 = Math.floor(tax10);
+            tax8 = Math.floor(tax8);
+            const total = subtotal + tax10 + tax8;
+
+            document.getElementById('subtotal').textContent = `¥${subtotal.toLocaleString('ja-JP', { minimumFractionDigits: 0 })}`;
+            document.getElementById('tax10').textContent = `¥${tax10.toLocaleString('ja-JP', { minimumFractionDigits: 0 })}`;
+            document.getElementById('tax8').textContent = `¥${tax8.toLocaleString('ja-JP', { minimumFractionDigits: 0 })}`;
+            document.getElementById('total').textContent = `¥${total.toLocaleString('ja-JP', { minimumFractionDigits: 0 })}`;
+        }
+
+        document.getElementById('addDetailBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            addDetailLine();
+        });
+
+        // ==================== FORM SUBMISSION ====================
+        document.getElementById('salesForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Validation
+            const customerName = document.getElementById('customerName').value.trim();
+            if (!customerName) {
+                showError('顧客名は必須です。');
+                return;
+            }
+
+            if (detailLines.length === 0) {
+                showError('少なくとも1つの明細行が必要です。');
+                return;
+            }
+
+            // Check all detail lines have required fields
+            const detailEls = document.querySelectorAll('[data-line-id]');
+            for (let el of detailEls) {
+                const item = el.querySelector('[data-field="item"]').value;
+                const price = parseFloat(el.querySelector('[data-field="price"]').value) || 0;
+                if (!item) {
+                    showError('すべての明細行で品目を選択してください。');
+                    return;
+                }
+                if (price <= 0) {
+                    showError('すべての明細行で単価を入力してください。');
+                    return;
+                }
+            }
+
+            // Save button disabled
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<span class="spinner"></span> 保存中...';
+
+            try {
+                // Create sales slip
+                const salesDate = document.getElementById('salesDate').value;
+                const slipTitle = `${salesDate.replace(/-/g, '/')} ${customerName}`;
+
+                const salesPageReq = {
+                    parent: { database_id: DB.sales },
+                    properties: {
+                        '伝票タイトル': {
+                            title: [{ text: { content: slipTitle } }]
+                        },
+                        '伝票種類': {
+                            select: { name: document.getElementById('slipType').value }
+                        },
+                        '売上日': {
+                            date: { start: salesDate }
+                        },
+                        '顧客名': {
+                            relation: selectedCustomerId ? [{ id: selectedCustomerId }] : []
+                        },
+                        '担当者': {
+                            select: { name: document.getElementById('staff').value }
+                        },
+                        '車番': {
+                            rich_text: [{ text: { content: document.getElementById('carNumber').value } }]
+                        },
+                        '管理番号': {
+                            rich_text: [{ text: { content: document.getElementById('adminNumber').value } }]
+                        },
+                        '作業区分': {
+                            select: { name: document.getElementById('workType').value }
+                        },
+                        '支払い方法': {
+                            select: { name: document.getElementById('paymentMethod').value }
+                        },
+                        '宛先敬称': {
+                            select: { name: document.getElementById('honorific').value }
+                        },
+                        '件名': {
+                            rich_text: [{ text: { content: document.getElementById('subject').value } }]
+                        },
+                        'ステータス': {
+                            select: { name: '下書き' }
+                        },
+                        '備考': {
+                            rich_text: chunkRichText(document.getElementById('notes').value)
+                        }
+                    }
+                };
+
+                const salesRes = await notionPost('/v1/pages', salesPageReq);
+                const salesPageId = salesRes.id;
+
+                // Create detail lines
+                for (let detailEl of detailEls) {
+                    const item = detailEl.querySelector('[data-field="item"]').value;
+                    const tireSize = detailEl.querySelector('[data-field="tireSize"]').value;
+                    const detailTitle = `${item} ${tireSize}`.trim();
+
+                    const detailReq = {
+                        parent: { database_id: DB.details },
+                        properties: {
+                            '明細タイトル': {
+                                title: [{ text: { content: detailTitle } }]
+                            },
+                            '売上伝票': {
+                                relation: [{ id: salesPageId }]
+                            },
+                            '商品コード': {
+                                rich_text: [{ text: { content: detailEl.querySelector('[data-field="productCode"]').value } }]
+                            },
+                            '品目': {
+                                select: { name: item }
+                            },
+                            'タイヤサイズ': {
+                                rich_text: [{ text: { content: tireSize } }]
+                            },
+                            'タイヤ銘柄': {
+                                rich_text: [{ text: { content: detailEl.querySelector('[data-field="tireBrand"]').value } }]
+                            },
+                            '数量': {
+                                number: parseFloat(detailEl.querySelector('[data-field="quantity"]').value) || 0
+                            },
+                            '単位': {
+                                select: { name: detailEl.querySelector('[data-field="unit"]').value }
+                            },
+                            '単価': {
+                                number: parseFloat(detailEl.querySelector('[data-field="price"]').value) || 0
+                            },
+                            '税区分': {
+                                select: { name: detailEl.querySelector('[data-field="taxType"]').value }
+                            },
+                            '備考': {
+                                rich_text: [{ text: { content: detailEl.querySelector('[data-field="lineNotes"]').value } }]
+                            }
+                        }
+                    };
+
+                    await notionPost('/v1/pages', detailReq);
+                }
+
+                // Show success modal
+                document.getElementById('slipNumber').textContent = `伝票ID: ${salesPageId.substring(0, 8)}...`;
+                document.getElementById('successModal').classList.add('show');
+
+            } catch (err) {
+                console.error('Save error:', err);
+                showError(`保存に失敗しました: ${err.message}`);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '💾 保存してNotionに登録';
+            }
+        });
+
+        // ==================== MODAL HANDLERS ====================
+        document.getElementById('continueBtn').addEventListener('click', () => {
+            document.getElementById('successModal').classList.remove('show');
+            document.getElementById('salesForm').reset();
+            selectedCustomerId = null;
+            document.getElementById('clearCustomer').style.display = 'none';
+            document.getElementById('detailLines').innerHTML = '';
+            detailLines = [];
+            addDetailLine();
+            document.getElementById('salesDate').valueAsDate = new Date();
+            document.getElementById('staff').value = loginUser;
+            updateSummary();
+        });
+
+        document.getElementById('homeBtn').addEventListener('click', () => {
+            window.location.href = 'index.html';
+        });
+
+        // ==================== UTILITIES ====================
+        function chunkRichText(text) {
+            if (!text) return [];
+            const chunks = [];
+            for (let i = 0; i < text.length; i += 2000) {
+                chunks.push({ text: { content: text.substring(i, i + 2000) } });
+            }
+            return chunks;
+        }
+
+        // ==================== INITIALIZATION ====================
+        document.addEventListener('DOMContentLoaded', () => {
+            checkSession();
+            initTheme();
+            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+            // Set today's date
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('salesDate').value = today;
+
+            // Add first detail line
+            addDetailLine();
+            updateSummary();
+        });
+    </script>
+</body>
+</html>

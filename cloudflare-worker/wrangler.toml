@@ -8,3 +8,12 @@ account_id = "0f8f7fc9f1f353c30d4407cc05954f00"
 binding = "DB"
 database_name = "foo-portal-db"
 database_id = "5abde5a4-c104-419e-a88a-d879af9356cc"
+
+# R2 バケット: 毎日自動バックアップ先
+[[r2_buckets]]
+binding = "BACKUP"
+bucket_name = "foo-portal-backup"
+
+# 毎日 18:00 UTC (3:00 JST) に自動バックアップ
+[triggers]
+crons = ["0 18 * * *"]

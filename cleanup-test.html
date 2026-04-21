@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>テストレコード一括削除</title>
+<style>
+body { font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
+h1 { color: #333; }
+button { padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px 4px; border: none; border-radius: 6px; color: #fff; }
+#btnSearch { background: #2196F3; }
+#btnDelete { background: #f44336; }
+#btnDelete:disabled { background: #ccc; cursor: not-allowed; }
+#log { background: #f5f5f5; padding: 16px; border-radius: 8px; white-space: pre-wrap; font-family: monospace; font-size: 13px; max-height: 600px; overflow-y: auto; margin-top: 16px; }
+.success { color: green; }
+.error { color: red; }
+.info { color: #2196F3; }
+</style>
+</head>
+<body>
+<h1>テストレコード一括削除ツール</h1>
+<p>「🗑️削除対象」「TEST検証用」を含むNotionページを検索してアーカイブ（ゴミ箱送り）します。</p>
+<button id="btnSearch" onclick="searchAll()">1. 検索</button>
+<button id="btnDelete" onclick="deleteAll()" disabled>2. 一括削除</button>
+<div id="log"></div>
+
+<script>
+const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
+const logEl = document.getElementById('log');
+let allIds = new Map(); // id -> title
+
+function log(msg, cls) {
+  const span = document.createElement('span');
+  span.className = cls || '';
+  span.textContent = msg + '\n';
+  logEl.appendChild(span);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+async function notionSearch(query, startCursor) {
+  const body = {
+    query,
+    filter: { value: 'page', property: 'object' },
+    page_size: 100
+  };
+  if (startCursor) body.start_cursor = startCursor;
+
+  const res = await fetch(`${WORKER}/v1/search`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
+
+async function searchAll() {
+  logEl.innerHTML = '';
+  allIds.clear();
+
+  const queries = ['削除対象', 'TEST検証用'];
+
+  for (const q of queries) {
+    log(`🔍 「${q}」で検索中...`, 'info');
+    let hasMore = true;
+    let cursor = undefined;
+
+    while (hasMore) {
+      try {
+        const data = await notionSearch(q, cursor);
+        const results = data.results || [];
+
+        for (const r of results) {
+          const id = r.id;
+          // Extract title
+          let title = '';
+          const props = r.properties || {};
+          for (const [k, v] of Object.entries(props)) {
+            if (v.type === 'title' && v.title && v.title.length > 0) {
+              title = v.title.map(t => t.plain_text).join('');
+              break;
+            }
+          }
+          if (!title) title = '(no title)';
+
+          // Only include if title contains test markers
+          if (title.includes('削除対象') || title.includes('TEST検証用') || title.includes('TEST')) {
+            if (!allIds.has(id)) {
+              allIds.set(id, title);
+              log(`  Found: ${title} (${id})`);
+            }
+          }
+        }
+
+        hasMore = data.has_more === true;
+        cursor = data.next_cursor;
+        if (!cursor) hasMore = false;
+      } catch (e) {
+        log(`  Error: ${e.message}`, 'error');
+        hasMore = false;
+      }
+    }
+  }
+
+  // Also add known IDs that might not appear in search
+  const knownIds = [
+    // From LTS ノーマル DB query
+    '32da695f-8e88-816f-92c3-d085373c67d6',
+    '32da695f-8e88-8189-91d9-c6e83f400aa0',
+    '32da695f-8e88-8100-9be7-e292cce3381d',
+    '32da695f-8e88-8185-9641-fa0e90ae2405',
+  ];
+
+  for (const id of knownIds) {
+    if (!allIds.has(id)) {
+      allIds.set(id, '(LTS ノーマル DB test record)');
+      log(`  Added known: ${id}`);
+    }
+  }
+
+  log(`\n✅ 合計 ${allIds.size} 件のテストレコードを検出`, 'success');
+
+  if (allIds.size > 0) {
+    document.getElementById('btnDelete').disabled = false;
+  }
+}
+
+async function deleteAll() {
+  document.getElementById('btnDelete').disabled = true;
+  log(`\n🗑️ ${allIds.size} 件を削除中...`, 'info');
+
+  let success = 0;
+  let fail = 0;
+
+  for (const [id, title] of allIds) {
+    try {
+      const res = await fetch(`${WORKER}/v1/pages/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ archived: true })
+      });
+      const data = await res.json();
+
+      if (data.archived === true) {
+        log(`  ✅ ${title}`, 'success');
+        success++;
+      } else if (data.object === 'error') {
+        log(`  ❌ ${title}: ${data.message}`, 'error');
+        fail++;
+      } else {
+        log(`  ⚠️ ${title}: unexpected response`, 'error');
+        fail++;
+      }
+    } catch (e) {
+      log(`  ❌ ${title}: ${e.message}`, 'error');
+      fail++;
+    }
+
+    // Small delay to avoid rate limiting
+    await new Promise(r => setTimeout(r, 350));
+  }
+
+  log(`\n=== 完了: ${success} 件削除成功 / ${fail} 件失敗 ===`, success > 0 ? 'success' : 'error');
+}
+</script>
+</body>
+</html>

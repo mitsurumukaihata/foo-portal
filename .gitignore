@@ -1,0 +1,13 @@
+
+# Export (generated, huge)
+# Scripts intermediate files
+# Worktrees (embedded repos)
+.claude/worktrees/
+d1-migration/*.log
+d1-migration/export/
+d1-migration/sql/
+d1-migration/sql-chunks/
+scripts/**/*.log
+scripts/**/export/
+scripts/**/import.log
+scripts/**/repair*.log

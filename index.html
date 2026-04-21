@@ -1779,6 +1779,10 @@ const APP_DEFS = [
   // ── 事務 ──
   { key: '🧾 売上入力', id: 'sales_input', label: '売上入力', sub: '日々の売上伝票入力 · 車番予測検索', section: '事務', url: 'https://mitsurumukaihata.github.io/foo-portal/sales-input.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>` },
+  { key: '📊 分析ダッシュボード', id: 'analytics', label: '分析ダッシュボード', sub: 'SQL直接集計 · 粗利 · 休眠顧客', section: '事務', url: 'https://mitsurumukaihata.github.io/foo-portal/analytics.html', allAccess: true, nameWhitelist: ['向畑充', '岡崎'],
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>` },
+  { key: '🗄 D1 Admin', id: 'd1admin', label: 'D1 Admin', sub: 'データベース直接操作・SQL実行', section: '事務', url: 'https://mitsurumukaihata.github.io/foo-portal/d1-admin.html', allAccess: true, nameWhitelist: ['向畑充'],
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6a9 3 0 0 0 18 0V5"/><path d="M3 11v6a9 3 0 0 0 18 0v-6"/></svg>` },
   { key: '📋 発注管理',          id: 'order',   label: '発注管理',           sub: '仕入れ発注 · 入出庫DB連携', section: '事務',   url: 'https://mitsurumukaihata.github.io/foo-portal/order.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>` },
   { key: '🤖 自動発注',          id: 'auto',    label: '自動発注',           sub: '在庫アラート · 発注書PDF',  section: '事務',   url: 'https://mitsurumukaihata.github.io/foo-portal/auto-order.html',

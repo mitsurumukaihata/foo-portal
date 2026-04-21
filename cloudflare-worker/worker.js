@@ -1,5 +1,34 @@
 // worker.js
+import { d1Query, d1GetPage, DB_ID_TO_TABLE } from './d1-proxy.js';
+
 var worker_default = {
+  // 毎日 18:00 UTC 自動バックアップ
+  async scheduled(event, env, ctx) {
+    const date = new Date().toISOString().slice(0, 10);
+    const tables = ['得意先マスタ', '顧客情報DB', '商品マスタ', '車両マスタ', '仕入先マスタ',
+      '売上伝票', '売上明細', '仕入伝票', '仕入明細', '勤怠管理', '入金管理', '発注管理'];
+    const results = [];
+    for (const tbl of tables) {
+      try {
+        const r = await env.DB.prepare(`SELECT * FROM "${tbl}"`).all();
+        const json = JSON.stringify(r.results);
+        await env.BACKUP.put(`${date}/${tbl}.json`, json, {
+          httpMetadata: { contentType: 'application/json' }
+        });
+        results.push({ table: tbl, count: r.results?.length || 0, status: 'ok' });
+      } catch(e) {
+        results.push({ table: tbl, status: 'error', error: e.message });
+      }
+    }
+    const manifest = {
+      backup_time: new Date().toISOString(),
+      results,
+      total_tables: tables.length,
+      success_count: results.filter(r => r.status === 'ok').length,
+    };
+    await env.BACKUP.put(`${date}/_manifest.json`, JSON.stringify(manifest, null, 2));
+    console.log('Backup complete:', manifest);
+  },
   async fetch(request, env) {
     const cors = {
       "Access-Control-Allow-Origin": "*",
@@ -607,6 +636,41 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       const dsId = j?.data_sources?.[0]?.id || null;
       if (dsId) dsCache.set(dbId, dsId);
       return dsId;
+    }
+
+    // ════════════════════════════════════════════════════════
+    // D1 プロキシ分岐 (URL に ?source=d1 または header X-Source: d1 で有効化)
+    // ════════════════════════════════════════════════════════
+    const useD1 = url.searchParams.get('source') === 'd1' || request.headers.get('X-Source') === 'd1';
+    const d1QueryMatch = url.pathname.match(/^\/(?:v1\/)?databases\/([a-f0-9-]+)\/query$/i);
+    if (useD1 && d1QueryMatch && request.method === 'POST' && env.DB) {
+      const dbId = d1QueryMatch[1].replace(/-/g, '');
+      if (DB_ID_TO_TABLE[dbId]) {
+        try {
+          const body2 = await request.text();
+          const j = body2 ? JSON.parse(body2) : {};
+          const result = await d1Query(env, dbId, j);
+          return new Response(JSON.stringify(result), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+        } catch(e) {
+          return new Response(JSON.stringify({ object: 'error', code: 'd1_query_error', message: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+        }
+      }
+    }
+
+    // D1 特殊エンドポイント: /d1/sql で直接SQL実行（admin用）
+    if (url.pathname === '/d1/sql' && request.method === 'POST' && env.DB) {
+      try {
+        const { sql, params } = await request.json();
+        // 安全のため SELECT のみ許可
+        if (!/^\s*SELECT\s/i.test(sql)) {
+          return new Response(JSON.stringify({ error: 'Only SELECT allowed' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        }
+        const stmt = env.DB.prepare(sql).bind(...(params || []));
+        const res = await stmt.all();
+        return new Response(JSON.stringify(res), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
     }
 
     // DEBUG: /legacy/databases/{id}/query でレガシー2022-06-28 API

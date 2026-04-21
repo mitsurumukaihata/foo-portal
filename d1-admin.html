@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>D1 Admin | f.o.o</title>
+<style>
+  :root {
+    --bg: #fdf6ec;
+    --surface: #fff;
+    --surface2: #faf2e5;
+    --border: #ead7bd;
+    --text: #3d2c16;
+    --muted: #8a6a3e;
+    --accent: #f0a500;
+    --accent2: #d18800;
+    --green: #2e7d32;
+    --red: #c62828;
+    --blue: #1976d2;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, system-ui, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+  }
+  header {
+    background: var(--accent);
+    color: #fff;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  header h1 { margin: 0; font-size: 16px; }
+  .container { padding: 16px; max-width: 1400px; margin: 0 auto; }
+  .tables {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .table-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .table-card:hover { border-color: var(--accent); background: var(--surface2); }
+  .table-card.active { border-color: var(--accent); background: rgba(240,165,0,0.1); }
+  .table-card h3 { margin: 0 0 4px; font-size: 13px; }
+  .table-card .count { font-size: 11px; color: var(--muted); }
+  .query-area {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  textarea {
+    width: 100%;
+    min-height: 80px;
+    font-family: 'DM Mono', 'Consolas', monospace;
+    font-size: 12px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface2);
+    resize: vertical;
+  }
+  .btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-right: 6px;
+  }
+  .btn:hover { background: var(--accent2); }
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .result {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    overflow-x: auto;
+  }
+  table.data {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  table.data th, table.data td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    white-space: nowrap;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  table.data th {
+    background: var(--surface2);
+    position: sticky;
+    top: 0;
+    font-weight: 700;
+  }
+  table.data tr:hover { background: var(--surface2); }
+  .meta {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 8px;
+    display: flex;
+    gap: 16px;
+  }
+  .quick-queries {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .quick-query {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 4px 10px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .quick-query:hover { background: var(--accent); color: #fff; }
+  .error { color: var(--red); background: #fee; padding: 8px; border-radius: 4px; }
+  .summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    text-align: center;
+  }
+  .summary-card .val { font-size: 20px; font-weight: 900; color: var(--accent); }
+  .summary-card .lbl { font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🗄 D1 Admin — foo-portal-db</h1>
+  <span style="opacity:0.8;font-size:11px;">SQL で直接データ確認</span>
+  <span style="margin-left:auto;font-size:11px;">
+    <a href="index.html" style="color:#fff;text-decoration:none;">← ポータル</a>
+  </span>
+</header>
+
+<div class="container">
+
+  <div class="summary-cards" id="summary"></div>
+
+  <h2 style="font-size:14px;margin:8px 0;">📦 テーブル一覧</h2>
+  <div class="tables" id="tables"></div>
+
+  <h2 style="font-size:14px;margin:16px 0 8px;">🔍 SQL 実行</h2>
+  <div class="query-area">
+    <div class="quick-queries" id="quick-queries"></div>
+    <textarea id="sql" placeholder="SELECT * FROM 売上伝票 LIMIT 10;"></textarea>
+    <div style="margin-top:8px;">
+      <button class="btn" onclick="runQuery()">▶ 実行 (Ctrl+Enter)</button>
+      <button class="btn btn-secondary" onclick="clearQuery()">クリア</button>
+    </div>
+  </div>
+
+  <div id="result"></div>
+
+</div>
+
+<script>
+const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
+
+const TABLES = [
+  '得意先マスタ', '顧客情報DB', '商品マスタ', '車両マスタ', '仕入先マスタ',
+  '売上伝票', '売上明細', '仕入伝票', '仕入明細',
+  '勤怠管理', '入金管理', '発注管理'
+];
+
+const QUICK_QUERIES = [
+  { label: '件数確認', sql: "SELECT\n  '売上伝票' AS tbl, COUNT(*) AS 件数 FROM 売上伝票 UNION ALL\nSELECT '売上明細', COUNT(*) FROM 売上明細 UNION ALL\nSELECT '仕入伝票', COUNT(*) FROM 仕入伝票 UNION ALL\nSELECT '車両マスタ', COUNT(*) FROM 車両マスタ UNION ALL\nSELECT '得意先マスタ', COUNT(*) FROM 得意先マスタ;" },
+  { label: '月別売上TOP', sql: "SELECT substr(売上日,1,7) AS 年月, COUNT(*) AS 件数, SUM(税込合計) AS 合計\nFROM 売上伝票\nWHERE 売上日 >= '2025-04-01'\nGROUP BY 年月\nORDER BY 年月 DESC\nLIMIT 12;" },
+  { label: '得意先ランキング', sql: "SELECT c.得意先名, COUNT(s.id) AS 伝票数, SUM(s.税込合計) AS 売上\nFROM 売上伝票 s\nLEFT JOIN 得意先マスタ c ON s.請求先ID = c.id\nWHERE s.売上日 >= '2025-04-01'\nGROUP BY s.請求先ID\nORDER BY 売上 DESC\nLIMIT 20;" },
+  { label: 'タイヤサイズ別', sql: "SELECT タイヤサイズ, COUNT(*) AS 明細数, SUM(数量) AS 本数, SUM(税込小計) AS 金額\nFROM 売上明細\nWHERE タイヤサイズ != ''\nGROUP BY タイヤサイズ\nORDER BY 金額 DESC\nLIMIT 20;" },
+  { label: '仕入先メーカー別', sql: "SELECT メーカー, COUNT(*) AS 明細数, SUM(税込小計) AS 金額\nFROM 仕入明細\nWHERE メーカー != ''\nGROUP BY メーカー\nORDER BY 金額 DESC;" },
+  { label: '粗利分析', sql: "WITH 売上 AS (\n  SELECT substr(売上日,1,7) AS 年月, SUM(税込合計) AS 売上\n  FROM 売上伝票 WHERE 売上日 >= '2024-04-01' GROUP BY 年月\n),\n仕入 AS (\n  SELECT substr(仕入日,1,7) AS 年月, SUM(税込合計) AS 仕入\n  FROM 仕入伝票 WHERE 仕入日 >= '2024-04-01' GROUP BY 年月\n)\nSELECT 売上.年月, 売上.売上, 仕入.仕入,\n  (売上.売上 - 仕入.仕入) AS 粗利,\n  ROUND((売上.売上 - 仕入.仕入) * 100.0 / 売上.売上, 1) AS 粗利率\nFROM 売上 LEFT JOIN 仕入 USING (年月)\nORDER BY 年月 DESC;" },
+  { label: '車両マスタ - 顧客別', sql: "SELECT c.得意先名, COUNT(v.id) AS 車両数, SUM(v.本数) AS タイヤ本数\nFROM 車両マスタ v\nLEFT JOIN 得意先マスタ c ON v.顧客ID = c.id\nGROUP BY v.顧客ID\nORDER BY 車両数 DESC\nLIMIT 30;" },
+  { label: '休眠顧客発見', sql: "SELECT c.得意先名, MAX(s.売上日) AS 最終取引, COUNT(s.id) AS 総件数\nFROM 得意先マスタ c\nLEFT JOIN 売上伝票 s ON s.請求先ID = c.id\nWHERE c.有効 = 1\nGROUP BY c.id\nHAVING MAX(s.売上日) < date('now', '-6 months') OR MAX(s.売上日) IS NULL\nORDER BY 最終取引 DESC;" },
+  { label: '勤怠状況今月', sql: "SELECT 社員名, \n  COUNT(*) AS 記録日数,\n  SUM(CASE WHEN 有給使用 THEN 1 ELSE 0 END) AS 有給,\n  SUM(CASE WHEN 欠勤 THEN 1 ELSE 0 END) AS 欠勤,\n  SUM(CASE WHEN 労災扱い THEN 1 ELSE 0 END) AS 労災\nFROM 勤怠管理\nWHERE 日付 >= date('now', 'start of month')\nGROUP BY 社員名\nORDER BY 社員名;" },
+];
+
+// ─── SQL 実行 ──────────
+async function runSQL(sql, params=[]) {
+  const res = await fetch(WORKER + '/d1/sql', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ sql, params })
+  });
+  return await res.json();
+}
+
+async function runQuery() {
+  const sql = document.getElementById('sql').value.trim();
+  if (!sql) return;
+  const result = document.getElementById('result');
+  result.innerHTML = '<div class="result">実行中...</div>';
+  const t0 = performance.now();
+  try {
+    const res = await runSQL(sql);
+    const t = Math.round(performance.now() - t0);
+    renderResult(res, t);
+  } catch(e) {
+    result.innerHTML = '<div class="error">❌ ' + e.message + '</div>';
+  }
+}
+
+function renderResult(res, elapsedMs) {
+  const el = document.getElementById('result');
+  if (res.error) {
+    el.innerHTML = '<div class="error">❌ ' + res.error + '</div>';
+    return;
+  }
+  const results = res.results || [];
+  if (!results.length) {
+    el.innerHTML = '<div class="result">結果 0件 <span class="meta"><span>⏱ ' + elapsedMs + 'ms</span></span></div>';
+    return;
+  }
+  const cols = Object.keys(results[0]);
+  const meta = res.meta || {};
+  let html = '<div class="result">';
+  html += '<div class="meta" style="margin-bottom:10px;">';
+  html += '<span>📊 ' + results.length + '行</span>';
+  html += '<span>⏱ ' + elapsedMs + 'ms</span>';
+  if (meta.served_by_colo) html += '<span>🌐 ' + meta.served_by_colo + '</span>';
+  if (meta.rows_read !== undefined) html += '<span>📖 ' + meta.rows_read + '行読み取り</span>';
+  html += '</div>';
+  html += '<table class="data"><thead><tr>';
+  for (const c of cols) html += '<th>' + escHtml(c) + '</th>';
+  html += '</tr></thead><tbody>';
+  for (const row of results) {
+    html += '<tr>';
+    for (const c of cols) {
+      const v = row[c];
+      let disp = v === null || v === undefined ? '<span style="color:#ccc;">NULL</span>' : escHtml(String(v));
+      if (typeof v === 'number' && String(v).length > 6) disp = Number(v).toLocaleString();
+      html += '<td>' + disp + '</td>';
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table></div>';
+  el.innerHTML = html;
+}
+
+function escHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function clearQuery() {
+  document.getElementById('sql').value = '';
+  document.getElementById('result').innerHTML = '';
+}
+
+// ─── 初期化 ──────────
+async function init() {
+  // テーブル件数取得
+  const tableEl = document.getElementById('tables');
+  tableEl.innerHTML = '';
+  const summary = document.getElementById('summary');
+  summary.innerHTML = '';
+
+  // 主要4指標
+  const summaryQueries = [
+    { label: '売上伝票', sql: "SELECT COUNT(*) AS c FROM 売上伝票" },
+    { label: '売上明細', sql: "SELECT COUNT(*) AS c FROM 売上明細" },
+    { label: '車両マスタ', sql: "SELECT COUNT(*) AS c FROM 車両マスタ" },
+    { label: '得意先マスタ', sql: "SELECT COUNT(*) AS c FROM 得意先マスタ WHERE 有効=1" },
+  ];
+  for (const sq of summaryQueries) {
+    try {
+      const r = await runSQL(sq.sql);
+      const val = r.results?.[0]?.c || 0;
+      summary.innerHTML += `<div class="summary-card"><div class="lbl">${sq.label}</div><div class="val">${val.toLocaleString()}</div></div>`;
+    } catch(e) { summary.innerHTML += `<div class="summary-card"><div class="lbl">${sq.label}</div><div class="val">?</div></div>`; }
+  }
+
+  // テーブル一覧
+  for (const t of TABLES) {
+    try {
+      const r = await runSQL(`SELECT COUNT(*) AS c FROM "${t}"`);
+      const val = r.results?.[0]?.c || 0;
+      tableEl.innerHTML += `<div class="table-card" onclick="selectTable('${t}')"><h3>${t}</h3><div class="count">${val.toLocaleString()}件</div></div>`;
+    } catch(e) {
+      tableEl.innerHTML += `<div class="table-card"><h3>${t}</h3><div class="count" style="color:var(--red);">${e.message}</div></div>`;
+    }
+  }
+
+  // クイッククエリ
+  const qqEl = document.getElementById('quick-queries');
+  qqEl.innerHTML = '';
+  for (const q of QUICK_QUERIES) {
+    const btn = document.createElement('span');
+    btn.className = 'quick-query';
+    btn.textContent = q.label;
+    btn.onclick = () => { document.getElementById('sql').value = q.sql; runQuery(); };
+    qqEl.appendChild(btn);
+  }
+}
+
+function selectTable(name) {
+  document.querySelectorAll('.table-card').forEach(c => c.classList.remove('active'));
+  event.target.closest('.table-card').classList.add('active');
+  document.getElementById('sql').value = `SELECT * FROM "${name}" LIMIT 50;`;
+  runQuery();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); runQuery(); }
+});
+
+init();
+</script>
+
+</body>
+</html>

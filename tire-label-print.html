@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>タイヤ保管ラベル</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Arial Black', Arial, sans-serif;
+    background: #eee;
+    padding: 20px;
+  }
+
+  /* ---- コントロール ---- */
+  .controls {
+    background: white;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  .controls h2 { width: 100%; font-size: 16px; color: #333; }
+  .field { display: flex; flex-direction: column; gap: 3px; }
+  .field label { font-size: 10px; font-weight: bold; color: #888; letter-spacing: 0.5px; }
+  .field select, .field input {
+    border: 1.5px solid #ddd;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 14px;
+    background: white;
+  }
+  .btn {
+    border: none;
+    border-radius: 7px;
+    padding: 8px 18px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    align-self: flex-end;
+  }
+  .btn-add   { background: #222; color: white; }
+  .btn-clear { background: #999; color: white; }
+  .btn-print { background: #e85533; color: white; margin-left: auto; }
+
+  /* ---- ラベルグリッド ---- */
+  .label-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+
+  /* ---- ラベル本体 ---- */
+  .label-card {
+    width: 200px;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.2);
+    position: relative;
+    cursor: default;
+  }
+
+  /* カラー帯 */
+  .lc-band {
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .lc-type {
+    color: white;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    background: rgba(255,255,255,0.2);
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+  .lc-snow { color: white; font-size: 18px; }
+
+  /* パターン */
+  .lc-pattern {
+    padding: 8px 12px 4px;
+    font-size: 32px;
+    font-weight: 900;
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+  .lc-pattern-prefix {
+    display: block;
+    font-size: 12px;
+    font-weight: 800;
+    opacity: 0.5;
+    letter-spacing: 1px;
+    margin-bottom: 2px;
+  }
+
+  /* サイズ */
+  .lc-size {
+    padding: 2px 12px 14px;
+    font-size: 26px;
+    font-weight: 900;
+    color: #111;
+    letter-spacing: -0.5px;
+  }
+
+  /* 削除ボタン */
+  .btn-remove {
+    position: absolute;
+    top: 4px; right: 4px;
+    background: rgba(0,0,0,0.3);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px; height: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .label-card:hover .btn-remove { opacity: 1; }
+
+  /* テーマ */
+  .blue  .lc-band { background: linear-gradient(135deg, #1a5faa, #2979c8); }
+  .blue  .lc-pattern { color: #1a5faa; }
+
+  .green .lc-band { background: linear-gradient(135deg, #1e7a3a, #2da84e); }
+  .green .lc-pattern { color: #1e7a3a; }
+
+  .red   .lc-band { background: linear-gradient(135deg, #c0292a, #e03535); }
+  .red   .lc-pattern { color: #c0292a; }
+
+  .black .lc-band { background: linear-gradient(135deg, #222, #555); }
+  .black .lc-pattern { color: #222; }
+
+  /* 印刷 */
+  @media print {
+    @page { size: A4; margin: 10mm; }
+    body { background: white; padding: 0; }
+    .controls { display: none; }
+    .label-grid { gap: 6mm; }
+    .label-card {
+      width: 88mm;
+      box-shadow: none;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      break-inside: avoid;
+    }
+    .btn-remove { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <h2>🏷 タイヤ保管ラベル</h2>
+
+  <div class="field">
+    <label>パターン</label>
+    <select id="sel-pat">
+      <option value="M935|blue|❄|スタッドレス">DELVEX M935（スタッドレス）</option>
+      <option value="M135|green||リブ">DELVEX M135（リブ）</option>
+      <option value="M634|red||ラグ">DELVEX M634（ラグ）</option>
+      <option value="custom|black||">その他（カスタム）</option>
+    </select>
+  </div>
+
+  <div class="field" id="f-custom" style="display:none">
+    <label>パターン名</label>
+    <input type="text" id="inp-custom" placeholder="例: W300" style="width:120px;">
+  </div>
+
+  <div class="field">
+    <label>サイズ</label>
+    <input type="text" id="inp-size" value="205/75 R16" style="width:120px;">
+  </div>
+
+  <div class="field">
+    <label>枚数</label>
+    <input type="number" id="inp-qty" value="1" min="1" max="30" style="width:60px;">
+  </div>
+
+  <button class="btn btn-add" onclick="add()">＋ 追加</button>
+  <button class="btn btn-clear" onclick="clearAll()">クリア</button>
+  <button class="btn btn-print" onclick="window.print()">🖨 印刷</button>
+</div>
+
+<div class="label-grid" id="grid"></div>
+
+<script>
+  document.getElementById('sel-pat').addEventListener('change', function() {
+    document.getElementById('f-custom').style.display =
+      this.value.startsWith('custom') ? '' : 'none';
+  });
+
+  function add() {
+    const [code, theme, snow, type] = document.getElementById('sel-pat').value.split('|');
+    const isCustom = code === 'custom';
+    const patCode  = isCustom ? document.getElementById('inp-custom').value.trim() || '?' : code;
+    const size     = document.getElementById('inp-size').value.trim();
+    const qty      = parseInt(document.getElementById('inp-qty').value) || 1;
+    const prefix   = isCustom ? '' : 'DELVEX';
+    for (let i = 0; i < qty; i++) {
+      document.getElementById('grid').appendChild(
+        makeCard({ prefix, patCode, theme, snow, type, size })
+      );
+    }
+  }
+
+  function makeCard({ prefix, patCode, theme, snow, type, size }) {
+    const d = document.createElement('div');
+    d.className = `label-card ${theme}`;
+    d.innerHTML = `
+      <button class="btn-remove" onclick="this.closest('.label-card').remove()">✕</button>
+      <div class="lc-band">
+        <div class="lc-snow">${snow}</div>
+        ${type ? `<div class="lc-type">${type}</div>` : ''}
+      </div>
+      <div class="lc-pattern">
+        ${prefix ? `<span class="lc-pattern-prefix">${prefix}</span>` : ''}
+        ${patCode}
+      </div>
+      <div class="lc-size">${size}</div>
+    `;
+    return d;
+  }
+
+  function clearAll() {
+    if (confirm('全ラベルを削除しますか？')) document.getElementById('grid').innerHTML = '';
+  }
+
+  // 起動時サンプル
+  [
+    { prefix:'DELVEX', patCode:'M935', theme:'blue',  snow:'❄', type:'スタッドレス', size:'205/75 R16', qty:2 },
+    { prefix:'DELVEX', patCode:'M135', theme:'green', snow:'',  type:'リブ',         size:'205/70 R16', qty:2 },
+    { prefix:'DELVEX', patCode:'M634', theme:'red',   snow:'',  type:'ラグ',         size:'205/75 R16', qty:2 },
+  ].forEach(s => {
+    for (let i = 0; i < s.qty; i++)
+      document.getElementById('grid').appendChild(makeCard(s));
+  });
+</script>
+</body>
+</html>

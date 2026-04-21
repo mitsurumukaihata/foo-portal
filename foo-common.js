@@ -7,6 +7,24 @@ const FOO_WORKER      = 'https://notion-proxy.33322666666mm.workers.dev';
 const FOO_HACCHU_DB   = '202a695f8e8880aa92f6f38d9b47b537';          // 発注管理表DB
 const FOO_HACCHUSHEET_DB = 'e400cc4f87f94af78392d794523894d9';       // 発注書（送付用）DB
 
+// D1 切替フラグ（localStorageで制御、?d1=1 でURLからも有効化可能）
+function fooUseD1() {
+  try {
+    if (new URLSearchParams(location.search).get('d1') === '1') return true;
+    if (new URLSearchParams(location.search).get('d1') === '0') return false;
+    return localStorage.getItem('foo_use_d1') === '1';
+  } catch { return false; }
+}
+function fooSetUseD1(v) {
+  try { localStorage.setItem('foo_use_d1', v ? '1' : '0'); } catch {}
+}
+// Worker への API パス（D1 モード時は ?source=d1 を付与）
+function fooWorkerPath(path) {
+  if (!fooUseD1()) return FOO_WORKER + path;
+  const sep = path.includes('?') ? '&' : '?';
+  return FOO_WORKER + path + sep + 'source=d1';
+}
+
 // ─── 在庫DB 統一マップ ──────────────────────────────────────────────
 // カテゴリ名 → 全情報（stockId, kijunId, wField, sizes, patterns, etc.）
 // ※ key: order.html の DB_MAP 短縮キーとの互換用
@@ -195,7 +213,7 @@ async function fooNotionQuery(dbId, body, timeout) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
   try {
-    const r = await fetch(`${FOO_WORKER}/databases/${dbId}/query`, {
+    const r = await fetch(fooWorkerPath(`/databases/${dbId}/query`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

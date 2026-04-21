@@ -113,6 +113,23 @@
 
 <div class="container">
 
+  <!-- 初回Welcomeメッセージ -->
+  <div id="welcome" class="card" style="background:linear-gradient(135deg,#fff8eb,#fdf6ec);border-color:var(--accent);display:none;">
+    <h2>🎉 新しいダッシュボードへようこそ！</h2>
+    <div style="font-size:13px;line-height:1.8;">
+      夜通し作業で <b>D1（高速データベース）</b> に移行しました。以前は300件までしか見えなかった集計が、瞬時に全件表示できます。<br>
+      <br>
+      <b>🎯 今日の使い方:</b>
+      <ol style="margin:6px 0;padding-left:20px;">
+        <li>下記の指標を眺めて1日のイメージをつかむ</li>
+        <li><b>😴 休眠顧客</b>セクションから営業フォローを1社選んで電話</li>
+        <li><a href="customer-360.html" style="color:var(--accent);font-weight:700;">👤 顧客360°</a> で気になる得意先の全情報を確認</li>
+        <li><a href="analytics.html" style="color:var(--accent);font-weight:700;">📊 分析ダッシュボード</a> でタイヤサイズ別の動きを見る</li>
+      </ol>
+      <button onclick="document.getElementById('welcome').style.display='none';localStorage.setItem('welcome_dismissed','1');" style="margin-top:6px;padding:6px 14px;background:var(--accent);color:#fff;border:none;border-radius:5px;cursor:pointer;">理解した ✓</button>
+    </div>
+  </div>
+
   <!-- Hero Metrics -->
   <div class="hero-grid" id="hero"></div>
 
@@ -463,6 +480,10 @@ async function loadAll() {
       loadDataHealth(),
     ]);
   } catch(e) { console.error(e); }
+}
+// 初回Welcome表示
+if (!localStorage.getItem('welcome_dismissed')) {
+  document.getElementById('welcome').style.display = 'block';
 }
 loadAll();
 </script>

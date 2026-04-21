@@ -609,6 +609,19 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       return dsId;
     }
 
+    // DEBUG: /legacy/databases/{id}/query でレガシー2022-06-28 API
+    const legacyMatch = url.pathname.match(/^\/legacy\/databases\/([a-f0-9-]+)\/query$/i);
+    if (legacyMatch && request.method === "POST") {
+      const body2 = await request.text();
+      const res2 = await fetch("https://api.notion.com/v1/databases/" + legacyMatch[1] + "/query", {
+        method: "POST",
+        headers: { ...baseHeaders, "Notion-Version": NOTION_VERSION_LEGACY },
+        body: body2,
+      });
+      const text2 = await res2.text();
+      return new Response(text2, { status: res2.status, headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
     // /databases/{id}/query → /data_sources/{ds_id}/query に自動変換
     const dbQueryMatch = url.pathname.match(/^\/(?:v1\/)?databases\/([a-f0-9-]+)\/query$/i);
     if (dbQueryMatch && request.method === "POST") {

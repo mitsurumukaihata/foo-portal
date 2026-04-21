@@ -146,6 +146,12 @@
     <div id="trend"></div>
   </div>
 
+  <!-- 経営指標 -->
+  <div class="card">
+    <h2>🏢 過去1年の経営指標</h2>
+    <div id="kpi-yearly"></div>
+  </div>
+
   <!-- データヘルス -->
   <div class="card">
     <h2>💾 データヘルス</h2>
@@ -388,6 +394,35 @@ async function loadTrend() {
   `;
 }
 
+async function loadYearlyKPI() {
+  const r = await sql(`
+    SELECT
+      COUNT(*) AS 件数,
+      SUM(税込合計) AS 売上,
+      COUNT(DISTINCT 売上日) AS 営業日,
+      COUNT(DISTINCT 請求先ID) AS 顧客数
+    FROM 売上伝票 WHERE 売上日 >= date('now','-1 year')
+  `);
+  const d = r.results?.[0];
+  if (!d || !d.件数) { document.getElementById('kpi-yearly').innerHTML = '<div class="loading">データ不足</div>'; return; }
+  const daily件 = (d.件数 / d.営業日).toFixed(1);
+  const daily円 = d.売上 / d.営業日;
+  const perCust = d.売上 / d.顧客数;
+  document.getElementById('kpi-yearly').innerHTML = `
+    <table class="data">
+      <tbody>
+        <tr><td>💰 年間売上</td><td class="num"><b>${yenShort(d.売上)}</b></td></tr>
+        <tr><td>📝 年間件数</td><td class="num">${d.件数.toLocaleString()}件</td></tr>
+        <tr><td>📅 営業日数</td><td class="num">${d.営業日}日</td></tr>
+        <tr><td>👥 取引顧客数</td><td class="num">${d.顧客数}社</td></tr>
+        <tr><td>📊 日次平均件数</td><td class="num">${daily件}件/日</td></tr>
+        <tr><td>💵 日次平均売上</td><td class="num">${yenShort(daily円)}/日</td></tr>
+        <tr><td>🏆 顧客あたり年間売上</td><td class="num">${yenShort(perCust)}/社</td></tr>
+      </tbody>
+    </table>
+  `;
+}
+
 async function loadDataHealth() {
   const tables = ['売上伝票','売上明細','仕入伝票','仕入明細','車両マスタ','得意先マスタ','顧客情報DB','商品マスタ','勤怠管理','発注管理'];
   const rows = [];
@@ -424,6 +459,7 @@ async function loadAll() {
       loadDormant(),
       loadHighValue(),
       loadTrend(),
+      loadYearlyKPI(),
       loadDataHealth(),
     ]);
   } catch(e) { console.error(e); }

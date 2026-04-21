@@ -145,6 +145,30 @@
     <div id="month-progress"></div>
   </div>
 
+  <!-- 今日の曜日パターン -->
+  <div class="card">
+    <h2>📅 今日の曜日パターン（過去1年統計）</h2>
+    <div id="dow-pattern"></div>
+  </div>
+
+  <!-- 月次予測着地 -->
+  <div class="card">
+    <h2>🔮 今月の着地予測</h2>
+    <div id="month-forecast"></div>
+  </div>
+
+  <!-- 伸びてる顧客・落ちてる顧客 -->
+  <div class="card">
+    <h2>🚀 伸びている顧客 / 📉 落ちている顧客（直近90日 vs 前90日）</h2>
+    <div id="movers"></div>
+  </div>
+
+  <!-- 新規獲得顧客 -->
+  <div class="card">
+    <h2>🌱 新規獲得顧客（過去60日に初取引）</h2>
+    <div id="new-customers"></div>
+  </div>
+
   <!-- 休眠顧客 -->
   <div class="card">
     <h2>😴 要フォロー休眠顧客（過去6ヶ月取引なし）</h2>
@@ -463,6 +487,154 @@ async function loadDataHealth() {
   `;
 }
 
+async function loadDowPattern() {
+  const dowName = ['日','月','火','水','木','金','土'][today.getDay()];
+  // SQLite strftime('%w') → 0=日,1=月... (same as JS)
+  const r = await sql(`
+    SELECT
+      AVG(日額) AS 平均売上,
+      AVG(日件数) AS 平均件数,
+      MAX(日額) AS 最高額,
+      COUNT(*) AS サンプル日数
+    FROM (
+      SELECT 売上日, SUM(税込合計) AS 日額, COUNT(*) AS 日件数
+      FROM 売上伝票
+      WHERE 売上日 >= date('now','-1 year')
+        AND CAST(strftime('%w', 売上日) AS INTEGER) = ?
+      GROUP BY 売上日
+    )
+  `, [today.getDay()]);
+  const d = r.results?.[0];
+  if (!d || !d.サンプル日数) { document.getElementById('dow-pattern').innerHTML='<div class="loading">データ不足</div>'; return; }
+  const isWeekend = today.getDay() === 0 || today.getDay() === 6;
+  document.getElementById('dow-pattern').innerHTML = `
+    <div class="insight">
+      過去1年の <b>${dowName}曜日</b> の営業データ（${d.サンプル日数}日分）:
+      平均売上 <b style="color:var(--accent2);">${yenShort(d.平均売上)}</b> / 平均 ${d.平均件数.toFixed(1)}件 /
+      最高額 ${yenShort(d.最高額)} ${isWeekend ? '⚠️ 週末なので通常休み' : ''}
+    </div>
+  `;
+}
+
+async function loadMonthForecast() {
+  const r = await sql(`
+    WITH cur AS (
+      SELECT
+        COALESCE(SUM(税込合計),0) AS 実績,
+        COUNT(DISTINCT 売上日) AS 営業日経過
+      FROM 売上伝票 WHERE substr(売上日,1,7) = strftime('%Y-%m','now')
+    ),
+    prev AS (
+      SELECT COALESCE(SUM(税込合計),0) AS 先月売上
+      FROM 売上伝票 WHERE substr(売上日,1,7) = strftime('%Y-%m','now','-1 month')
+    ),
+    avg3 AS (
+      SELECT AVG(月売上) AS 平均月売上 FROM (
+        SELECT substr(売上日,1,7) AS 年月, SUM(税込合計) AS 月売上
+        FROM 売上伝票
+        WHERE 売上日 >= date('now','-3 months','start of month')
+          AND 売上日 < date('now','start of month')
+        GROUP BY 年月
+      )
+    )
+    SELECT * FROM cur, prev, avg3
+  `);
+  const d = r.results?.[0];
+  if (!d) { document.getElementById('month-forecast').innerHTML='<div class="loading">データ不足</div>'; return; }
+  const 推定総営業日 = 22;
+  const 経過 = d.営業日経過 || 0;
+  const 残営業日 = Math.max(0, 推定総営業日 - 経過);
+  const avgDay = 経過 > 0 ? d.実績 / 経過 : 0;
+  const forecast = d.実績 + avgDay * 残営業日;
+  const vsPrev = d.先月売上 > 0 ? Math.round((forecast - d.先月売上) * 100 / d.先月売上) : 0;
+  const vs3m = d.平均月売上 > 0 ? Math.round((forecast - d.平均月売上) * 100 / d.平均月売上) : 0;
+  document.getElementById('month-forecast').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">
+      <div class="hero-item"><div class="lbl">📊 実績（${経過}日経過）</div><div class="val">${yenShort(d.実績 || 0)}</div></div>
+      <div class="hero-item highlight"><div class="lbl">🎯 予測着地</div><div class="val">${yenShort(forecast)}</div><div class="sub">残${残営業日}営業日</div></div>
+      <div class="hero-item"><div class="lbl">先月比</div><div class="val" style="color:${vsPrev>=0?'var(--green)':'var(--red)'};">${vsPrev>=0?'+':''}${vsPrev}%</div></div>
+      <div class="hero-item"><div class="lbl">3ヶ月平均比</div><div class="val" style="color:${vs3m>=0?'var(--green)':'var(--red)'};">${vs3m>=0?'+':''}${vs3m}%</div></div>
+    </div>
+    <div class="insight" style="margin-top:10px;">
+      1日平均 ${yenShort(avgDay)} ペース。このまま進めば月末着地は <b>${yenShort(forecast)}</b>。
+      ${vs3m < -10 ? '⚠️ 過去3ヶ月平均を10%以上下回るペース。休眠フォロー推奨' : vs3m > 10 ? '🔥 過去3ヶ月平均を10%以上上回る好調ペース！' : '📊 通常ペースで推移中'}
+    </div>
+  `;
+}
+
+async function loadMovers() {
+  const r = await sql(`
+    SELECT c.得意先名,
+      SUM(CASE WHEN s.売上日 >= date('now','-90 days') THEN s.税込合計 ELSE 0 END) AS 直近90日,
+      SUM(CASE WHEN s.売上日 >= date('now','-180 days') AND s.売上日 < date('now','-90 days') THEN s.税込合計 ELSE 0 END) AS 前90日
+    FROM 売上伝票 s
+    LEFT JOIN 得意先マスタ c ON s.請求先ID = c.id
+    WHERE s.売上日 >= date('now','-180 days') AND c.得意先名 IS NOT NULL
+    GROUP BY c.id
+    HAVING 直近90日 > 50000 OR 前90日 > 50000
+  `);
+  const rows = r.results || [];
+  const movers = rows.map(r => {
+    const diff = r.直近90日 - r.前90日;
+    const pct = r.前90日 > 0 ? Math.round(diff * 100 / r.前90日) : (r.直近90日 > 0 ? 999 : 0);
+    return { ...r, diff, pct };
+  });
+  const risers = [...movers].filter(m => m.前90日 > 0 && m.pct >= 20).sort((a,b) => b.diff - a.diff).slice(0, 5);
+  const fallers = [...movers].filter(m => m.前90日 > 50000 && m.pct <= -20).sort((a,b) => a.diff - b.diff).slice(0, 5);
+  const renderTable = (rows, color, label) => rows.length ? `
+    <div style="margin-bottom:12px;">
+      <div style="font-weight:700;color:${color};margin-bottom:6px;">${label}</div>
+      <table class="data">
+        <thead><tr><th>顧客</th><th class="num">前90日</th><th class="num">直近90日</th><th class="num">変化</th></tr></thead>
+        <tbody>${rows.map(r => `
+          <tr>
+            <td>${esc(r.得意先名)}</td>
+            <td class="num" style="color:var(--muted);">${yenShort(r.前90日)}</td>
+            <td class="num"><b>${yenShort(r.直近90日)}</b></td>
+            <td class="num" style="color:${color};font-weight:700;">${r.pct>=0?'+':''}${r.pct}%</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  ` : '';
+  document.getElementById('movers').innerHTML =
+    renderTable(risers, 'var(--green)', '🚀 伸びている TOP5') +
+    renderTable(fallers, 'var(--red)', '📉 落ちている TOP5（要フォロー）') +
+    (!risers.length && !fallers.length ? '<div class="loading">該当顧客なし</div>' : '');
+}
+
+async function loadNewCustomers() {
+  const r = await sql(`
+    SELECT c.得意先名, MIN(s.売上日) AS 初取引日, COUNT(s.id) AS 件数, SUM(s.税込合計) AS 累計額
+    FROM 売上伝票 s
+    LEFT JOIN 得意先マスタ c ON s.請求先ID = c.id
+    WHERE c.得意先名 IS NOT NULL
+    GROUP BY c.id
+    HAVING MIN(s.売上日) >= date('now','-60 days')
+    ORDER BY 初取引日 DESC
+    LIMIT 10
+  `);
+  const rows = r.results || [];
+  if (!rows.length) {
+    document.getElementById('new-customers').innerHTML = '<div class="loading">過去60日の新規獲得なし — 営業活動チャンス！</div>';
+    return;
+  }
+  document.getElementById('new-customers').innerHTML = `
+    <table class="data">
+      <thead><tr><th>顧客</th><th>初取引日</th><th class="num">件数</th><th class="num">累計額</th></tr></thead>
+      <tbody>${rows.map(r => `
+        <tr>
+          <td><b>🌱 ${esc(r.得意先名)}</b></td>
+          <td style="color:var(--green);">${r.初取引日}</td>
+          <td class="num">${r.件数}</td>
+          <td class="num">${yenShort(r.累計額)}</td>
+        </tr>
+      `).join('')}</tbody>
+    </table>
+    <div style="font-size:10px;color:var(--muted);margin-top:6px;">💡 新規開拓は2回目取引を確保すると定着率が大幅UP。フォロー連絡を推奨</div>
+  `;
+}
+
 async function loadAll() {
   document.querySelectorAll('.card > div:last-child').forEach(d => {
     if (d.id) d.innerHTML = '<div class="loading"><div class="spinner"></div> 読込中...</div>';
@@ -473,6 +645,10 @@ async function loadAll() {
       loadHero(),
       loadActions(),
       loadMonthProgress(),
+      loadDowPattern(),
+      loadMonthForecast(),
+      loadMovers(),
+      loadNewCustomers(),
       loadDormant(),
       loadHighValue(),
       loadTrend(),

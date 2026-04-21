@@ -157,7 +157,13 @@ function mapPayment(k) {
   return '売掛';
 }
 const CAR_NUMBER_RE = /([\u4e00-\u9fff\u3040-\u309f]{1,4}\s*\d{2,4}\s*[\u3040-\u309f]\s*\d{1,4}-\d{1,4})/;
+const CAR_NUMBER_RE_G = /([\u4e00-\u9fff\u3040-\u309f]{1,4}\s*\d{2,4}\s*[\u3040-\u309f]\s*\d{1,4}-\d{1,4})/g;
 function extractCarNumber(bikou) { if (!bikou) return ''; const m = bikou.match(CAR_NUMBER_RE); return m ? m[1].replace(/\s/g,'') : ''; }
+function extractAllCarNumbers(bikou) {
+  if (!bikou) return [];
+  const matches = [...bikou.matchAll(CAR_NUMBER_RE_G)];
+  return [...new Set(matches.map(m => m[1].replace(/\s/g, '')))]; // 重複除去
+}
 
 // 顧客マップ取得
 async function buildCustomerMap() {
@@ -247,28 +253,31 @@ const args = process.argv.slice(2);
 const fileFilter = args.indexOf('--files');
 const fileFilterSet = fileFilter >= 0 ? new Set(args[fileFilter+1].split(',').map(s=>s.trim())) : null;
 
-// 300件キャップ回避: 既存チェックはper-slip filter で都度実施（existing-keysは不要）
-const existingKeys = new Set(); // runtime cache of confirmed-existing keys within this run
-log(`📊 既存チェック: per-slip filter方式（Notion API 300件キャップ回避）`);
+// ファイル単位バッチ方式: 300件キャップ回避 & 高速化
+const existingKeys = new Set(); // runtime cache across run
+log(`📊 既存チェック: ファイル単位バッチ方式（期間フィルタでbulk preload）`);
 
-async function slipAlreadyExists(denpyoNo, salesDate) {
-  const key = denpyoNo + '|' + salesDate;
-  if (existingKeys.has(key)) return true;
-  const body = {
-    page_size: 1,
-    filter: {
-      and: [
-        { property: '備考', rich_text: { contains: '弥生伝票' + denpyoNo } },
-        { property: '売上日', date: { equals: salesDate } },
-      ]
+async function preloadExistingForRange(fromDate, toDate) {
+  const keys = new Set();
+  let cursor = null, pages = 0;
+  do {
+    const body = {
+      page_size: 100,
+      filter: { property: '売上日', date: { on_or_after: fromDate, on_or_before: toDate } }
+    };
+    if (cursor) body.start_cursor = cursor;
+    const r = await nf('POST', '/databases/' + SALES_DB + '/query', body);
+    for (const p of (r?.results || [])) {
+      const bikou = p.properties['備考']?.rich_text?.[0]?.plain_text || '';
+      const date = p.properties['売上日']?.date?.start || '';
+      const m = bikou.match(/弥生伝票(\d+)/);
+      if (m && date) keys.add(m[1] + '|' + date);
     }
-  };
-  const r = await nf('POST', '/databases/' + SALES_DB + '/query', body);
-  if ((r?.results || []).length > 0) {
-    existingKeys.add(key);
-    return true;
-  }
-  return false;
+    cursor = r.has_more ? r.next_cursor : null;
+    pages++;
+    if (pages > 10) break; // 300件キャップ対策: 安全のため
+  } while (cursor);
+  return keys;
 }
 
 log('📥 顧客マップ取得中...');
@@ -288,24 +297,35 @@ for (const fileSpec of ALL_FILES) {
   log(`   解析: ${slips.length}伝票`);
   if (!slips.length) continue;
 
+  // ファイル範囲の既存データを1回だけバッチ取得
+  const dates = slips.map(s => s.salesDate).filter(Boolean).sort();
+  const fromDate = dates[0] || '';
+  const toDate = dates[dates.length - 1] || '';
+  const existingInRange = fromDate ? await preloadExistingForRange(fromDate, toDate) : new Set();
+  log(`   期間 ${fromDate}〜${toDate} 既存: ${existingInRange.size}件`);
+
   let fileOk = 0, fileFail = 0, fileSkip = 0;
   for (let i = 0; i < slips.length; i++) {
     const slip = slips[i];
     const key = slip.denpyoNo + '|' + (slip.salesDate || '');
-    if (await slipAlreadyExists(slip.denpyoNo, slip.salesDate)) { fileSkip++; totalSkip++; continue; }
+    if (existingInRange.has(key) || existingKeys.has(key)) { fileSkip++; totalSkip++; continue; }
 
     const totals = calcSlipTotals(slip);
-    const carNumber = extractCarNumber(slip.bikouList.join(' '));
+    // 全明細の備考+伝票備考から全車番を抽出（重複除去済み）
+    const allBikouText = [slip.bikouList.join(' '), ...slip.details.map(d => d.bikou || '')].join(' ');
+    const allCarNumbers = extractAllCarNumbers(allBikouText);
+    const carNumber = allCarNumbers[0] || ''; // 代表車番（伝票タイトル用）
     const workType = guessWorkType(slip.details);
     const custId = custMap.get(slip.custCode);
     let title = `${slip.salesDate.replace(/-/g, '/')} ${hankanaToZen(slip.custName)}`;
-    if (carNumber) title += ` ${carNumber}`;
+    if (allCarNumbers.length === 1) title += ` ${carNumber}`;
+    else if (allCarNumbers.length > 1) title += ` (${allCarNumbers.length}台)`;
 
     const slipProps = {
       '伝票タイトル': { title: [{ text: { content: title.slice(0, 200) } }] },
       '伝票種類': { select: { name: '納品書' } },
       '売上日': { date: { start: slip.salesDate } },
-      '車番': { rich_text: [{ text: { content: carNumber } }] },
+      '車番': { rich_text: [{ text: { content: allCarNumbers.join(', ') } }] },
       '作業区分': { select: { name: workType } },
       '支払い方法': { select: { name: mapPayment(slip.torihikiKubun) } },
       '宛先敬称': { select: { name: '御中' } },
@@ -353,6 +373,9 @@ for (const fileSpec of ALL_FILES) {
       };
       if (d.unit) dProps['単位'] = { select: { name: d.unit } };
       if (d.bikou) dProps['弥生備考'] = { rich_text: [{ text: { content: d.bikou.slice(0,200) } }] };
+      // 明細行ごとの車番: 明細備考 or 伝票備考（明細備考にない場合） から1台目
+      const detailCar = extractCarNumber(d.bikou) || (allCarNumbers.length === 1 ? carNumber : '');
+      if (detailCar) dProps['車番'] = { rich_text: [{ text: { content: detailCar } }] };
       const rd = await nf('POST', '/pages', { parent: { database_id: DETAIL_DB }, properties: dProps });
       if (!rd || rd.object === 'error' || !rd.id) totalDetailFail++;
       else totalDetailOk++;

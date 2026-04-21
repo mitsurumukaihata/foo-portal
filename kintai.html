@@ -493,7 +493,8 @@ async function renderHome() {
 
   try {
     // 選択日の打刻レコードを取得（複数あれば最新更新分を優先）
-    const res = await notionAPI('POST', `/databases/${KINTAI_DB}/query`, {
+    // 1段目: 指定休=false に限定
+    let res = await notionAPI('POST', `/databases/${KINTAI_DB}/query`, {
       filter: {
         and: [
           { property: '社員名', select: { equals: USER.name } },
@@ -504,7 +505,23 @@ async function renderHome() {
       sorts: [{ timestamp: 'last_edited_time', direction: 'descending' }],
       page_size: 5
     });
-    const recs = res.results || [];
+    let recs = res.results || [];
+    // 2段目フォールバック: 何もヒットしない場合、指定休フィルタを外して再検索
+    // （有給チェックが入ってる記録で、指定休が誤ってONになってる場合の救済）
+    if (!recs.length) {
+      console.warn('[kintai] 1段目フィルタで0件 → 指定休フィルタ外して再検索');
+      res = await notionAPI('POST', `/databases/${KINTAI_DB}/query`, {
+        filter: {
+          and: [
+            { property: '社員名', select: { equals: USER.name } },
+            { property: '日付', date: { equals: selectedDate } },
+          ]
+        },
+        sorts: [{ timestamp: 'last_edited_time', direction: 'descending' }],
+        page_size: 5
+      });
+      recs = (res.results || []).filter(p => !p.properties?.['指定休']?.checkbox);
+    }
     // 複数あれば、最も情報量が多い（有給/労災/欠勤 or 出退勤が入ってる）レコードを優先
     const scoreRec = (p) => {
       const pp = p.properties || {};

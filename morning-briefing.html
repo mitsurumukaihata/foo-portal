@@ -130,8 +130,20 @@
     </div>
   </div>
 
+  <!-- AIサマリ -->
+  <div class="card" id="ai-summary-card" style="background:linear-gradient(135deg,#fff8eb,#faf2e5);border:2px solid var(--accent);">
+    <h2 style="margin-bottom:4px;">🤖 今朝のサマリ</h2>
+    <div id="ai-summary" style="font-size:14px;line-height:1.9;"></div>
+  </div>
+
   <!-- Hero Metrics -->
   <div class="hero-grid" id="hero"></div>
+
+  <!-- 昨年同月比 -->
+  <div class="card">
+    <h2>📆 昨年同月比</h2>
+    <div id="yoy"></div>
+  </div>
 
   <!-- Today's Focus -->
   <div class="card">
@@ -635,6 +647,115 @@ async function loadNewCustomers() {
   `;
 }
 
+async function loadYoY() {
+  const r = await sql(`
+    SELECT
+      (SELECT COALESCE(SUM(税込合計),0) FROM 売上伝票 WHERE substr(売上日,1,7) = strftime('%Y-%m','now')) AS 今月,
+      (SELECT COALESCE(SUM(税込合計),0) FROM 売上伝票 WHERE substr(売上日,1,7) = strftime('%Y-%m','now','-1 year')) AS 昨年同月,
+      (SELECT COALESCE(SUM(税込合計),0) FROM 売上伝票 WHERE 売上日 >= date('now','start of month','-1 year') AND 売上日 < date('now','-1 year','+1 day')) AS 昨年同日まで,
+      (SELECT COALESCE(SUM(税込合計),0) FROM 売上伝票 WHERE 売上日 >= date('now','-1 year','start of year') AND 売上日 < date('now','-1 year','+1 day')) AS 昨年度累計,
+      (SELECT COALESCE(SUM(税込合計),0) FROM 売上伝票 WHERE 売上日 >= date('now','start of year')) AS 今年度累計
+  `);
+  const d = r.results?.[0];
+  if (!d) { document.getElementById('yoy').innerHTML = '<div class="loading">データ不足</div>'; return; }
+  const ydayPct = d.昨年同日まで > 0 ? Math.round((d.今月 - d.昨年同日まで) * 100 / d.昨年同日まで) : 0;
+  const yfullPct = d.昨年同月 > 0 ? Math.round((d.今月 - d.昨年同月) * 100 / d.昨年同月) : 0;
+  const ytdPct = d.昨年度累計 > 0 ? Math.round((d.今年度累計 - d.昨年度累計) * 100 / d.昨年度累計) : 0;
+  document.getElementById('yoy').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;">
+      <div class="hero-item">
+        <div class="lbl">今月（今日まで）</div>
+        <div class="val">${yenShort(d.今月)}</div>
+        <div class="sub" style="color:${ydayPct>=0?'var(--green)':'var(--red)'};">昨年同日比 ${ydayPct>=0?'+':''}${ydayPct}%</div>
+      </div>
+      <div class="hero-item">
+        <div class="lbl">昨年同月（全期間）</div>
+        <div class="val">${yenShort(d.昨年同月)}</div>
+        <div class="sub" style="color:${yfullPct>=0?'var(--green)':'var(--red)'};">月次比 ${yfullPct>=0?'+':''}${yfullPct}%</div>
+      </div>
+      <div class="hero-item highlight">
+        <div class="lbl">年度累計 YTD</div>
+        <div class="val">${yenShort(d.今年度累計)}</div>
+        <div class="sub">昨年同期: ${yenShort(d.昨年度累計)}</div>
+      </div>
+      <div class="hero-item">
+        <div class="lbl">YTD前年比</div>
+        <div class="val" style="color:${ytdPct>=0?'var(--green)':'var(--red)'};">${ytdPct>=0?'+':''}${ytdPct}%</div>
+        <div class="sub">${ytdPct>=0 ? '📈 昨年超えペース' : '📉 昨年を下回る'}</div>
+      </div>
+    </div>
+  `;
+}
+
+async function loadAISummary() {
+  const el = document.getElementById('ai-summary');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div> 分析中...</div>';
+  try {
+    const r = await sql(`
+      SELECT
+        (SELECT COALESCE(SUM(税込合計),0) FROM 売上伝票 WHERE 売上日 = date('now')) AS 今日,
+        (SELECT COUNT(*) FROM 売上伝票 WHERE 売上日 = date('now')) AS 今日件数,
+        (SELECT COALESCE(SUM(税込合計),0) FROM 売上伝票 WHERE substr(売上日,1,7) = strftime('%Y-%m','now')) AS 今月,
+        (SELECT COALESCE(SUM(税込合計),0) FROM 売上伝票 WHERE substr(売上日,1,7) = strftime('%Y-%m','now','-1 year')) AS 昨年同月,
+        (SELECT COUNT(*) FROM 得意先マスタ c WHERE 有効=1 AND c.id IN (SELECT 請求先ID FROM 売上伝票) AND NOT EXISTS (SELECT 1 FROM 売上伝票 WHERE 請求先ID=c.id AND 売上日 >= date('now','-6 months'))) AS 休眠数,
+        (SELECT COUNT(*) FROM 売上伝票 WHERE ステータス='未請求') AS 未請求,
+        (SELECT COUNT(*) FROM 売上伝票 WHERE 売上日 >= date('now','-7 days')) AS 週件数,
+        (SELECT COALESCE(SUM(税込合計),0) FROM 売上伝票 WHERE 売上日 >= date('now','-7 days')) AS 週売上
+    `);
+    const d = r.results?.[0] || {};
+    const msgs = [];
+    const dow = ['日','月','火','水','木','金','土'][today.getDay()];
+
+    // あいさつ
+    const hour = today.getHours();
+    const greet = hour < 5 ? '🌙 夜更かしお疲れさまです' : hour < 10 ? '☀️ おはようございます' : hour < 17 ? '😊 こんにちは' : '🌆 お疲れさまです';
+    msgs.push(`${greet}、向畑さん。今日は <b>${today.getMonth()+1}月${today.getDate()}日(${dow})</b> です。`);
+
+    // 今日の状況
+    if (d.今日件数 > 0) {
+      msgs.push(`本日はすでに <b>${d.今日件数}件</b>・<b style="color:var(--accent2);">${yenShort(d.今日)}</b> の取引があります。`);
+    } else {
+      msgs.push(`本日はまだ取引の記録がありません。`);
+    }
+
+    // 今月ペース
+    if (d.今月 > 0 && d.昨年同月 > 0) {
+      const pct = Math.round((d.今月 - d.昨年同月) * 100 / d.昨年同月);
+      if (pct >= 10) msgs.push(`🔥 今月は昨年同月比 <b style="color:var(--green);">+${pct}%</b> と好調です。この勢いを維持したいところ。`);
+      else if (pct <= -10) msgs.push(`⚠️ 今月は昨年同月比 <b style="color:var(--red);">${pct}%</b>。テコ入れが必要かも。休眠顧客のフォロー推奨です。`);
+      else msgs.push(`📊 今月は昨年同月比 <b>${pct>=0?'+':''}${pct}%</b>、ほぼ例年並みのペースです。`);
+    }
+
+    // 週の勢い
+    if (d.週件数 > 0) {
+      msgs.push(`直近7日で <b>${d.週件数}件</b>・<b>${yenShort(d.週売上)}</b> を記録。`);
+    }
+
+    // アラート
+    const alerts = [];
+    if (d.休眠数 >= 30) alerts.push(`😴 ${d.休眠数}社 が6ヶ月以上無取引（下の休眠リスト参照）`);
+    if (d.未請求 > 0) alerts.push(`🧾 ${d.未請求}件 の未請求伝票あり`);
+    if (alerts.length) {
+      msgs.push(`⚡ 注目: ${alerts.join('／')}`);
+    }
+
+    // 励まし
+    const encouragement = [
+      '今日も1日よろしくお願いします！',
+      '小さな行動の積み重ねが会社を強くします。',
+      '休眠顧客への1本の電話が大きな売上につながるかも。',
+      '数字は事実、判断は人。このダッシュボードは参考情報です。',
+      '会社を最大に動かすのは向畑さん、あなたです。',
+      '完璧より継続。毎日見ることが成功の鍵。',
+    ];
+    msgs.push(`<span style="color:var(--muted);">${encouragement[today.getDate() % encouragement.length]}</span>`);
+
+    el.innerHTML = msgs.map(m => `<div style="margin-bottom:6px;">${m}</div>`).join('');
+  } catch(e) {
+    el.innerHTML = '<div class="loading">分析エラー: ' + esc(e.message) + '</div>';
+  }
+}
+
 async function loadAll() {
   document.querySelectorAll('.card > div:last-child').forEach(d => {
     if (d.id) d.innerHTML = '<div class="loading"><div class="spinner"></div> 読込中...</div>';
@@ -642,7 +763,9 @@ async function loadAll() {
   document.getElementById('hero').innerHTML = '<div class="loading"><div class="spinner"></div> 読込中...</div>';
   try {
     await Promise.all([
+      loadAISummary(),
       loadHero(),
+      loadYoY(),
       loadActions(),
       loadMonthProgress(),
       loadDowPattern(),

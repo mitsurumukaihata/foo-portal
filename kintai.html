@@ -1730,17 +1730,26 @@ async function renderAll() {
         const s = r ? timeToDisp(r.properties?.['出勤']?.number) : null;
         const t = r ? timeToDisp(r.properties?.['退勤']?.number) : null;
         const isShiteikyu = r?.properties?.['指定休']?.checkbox;
+        const isYukyu     = r?.properties?.['有給使用']?.checkbox;
+        const isRousai    = r?.properties?.['労災扱い']?.checkbox;
+        const isKekkin    = r?.properties?.['欠勤']?.checkbox;
         const ini = name.replace(/\s/g,'').slice(-1);
-        let badge = '';
-        if (isShiteikyu) badge = `<span class="kr-badge badge-shiteikyu">指定休</span>`;
-        else if (s && t) badge = `<span class="kr-badge badge-ok">退勤済</span>`;
-        else if (s) badge = `<span class="kr-badge badge-mid">出勤中</span>`;
-        else badge = `<span class="kr-badge badge-none">未打刻</span>`;
+        // バッジは優先順に：指定休 > 有給 > 労災 > 欠勤 > 打刻状態
+        let badges = '';
+        if (isShiteikyu) badges += `<span class="kr-badge badge-shiteikyu">指定休</span>`;
+        if (isYukyu)     badges += `<span class="kr-badge yukyu">🏖 有給</span>`;
+        if (isRousai)    badges += `<span class="kr-badge rousai">🚑 労災</span>`;
+        if (isKekkin)    badges += `<span class="kr-badge kekkin">欠勤</span>`;
+        if (!badges) {
+          if (s && t) badges = `<span class="kr-badge badge-ok">退勤済</span>`;
+          else if (s) badges = `<span class="kr-badge badge-mid">出勤中</span>`;
+          else badges = `<span class="kr-badge badge-none">未打刻</span>`;
+        }
         return `<div class="kintai-row">
           <div class="kr-avatar">${ini}</div>
           <div class="kr-name">${name}</div>
           <div class="kr-time">${s?s:'—'} ${t?'→'+t:''}</div>
-          ${badge}
+          <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;">${badges}</div>
         </div>`;
       }).join('');
     } else {
@@ -1752,17 +1761,25 @@ async function renderAll() {
           const s = timeToDisp(r.properties?.['出勤']?.number);
           const t = timeToDisp(r.properties?.['退勤']?.number);
           const isShiteikyu = r.properties?.['指定休']?.checkbox;
+          const isYukyu     = r.properties?.['有給使用']?.checkbox;
+          const isRousai    = r.properties?.['労災扱い']?.checkbox;
+          const isKekkin    = r.properties?.['欠勤']?.checkbox;
           const d = new Date(dateStr);
           const dayLabel = dateStr ? `${d.getMonth()+1}/${d.getDate()}（${dayNames[d.getDay()]}）` : '';
-          let badge = '';
-          if (isShiteikyu) badge = `<span class="kr-badge badge-shiteikyu">指定休</span>`;
-          else if (s && t) badge = `<span class="kr-badge badge-ok">退勤済</span>`;
-          else if (s) badge = `<span class="kr-badge badge-mid">出勤中</span>`;
-          else badge = `<span class="kr-badge badge-none">未打刻</span>`;
+          let badges = '';
+          if (isShiteikyu) badges += `<span class="kr-badge badge-shiteikyu">指定休</span>`;
+          if (isYukyu)     badges += `<span class="kr-badge yukyu">🏖 有給</span>`;
+          if (isRousai)    badges += `<span class="kr-badge rousai">🚑 労災</span>`;
+          if (isKekkin)    badges += `<span class="kr-badge kekkin">欠勤</span>`;
+          if (!badges) {
+            if (s && t) badges = `<span class="kr-badge badge-ok">退勤済</span>`;
+            else if (s) badges = `<span class="kr-badge badge-mid">出勤中</span>`;
+            else badges = `<span class="kr-badge badge-none">未打刻</span>`;
+          }
           return `<div class="kintai-row">
             <div style="font-family:var(--font-mono,monospace);font-size:12px;color:var(--muted);min-width:70px;">${dayLabel}</div>
             <div class="kr-time" style="flex:1;">${s?s:'—'} ${t?'→'+t:''}</div>
-            ${badge}
+            <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;">${badges}</div>
           </div>`;
         }).join('');
       }

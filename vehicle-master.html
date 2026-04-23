@@ -530,6 +530,7 @@ async function resolveCustomerNames(vehicles) {
       v.billerName = v.customerName;
       v.customerName = euName;
       v.euFromMemo = true;
+      v.furigana = '';  // 元請けのふりがなは無効化(エンドユーザー名でソートする)
     } else if (!v.customerName && memo) {
       const m2 = memo.match(/顧客:\s*([^\n\/(]+)/);
       const m3 = memo.match(/元請け:\s*([^\n\/(]+)/);

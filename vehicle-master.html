@@ -127,6 +127,13 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-seri
 .v-tag.cat{background:rgba(59,130,246,.12);color:var(--blue);border:1px solid rgba(59,130,246,.25);}
 .v-tag.stud{background:rgba(168,85,247,.12);color:var(--purple);border:1px solid rgba(168,85,247,.25);}
 .v-tag.count{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.25);}
+.v-tag.biller{font-weight:700;}
+.v-tag.biller.toyo{background:rgba(220,38,38,.12);color:#dc2626;border:1px solid rgba(220,38,38,.3);}
+.v-tag.biller.dunlop{background:rgba(245,158,11,.12);color:#d97706;border:1px solid rgba(245,158,11,.3);}
+.v-tag.biller.bs{background:rgba(37,99,235,.12);color:#2563eb;border:1px solid rgba(37,99,235,.3);}
+.v-tag.biller.fuso{background:rgba(168,85,247,.12);color:#9333ea;border:1px solid rgba(168,85,247,.3);}
+.v-tag.biller.yokohama{background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.3);}
+.v-tag.biller.direct{background:rgba(100,116,139,.12);color:#64748b;border:1px solid rgba(100,116,139,.3);}
 
 /* ── Card Expanded ── */
 .v-card-detail{display:none;border-top:1px solid var(--border);padding:14px 16px;background:var(--s2);}
@@ -757,6 +764,24 @@ function renderCard(v, container) {
         </div>
       </div>
       <div class="v-tags">
+        ${(() => {
+          // 元請け種別タグ
+          const memoStr = String(v.memo || '');
+          let billerTag = '';
+          if (v.billerName) {
+            // EU適用済み (元請け由来)
+            const b = v.billerName;
+            if (/トーヨー|ﾄｰﾖｰ/.test(b)) billerTag = '<span class="v-tag biller toyo">🅣 トーヨー経由</span>';
+            else if (/ダンロップ|DUNLOP/i.test(b)) billerTag = '<span class="v-tag biller dunlop">🅓 ダンロップ経由</span>';
+            else if (/ブリヂストン|BSタイヤ/i.test(b)) billerTag = '<span class="v-tag biller bs">🅑 BS経由</span>';
+            else if (/三菱ふそう|ふそう中国/.test(b)) billerTag = '<span class="v-tag biller fuso">🅕 ふそう経由</span>';
+            else if (/ヨコハマ/.test(b)) billerTag = '<span class="v-tag biller yokohama">🅨 ヨコハマ経由</span>';
+          } else if (v.customerName) {
+            // 直取引 (エンドユーザー未差替)
+            billerTag = '<span class="v-tag biller direct">💼 直販</span>';
+          }
+          return billerTag;
+        })()}
         ${v.category ? `<span class="v-tag cat">${v.category}</span>` : ''}
         ${v.studless && v.studless !== 'なし' ? `<span class="v-tag stud">❄ ${v.studless}</span>` : ''}
         ${v.count ? `<span class="v-tag count">${v.count}本</span>` : ''}

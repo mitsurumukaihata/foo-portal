@@ -398,73 +398,59 @@ function parseVehicle(page) {
   };
 }
 
-// ── Fetch Customer Names (D1直接JOINで全車両の真の顧客名を取得) ──
-async function resolveCustomerNames(vehicles) {
-  if (!vehicles.length) return;
-  // D1から全車両の顧客名をバルクで取得（得意先マスタと顧客情報DBを両方チェック）
-  try {
-    const res = await fetch('https://notion-proxy.33322666666mm.workers.dev/d1/sql', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sql: `SELECT v.id, COALESCE(e.得意先名, c.顧客名) AS 顧客名, v.メモ
-              FROM 車両マスタ v
-              LEFT JOIN 得意先マスタ e ON v.顧客ID = e.id
-              LEFT JOIN 顧客情報DB c ON v.顧客ID = c.id`
-      })
-    });
-    const data = await res.json();
-    const nameMap = new Map();
-    (data.results || []).forEach(r => {
-      nameMap.set(r.id, { name: r.顧客名 || '', memo: r.メモ || '' });
-    });
-    // 各車両に反映（フォールバック含む）
-    vehicles.forEach(v => {
-      const entry = nameMap.get(v.id);
-      if (entry && entry.name) {
-        v.customerName = entry.name;
-      } else if (v.memo) {
-        const m1 = v.memo.match(/エンドユーザー:\s*([^\n\/]+)/);
-        const m2 = v.memo.match(/顧客:\s*([^\n\/]+)/);
-        const m3 = v.memo.match(/元請け:\s*([^\n\/]+)/);
-        if (m1) v.customerName = m1[1].trim() + ' (EU)';
-        else if (m2) v.customerName = m2[1].trim();
-        else if (m3) v.customerName = m3[1].trim() + ' (元請)';
-      }
-    });
-  } catch (e) {
-    console.warn('D1 顧客名取得失敗、メモから抽出のみで動作:', e);
-    vehicles.forEach(v => {
-      if (v.memo) {
-        const m1 = v.memo.match(/エンドユーザー:\s*([^\n\/]+)/);
-        const m2 = v.memo.match(/顧客:\s*([^\n\/]+)/);
-        const m3 = v.memo.match(/元請け:\s*([^\n\/]+)/);
-        if (m1) v.customerName = m1[1].trim() + ' (EU)';
-        else if (m2) v.customerName = m2[1].trim();
-        else if (m3) v.customerName = m3[1].trim() + ' (元請)';
-      }
-    });
-  }
+// ── Fetch Vehicles (D1直接・顧客名もJOINで一括取得) ──
+async function fetchVehicles(filterTitle) {
+  const filterClause = filterTitle
+    ? `AND v.車番 LIKE '%${filterTitle.replace(/'/g, "''")}%'`
+    : '';
+  const sql = `
+    SELECT v.id, v.車番, v.車種, v.前輪サイズ, v.後輪サイズ, v.前輪パターン, v.後輪パターン,
+           v.カテゴリ AS タイヤカテゴリ, v.本数, v.メモ, v.管理番号, v.created_time,
+           v.顧客ID, COALESCE(e.得意先名, c.顧客名) AS 顧客名
+    FROM 車両マスタ v
+    LEFT JOIN 得意先マスタ e ON v.顧客ID = e.id
+    LEFT JOIN 顧客情報DB c ON v.顧客ID = c.id
+    WHERE 1=1 ${filterClause}
+    ORDER BY v.created_time DESC
+  `;
+  const res = await fetch('https://notion-proxy.33322666666mm.workers.dev/d1/sql', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sql })
+  });
+  const data = await res.json();
+  return (data.results || []).map(r => ({
+    id: r.id,
+    plate: r.車番 || '',
+    customerRel: r.顧客ID ? [{ id: r.顧客ID }] : [],
+    customerName: r.顧客名 || '',
+    type: r.車種 || '',
+    frontSize: r.前輪サイズ || '',
+    rearSize: r.後輪サイズ || '',
+    frontPattern: r.前輪パターン || '',
+    rearPattern: r.後輪パターン || '',
+    category: r.タイヤカテゴリ || '',
+    studless: '',
+    count: r.本数 || '',
+    pressure: '',
+    memo: r.メモ || '',
+    createdTime: r.created_time
+  }));
 }
 
-// ── Fetch Vehicles (全件取得 - ページング対応) ──
-async function fetchVehicles(filterTitle) {
-  const all = [];
-  let cursor = null;
-  const maxPages = 50; // 最大5000件まで
-  for (let i = 0; i < maxPages; i++) {
-    const body = {
-      filter: filterTitle ? { property: '車番', title: { contains: filterTitle } } : undefined,
-      sorts: [{ timestamp: 'created_time', direction: 'descending' }],
-      page_size: 100
-    };
-    if (cursor) body.start_cursor = cursor;
-    const data = await notionAPI('/databases/' + VEHICLE_DB + '/query', 'POST', body);
-    all.push(...data.results);
-    if (!data.has_more) break;
-    cursor = data.next_cursor;
-  }
-  return all.map(parseVehicle);
+// ── フォールバック顧客名（D1で取れない場合、メモから抽出） ──
+async function resolveCustomerNames(vehicles) {
+  // D1JOINで取得済みのため追加作業不要。メモフォールバックのみ実施
+  vehicles.forEach(v => {
+    if (!v.customerName && v.memo) {
+      const m1 = v.memo.match(/エンドユーザー:\s*([^\n\/]+)/);
+      const m2 = v.memo.match(/顧客:\s*([^\n\/]+)/);
+      const m3 = v.memo.match(/元請け:\s*([^\n\/]+)/);
+      if (m1) v.customerName = m1[1].trim() + ' (EU)';
+      else if (m2) v.customerName = m2[1].trim();
+      else if (m3) v.customerName = m3[1].trim() + ' (元請)';
+    }
+  });
 }
 
 // ── Vehicle Service History (D1) ──

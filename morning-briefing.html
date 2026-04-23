@@ -408,7 +408,7 @@ async function loadDormant() {
 
 async function loadHighValue() {
   const r = await sql(`
-    SELECT s.売上日, s.伝票タイトル, s.税込合計, COALESCE(c.得意先名, '?') AS 顧客
+    SELECT s.id, s.売上日, s.伝票タイトル, s.税込合計, COALESCE(c.得意先名, '?') AS 顧客
     FROM 売上伝票 s
     LEFT JOIN 得意先マスタ c ON s.請求先ID = c.id
     WHERE s.売上日 >= date('now','-30 days')
@@ -421,10 +421,11 @@ async function loadHighValue() {
     return;
   }
   document.getElementById('high-value').innerHTML = `
+    <div style="font-size:10px;color:var(--muted);margin-bottom:6px;">💡 行クリックで明細詳細</div>
     <table class="data">
       <thead><tr><th>日付</th><th>顧客</th><th class="num">金額</th></tr></thead>
       <tbody>${rows.map(r => `
-        <tr>
+        <tr data-slip-id="${r.id}" style="cursor:pointer;" onmouseover="this.style.background='#fff3db'" onmouseout="this.style.background=''">
           <td>${r.売上日}</td>
           <td>${esc(r.顧客)}</td>
           <td class="num"><b>${yenShort(r.税込合計)}</b></td>
@@ -432,6 +433,64 @@ async function loadHighValue() {
       `).join('')}</tbody>
     </table>
   `;
+  document.querySelectorAll('#high-value tr[data-slip-id]').forEach(tr => {
+    tr.addEventListener('click', () => openSlipDetailModal(tr.dataset.slipId));
+  });
+}
+
+async function openSlipDetailModal(slipId) {
+  let modal = document.getElementById('slip-detail-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'slip-detail-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = '<div style="background:#fff;border-radius:12px;max-width:900px;width:100%;max-height:85vh;overflow:auto;padding:30px;">読込中...</div>';
+  try {
+    const sRes = await sql(`SELECT s.売上日, s.伝票タイトル, s.税込合計, s.ステータス, s.担当者, s.メモ, COALESCE(c.得意先名,'?') AS 請求先 FROM 売上伝票 s LEFT JOIN 得意先マスタ c ON s.請求先ID = c.id WHERE s.id = '${slipId}'`);
+    const slip = sRes.results?.[0];
+    const dRes = await sql(`SELECT 車番, 明細タイトル, 品目, タイヤサイズ, タイヤ銘柄, 数量, 単位, 単価, 税込小計, 備考, 弥生備考 FROM 売上明細 WHERE 売上伝票ID = '${slipId}' ORDER BY id`);
+    const lines = dRes.results || [];
+    const plateCount = new Set(lines.filter(l => l.車番).map(l => l.車番)).size;
+    const yenF = n => '¥' + Math.round(n || 0).toLocaleString();
+    modal.innerHTML = `
+      <div style="background:#fff;border-radius:12px;max-width:900px;width:100%;max-height:85vh;overflow:auto;padding:0;">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff;display:flex;justify-content:space-between;align-items:center;z-index:1;">
+          <div>
+            <div style="font-size:12px;color:var(--muted);">伝票詳細</div>
+            <h2 style="margin:4px 0 0;font-size:16px;color:var(--accent2);">${esc(slip?.伝票タイトル || '?')}</h2>
+          </div>
+          <button onclick="document.getElementById('slip-detail-modal').remove()" style="background:var(--surface2);border:1px solid var(--border);padding:6px 12px;border-radius:6px;cursor:pointer;">✕</button>
+        </div>
+        <div style="padding:16px 20px;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px;">
+            <div><div style="font-size:10px;color:var(--muted);">売上日</div><div style="font-weight:700;">${esc(slip?.売上日 || '-')}</div></div>
+            <div><div style="font-size:10px;color:var(--muted);">請求先</div><div style="font-weight:700;">${esc(slip?.請求先 || '-')}</div></div>
+            <div><div style="font-size:10px;color:var(--muted);">税込合計</div><div style="font-weight:700;color:var(--accent2);">${yenF(slip?.税込合計)}</div></div>
+            <div><div style="font-size:10px;color:var(--muted);">車両数</div><div>${plateCount}台・${lines.length}明細</div></div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="data" style="min-width:700px;">
+              <thead><tr><th>車番</th><th>品目／サイズ</th><th>銘柄</th><th class="num">数量</th><th class="num">単価</th><th class="num">小計</th><th>備考</th></tr></thead>
+              <tbody>${lines.map(l => `
+                <tr>
+                  <td style="white-space:nowrap;">${esc(l.車番 || '-')}</td>
+                  <td>${esc(l.明細タイトル || l.品目 || '-')}<br><span style="color:var(--muted);font-size:10px;">${esc(l.タイヤサイズ || '')}</span></td>
+                  <td style="font-weight:700;color:var(--accent2);">${esc(l.タイヤ銘柄 || '-')}</td>
+                  <td class="num">${l.数量 || 0}${esc(l.単位 || '')}</td>
+                  <td class="num">${yenF(l.単価)}</td>
+                  <td class="num">${yenF(l.税込小計)}</td>
+                  <td style="color:var(--muted);font-size:10px;max-width:180px;">${esc((l.備考 || '').substring(0,50))}${l.弥生備考 ? '<br>' + esc(l.弥生備考.substring(0,50)) : ''}</td>
+                </tr>`).join('')}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>`;
+  } catch (e) {
+    modal.innerHTML = '<div style="background:#fff;padding:30px;border-radius:12px;color:#c00;">エラー: ' + e.message + '</div>';
+  }
 }
 
 async function loadTrend() {

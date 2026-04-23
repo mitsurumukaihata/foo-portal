@@ -456,12 +456,11 @@ async function loadVehicleHistory(plate, container) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        sql: `SELECT s.売上日, s.伝票タイトル, COALESCE(c.得意先名,'?') AS 請求先,
+        sql: `SELECT s.id AS 伝票ID, s.売上日, s.伝票タイトル, COALESCE(c.得意先名,'?') AS 請求先,
                 GROUP_CONCAT(DISTINCT d.タイヤサイズ) AS サイズ,
                 GROUP_CONCAT(DISTINCT d.タイヤ銘柄) AS 銘柄,
                 COUNT(d.id) AS 明細件数,
-                SUM(d.税込小計) AS 金額,
-                s.id AS 伝票ID
+                SUM(d.税込小計) AS 金額
               FROM 売上明細 d
               JOIN 売上伝票 s ON d.売上伝票ID = s.id
               LEFT JOIN 得意先マスタ c ON s.請求先ID = c.id
@@ -481,12 +480,14 @@ async function loadVehicleHistory(plate, container) {
     const totalAmount = rows.reduce((s, r) => s + (r.金額 || 0), 0);
     const totalLines = rows.reduce((s, r) => s + (r.明細件数 || 0), 0);
     const yenF = n => '¥' + Math.round(n || 0).toLocaleString();
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     histDiv.innerHTML = `
       <div style="background:var(--s2);padding:8px 12px;border-radius:6px;margin-bottom:10px;display:flex;gap:14px;flex-wrap:wrap;">
         <div><span style="color:var(--muted);font-size:11px;">作業回数</span> <b style="font-size:14px;color:var(--accent);">${rows.length}回</b></div>
         <div><span style="color:var(--muted);font-size:11px;">累計明細</span> <b style="font-size:14px;">${totalLines}件</b></div>
         <div><span style="color:var(--muted);font-size:11px;">累計金額</span> <b style="font-size:14px;color:var(--accent);">${yenF(totalAmount)}</b></div>
       </div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px;">💡 各行クリックで明細詳細を表示</div>
       <div style="max-height:360px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;">
         <table style="width:100%;border-collapse:collapse;font-size:11px;">
           <thead style="background:var(--s2);position:sticky;top:0;">
@@ -500,10 +501,10 @@ async function loadVehicleHistory(plate, container) {
           </thead>
           <tbody>
           ${rows.map(r => `
-            <tr style="border-top:1px solid var(--border);">
+            <tr data-slip-id="${r.伝票ID}" data-plate="${esc(plate)}" style="border-top:1px solid var(--border);cursor:pointer;" onmouseover="this.style.background='var(--s3)'" onmouseout="this.style.background=''">
               <td style="padding:6px 8px;white-space:nowrap;"><b>${r.売上日 || '-'}</b></td>
-              <td style="padding:6px 8px;color:var(--text-sub);">${(r.請求先 || '?').substring(0, 20)}</td>
-              <td style="padding:6px 8px;font-family:'DM Mono',monospace;font-size:10px;">${(r.サイズ || '-').substring(0, 30)}<br><span style="color:var(--muted);">${(r.銘柄 || '').substring(0, 30)}</span></td>
+              <td style="padding:6px 8px;color:var(--text-sub);">${esc((r.請求先 || '?').substring(0, 20))}</td>
+              <td style="padding:6px 8px;font-family:'DM Mono',monospace;font-size:10px;">${esc((r.サイズ || '-').substring(0, 30))}<br><span style="color:var(--accent);font-weight:600;">${esc((r.銘柄 || '').substring(0, 30))}</span></td>
               <td style="padding:6px 8px;text-align:right;">${r.明細件数 || 0}</td>
               <td style="padding:6px 8px;text-align:right;font-weight:600;color:var(--accent);">${yenF(r.金額)}</td>
             </tr>
@@ -512,8 +513,100 @@ async function loadVehicleHistory(plate, container) {
         </table>
       </div>
     `;
+    // 行クリックで明細詳細モーダル
+    histDiv.querySelectorAll('tr[data-slip-id]').forEach(tr => {
+      tr.addEventListener('click', () => openSlipDetailModal(tr.dataset.slipId, tr.dataset.plate));
+    });
   } catch (e) {
     histDiv.innerHTML = '<div style="color:var(--red);">履歴読込エラー: ' + e.message + '</div>';
+  }
+}
+
+// ── Slip Detail Modal (全明細表示) ──
+async function openSlipDetailModal(slipId, plateFilter) {
+  let modal = document.getElementById('slip-detail-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'slip-detail-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = '<div style="background:var(--bg-card);border-radius:12px;max-width:900px;width:100%;max-height:85vh;overflow:auto;padding:20px;"><div style="text-align:center;color:var(--muted);padding:40px;">読込中...</div></div>';
+  try {
+    const sRes = await fetch(D1_WORKER + '/d1/sql', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sql: `SELECT s.売上日, s.伝票タイトル, s.税込合計, s.ステータス, s.担当者, s.メモ, s.弥生伝票番号, COALESCE(c.得意先名,'?') AS 請求先 FROM 売上伝票 s LEFT JOIN 得意先マスタ c ON s.請求先ID = c.id WHERE s.id = ?`,
+        params: [slipId]
+      })
+    });
+    const slip = (await sRes.json()).results?.[0];
+    const dRes = await fetch(D1_WORKER + '/d1/sql', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sql: `SELECT 車番, 明細タイトル, 商品コード, 品目, タイヤサイズ, タイヤ銘柄, 数量, 単位, 単価, 税込小計, 備考, 弥生備考 FROM 売上明細 WHERE 売上伝票ID = ? ORDER BY id`,
+        params: [slipId]
+      })
+    });
+    const lines = (await dRes.json()).results || [];
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const yenF = n => '¥' + Math.round(n || 0).toLocaleString();
+    const plateCount = new Set(lines.filter(l => l.車番).map(l => l.車番)).size;
+    modal.innerHTML = `
+      <div style="background:var(--bg-card);border-radius:12px;max-width:900px;width:100%;max-height:85vh;overflow:auto;padding:0;">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-card);display:flex;justify-content:space-between;align-items:center;z-index:1;">
+          <div>
+            <div style="font-size:12px;color:var(--muted);">伝票詳細</div>
+            <h2 style="margin:4px 0 0;font-size:16px;color:var(--accent);">${esc(slip?.伝票タイトル || '?')}</h2>
+          </div>
+          <button onclick="document.getElementById('slip-detail-modal').remove()" style="background:var(--s2);border:1px solid var(--border);color:var(--text);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:14px;">✕ 閉じる</button>
+        </div>
+        <div style="padding:16px 20px;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px;">
+            <div><div style="font-size:10px;color:var(--muted);">売上日</div><div style="font-weight:700;">${esc(slip?.売上日 || '-')}</div></div>
+            <div><div style="font-size:10px;color:var(--muted);">請求先</div><div style="font-weight:700;">${esc(slip?.請求先 || '-')}</div></div>
+            <div><div style="font-size:10px;color:var(--muted);">税込合計</div><div style="font-weight:700;color:var(--accent);">${yenF(slip?.税込合計)}</div></div>
+            <div><div style="font-size:10px;color:var(--muted);">ステータス</div><div>${esc(slip?.ステータス || '-')}</div></div>
+            <div><div style="font-size:10px;color:var(--muted);">担当者</div><div>${esc(slip?.担当者 || '-')}</div></div>
+            <div><div style="font-size:10px;color:var(--muted);">車両数</div><div>${plateCount}台・${lines.length}明細</div></div>
+          </div>
+          ${slip?.メモ ? `<div style="background:var(--s2);padding:8px 12px;border-radius:6px;margin-bottom:12px;font-size:12px;"><span style="color:var(--muted);">メモ:</span> ${esc(slip.メモ)}</div>` : ''}
+          <div style="overflow-x:auto;border:1px solid var(--border);border-radius:6px;">
+            <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:700px;">
+              <thead style="background:var(--s2);">
+                <tr>
+                  <th style="padding:6px 8px;text-align:left;color:var(--muted);">車番</th>
+                  <th style="padding:6px 8px;text-align:left;color:var(--muted);">品目／サイズ</th>
+                  <th style="padding:6px 8px;text-align:left;color:var(--muted);">銘柄</th>
+                  <th style="padding:6px 8px;text-align:right;color:var(--muted);">数量</th>
+                  <th style="padding:6px 8px;text-align:right;color:var(--muted);">単価</th>
+                  <th style="padding:6px 8px;text-align:right;color:var(--muted);">小計</th>
+                  <th style="padding:6px 8px;text-align:left;color:var(--muted);">備考</th>
+                </tr>
+              </thead>
+              <tbody>
+              ${lines.map(l => {
+                const isThis = plateFilter && l.車番 === plateFilter;
+                return `
+                <tr style="border-top:1px solid var(--border);${isThis ? 'background:rgba(240,165,0,0.12);' : ''}">
+                  <td style="padding:6px 8px;white-space:nowrap;${isThis ? 'font-weight:700;' : ''}">${esc(l.車番 || '-')}</td>
+                  <td style="padding:6px 8px;">${esc(l.明細タイトル || l.品目 || '-')}<br><span style="color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;">${esc(l.タイヤサイズ || '')}</span></td>
+                  <td style="padding:6px 8px;font-weight:700;color:var(--accent);">${esc(l.タイヤ銘柄 || '-')}</td>
+                  <td style="padding:6px 8px;text-align:right;">${l.数量 || 0}${esc(l.単位 || '')}</td>
+                  <td style="padding:6px 8px;text-align:right;">${yenF(l.単価)}</td>
+                  <td style="padding:6px 8px;text-align:right;font-weight:600;">${yenF(l.税込小計)}</td>
+                  <td style="padding:6px 8px;color:var(--muted);font-size:10px;">${esc((l.備考 || '').substring(0,50))}${l.弥生備考 ? '<br><span style="color:var(--text-sub);">弥生: ' + esc(l.弥生備考.substring(0,50)) + '</span>' : ''}</td>
+                </tr>`;
+              }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+  } catch (e) {
+    modal.innerHTML = '<div style="background:var(--bg-card);padding:30px;border-radius:12px;color:var(--red);">エラー: ' + e.message + '</div>';
   }
 }
 

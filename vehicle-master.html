@@ -203,6 +203,12 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-seri
 .toast.show{transform:translateX(-50%) translateY(0);}
 .toast.success{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:var(--green);}
 .toast.error{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:var(--red);}
+
+/* ── Scroll to top ── */
+.scroll-top-btn{position:fixed;right:20px;bottom:90px;width:44px;height:44px;border-radius:50%;background:rgba(240,165,0,.55);color:#fff;border:none;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .25s ease, transform .25s ease;z-index:400;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);}
+.scroll-top-btn.show{opacity:.75;pointer-events:auto;}
+.scroll-top-btn:hover{opacity:1;transform:translateY(-2px);}
+@media(min-width:1024px){.scroll-top-btn{right:32px;bottom:32px;width:48px;height:48px;font-size:22px;}}
 </style>
 <script>
 (function(){
@@ -280,6 +286,7 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-seri
         <option value="中型">&#x1F69A; 中型</option>
         <option value="小型">&#x1F697; 小型</option>
         <option value="バン">&#x1F690; バン</option>
+        <option value="乗用車">&#x1F697; 乗用車</option>
         <option value="リフト">&#x1F3D7;&#xFE0F; リフト</option>
         <option value="トレーラー">&#x1F69C; トレーラー</option>
         <option value="その他">&#x1F527; その他</option>
@@ -319,6 +326,7 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-seri
           <option value="LTL TB スタッドレス">LTL TB スタッドレス</option>
           <option value="LTS">LTS</option>
           <option value="バン">バン</option>
+          <option value="PC">PC</option>
           <option value="リフト">リフト</option>
           <option value="T-T">T-T</option>
         </select>
@@ -374,7 +382,7 @@ const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
 const VEHICLE_DB = '16f9f0df45e942069e032715fb2d37b2';
 const CUSTOMER_DB = '1ca8d122be214e3892879932147143c9';
 
-const TYPE_EMOJI = {'大型':'🚛','中型':'🚚','小型':'🚗','バン':'🚐','リフト':'🏗️','トレーラー':'🚜','その他':'🔧'};
+const TYPE_EMOJI = {'大型':'🚛','中型':'🚚','小型':'🚗','バン':'🚐','乗用車':'🚗','リフト':'🏗️','トレーラー':'🚜','その他':'🔧'};
 
 let allVehicles = [];
 let customerCache = {};
@@ -459,8 +467,11 @@ async function fetchVehicles(filterTitle) {
   if (filterTitle) {
     const normalized = normalizePlate(filterTitle).replace(/'/g, "''");
     const raw = filterTitle.replace(/'/g, "''");
+    // 数字のみなら先頭ゼロを除去した版でも検索（例:"0140"→"140"、"0012"→"12"）
+    const zeroStripped = /^\d+$/.test(normalized) ? normalized.replace(/^0+/, '') : normalized;
     // 車番(正規化)/管理番号/顧客名/メモ 全てで検索
     filterClause = `AND (REPLACE(REPLACE(REPLACE(v.車番, '-', ''), ' ', ''), '　', '') LIKE '%${normalized}%'
+      OR REPLACE(REPLACE(REPLACE(v.車番, '-', ''), ' ', ''), '　', '') LIKE '%${zeroStripped}%'
       OR v.管理番号 LIKE '%${raw}%'
       OR e.得意先名 LIKE '%${raw}%'
       OR c.顧客名 LIKE '%${raw}%'
@@ -1015,7 +1026,7 @@ function loadList() {
   const listResults = document.getElementById('list-results');
   const listSummary = document.getElementById('list-summary');
 
-  const types = ['すべて','大型','中型','小型','バン','リフト','トレーラー','その他'];
+  const types = ['すべて','大型','中型','小型','バン','乗用車','リフト','トレーラー','その他'];
   chipContainer.innerHTML = '';
   types.forEach(t => {
     const chip = document.createElement('button');
@@ -1308,6 +1319,7 @@ function openEditSheet(v) {
         <option value="中型" ${v.type==='中型'?'selected':''}>🚚 中型</option>
         <option value="小型" ${v.type==='小型'?'selected':''}>🚗 小型</option>
         <option value="バン" ${v.type==='バン'?'selected':''}>🚐 バン</option>
+        <option value="乗用車" ${v.type==='乗用車'?'selected':''}>🚗 乗用車</option>
         <option value="リフト" ${v.type==='リフト'?'selected':''}>🏗️ リフト</option>
         <option value="トレーラー" ${v.type==='トレーラー'?'selected':''}>🚜 トレーラー</option>
         <option value="その他" ${v.type==='その他'?'selected':''}>🔧 その他</option>
@@ -1330,6 +1342,7 @@ function openEditSheet(v) {
           <option value="LTL TB スタッドレス" ${v.category==='LTL TB スタッドレス'?'selected':''}>LTL TB スタッドレス</option>
           <option value="LTS" ${v.category==='LTS'?'selected':''}>LTS</option>
           <option value="バン" ${v.category==='バン'?'selected':''}>バン</option>
+          <option value="PC" ${v.category==='PC'?'selected':''}>PC</option>
           <option value="リフト" ${v.category==='リフト'?'selected':''}>リフト</option>
           <option value="T-T" ${v.category==='T-T'?'selected':''}>T-T</option>
         </select>
@@ -1467,6 +1480,23 @@ async function deleteVehicle(pageId, plate) {
     showToast('削除エラー: ' + e.message, 'error');
   }
 }
+
+// ── Scroll to top button ──
+(function(){
+  const btn = document.createElement('button');
+  btn.className = 'scroll-top-btn';
+  btn.innerHTML = '▲';
+  btn.title = 'トップへ';
+  btn.setAttribute('aria-label','ページトップへ戻る');
+  btn.addEventListener('click', () => window.scrollTo({top:0, behavior:'smooth'}));
+  document.body.appendChild(btn);
+  const toggle = () => {
+    if (window.scrollY > 400) btn.classList.add('show');
+    else btn.classList.remove('show');
+  };
+  window.addEventListener('scroll', toggle, { passive: true });
+  toggle();
+})();
 
 // ── Init ──
 loadRecentVehicles();

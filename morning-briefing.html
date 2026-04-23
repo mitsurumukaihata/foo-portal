@@ -193,6 +193,12 @@
     <div id="new-customers"></div>
   </div>
 
+  <!-- 車両マスタ健康度 -->
+  <div class="card">
+    <h2>🏥 車両マスタ健康度</h2>
+    <div id="vehicle-health"></div>
+  </div>
+
   <!-- タイヤ交換予測: 長期間未作業の優良車両 -->
   <div class="card">
     <h2>🚚 再来店チャンス — 2年以上未作業の優良車両</h2>
@@ -555,6 +561,79 @@ async function loadYearlyKPI() {
         <tr><td>💵 日次平均売上</td><td class="num">${yenShort(daily円)}/日</td></tr>
         <tr><td>🏆 顧客あたり年間売上</td><td class="num">${yenShort(perCust)}/社</td></tr>
       </tbody>
+    </table>
+  `;
+}
+
+async function loadVehicleHealth() {
+  const r = await sql(`SELECT
+    COUNT(*) AS 全件,
+    SUM(CASE WHEN 顧客ID IS NOT NULL AND 顧客ID != '' THEN 1 ELSE 0 END) AS 紐付け済,
+    SUM(CASE WHEN 前輪サイズ IS NOT NULL AND 前輪サイズ != '' THEN 1 ELSE 0 END) AS サイズ有,
+    SUM(CASE WHEN 前輪パターン IS NOT NULL AND 前輪パターン != '' THEN 1 ELSE 0 END) AS パターン有,
+    SUM(CASE WHEN 管理番号 IS NOT NULL AND 管理番号 != '' THEN 1 ELSE 0 END) AS 管理番号有,
+    SUM(CASE WHEN 車番 LIKE '%(旧%' THEN 1 ELSE 0 END) AS 旧重複
+  FROM 車両マスタ WHERE 車番 IS NOT NULL AND 車番 != ''`);
+  const d = r.results?.[0];
+  if (!d) { document.getElementById('vehicle-health').innerHTML = '<div class="loading">データ取得失敗</div>'; return; }
+  const score = Math.round((d.紐付け済 / d.全件) * 25 + (d.サイズ有 / d.全件) * 25 + (d.パターン有 / d.全件) * 25 + ((d.全件 - d.旧重複) / d.全件) * 25);
+  const statusLabel = score >= 90 ? '🟢 優秀' : score >= 70 ? '🟡 良好' : score >= 50 ? '🟠 注意' : '🔴 要整備';
+  const pct = (n) => d.全件 > 0 ? Math.round((n / d.全件) * 100) : 0;
+  document.getElementById('vehicle-health').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;">
+      <div class="hero-item highlight"><div class="lbl">車両数</div><div class="val">${d.全件.toLocaleString()}</div></div>
+      <div class="hero-item"><div class="lbl">健康度スコア</div><div class="val" style="color:${score>=70?'var(--green)':'var(--red)'};">${score}/100</div><div class="sub">${statusLabel}</div></div>
+      <div class="hero-item"><div class="lbl">顧客紐付け</div><div class="val">${pct(d.紐付け済)}%</div><div class="sub">${d.紐付け済.toLocaleString()}台</div></div>
+      <div class="hero-item"><div class="lbl">サイズ入力</div><div class="val">${pct(d.サイズ有)}%</div><div class="sub">${d.サイズ有.toLocaleString()}台</div></div>
+      <div class="hero-item"><div class="lbl">パターン入力</div><div class="val">${pct(d.パターン有)}%</div><div class="sub">${d.パターン有.toLocaleString()}台</div></div>
+      <div class="hero-item"><div class="lbl">旧(重複)</div><div class="val" style="color:var(--muted);">${d.旧重複}</div><div class="sub">アーカイブ</div></div>
+    </div>
+  `;
+}
+
+async function loadTireForecast() {
+  // 平均交換サイクル = 各車両の最古-最新取引日 / 取引回数
+  // 最終取引日 + 平均サイクル で予測
+  const r = await sql(`
+    SELECT v.車番, COALESCE(c.得意先名, e.顧客名) AS 顧客名,
+      MAX(s.売上日) AS 最終取引,
+      COUNT(DISTINCT s.id) AS 取引数,
+      CAST(julianday('now') - julianday(MAX(s.売上日)) AS INTEGER) AS 経過日数,
+      CAST((julianday(MAX(s.売上日)) - julianday(MIN(s.売上日))) / NULLIF(COUNT(DISTINCT s.id) - 1, 0) AS INTEGER) AS 平均サイクル
+    FROM 車両マスタ v
+    JOIN 売上明細 d ON d.車番 = v.車番
+    JOIN 売上伝票 s ON d.売上伝票ID = s.id
+    LEFT JOIN 得意先マスタ c ON v.顧客ID = c.id
+    LEFT JOIN 顧客情報DB e ON v.顧客ID = e.id
+    WHERE v.車番 IS NOT NULL AND v.車番 NOT LIKE '%(旧%'
+    GROUP BY v.id
+    HAVING 取引数 >= 3
+      AND 平均サイクル > 60
+      AND 平均サイクル < 800
+      AND 経過日数 BETWEEN (平均サイクル - 30) AND (平均サイクル + 30)
+    ORDER BY (経過日数 - 平均サイクル) DESC
+    LIMIT 15
+  `);
+  const rows = r.results || [];
+  if (!rows.length){ document.getElementById('tire-forecast').innerHTML = '<div class="loading">該当車両なし</div>'; return; }
+  document.getElementById('tire-forecast').innerHTML = `
+    <div style="font-size:10px;color:var(--muted);margin-bottom:6px;">過去取引パターンから交換タイミング予測（直近30日以内）</div>
+    <table class="data">
+      <thead><tr><th>車番</th><th>顧客</th><th class="num">取引数</th><th>最終取引</th><th class="num">経過</th><th class="num">平均サイクル</th><th>予測判定</th></tr></thead>
+      <tbody>${rows.map(r => {
+        const diff = r.経過日数 - r.平均サイクル;
+        const judgeLabel = diff > 0 ? `⚠️ ${diff}日遅延` : diff >= -7 ? '🎯 交換時期' : `📅 ${-diff}日後予測`;
+        const judgeColor = diff > 0 ? 'var(--red)' : diff >= -7 ? 'var(--accent)' : 'var(--green)';
+        return `<tr>
+          <td><b>${esc(r.車番)}</b></td>
+          <td>${esc((r.顧客名 || '?').substring(0,18))}</td>
+          <td class="num">${r.取引数}回</td>
+          <td>${r.最終取引}</td>
+          <td class="num">${r.経過日数}日</td>
+          <td class="num">${r.平均サイクル}日</td>
+          <td style="color:${judgeColor};font-weight:700;">${judgeLabel}</td>
+        </tr>`;
+      }).join('')}</tbody>
     </table>
   `;
 }
@@ -967,6 +1046,8 @@ async function loadAll() {
       loadMonthForecast(),
       loadMovers(),
       loadNewCustomers(),
+      loadVehicleHealth(),
+      loadTireForecast(),
       loadOverdueVehicles(),
       loadDormant(),
       loadHighValue(),

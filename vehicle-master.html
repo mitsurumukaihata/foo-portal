@@ -455,8 +455,23 @@ async function fetchVehicles(filterTitle) {
   const sql = `
     SELECT v.id, v.車番, v.車種, v.前輪サイズ, v.後輪サイズ, v.前輪パターン, v.後輪パターン,
            v.カテゴリ AS タイヤカテゴリ, v.本数, v.メモ, v.管理番号, v.created_time,
-           v.顧客ID, COALESCE(e.得意先名, c.顧客名) AS 顧客名,
-           COALESCE(e.ふりがな, c.ふりがな) AS ふりがな
+           v.顧客ID,
+           COALESCE(
+             e.得意先名,
+             c.顧客名,
+             (SELECT c2.得意先名 FROM 売上明細 d JOIN 売上伝票 s ON d.売上伝票ID = s.id
+              LEFT JOIN 得意先マスタ c2 ON s.請求先ID = c2.id
+              WHERE d.車番 = v.車番 AND c2.得意先名 IS NOT NULL
+              ORDER BY s.売上日 DESC LIMIT 1)
+           ) AS 顧客名,
+           COALESCE(
+             e.ふりがな,
+             c.ふりがな,
+             (SELECT c3.ふりがな FROM 売上明細 d2 JOIN 売上伝票 s2 ON d2.売上伝票ID = s2.id
+              LEFT JOIN 得意先マスタ c3 ON s2.請求先ID = c3.id
+              WHERE d2.車番 = v.車番 AND c3.ふりがな IS NOT NULL
+              ORDER BY s2.売上日 DESC LIMIT 1)
+           ) AS ふりがな
     FROM 車両マスタ v
     LEFT JOIN 得意先マスタ e ON v.顧客ID = e.id
     LEFT JOIN 顧客情報DB c ON v.顧客ID = c.id

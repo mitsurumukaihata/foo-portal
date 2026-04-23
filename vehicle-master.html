@@ -431,18 +431,24 @@ async function resolveCustomerNames(vehicles) {
   });
 }
 
-// ── Fetch Vehicles ──
+// ── Fetch Vehicles (全件取得 - ページング対応) ──
 async function fetchVehicles(filterTitle) {
-  const body = {
-    filter: filterTitle ? {
-      property: '車番',
-      title: { contains: filterTitle }
-    } : undefined,
-    sorts: [{ timestamp: 'created_time', direction: 'descending' }],
-    page_size: 100
-  };
-  const data = await notionAPI('/databases/' + VEHICLE_DB + '/query', 'POST', body);
-  return data.results.map(parseVehicle);
+  const all = [];
+  let cursor = null;
+  const maxPages = 50; // 最大5000件まで
+  for (let i = 0; i < maxPages; i++) {
+    const body = {
+      filter: filterTitle ? { property: '車番', title: { contains: filterTitle } } : undefined,
+      sorts: [{ timestamp: 'created_time', direction: 'descending' }],
+      page_size: 100
+    };
+    if (cursor) body.start_cursor = cursor;
+    const data = await notionAPI('/databases/' + VEHICLE_DB + '/query', 'POST', body);
+    all.push(...data.results);
+    if (!data.has_more) break;
+    cursor = data.next_cursor;
+  }
+  return all.map(parseVehicle);
 }
 
 // ── Vehicle Service History (D1) ──

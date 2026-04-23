@@ -239,7 +239,7 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-seri
   <!-- Search Tab -->
   <div class="tab-pane active" id="tab-search">
     <div class="search-box">
-      <input type="text" id="search-input" placeholder="車番を入力（ハイフン・全角OK）..." autocomplete="off" inputmode="text" autocapitalize="off" spellcheck="false" style="ime-mode:disabled;">
+      <input type="text" id="search-input" placeholder="車番・管理番号・顧客名で検索（ハイフン・全角OK）..." autocomplete="off" inputmode="text" autocapitalize="off" spellcheck="false" style="ime-mode:disabled;">
       <button class="search-clear" id="search-clear">&times;</button>
     </div>
     <div id="search-results"></div>
@@ -458,8 +458,13 @@ async function fetchVehicles(filterTitle) {
   let filterClause = '';
   if (filterTitle) {
     const normalized = normalizePlate(filterTitle).replace(/'/g, "''");
-    // 車番側も同じ正規化（ハイフンと空白を除去）してLIKE比較
-    filterClause = `AND REPLACE(REPLACE(REPLACE(v.車番, '-', ''), ' ', ''), '　', '') LIKE '%${normalized}%'`;
+    const raw = filterTitle.replace(/'/g, "''");
+    // 車番(正規化)/管理番号/顧客名/メモ 全てで検索
+    filterClause = `AND (REPLACE(REPLACE(REPLACE(v.車番, '-', ''), ' ', ''), '　', '') LIKE '%${normalized}%'
+      OR v.管理番号 LIKE '%${raw}%'
+      OR e.得意先名 LIKE '%${raw}%'
+      OR c.顧客名 LIKE '%${raw}%'
+      OR v.メモ LIKE '%${raw}%')`;
   }
   const sql = `
     SELECT v.id, v.車番, v.車種, v.前輪サイズ, v.後輪サイズ, v.前輪パターン, v.後輪パターン,

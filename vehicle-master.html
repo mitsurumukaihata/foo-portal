@@ -248,6 +248,7 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-seri
   <!-- List Tab -->
   <div class="tab-pane" id="tab-list">
     <div class="filter-chips" id="filter-chips"></div>
+    <div class="filter-chips" id="biller-filter-chips"></div>
     <div class="list-summary" id="list-summary"></div>
     <div id="list-results"></div>
   </div>
@@ -519,7 +520,7 @@ async function resolveCustomerNames(vehicles) {
     const memo = typeof v.memo === 'string' ? v.memo : (v.memo ? String(v.memo) : '');
     v.memo = memo;
     // 請求先(元請けメーカー)かを判定
-    const billerRE = /(トーヨー|ダンロップ|DUNLOP|ブリヂストン|三菱ふそう|ふそう中国|ﾄｰﾖｰ|BSタイヤ|ヨコハマ|ミシュラン|ピレリ)/;
+    const billerRE = /(トーヨー|ダンロップ|DUNLOP|ブリヂストン|三菱ふそう|ふそう中国|ﾄｰﾖｰ|BSタイヤ|ヨコハマ|ミシュラン|ピレリ|いすゞ|いすず|ISUZU)/;
     const billerFuriRE = /(とーよー|とうよう|だんろっぷ|ぶりぢすとん|ぶりじすとん|みつびしふそう|びーえすたいや|よこはま|みしゅらん|ぴれり|ぶりぢすとんたいやそりゅーしょん)/;
     const isBiller = v.customerName && billerRE.test(v.customerName);
     // ふりがな側も元請け系と判定 (保険)
@@ -974,8 +975,24 @@ async function loadRecentVehicles() {
 }
 
 // ── List Tab ──
+let currentBillerFilter = '';
+function getBillerTag(v){
+  if (v.billerName){
+    const b = v.billerName;
+    if (/トーヨー|ﾄｰﾖｰ/.test(b)) return 'toyo';
+    if (/ブリヂストン|BSタイヤ/i.test(b)) return 'bs';
+    if (/ダンロップ|DUNLOP/i.test(b)) return 'dunlop';
+    if (/三菱ふそう|ふそう中国/.test(b) && /東/.test(b)) return 'fuso-e';
+    if (/三菱ふそう|ふそう中国/.test(b) && /西/.test(b)) return 'fuso-w';
+    if (/三菱ふそう|ふそう中国/.test(b)) return 'fuso-e';
+    if (/いすゞ|いすず|ISUZU/i.test(b)) return 'isuzu';
+    return 'biller-other';
+  }
+  return v.customerName ? 'direct' : '';
+}
 function loadList() {
   const chipContainer = document.getElementById('filter-chips');
+  const billerContainer = document.getElementById('biller-filter-chips');
   const listResults = document.getElementById('list-results');
   const listSummary = document.getElementById('list-summary');
 
@@ -992,8 +1009,32 @@ function loadList() {
     chipContainer.appendChild(chip);
   });
 
+  // 元請けフィルタ (直販→TOYO→BS→DL→ふそう東→ふそう西→いすゞ)
+  const billers = [
+    {key:'', label:'全ルート'},
+    {key:'direct', label:'💼 直販'},
+    {key:'toyo', label:'🅣 TOYO'},
+    {key:'bs', label:'🅑 ブリヂストン'},
+    {key:'dunlop', label:'🅓 ダンロップ'},
+    {key:'fuso-e', label:'🅕 ふそう東'},
+    {key:'fuso-w', label:'🅕 ふそう西'},
+    {key:'isuzu', label:'🅘 いすゞ'},
+  ];
+  billerContainer.innerHTML = '';
+  billers.forEach(b => {
+    const chip = document.createElement('button');
+    chip.className = 'chip' + (currentBillerFilter === b.key ? ' active' : '');
+    chip.textContent = b.label;
+    chip.addEventListener('click', () => {
+      currentBillerFilter = b.key;
+      loadList();
+    });
+    billerContainer.appendChild(chip);
+  });
+
   let filtered = allVehicles;
-  if (currentFilter) filtered = allVehicles.filter(v => v.type === currentFilter);
+  if (currentFilter) filtered = filtered.filter(v => v.type === currentFilter);
+  if (currentBillerFilter) filtered = filtered.filter(v => getBillerTag(v) === currentBillerFilter);
 
   // Group by customer + ふりがな for sorting
   const groups = {};

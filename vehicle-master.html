@@ -487,15 +487,38 @@ async function fetchVehicles(filterTitle) {
   }));
 }
 
-// ── フォールバック顧客名（D1で取れない場合、メモから抽出） ──
+// ── 表示用顧客名解決（エンドユーザー優先ロジック） ──
+// ルール: メモに実在のエンドユーザー名があれば、そちらでグループ化する。
+// 元請け (トーヨー/ダンロップ/ふそう/BSタイヤ) は請求先であって、実際の車両所有者ではないため。
 async function resolveCustomerNames(vehicles) {
-  // D1JOINで取得済みのため追加作業不要。メモフォールバックのみ実施
   vehicles.forEach(v => {
-    if (!v.customerName && v.memo) {
-      const m1 = v.memo.match(/エンドユーザー:\s*([^\n\/]+)/);
-      const m2 = v.memo.match(/顧客:\s*([^\n\/]+)/);
-      const m3 = v.memo.match(/元請け:\s*([^\n\/]+)/);
-      if (m1) v.customerName = m1[1].trim() + ' (EU)';
+    // 請求先(元請けメーカー)かを判定
+    const billerRE = /(トーヨー|ダンロップ|DUNLOP|ブリヂストン|三菱ふそう|ふそう中国|ﾄｰﾖｰ|BSタイヤ|ヨコハマ|ミシュラン|ピレリ)/;
+    const isBiller = v.customerName && billerRE.test(v.customerName);
+
+    // メモからエンドユーザーを抽出
+    let euName = null;
+    if (v.memo) {
+      const m1 = v.memo.match(/エンドユーザー:\s*([^\n\/(]+)/);
+      if (m1) {
+        let candidate = m1[1].trim().replace(/\s*\([^)]*\)\s*$/, '').trim();
+        // 「営業車」単独は汎用すぎるので除外 (ふそう東の営業車 etc はそのまま使用)
+        if (candidate && candidate !== '営業車' && candidate !== '-') {
+          euName = candidate;
+        }
+      }
+    }
+
+    // 元請けメーカー+EUあり → EUで上書き (実オーナー優先)
+    if (isBiller && euName) {
+      v.billerName = v.customerName;  // 元請け名を保持
+      v.customerName = euName;
+      v.euFromMemo = true;
+    } else if (!v.customerName && v.memo) {
+      // 顧客ID未設定 → メモから復旧
+      const m2 = v.memo.match(/顧客:\s*([^\n\/(]+)/);
+      const m3 = v.memo.match(/元請け:\s*([^\n\/(]+)/);
+      if (euName) v.customerName = euName;
       else if (m2) v.customerName = m2[1].trim();
       else if (m3) v.customerName = m3[1].trim() + ' (元請)';
     }

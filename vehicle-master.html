@@ -40,6 +40,33 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;min-height:100vh;min-height:100dvh;max-width:480px;margin:0 auto;overflow-x:hidden;display:flex;flex-direction:column;}
 
+/* ── PC レイアウト (1024px以上) ── */
+@media (min-width: 1024px) {
+  body { max-width: 1200px; }
+  .tab-pane { padding: 24px 32px; padding-bottom: 100px; }
+  #search-results, #list-results {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 12px;
+  }
+  #list-results .group-header {
+    grid-column: 1 / -1;
+  }
+  .search-box input { font-size: 22px; }
+  .v-plate { font-size: 18px; }
+  .header { padding: 18px 32px 14px; }
+  .header-title { font-size: 20px; }
+  .nav-btn { font-size: 14px; padding: 14px 20px; }
+  /* 顧客別折り畳みボタンもグリッド対応 */
+  #search-results > div[style*="margin-bottom:8px"] { grid-column: 1 / -1; }
+}
+@media (min-width: 1440px) {
+  body { max-width: 1400px; }
+  #search-results, #list-results {
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  }
+}
+
 /* ── Header ── */
 .header{background:var(--s1);border-bottom:0.5px solid var(--border);padding:14px 20px 10px;position:sticky;top:0;z-index:100;}
 .header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;}
@@ -198,7 +225,7 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-seri
   <!-- Search Tab -->
   <div class="tab-pane active" id="tab-search">
     <div class="search-box">
-      <input type="text" id="search-input" placeholder="車番を入力..." autocomplete="off">
+      <input type="text" id="search-input" placeholder="車番を入力（ハイフン・全角OK）..." autocomplete="off" inputmode="text" autocapitalize="off" spellcheck="false" style="ime-mode:disabled;">
       <button class="search-clear" id="search-clear">&times;</button>
     </div>
     <div id="search-results"></div>
@@ -399,10 +426,26 @@ function parseVehicle(page) {
 }
 
 // ── Fetch Vehicles (D1直接・顧客名もJOINで一括取得) ──
+// 全角→半角＋ハイフン除去の正規化（車番マッチ用）
+function normalizePlate(s) {
+  if (!s) return '';
+  // 全角英数→半角
+  let r = String(s).replace(/[Ａ-Ｚａ-ｚ０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+  // 全角ハイフン類→半角
+  r = r.replace(/[ー－―‐−]/g, '-');
+  // 全角空白→削除
+  r = r.replace(/[\s　]/g, '');
+  // ハイフン除去
+  r = r.replace(/-/g, '');
+  return r;
+}
 async function fetchVehicles(filterTitle) {
-  const filterClause = filterTitle
-    ? `AND v.車番 LIKE '%${filterTitle.replace(/'/g, "''")}%'`
-    : '';
+  let filterClause = '';
+  if (filterTitle) {
+    const normalized = normalizePlate(filterTitle).replace(/'/g, "''");
+    // 車番側も同じ正規化（ハイフンと空白を除去）してLIKE比較
+    filterClause = `AND REPLACE(REPLACE(REPLACE(v.車番, '-', ''), ' ', ''), '　', '') LIKE '%${normalized}%'`;
+  }
   const sql = `
     SELECT v.id, v.車番, v.車種, v.前輪サイズ, v.後輪サイズ, v.前輪パターン, v.後輪パターン,
            v.カテゴリ AS タイヤカテゴリ, v.本数, v.メモ, v.管理番号, v.created_time,
@@ -717,6 +760,14 @@ const searchClear = document.getElementById('search-clear');
 const searchResults = document.getElementById('search-results');
 
 searchInput.addEventListener('input', () => {
+  // 全角英数を半角に自動変換
+  const original = searchInput.value;
+  const converted = original.replace(/[Ａ-Ｚａ-ｚ０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/[ー－―‐−]/g, '-');
+  if (converted !== original) {
+    const pos = searchInput.selectionStart;
+    searchInput.value = converted;
+    try { searchInput.setSelectionRange(pos, pos); } catch(e) {}
+  }
   const val = searchInput.value.trim();
   searchClear.classList.toggle('show', val.length > 0);
   clearTimeout(searchTimer);

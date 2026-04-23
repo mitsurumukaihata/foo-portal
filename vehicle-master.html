@@ -68,17 +68,19 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-seri
 }
 
 /* ── Header ── */
-.header{background:var(--s1);border-bottom:0.5px solid var(--border);padding:14px 20px 10px;position:sticky;top:0;z-index:100;}
-.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;}
+.header{background:var(--s1);border-bottom:0.5px solid var(--border);padding:14px 20px 10px;}
+.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;gap:6px;}
 .header-brand{font-size:10px;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;}
-.header-back{font-size:11px;color:var(--muted);text-decoration:none;border:0.5px solid var(--border);border-radius:20px;padding:3px 10px;}
+.header-back{font-size:11px;color:var(--muted);text-decoration:none;border:0.5px solid var(--border);border-radius:20px;padding:3px 10px;background:var(--s2);white-space:nowrap;}
+.header-back.primary{color:var(--accent);border-color:var(--accent);background:rgba(240,165,0,0.08);font-weight:700;}
+.header-back-group{display:flex;gap:6px;flex-wrap:wrap;}
 .back-btn{color:var(--accent);text-decoration:none;font-size:13px;font-weight:700;display:flex;align-items:center;gap:2px;}
 .back-btn:active{opacity:.6;}
 .header-title{font-size:17px;font-weight:900;letter-spacing:-0.02em;}
 .header-title span{color:var(--accent);}
 
-/* ── Nav Tabs ── */
-.nav{display:flex;background:var(--s1);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:90;}
+/* ── Nav Tabs (スマホ・PC両方で上部固定) ── */
+.nav{display:flex;background:var(--s1);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:95;box-shadow:0 2px 4px rgba(0,0,0,0.04);}
 .nav-btn{flex:1;padding:12px 6px 10px;background:transparent;border:none;border-bottom:2.5px solid transparent;color:var(--muted);font-size:12px;font-weight:600;font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:all .15s;text-align:center;}
 .nav-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
 
@@ -207,7 +209,11 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-seri
 <div class="header">
   <div class="header-top">
     <div class="header-brand">F.o.o · 管理</div>
-    <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← ポータル</a>
+    <div class="header-back-group">
+      <a class="header-back primary" href="javascript:history.length>1?history.back():location.href='https://mitsurumukaihata.github.io/foo-portal/morning-briefing.html'">← 戻る</a>
+      <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/morning-briefing.html">📊 foo事務</a>
+      <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">🏠 ポータル</a>
+    </div>
   </div>
   <div class="header-title">車番<span>履歴</span> <span style="background:#f0a500;color:#000;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;margin-left:8px;">⚡ D1直結 v2</span></div>
 </div>

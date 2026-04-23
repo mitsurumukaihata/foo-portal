@@ -419,6 +419,15 @@ async function resolveCustomerNames(vehicles) {
     if (Array.isArray(v.customerRel) && v.customerRel.length > 0) {
       v.customerName = customerCache[v.customerRel[0].id] || '';
     }
+    // フォールバック: customerName 空のとき メモから「顧客:」「エンドユーザー:」を読む
+    if (!v.customerName && v.memo) {
+      const m1 = v.memo.match(/エンドユーザー:\s*([^\n\/]+)/);
+      const m2 = v.memo.match(/顧客:\s*([^\n\/]+)/);
+      const m3 = v.memo.match(/元請け:\s*([^\n\/]+)/);
+      if (m1) v.customerName = m1[1].trim() + ' (EU)';
+      else if (m2) v.customerName = m2[1].trim();
+      else if (m3) v.customerName = m3[1].trim() + ' (元請)';
+    }
   });
 }
 

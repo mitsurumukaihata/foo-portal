@@ -436,6 +436,78 @@ async function fetchVehicles(filterTitle) {
   return data.results.map(parseVehicle);
 }
 
+// ── Vehicle Service History (D1) ──
+const D1_WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
+async function loadVehicleHistory(plate, container) {
+  container.dataset.loaded = '1';
+  const histDiv = container.querySelector('.v-history-content');
+  histDiv.innerHTML = '読込中...';
+  try {
+    const res = await fetch(D1_WORKER + '/d1/sql', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sql: `SELECT s.売上日, s.伝票タイトル, COALESCE(c.得意先名,'?') AS 請求先,
+                GROUP_CONCAT(DISTINCT d.タイヤサイズ) AS サイズ,
+                GROUP_CONCAT(DISTINCT d.タイヤ銘柄) AS 銘柄,
+                COUNT(d.id) AS 明細件数,
+                SUM(d.税込小計) AS 金額,
+                s.id AS 伝票ID
+              FROM 売上明細 d
+              JOIN 売上伝票 s ON d.売上伝票ID = s.id
+              LEFT JOIN 得意先マスタ c ON s.請求先ID = c.id
+              WHERE d.車番 = ?
+              GROUP BY s.id
+              ORDER BY s.売上日 DESC
+              LIMIT 100`,
+        params: [plate]
+      })
+    });
+    const data = await res.json();
+    const rows = data.results || [];
+    if (rows.length === 0) {
+      histDiv.innerHTML = '<div style="color:var(--muted);">この車番での売上明細はありません</div>';
+      return;
+    }
+    const totalAmount = rows.reduce((s, r) => s + (r.金額 || 0), 0);
+    const totalLines = rows.reduce((s, r) => s + (r.明細件数 || 0), 0);
+    const yenF = n => '¥' + Math.round(n || 0).toLocaleString();
+    histDiv.innerHTML = `
+      <div style="background:var(--s2);padding:8px 12px;border-radius:6px;margin-bottom:10px;display:flex;gap:14px;flex-wrap:wrap;">
+        <div><span style="color:var(--muted);font-size:11px;">作業回数</span> <b style="font-size:14px;color:var(--accent);">${rows.length}回</b></div>
+        <div><span style="color:var(--muted);font-size:11px;">累計明細</span> <b style="font-size:14px;">${totalLines}件</b></div>
+        <div><span style="color:var(--muted);font-size:11px;">累計金額</span> <b style="font-size:14px;color:var(--accent);">${yenF(totalAmount)}</b></div>
+      </div>
+      <div style="max-height:360px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;">
+          <thead style="background:var(--s2);position:sticky;top:0;">
+            <tr>
+              <th style="padding:6px 8px;text-align:left;font-weight:600;color:var(--muted);">日付</th>
+              <th style="padding:6px 8px;text-align:left;font-weight:600;color:var(--muted);">請求先</th>
+              <th style="padding:6px 8px;text-align:left;font-weight:600;color:var(--muted);">サイズ／銘柄</th>
+              <th style="padding:6px 8px;text-align:right;font-weight:600;color:var(--muted);">明細</th>
+              <th style="padding:6px 8px;text-align:right;font-weight:600;color:var(--muted);">金額</th>
+            </tr>
+          </thead>
+          <tbody>
+          ${rows.map(r => `
+            <tr style="border-top:1px solid var(--border);">
+              <td style="padding:6px 8px;white-space:nowrap;"><b>${r.売上日 || '-'}</b></td>
+              <td style="padding:6px 8px;color:var(--text-sub);">${(r.請求先 || '?').substring(0, 20)}</td>
+              <td style="padding:6px 8px;font-family:'DM Mono',monospace;font-size:10px;">${(r.サイズ || '-').substring(0, 30)}<br><span style="color:var(--muted);">${(r.銘柄 || '').substring(0, 30)}</span></td>
+              <td style="padding:6px 8px;text-align:right;">${r.明細件数 || 0}</td>
+              <td style="padding:6px 8px;text-align:right;font-weight:600;color:var(--accent);">${yenF(r.金額)}</td>
+            </tr>
+          `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch (e) {
+    histDiv.innerHTML = '<div style="color:var(--red);">履歴読込エラー: ' + e.message + '</div>';
+  }
+}
+
 // ── Render Vehicle Card ──
 function renderCard(v, container) {
   const emoji = TYPE_EMOJI[v.type] || '';
@@ -480,12 +552,24 @@ function renderCard(v, container) {
       <div class="v-detail-row"><span class="v-detail-label">本数</span><span class="v-detail-val">${v.count || '-'}</span></div>
       <div class="v-detail-row"><span class="v-detail-label">空気圧</span><span class="v-detail-val">${v.pressure || '-'}</span></div>
       <div class="v-detail-row"><span class="v-detail-label">メモ</span><span class="v-detail-val">${v.memo || '-'}</span></div>
+      <div class="v-history-section" data-plate="${v.plate}" style="margin-top:14px;padding-top:12px;border-top:1.5px solid var(--border);">
+        <div style="font-weight:700;font-size:13px;color:var(--accent);margin-bottom:8px;">🔧 タイヤ交換履歴</div>
+        <div class="v-history-content" style="font-size:12px;color:var(--muted);">クリックで展開時に読込みます...</div>
+      </div>
       <button class="v-edit-btn" data-id="${v.id}">✏️ 編集</button>
       <button class="v-delete-btn" data-id="${v.id}" data-plate="${v.plate}">🗑 削除</button>
     </div>
   `;
   card.querySelector('.v-card-main').addEventListener('click', () => {
+    const wasExpanded = card.classList.contains('expanded');
     card.classList.toggle('expanded');
+    if (!wasExpanded) {
+      // 履歴をD1から取得（初回のみ）
+      const histSection = card.querySelector('.v-history-section');
+      if (histSection && !histSection.dataset.loaded) {
+        loadVehicleHistory(v.plate, histSection);
+      }
+    }
   });
   card.querySelector('.v-edit-btn').addEventListener('click', (e) => {
     e.stopPropagation();

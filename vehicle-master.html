@@ -512,7 +512,13 @@ async function resolveCustomerNames(vehicles) {
     v.memo = memo;
     // 請求先(元請けメーカー)かを判定
     const billerRE = /(トーヨー|ダンロップ|DUNLOP|ブリヂストン|三菱ふそう|ふそう中国|ﾄｰﾖｰ|BSタイヤ|ヨコハマ|ミシュラン|ピレリ)/;
+    const billerFuriRE = /(とーよー|とうよう|だんろっぷ|ぶりぢすとん|ぶりじすとん|みつびしふそう|びーえすたいや|よこはま|みしゅらん|ぴれり|ぶりぢすとんたいやそりゅーしょん)/;
     const isBiller = v.customerName && billerRE.test(v.customerName);
+    // ふりがな側も元請け系と判定 (保険)
+    if (v.furigana && billerFuriRE.test(v.furigana)) {
+      // このふりがなは元請けのもの → 信頼不可
+      v.furigana_biller = true;
+    }
 
     // メモからエンドユーザーを抽出
     let euName = null;
@@ -531,6 +537,12 @@ async function resolveCustomerNames(vehicles) {
       v.customerName = euName;
       v.euFromMemo = true;
       v.furigana = '';  // 元請けのふりがなは無効化(エンドユーザー名でソートする)
+    } else if (v.furigana_biller && euName) {
+      // customerNameは元請けでなくても、ふりがなが元請け=信頼不可
+      v.furigana = '';
+    } else if (v.furigana_biller) {
+      // ふりがなだけ元請け系で EU 無し → ふりがな無効化
+      v.furigana = '';
     } else if (!v.customerName && memo) {
       const m2 = memo.match(/顧客:\s*([^\n\/(]+)/);
       const m3 = memo.match(/元請け:\s*([^\n\/(]+)/);

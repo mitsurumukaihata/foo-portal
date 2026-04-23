@@ -585,11 +585,14 @@ async function openSlipDetailModal(slipId, plateFilter) {
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'slip-detail-modal';
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;padding:10px;';
     modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    // Escで閉じる
+    const escHandler = (e) => { if (e.key === 'Escape') { modal.remove(); document.removeEventListener('keydown', escHandler); } };
+    document.addEventListener('keydown', escHandler);
     document.body.appendChild(modal);
   }
-  modal.innerHTML = '<div style="background:var(--bg-card);border-radius:12px;max-width:900px;width:100%;max-height:85vh;overflow:auto;padding:20px;"><div style="text-align:center;color:var(--muted);padding:40px;">読込中...</div></div>';
+  modal.innerHTML = '<div style="background:var(--s1);border-radius:12px;max-width:1100px;width:100%;max-height:92vh;overflow:auto;padding:30px;box-shadow:0 20px 60px rgba(0,0,0,0.5);"><div style="text-align:center;color:var(--muted);padding:40px;">読込中...</div></div>';
   try {
     const sRes = await fetch(D1_WORKER + '/d1/sql', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -611,49 +614,50 @@ async function openSlipDetailModal(slipId, plateFilter) {
     const yenF = n => '¥' + Math.round(n || 0).toLocaleString();
     const plateCount = new Set(lines.filter(l => l.車番).map(l => l.車番)).size;
     modal.innerHTML = `
-      <div style="background:var(--bg-card);border-radius:12px;max-width:900px;width:100%;max-height:85vh;overflow:auto;padding:0;">
-        <div style="padding:16px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-card);display:flex;justify-content:space-between;align-items:center;z-index:1;">
-          <div>
-            <div style="font-size:12px;color:var(--muted);">伝票詳細</div>
-            <h2 style="margin:4px 0 0;font-size:16px;color:var(--accent);">${esc(slip?.伝票タイトル || '?')}</h2>
+      <div style="background:var(--s1);border-radius:14px;max-width:1100px;width:100%;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+        <div style="padding:18px 24px;border-bottom:2px solid var(--border);background:var(--s1);display:flex;justify-content:space-between;align-items:center;gap:16px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:11px;color:var(--muted);letter-spacing:0.08em;font-weight:600;">🧾 納品書 詳細</div>
+            <h2 style="margin:6px 0 0;font-size:18px;color:var(--accent);font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(slip?.伝票タイトル || '?')}</h2>
           </div>
-          <button onclick="document.getElementById('slip-detail-modal').remove()" style="background:var(--s2);border:1px solid var(--border);color:var(--text);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:14px;">✕ 閉じる</button>
+          <button onclick="document.getElementById('slip-detail-modal').remove()" style="background:var(--accent);border:none;color:#000;padding:10px 18px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;white-space:nowrap;flex-shrink:0;">✕ 閉じる</button>
         </div>
-        <div style="padding:16px 20px;">
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px;">
-            <div><div style="font-size:10px;color:var(--muted);">売上日</div><div style="font-weight:700;">${esc(slip?.売上日 || '-')}</div></div>
-            <div><div style="font-size:10px;color:var(--muted);">請求先</div><div style="font-weight:700;">${esc(slip?.請求先 || '-')}</div></div>
-            <div><div style="font-size:10px;color:var(--muted);">税込合計</div><div style="font-weight:700;color:var(--accent);">${yenF(slip?.税込合計)}</div></div>
-            <div><div style="font-size:10px;color:var(--muted);">ステータス</div><div>${esc(slip?.ステータス || '-')}</div></div>
-            <div><div style="font-size:10px;color:var(--muted);">担当者</div><div>${esc(slip?.担当者 || '-')}</div></div>
-            <div><div style="font-size:10px;color:var(--muted);">車両数</div><div>${plateCount}台・${lines.length}明細</div></div>
+        <div style="padding:18px 24px;overflow:auto;flex:1;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px;">
+            <div style="background:var(--s2);padding:10px 14px;border-radius:8px;"><div style="font-size:10px;color:var(--muted);font-weight:600;">📅 売上日</div><div style="font-weight:700;font-size:14px;margin-top:2px;">${esc(slip?.売上日 || '-')}</div></div>
+            <div style="background:var(--s2);padding:10px 14px;border-radius:8px;"><div style="font-size:10px;color:var(--muted);font-weight:600;">💼 請求先</div><div style="font-weight:700;font-size:14px;margin-top:2px;">${esc(slip?.請求先 || '-')}</div></div>
+            <div style="background:rgba(240,165,0,0.12);padding:10px 14px;border-radius:8px;border:1px solid var(--accent);"><div style="font-size:10px;color:var(--muted);font-weight:600;">💰 税込合計</div><div style="font-weight:900;font-size:16px;color:var(--accent);margin-top:2px;">${yenF(slip?.税込合計)}</div></div>
+            <div style="background:var(--s2);padding:10px 14px;border-radius:8px;"><div style="font-size:10px;color:var(--muted);font-weight:600;">📋 ステータス</div><div style="font-weight:700;font-size:14px;margin-top:2px;">${esc(slip?.ステータス || '-')}</div></div>
+            <div style="background:var(--s2);padding:10px 14px;border-radius:8px;"><div style="font-size:10px;color:var(--muted);font-weight:600;">👤 担当者</div><div style="font-weight:700;font-size:14px;margin-top:2px;">${esc(slip?.担当者 || '-')}</div></div>
+            <div style="background:var(--s2);padding:10px 14px;border-radius:8px;"><div style="font-size:10px;color:var(--muted);font-weight:600;">🚚 車両/明細</div><div style="font-weight:700;font-size:14px;margin-top:2px;">${plateCount}台・${lines.length}明細</div></div>
           </div>
-          ${slip?.メモ ? `<div style="background:var(--s2);padding:8px 12px;border-radius:6px;margin-bottom:12px;font-size:12px;"><span style="color:var(--muted);">メモ:</span> ${esc(slip.メモ)}</div>` : ''}
-          <div style="overflow-x:auto;border:1px solid var(--border);border-radius:6px;">
-            <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:700px;">
-              <thead style="background:var(--s2);">
+          ${slip?.メモ ? `<div style="background:var(--s2);padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:12px;"><span style="color:var(--muted);font-weight:600;">📝 伝票メモ:</span> ${esc(slip.メモ)}</div>` : ''}
+          <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:8px;">📦 明細（${lines.length}件）</div>
+          <div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px;background:var(--s2);">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:800px;background:var(--s1);">
+              <thead style="background:var(--s2);border-bottom:2px solid var(--border);">
                 <tr>
-                  <th style="padding:6px 8px;text-align:left;color:var(--muted);">車番</th>
-                  <th style="padding:6px 8px;text-align:left;color:var(--muted);">品目／サイズ</th>
-                  <th style="padding:6px 8px;text-align:left;color:var(--muted);">銘柄</th>
-                  <th style="padding:6px 8px;text-align:right;color:var(--muted);">数量</th>
-                  <th style="padding:6px 8px;text-align:right;color:var(--muted);">単価</th>
-                  <th style="padding:6px 8px;text-align:right;color:var(--muted);">小計</th>
-                  <th style="padding:6px 8px;text-align:left;color:var(--muted);">備考</th>
+                  <th style="padding:10px 10px;text-align:left;color:var(--muted);font-size:11px;letter-spacing:0.05em;">車番</th>
+                  <th style="padding:10px 10px;text-align:left;color:var(--muted);font-size:11px;letter-spacing:0.05em;">品目／サイズ</th>
+                  <th style="padding:10px 10px;text-align:left;color:var(--muted);font-size:11px;letter-spacing:0.05em;">銘柄</th>
+                  <th style="padding:10px 10px;text-align:right;color:var(--muted);font-size:11px;letter-spacing:0.05em;">数量</th>
+                  <th style="padding:10px 10px;text-align:right;color:var(--muted);font-size:11px;letter-spacing:0.05em;">単価</th>
+                  <th style="padding:10px 10px;text-align:right;color:var(--muted);font-size:11px;letter-spacing:0.05em;">小計</th>
+                  <th style="padding:10px 10px;text-align:left;color:var(--muted);font-size:11px;letter-spacing:0.05em;">備考</th>
                 </tr>
               </thead>
               <tbody>
               ${lines.map(l => {
                 const isThis = plateFilter && l.車番 === plateFilter;
                 return `
-                <tr style="border-top:1px solid var(--border);${isThis ? 'background:rgba(240,165,0,0.12);' : ''}">
-                  <td style="padding:6px 8px;white-space:nowrap;${isThis ? 'font-weight:700;' : ''}">${esc(l.車番 || '-')}</td>
-                  <td style="padding:6px 8px;">${esc(l.明細タイトル || l.品目 || '-')}<br><span style="color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;">${esc(l.タイヤサイズ || '')}</span></td>
-                  <td style="padding:6px 8px;font-weight:700;color:var(--accent);">${esc(l.タイヤ銘柄 || '-')}</td>
-                  <td style="padding:6px 8px;text-align:right;">${l.数量 || 0}${esc(l.単位 || '')}</td>
-                  <td style="padding:6px 8px;text-align:right;">${yenF(l.単価)}</td>
-                  <td style="padding:6px 8px;text-align:right;font-weight:600;">${yenF(l.税込小計)}</td>
-                  <td style="padding:6px 8px;color:var(--muted);font-size:10px;">${esc((l.備考 || '').substring(0,50))}${l.弥生備考 ? '<br><span style="color:var(--text-sub);">弥生: ' + esc(l.弥生備考.substring(0,50)) + '</span>' : ''}</td>
+                <tr style="border-top:1px solid var(--border);${isThis ? 'background:rgba(240,165,0,0.15);' : ''}">
+                  <td style="padding:10px 10px;white-space:nowrap;${isThis ? 'font-weight:900;color:var(--accent);' : 'font-weight:600;'}font-family:'DM Mono',monospace;">${esc(l.車番 || '-')}</td>
+                  <td style="padding:10px 10px;"><div>${esc(l.明細タイトル || l.品目 || '-')}</div>${l.タイヤサイズ ? `<div style="color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;margin-top:2px;">${esc(l.タイヤサイズ)}</div>` : ''}</td>
+                  <td style="padding:10px 10px;font-weight:900;color:var(--accent);font-family:'DM Mono',monospace;">${esc(l.タイヤ銘柄 || '-')}</td>
+                  <td style="padding:10px 10px;text-align:right;font-weight:600;">${l.数量 || 0}${esc(l.単位 || '')}</td>
+                  <td style="padding:10px 10px;text-align:right;">${yenF(l.単価)}</td>
+                  <td style="padding:10px 10px;text-align:right;font-weight:700;">${yenF(l.税込小計)}</td>
+                  <td style="padding:10px 10px;color:var(--muted);font-size:10px;max-width:200px;">${esc((l.備考 || '').substring(0,60))}${l.弥生備考 ? `<div style="color:var(--text-sub);margin-top:2px;">弥生: ${esc(l.弥生備考.substring(0,60))}</div>` : ''}</td>
                 </tr>`;
               }).join('')}
               </tbody>
@@ -663,7 +667,7 @@ async function openSlipDetailModal(slipId, plateFilter) {
       </div>
     `;
   } catch (e) {
-    modal.innerHTML = '<div style="background:var(--bg-card);padding:30px;border-radius:12px;color:var(--red);">エラー: ' + e.message + '</div>';
+    modal.innerHTML = '<div style="background:var(--s1);padding:30px;border-radius:12px;color:var(--red);">エラー: ' + e.message + '</div>';
   }
 }
 

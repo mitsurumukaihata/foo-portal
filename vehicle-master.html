@@ -532,16 +532,25 @@ async function resolveCustomerNames(vehicles) {
       }
     }
 
+    // 強化: メモに具体的なEUがあり、customerNameと異なる(=支店/EU名の方が具体) なら上書き
+    // 例: 顧客ID=シモハナ物流、メモ=シモハナ沼田 → シモハナ沼田で表示
+    const shouldOverride = euName && v.customerName &&
+      euName !== v.customerName &&
+      !v.customerName.includes(euName) && // 親名がEU名を包含してたら維持
+      (isBiller || euName.length > v.customerName.length || v.customerName.includes(euName.split(/[\s　]/)[0]));
     if (isBiller && euName) {
       v.billerName = v.customerName;
       v.customerName = euName;
       v.euFromMemo = true;
-      v.furigana = '';  // 元請けのふりがなは無効化(エンドユーザー名でソートする)
+      v.furigana = '';
+    } else if (shouldOverride) {
+      v.originalCustomer = v.customerName;
+      v.customerName = euName;
+      v.euFromMemo = true;
+      v.furigana = '';
     } else if (v.furigana_biller && euName) {
-      // customerNameは元請けでなくても、ふりがなが元請け=信頼不可
       v.furigana = '';
     } else if (v.furigana_biller) {
-      // ふりがなだけ元請け系で EU 無し → ふりがな無効化
       v.furigana = '';
     } else if (!v.customerName && memo) {
       const m2 = memo.match(/顧客:\s*([^\n\/(]+)/);

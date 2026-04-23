@@ -398,37 +398,53 @@ function parseVehicle(page) {
   };
 }
 
-// ── Fetch Customer Names ──
+// ── Fetch Customer Names (D1直接JOINで全車両の真の顧客名を取得) ──
 async function resolveCustomerNames(vehicles) {
-  const ids = new Set();
-  vehicles.forEach(v => {
-    if (Array.isArray(v.customerRel)) {
-      v.customerRel.forEach(r => { if (r.id && !customerCache[r.id]) ids.add(r.id); });
-    }
-  });
-  const promises = [...ids].map(async id => {
-    try {
-      const page = await notionAPI('/pages/' + id, 'GET');
-      const titleProp = Object.values(page.properties).find(p => p.type === 'title');
-      const name = titleProp ? (titleProp.title || []).map(t => t.plain_text).join('') : '';
-      customerCache[id] = name;
-    } catch(e) { customerCache[id] = '(不明)'; }
-  });
-  await Promise.all(promises);
-  vehicles.forEach(v => {
-    if (Array.isArray(v.customerRel) && v.customerRel.length > 0) {
-      v.customerName = customerCache[v.customerRel[0].id] || '';
-    }
-    // フォールバック: customerName 空のとき メモから「顧客:」「エンドユーザー:」を読む
-    if (!v.customerName && v.memo) {
-      const m1 = v.memo.match(/エンドユーザー:\s*([^\n\/]+)/);
-      const m2 = v.memo.match(/顧客:\s*([^\n\/]+)/);
-      const m3 = v.memo.match(/元請け:\s*([^\n\/]+)/);
-      if (m1) v.customerName = m1[1].trim() + ' (EU)';
-      else if (m2) v.customerName = m2[1].trim();
-      else if (m3) v.customerName = m3[1].trim() + ' (元請)';
-    }
-  });
+  if (!vehicles.length) return;
+  // D1から全車両の顧客名をバルクで取得（得意先マスタと顧客情報DBを両方チェック）
+  try {
+    const res = await fetch('https://notion-proxy.33322666666mm.workers.dev/d1/sql', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sql: `SELECT v.id, COALESCE(e.得意先名, c.顧客名) AS 顧客名, v.メモ
+              FROM 車両マスタ v
+              LEFT JOIN 得意先マスタ e ON v.顧客ID = e.id
+              LEFT JOIN 顧客情報DB c ON v.顧客ID = c.id`
+      })
+    });
+    const data = await res.json();
+    const nameMap = new Map();
+    (data.results || []).forEach(r => {
+      nameMap.set(r.id, { name: r.顧客名 || '', memo: r.メモ || '' });
+    });
+    // 各車両に反映（フォールバック含む）
+    vehicles.forEach(v => {
+      const entry = nameMap.get(v.id);
+      if (entry && entry.name) {
+        v.customerName = entry.name;
+      } else if (v.memo) {
+        const m1 = v.memo.match(/エンドユーザー:\s*([^\n\/]+)/);
+        const m2 = v.memo.match(/顧客:\s*([^\n\/]+)/);
+        const m3 = v.memo.match(/元請け:\s*([^\n\/]+)/);
+        if (m1) v.customerName = m1[1].trim() + ' (EU)';
+        else if (m2) v.customerName = m2[1].trim();
+        else if (m3) v.customerName = m3[1].trim() + ' (元請)';
+      }
+    });
+  } catch (e) {
+    console.warn('D1 顧客名取得失敗、メモから抽出のみで動作:', e);
+    vehicles.forEach(v => {
+      if (v.memo) {
+        const m1 = v.memo.match(/エンドユーザー:\s*([^\n\/]+)/);
+        const m2 = v.memo.match(/顧客:\s*([^\n\/]+)/);
+        const m3 = v.memo.match(/元請け:\s*([^\n\/]+)/);
+        if (m1) v.customerName = m1[1].trim() + ' (EU)';
+        else if (m2) v.customerName = m2[1].trim();
+        else if (m3) v.customerName = m3[1].trim() + ' (元請)';
+      }
+    });
+  }
 }
 
 // ── Fetch Vehicles (全件取得 - ページング対応) ──

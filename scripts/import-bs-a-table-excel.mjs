@@ -42,16 +42,22 @@ function buildSize(sec, hen, inch, xl, name) {
   if (/\bLT\s*\d{3}\/\d{1,3}/.test(name)) prefix = 'LT';
   else if (/\bP\s*\d{3}\/\d{1,3}/.test(name)) prefix = 'P';
   // 商品名から R155/R175 等の半インチ(.5)表記を検出してインチに補正
-  // 例: "108L 195/60 R175 M810" → インチを "17" ではなく "17.5" に
   const nameMatch = String(name).match(/\bR(\d{2,3})(?:LT)?\b/);
   if (nameMatch) {
     const rNum = nameMatch[1];
     if (rNum.length === 3 && rNum.endsWith('5')) {
-      // 3桁で末尾5 → 0.5 インチ表記: 155→15.5, 175→17.5, 135→13.5
       inch = rNum.substring(0, 2) + '.5';
     }
   }
-  const base = (hen === '00' || hen === '0' || hen === '99' || !hen) ? sec + 'R' + inch : sec + '/' + hen + 'R' + inch;
+  // BS バイアスプライ商用トラックサイズ表記揺れ補正
+  // BS: "600R15" / 他メーカー: "6.00R15" → 他メーカーに合わせる
+  // sec が「4-9始まりの3桁」かつ hen が "00" ならバイアス表記に変換
+  let secDisplay = sec;
+  if (/^[4-9]\d0$/.test(sec) && (hen === '00' || hen === '0' || !hen || hen === '99')) {
+    // 600 → 6.00, 650 → 6.50, 700 → 7.00, 750 → 7.50
+    secDisplay = sec[0] + '.' + sec.slice(1);
+  }
+  const base = (hen === '00' || hen === '0' || hen === '99' || !hen) ? secDisplay + 'R' + inch : secDisplay + '/' + hen + 'R' + inch;
   let size = (prefix ? prefix : '') + base;
   if (xl) size += ' XL';
   return { size, prefix };

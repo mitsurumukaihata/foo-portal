@@ -2242,18 +2242,17 @@ function cancelPrepEdit(pageId, origQty, origDest) {
 // カテゴリ = 大型(LTL/LTS扱い) / 中型(LTS) / バン / 乗用車(PC)
 // D1スキーマ: A表(id, カテゴリ, メーカー, パターン, サイズ, 加重指数, カテゴリ詳細, 価格, 備考, 注意, 最終更新日)
 const PRICE_CAT_MAP = {
-  'LTS': { name: '中型 (LTS)',   icon: '🚐' },
-  'バン': { name: 'バン',         icon: '🚌' },
-  'PC':   { name: '乗用車 (PC)',  icon: '🚗' },
+  'LTS': { name: 'LTS (中型)',   icon: '🚐' },
+  'バン': { name: 'バン',         icon: '🚐' },
+  'PC':   { name: '乗用車',       icon: '🚗' },
 };
-// 乗用車(PC)のサブカテゴリ: Notion既存5分類 + 軽/コンパクト追加予定
-// 現在の件数: スポーツ287 / ミニバン／SUV87 / コンフォート64 / エコ（低燃費）50 / (空)267
+// 乗用車(PC)のサブカテゴリ: Notion A表の既存分類
 const PC_SUBCATS = [
-  { key: 'スポーツ',         label: '🏎 スポーツ' },
-  { key: 'コンフォート',     label: '💼 ラグジュアリー／コンフォート' },
-  { key: 'ミニバン／SUV',    label: '🚙 ミニバン・SUV' },
-  { key: 'エコ（低燃費）',    label: '🌱 エコ（低燃費）' },
-  { key: '',                 label: '📋 その他（未分類）' },
+  { key: 'スポーツ',         label: 'スポーツ' },
+  { key: 'コンフォート',     label: 'コンフォート' },
+  { key: 'ミニバン／SUV',    label: 'ミニバン・SUV' },
+  { key: 'エコ（低燃費）',    label: 'エコ' },
+  { key: '',                 label: 'その他' },
 ];
 // D1経由SELECT専用ヘルパ
 async function d1query(sql) {

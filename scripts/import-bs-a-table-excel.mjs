@@ -72,33 +72,90 @@ const atSheet = wb.Sheets['A表'];
 if (!atSheet) { console.error('A表 シートなし'); process.exit(1); }
 const atRows = XLSX.utils.sheet_to_json(atSheet, { header: 1, defval: '' });
 
-// Row 9(idx 8)=ブランド、Row 10(idx 9)=パターン、セル結合は先頭列のみ値→forward-fill
+// Row 9(idx 8)=ブランド、Row 10(idx 9)=パターン(上部セクション用)
 const brandRow = atRows[8] || [];
 const patternRow = atRows[9] || [];
 const maxCols = Math.max(brandRow.length, patternRow.length);
+
+// 上部セクション用 colInfo
 let curBrand = '', curPattern = '';
-const colInfo = {};
+const topColInfo = {};
 for (let c = 0; c < maxCols; c++) {
   if (brandRow[c] && String(brandRow[c]).trim()) curBrand = String(brandRow[c]).trim();
   if (patternRow[c] && String(patternRow[c]).trim()) curPattern = String(patternRow[c]).trim();
-  colInfo[c] = { brand: curBrand, pattern: curPattern };
+  topColInfo[c] = { brand: curBrand, pattern: curPattern };
 }
 
-// Data rows 12+ (index 11+) — 商品コード → (brand, pattern, mark)
+// セクションヘッダー("FOR XXX")を検出し、LIGHTTRACK等の下部セクションを特定
+// 下部セクションは独自のブランド/パターン行を持つ
+const sections = []; // [{startRow, minCol, brandPatternRow, ...}]
+for (let i = 0; i < atRows.length; i++) {
+  for (let c = 0; c < atRows[i].length; c++) {
+    const v = String(atRows[i][c]||'').trim();
+    if (/^FOR\s+LIGHTTRACK/i.test(v)) {
+      // LIGHTTRACK セクションの開始: brand+pattern は1行下、sub-headerは3行下、dataは4行下〜
+      sections.push({
+        name: 'LIGHTTRACK',
+        startRow: i,      // "FOR LIGHTTRACK" の行
+        headerRow: i + 1, // brand+pattern combined
+        dataStartRow: i + 4, // data start (sub-header row + 1)
+        minCol: c         // LIGHTTRACK コラムの開始位置
+      });
+    }
+  }
+}
+
+// LIGHTTRACK セクション用 colInfo (combined brand+pattern row)
+function buildLtColInfo(sec) {
+  const hdr = atRows[sec.headerRow] || [];
+  const info = {};
+  let curBP = '';
+  for (let c = sec.minCol; c < hdr.length; c++) {
+    const v = hdr[c] && String(hdr[c]).trim();
+    if (v) curBP = v;
+    info[c] = curBP; // 例: "ECOPIA R214/R201", "DURAVIS M807/M810"
+  }
+  return info;
+}
+const ltSections = sections.map(sec => ({ ...sec, bpInfo: buildLtColInfo(sec) }));
+console.log('検出した下部セクション:', ltSections.map(s => `${s.name}@row${s.startRow+1}col${s.minCol}`).join(', '));
+
+// LIGHTTRACK の brand+pattern 結合文字列を ブランド/パターン に分割
+// パターン: 先頭ワードがブランド名(ECOPIA/DURAVIS/REGNO等)ならそれ、残りがパターン
+const KNOWN_BRANDS = ['ECOPIA','DURAVIS','REGNO','POTENZA','ALENZA','DUELER','Playz','NEXTRY','NEWNO','SEIBER LING','SEIBERLING','FINESSA','TOPRUN','LUFT RVⅡ','LUFT RV','MULTI WEATHER'];
+function splitBP(combined) {
+  if (!combined) return { brand: '', pattern: '' };
+  for (const b of KNOWN_BRANDS) {
+    if (combined.startsWith(b + ' ')) return { brand: b, pattern: combined.slice(b.length).trim() };
+    if (combined === b) return { brand: b, pattern: b };
+  }
+  // 先頭が英大文字なら全体をパターンとして扱う(ブランド不明)
+  return { brand: '', pattern: combined };
+}
+
+// データ行走査: 商品コード → (brand, pattern, mark)
+// セクション判定: 行・列が LIGHTTRACK 範囲なら LIGHTTRACK 用 colInfo、そうでなければ top colInfo
 const codeInfo = {};
 for (let i = 11; i < atRows.length; i++) {
   const r = atRows[i];
   for (let c = 0; c < r.length; c++) {
     const v = String(r[c] || '').trim();
     if (/^\d{8,15}$/.test(v)) {
-      const info = colInfo[c] || {};
+      // どのセクションか判定
+      let bp = null;
+      for (const sec of ltSections) {
+        if (i >= sec.dataStartRow && c >= sec.minCol && sec.bpInfo[c]) {
+          bp = splitBP(sec.bpInfo[c]);
+          break;
+        }
+      }
+      if (!bp) {
+        const info = topColInfo[c] || {};
+        bp = { brand: info.brand || '', pattern: info.pattern || '' };
+      }
       const raw = c > 0 ? String(r[c-1] || '').trim() : '';
       const m = raw.match(/[★②③④◇△□■*▼]+/);
-      codeInfo[v] = {
-        brand: info.brand || '',
-        pattern: info.pattern || '',
-        mark: m ? m[0] : ''
-      };
+      codeInfo[v] = { brand: bp.brand, pattern: bp.pattern, mark: m ? m[0] : '' };
     }
   }
 }

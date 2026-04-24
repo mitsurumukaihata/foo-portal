@@ -151,110 +151,139 @@
   <!-- Hero Metrics -->
   <div class="hero-grid" id="hero"></div>
 
+  <!-- 目次 -->
+  <div class="card" style="padding:10px 14px;">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">📑 セクション目次</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;font-size:11px;">
+      <a href="#sec-yoy" class="toc-link">📆 昨年同月比</a>
+      <a href="#sec-actions" class="toc-link">🎯 注目アクション</a>
+      <a href="#sec-month" class="toc-link">📈 今月</a>
+      <a href="#sec-forecast" class="toc-link">🔮 予測</a>
+      <a href="#sec-movers" class="toc-link">🚀 伸/落</a>
+      <a href="#sec-new" class="toc-link">🌱 新規</a>
+      <a href="#sec-vhealth" class="toc-link">🏥 車両健康度</a>
+      <a href="#sec-ahealth" class="toc-link">📖 A表健康度</a>
+      <a href="#sec-margin" class="toc-link">💰 値引き分析</a>
+      <a href="#sec-missing" class="toc-link">🔍 A表未掲載</a>
+      <a href="#sec-overdue" class="toc-link">🚚 再来店</a>
+      <a href="#sec-dormant" class="toc-link">😴 休眠</a>
+      <a href="#sec-highval" class="toc-link">💎 高額</a>
+      <a href="#sec-trend" class="toc-link">🛞 トレンド</a>
+      <a href="#sec-profit" class="toc-link">💎 粗利</a>
+      <a href="#sec-kpi" class="toc-link">🏢 KPI</a>
+      <a href="#sec-data" class="toc-link">💾 データ</a>
+    </div>
+  </div>
+  <style>
+    .toc-link { padding:3px 8px; background:var(--card); border:1px solid var(--border); border-radius:4px; color:var(--accent); text-decoration:none; }
+    .toc-link:hover { background:var(--accent); color:#fff; }
+    .card[id^="sec-"] { scroll-margin-top: 10px; }
+  </style>
+
   <!-- 昨年同月比 -->
-  <div class="card">
+  <div class="card" id="sec-yoy">
     <h2>📆 昨年同月比</h2>
     <div id="yoy"></div>
   </div>
 
   <!-- Today's Focus -->
-  <div class="card">
+  <div class="card" id="sec-actions">
     <h2>🎯 今日の注目アクション</h2>
     <div id="actions"></div>
   </div>
 
   <!-- 今月の進捗 -->
-  <div class="card">
+  <div class="card" id="sec-month">
     <h2>📈 今月ここまで</h2>
     <div id="month-progress"></div>
   </div>
 
   <!-- 今日の曜日パターン -->
-  <div class="card">
+  <div class="card" id="sec-dow">
     <h2>📅 今日の曜日パターン（過去1年統計）</h2>
     <div id="dow-pattern"></div>
   </div>
 
   <!-- 月次予測着地 -->
-  <div class="card">
+  <div class="card" id="sec-forecast">
     <h2>🔮 今月の着地予測</h2>
     <div id="month-forecast"></div>
   </div>
 
   <!-- 伸びてる顧客・落ちてる顧客 -->
-  <div class="card">
+  <div class="card" id="sec-movers">
     <h2>🚀 伸びている顧客 / 📉 落ちている顧客（直近90日 vs 前90日）</h2>
     <div id="movers"></div>
   </div>
 
   <!-- 新規獲得顧客 -->
-  <div class="card">
+  <div class="card" id="sec-new">
     <h2>🌱 新規獲得顧客（過去60日に初取引）</h2>
     <div id="new-customers"></div>
   </div>
 
   <!-- 車両マスタ健康度 -->
-  <div class="card">
+  <div class="card" id="sec-vhealth">
     <h2>🏥 車両マスタ健康度</h2>
     <div id="vehicle-health"></div>
   </div>
 
   <!-- A表健康度 -->
-  <div class="card">
+  <div class="card" id="sec-ahealth">
     <h2>📖 A表健康度（業界価格表カバレッジ）</h2>
     <div id="atable-health"></div>
   </div>
 
   <!-- A表定価比較（粗利インサイト） -->
-  <div class="card">
+  <div class="card" id="sec-margin">
     <h2>💰 A表定価 vs 販売価格（直近90日、単価3,000円以上）</h2>
     <div id="atable-margin"></div>
   </div>
 
   <!-- A表未掲載の販売商品 -->
-  <div class="card">
+  <div class="card" id="sec-missing">
     <h2>🔍 A表未掲載で売れている商品（直近90日）</h2>
     <div id="atable-missing"></div>
   </div>
 
   <!-- タイヤ交換予測: 長期間未作業の優良車両 -->
-  <div class="card">
+  <div class="card" id="sec-overdue">
     <h2>🚚 再来店チャンス — 2年以上未作業の優良車両</h2>
     <div id="overdue-vehicles"></div>
   </div>
 
   <!-- 休眠顧客 -->
-  <div class="card">
+  <div class="card" id="sec-dormant">
     <h2>😴 要フォロー休眠顧客（過去6ヶ月取引なし）</h2>
     <div id="dormant"></div>
   </div>
 
   <!-- 直近の高額取引 -->
-  <div class="card">
+  <div class="card" id="sec-highval">
     <h2>💎 直近の高額取引 TOP10</h2>
     <div id="high-value"></div>
   </div>
 
   <!-- タイヤ需要トレンド -->
-  <div class="card">
+  <div class="card" id="sec-trend">
     <h2>🛞 売上トレンド（タイヤサイズ別、直近3ヶ月 vs 昨年同期）</h2>
     <div id="trend"></div>
   </div>
 
   <!-- 粗利トレンド -->
-  <div class="card">
+  <div class="card" id="sec-profit">
     <h2>💎 粗利トレンド（直近6ヶ月）</h2>
     <div id="profit-trend"></div>
   </div>
 
   <!-- 経営指標 -->
-  <div class="card">
+  <div class="card" id="sec-kpi">
     <h2>🏢 過去1年の経営指標</h2>
     <div id="kpi-yearly"></div>
   </div>
 
   <!-- データヘルス -->
-  <div class="card">
+  <div class="card" id="sec-data">
     <h2>💾 データヘルス</h2>
     <div id="data-health"></div>
   </div>

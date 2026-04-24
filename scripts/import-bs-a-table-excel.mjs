@@ -159,10 +159,12 @@ for (let i = 11; i < atRows.length; i++) {
     const v = String(r[c] || '').trim();
     if (/^\d{8,15}$/.test(v)) {
       let bp = null;
-      // 優先: LIGHTTRACK セクション
+      let sectionCat = null; // セクション由来のカテゴリ上書き
+      // 優先: LIGHTTRACK セクション → カテゴリを LTS に上書き(価格リストの LVR0 等を無視)
       for (const sec of ltSectionsWithInfo) {
         if (i >= sec.dataStartRow && c >= sec.minCol && sec.bpInfo[c]) {
           bp = splitBP(sec.bpInfo[c]);
+          sectionCat = 'LTS'; // LIGHTTRACK = LTS(小型トラック)
           break;
         }
       }
@@ -178,7 +180,7 @@ for (let i = 11; i < atRows.length; i++) {
       }
       const raw = c > 0 ? String(r[c-1] || '').trim() : '';
       const m = raw.match(/[★②③④◇△□■*▼]+/);
-      codeInfo[v] = { brand: bp.brand, pattern: bp.pattern, mark: m ? m[0] : '' };
+      codeInfo[v] = { brand: bp.brand, pattern: bp.pattern, mark: m ? m[0] : '', sectionCat };
     }
   }
 }
@@ -195,8 +197,12 @@ for (let i = 4; i < rows.length; i++) {
   const code = String(r[2]||'').trim();
   if (!code || !codeInfo[code]) continue;
   const g = String(r[1]||'').trim();
-  const cat = groupToCat(g);
+  let cat = groupToCat(g);
   if (!cat) continue;
+  const info = codeInfo[code];
+  // A表シートのセクション位置由来のカテゴリが指定されていれば、それで上書き
+  // (LIGHTTRACK セクションに置かれた LVR0 商品等の矛盾を解消)
+  if (info.sectionCat) cat = info.sectionCat;
   const name = String(r[4]||'').trim();
   const rinc = String(r[6]||'').trim();
   const xl = String(r[10]||'').trim() === 'XL';
@@ -205,11 +211,10 @@ for (let i = 4; i < rows.length; i++) {
   if (!size) continue;
   const atable = r[21];
   const price = (atable && atable !== 0 && atable !== '') ? atable : null;
-  const info = codeInfo[code];
   parsed.push({
     cat, group: g, code, brandCd,
-    brand: info.brand,       // ← A表シートから拾ったクリーンなブランド名
-    pattern: info.pattern,   // ← A表シートから拾ったクリーンなパターン名
+    brand: info.brand,
+    pattern: info.pattern,
     mark: info.mark,
     size, prefix, name, rinc, price,
     oldModel: isOldModel(g) ? 1 : 0

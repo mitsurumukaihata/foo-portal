@@ -215,6 +215,34 @@ actionItems は、会話中に出てきた「行動可能なタスク」を**漏
         return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
       }
     }
+    // カタログメタデータプロキシ: タイヤメーカー公式サイトのページから og:image/title/description を抽出
+    if (url.pathname === "/catalog-meta") {
+      const target = url.searchParams.get("url");
+      if (!target) return new Response(JSON.stringify({ error: "url required" }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+      // ホワイトリスト: タイヤメーカー公式サイトのみ許可
+      const allowed = ['tire.bridgestone.co.jp','toyotires.jp','tyre.dunlop.co.jp','michelin.co.jp','pirelli.com','y-yokohama.com'];
+      let host;
+      try { host = new URL(target).hostname; } catch { return new Response(JSON.stringify({ error: "bad url" }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } }); }
+      if (!allowed.some(a => host === a || host.endsWith('.' + a))) {
+        return new Response(JSON.stringify({ error: "host not allowed", host }), { status: 403, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+      try {
+        const res2 = await fetch(target, { headers: { "User-Agent": "Mozilla/5.0 foo-portal-catalog" } });
+        if (!res2.ok) return new Response(JSON.stringify({ error: "upstream " + res2.status }), { status: res2.status, headers: { ...cors, "Content-Type": "application/json" } });
+        const html = await res2.text();
+        const pick = (re) => { const m = html.match(re); return m ? m[1].trim() : null; };
+        const title = pick(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i) || pick(/<title[^>]*>([^<]+)<\/title>/i);
+        const desc = pick(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i) || pick(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i);
+        const image = pick(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i);
+        const siteName = pick(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']/i);
+        return new Response(JSON.stringify({ url: target, title, description: desc, image, siteName }), {
+          headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "public, max-age=86400" }
+        });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
      if (url.pathname === "/pdf-proxy") {
       const pdfUrl = url.searchParams.get("url");
       if (!pdfUrl) {

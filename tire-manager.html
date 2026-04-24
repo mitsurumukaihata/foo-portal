@@ -2476,33 +2476,34 @@ async function priceGoFetchPattern(sz) {
     window._fooNavStack=[]; fooNavPush(function(){priceClearSearch();}); renderPricePatternStep();
   } catch(e) { priceState.loading=false; document.getElementById('price-content').innerHTML=`<div class="content"><div class="error-box">取得に失敗しました。<br><small>${e.message}</small></div><button class="btn-secondary" onclick="priceState.step='search';renderPriceHome()">← 戻る</button></div>`; }
 }
-// 主要パターンの直リンク (手動キュレーション)
-// キー: パターン名をそのまま
+// 主要パターンの直リンク (2026/4 時点で実URLを確認済み)
+// 確認できなかったものはブランドページにフォールバック
 const DIRECT_CATALOG_URL = {
-  // BRIDGESTONE
-  'POTENZA S007A': 'https://tire.bridgestone.co.jp/car/tire/potenza/s007a/',
-  'POTENZA RE-71RS': 'https://tire.bridgestone.co.jp/car/tire/potenza/re71rs/',
-  'POTENZA Sport': 'https://tire.bridgestone.co.jp/car/tire/potenza/sport/',
-  'POTENZA Adrenalin RE004': 'https://tire.bridgestone.co.jp/car/tire/potenza/adrenaline-re004/',
-  'REGNO GR-XIII': 'https://tire.bridgestone.co.jp/car/tire/regno/gr-x3/',
-  'REGNO GR-XII': 'https://tire.bridgestone.co.jp/car/tire/regno/gr-x2/',
-  'REGNO GRVII': 'https://tire.bridgestone.co.jp/car/tire/regno/grv2/',
-  'ECOPIA NH200': 'https://tire.bridgestone.co.jp/car/tire/ecopia/nh200/',
-  'ECOPIA NH200C': 'https://tire.bridgestone.co.jp/car/tire/ecopia/nh200c/',
-  'NEWNO': 'https://tire.bridgestone.co.jp/car/tire/newno/',
-  'Playz PX-RVⅡ': 'https://tire.bridgestone.co.jp/car/tire/playz/pxrv2/',
-  'DUELER H/L850': 'https://tire.bridgestone.co.jp/car/tire/dueler/hl850/',
-  'DUELER H/P SPORT': 'https://tire.bridgestone.co.jp/car/tire/dueler/hp-sport/',
-  'BLIZZAK VRX3': 'https://tire.bridgestone.co.jp/car/tire/studless/blizzak-vrx3/',
-  // DUNLOP
+  // BRIDGESTONE (https://tire.bridgestone.co.jp/ スキーマ: /{ブランド}/{モデル}/)
+  'REGNO': 'https://tire.bridgestone.co.jp/regno/',
+  'REGNO GR-XIII': 'https://tire.bridgestone.co.jp/regno/gr-x3/',
+  'POTENZA': 'https://tire.bridgestone.co.jp/potenza/',
+  'POTENZA S007A': 'https://tire.bridgestone.co.jp/potenza/s007a/',
+  'POTENZA RE-71RS': 'https://tire.bridgestone.co.jp/potenza/re71rs/',
+  'POTENZA Adrenalin RE004': 'https://tire.bridgestone.co.jp/potenza/adrenaline-re004/',
+  'ECOPIA': 'https://tire.bridgestone.co.jp/ecopia/',
+  'ECOPIA NH200': 'https://tire.bridgestone.co.jp/ecopia/nh200/',
+  'ECOPIA NH200C': 'https://tire.bridgestone.co.jp/ecopia/nh200c/',
+  'NEWNO': 'https://tire.bridgestone.co.jp/newno/',
+  'Playz': 'https://tire.bridgestone.co.jp/playz/products/',
+  'DUELER': 'https://tire.bridgestone.co.jp/dueler/',
+  'DUELER H/L850': 'https://tire.bridgestone.co.jp/dueler/hl850/',
+  'DUELER H/P SPORT': 'https://tire.bridgestone.co.jp/dueler/hp-sport/',
+  'BLIZZAK': 'https://tire.bridgestone.co.jp/blizzak/',
+  'BLIZZAK VRX3': 'https://tire.bridgestone.co.jp/blizzak/vrx3/',
+  // DUNLOP (https://tyre.dunlop.co.jp/)
   'LE MANS V+': 'https://tyre.dunlop.co.jp/lemans5plus/',
-  'VEURO VE304': 'https://tyre.dunlop.co.jp/veuro/',
+  'VEURO': 'https://tyre.dunlop.co.jp/veuro/',
   'ENASAVE EC204': 'https://tyre.dunlop.co.jp/enasave-ec204/',
   'WINTER MAXX 03': 'https://tyre.dunlop.co.jp/wintermaxx03/',
-  // TOYO
+  // TOYO (https://www.toyotires.jp/product/{slug}/)
   'PROXES Sport2': 'https://www.toyotires.jp/product/proxessport2/',
   'PROXES Comfort II': 'https://www.toyotires.jp/product/proxescomfort2/',
-  'PROXES CL1 SUV': 'https://www.toyotires.jp/product/proxescl1suv/',
   'NANOENERGY3PLUS': 'https://www.toyotires.jp/product/nanoenergy3plus/',
   'OBSERVE GIZ2': 'https://www.toyotires.jp/product/observegiz2/',
   // YOKOHAMA
@@ -2510,10 +2511,6 @@ const DIRECT_CATALOG_URL = {
   'ADVAN dB V552': 'https://www.y-yokohama.com/product/tire/advandb-v552/',
   'BluEarth-GT AE51': 'https://www.y-yokohama.com/product/tire/bluearth-gt-ae51/',
   'iceGUARD 7': 'https://www.y-yokohama.com/product/tire/iceguard7/',
-  // MICHELIN
-  'Pilot Sport 5': 'https://www.michelin.co.jp/auto/michelin-tires/pilot-sport-5',
-  'PRIMACY 4': 'https://www.michelin.co.jp/auto/michelin-tires/primacy-4',
-  'X-ICE SNOW': 'https://www.michelin.co.jp/auto/michelin-tires/x-ice-snow',
 };
 
 // メーカー別カタログ検索URLビルダー
@@ -2538,7 +2535,59 @@ function makerCatalogUrl(maker, pattern, brand) {
 }
 function priceOpenCatalog(ev, maker, pattern, brand) {
   ev.stopPropagation();
-  window.open(makerCatalogUrl(maker, pattern, brand), '_blank', 'noopener');
+  const url = makerCatalogUrl(maker, pattern, brand);
+  // Google検索URLは直接開く (metaが取れない)、公式サイトURLはプレビュー表示
+  if (url.includes('google.com/search')) {
+    window.open(url, '_blank', 'noopener');
+    return;
+  }
+  priceShowCatalogPreview(url, maker, pattern, brand);
+}
+
+function priceShowCatalogPreview(url, maker, pattern, brand) {
+  let modal = document.getElementById('catalog-preview-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'catalog-preview-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = '';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:12px;max-width:500px;width:100%;max-height:90vh;overflow:auto;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,0.3);';
+  box.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div style="font-size:14px;font-weight:700;">🔗 ${maker} / ${pattern}</div>
+      <button onclick="document.getElementById('catalog-preview-modal').remove()" style="background:none;border:0;font-size:22px;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div id="catalog-preview-body" style="font-size:12px;color:var(--muted);padding:20px 0;text-align:center;">読み込み中...</div>
+  `;
+  modal.appendChild(box);
+  const proxy = 'https://notion-proxy.33322666666mm.workers.dev/catalog-meta?url=' + encodeURIComponent(url);
+  fetch(proxy).then(r => r.json()).then(d => {
+    const body = document.getElementById('catalog-preview-body');
+    if (!body) return;
+    if (d.error) {
+      body.innerHTML = `
+        <div style="color:#dc2626;margin-bottom:12px;">⚠ ページ取得エラー: ${d.error}</div>
+        <div style="font-size:11px;word-break:break-all;margin-bottom:12px;color:#6b7280;">${url}</div>
+        <button onclick="window.open('${url.replace(/'/g,"\\'")}','_blank','noopener');document.getElementById('catalog-preview-modal').remove();" style="padding:8px 18px;background:var(--accent);color:#fff;border:0;border-radius:6px;cursor:pointer;font-weight:700;">新しいタブで開く</button>
+        <div style="margin-top:10px;"><a href="https://www.google.com/search?q=${encodeURIComponent(maker + ' ' + (brand?brand+' ':'') + pattern + ' タイヤ')}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);">Google で検索 →</a></div>
+      `;
+      return;
+    }
+    body.innerHTML = `
+      ${d.image ? `<img src="${d.image}" alt="" style="max-width:100%;border-radius:8px;margin-bottom:12px;">` : ''}
+      ${d.title ? `<div style="font-size:16px;font-weight:700;color:#111;text-align:left;margin-bottom:6px;">${d.title}</div>` : ''}
+      ${d.siteName ? `<div style="font-size:10px;color:var(--muted);text-align:left;margin-bottom:8px;">${d.siteName}</div>` : ''}
+      ${d.description ? `<div style="font-size:12px;color:#444;text-align:left;line-height:1.6;margin-bottom:16px;">${d.description}</div>` : ''}
+      <button onclick="window.open('${url.replace(/'/g,"\\'")}','_blank','noopener');document.getElementById('catalog-preview-modal').remove();" style="padding:8px 18px;background:var(--accent);color:#fff;border:0;border-radius:6px;cursor:pointer;font-weight:700;">公式ページを開く →</button>
+    `;
+  }).catch(e => {
+    const body = document.getElementById('catalog-preview-body');
+    if (body) body.innerHTML = '<div style="color:#dc2626;">読み込み失敗: ' + e.message + '</div>';
+  });
 }
 
 function renderPricePatternStep() {

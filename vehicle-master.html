@@ -479,7 +479,7 @@ async function fetchVehicles(filterTitle) {
   }
   const sql = `
     SELECT v.id, v.車番, v.車種, v.前輪サイズ, v.後輪サイズ, v.前輪パターン, v.後輪パターン,
-           v.カテゴリ AS タイヤカテゴリ, v.本数, v.メモ, v.管理番号, v.created_time,
+           v.カテゴリ AS タイヤカテゴリ, v.本数, v.メモ, v.管理番号, v.車軸配置, v.created_time,
            v.顧客ID,
            COALESCE(
              e.得意先名,
@@ -548,6 +548,7 @@ async function fetchVehicles(filterTitle) {
     count: r.本数 || '',
     pressure: '',
     memo: r.メモ || '',
+    axleConfig: r.車軸配置 || '',
     createdTime: r.created_time
   }));
 }
@@ -845,6 +846,7 @@ function renderCard(v, container) {
       <div class="v-detail-row"><span class="v-detail-label">車番</span><span class="v-detail-val">${v.plate}</span></div>
       <div class="v-detail-row"><span class="v-detail-label">顧客</span><span class="v-detail-val">${v.customerName || '-'}</span></div>
       <div class="v-detail-row"><span class="v-detail-label">車種</span><span class="v-detail-val">${emoji} ${v.type || '-'}</span></div>
+      <div class="v-detail-row"><span class="v-detail-label">車軸配置</span><span class="v-detail-val">${v.axleConfig ? `<span style="font-family:'DM Mono',monospace;font-weight:700;padding:2px 8px;background:var(--surface2);border-radius:4px;">${v.axleConfig}</span>` : '-'}</span></div>
       <div class="v-detail-row"><span class="v-detail-label">前輪サイズ</span><span class="v-detail-val">${v.frontSize || '-'}</span></div>
       <div class="v-detail-row"><span class="v-detail-label">前輪パターン</span><span class="v-detail-val">${v.frontPattern || '-'}</span></div>
       <div class="v-detail-row"><span class="v-detail-label">後輪サイズ</span><span class="v-detail-val">${v.rearSize || '-'}</span></div>
@@ -1351,6 +1353,20 @@ function openEditSheet(v) {
       </select>
     </div>
     <div class="form-row">
+      <div class="form-field">
+        <div class="form-label">車軸配置 <span style="font-size:10px;color:var(--muted);font-weight:400;">(前後でサイズ違う場合)</span></div>
+        <select class="form-select" id="edit-axle-config">
+          <option value="" ${!v.axleConfig?'selected':''}>選択なし</option>
+          <option value="2-2" ${v.axleConfig==='2-2'?'selected':''}>2-2 (乗用車・バン: 4本)</option>
+          <option value="2-D" ${v.axleConfig==='2-D'?'selected':''}>2-D (4t/10t: 6本)</option>
+          <option value="2-D-D" ${v.axleConfig==='2-D-D'?'selected':''}>2-D-D (大型10t/3軸: 10本)</option>
+          <option value="2-2-D-D" ${v.axleConfig==='2-2-D-D'?'selected':''}>2-2-D-D (4軸低床: 12本)</option>
+          <option value="2-D-D-D" ${v.axleConfig==='2-D-D-D'?'selected':''}>2-D-D-D (4軸: 14本)</option>
+          <option value="トレーラー" ${v.axleConfig==='トレーラー'?'selected':''}>トレーラー</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
       <div class="form-field"><div class="form-label">前輪サイズ</div><input type="text" class="form-input" id="edit-front-size" value="${v.frontSize}"></div>
       <div class="form-field"><div class="form-label">後輪サイズ</div><input type="text" class="form-input" id="edit-rear-size" value="${v.rearSize}"></div>
     </div>
@@ -1474,6 +1490,20 @@ async function saveEdit() {
     props['本数'] = { number: count ? parseInt(count) : null };
 
     await notionAPI('/pages/' + editingPageId, 'PATCH', { properties: props });
+
+    // 車軸配置はD1専用カラム → 直接UPDATE
+    const axleConfig = document.getElementById('edit-axle-config').value;
+    try {
+      await fetch(D1_WORKER + '/d1/sql', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sql: 'UPDATE 車両マスタ SET 車軸配置 = ? WHERE id = ?',
+          params: [axleConfig || null, editingPageId]
+        })
+      });
+    } catch (e) { console.warn('axleConfig D1 update failed:', e); }
+
     showToast('更新しました', 'success');
     closeEditSheet();
     // Refresh

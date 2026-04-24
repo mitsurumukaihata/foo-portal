@@ -105,7 +105,9 @@ function buildInsertBatch(rows, category) {
 }
 
 function runWranglerSQL(sqlFile) {
-  execSync(`npx wrangler d1 execute foo-portal-db --remote --file=${sqlFile}`, {
+  // sqlFile は foo-portal/ 基準。wrangler は cloudflare-worker/ で実行されるため ../ を付ける
+  const rel = sqlFile.startsWith('./') ? '../' + sqlFile.slice(2) : sqlFile;
+  execSync(`npx wrangler d1 execute foo-portal-db --remote --file=${rel}`, {
     cwd: './cloudflare-worker',
     stdio: 'inherit',
   });

@@ -513,7 +513,25 @@ async function fetchVehicles(filterTitle) {
     body: JSON.stringify({ sql })
   });
   const data = await res.json();
-  return (data.results || []).map(r => ({
+  let results = (data.results || []);
+  // 数字のみ検索時は「一連指定番号(車番末尾の数字)」の厳密一致でフィルタ
+  // 例: "0240"→末尾=240 / "0011"→末尾=11 / "0001"→末尾=1
+  if (filterTitle && /^\d{1,4}$/.test(String(filterTitle).trim())) {
+    const q = String(filterTitle).trim().replace(/^0+/, '') || '0';
+    const extractTail = p => {
+      const cleaned = String(p || '').replace(/\s*\([^)]*\)\s*$/, '').replace(/-/g, '');
+      const m = cleaned.match(/(\d+)$/);
+      return m ? m[1].replace(/^0+/, '') || '0' : '';
+    };
+    results = results.filter(r => {
+      const tail = extractTail(r.車番);
+      if (tail === q) return true;
+      // 管理番号は完全一致で許可
+      if (r.管理番号 && String(r.管理番号).includes(filterTitle.trim())) return true;
+      return false;
+    });
+  }
+  return results.map(r => ({
     id: r.id,
     plate: r.車番 || '',
     customerRel: r.顧客ID ? [{ id: r.顧客ID }] : [],

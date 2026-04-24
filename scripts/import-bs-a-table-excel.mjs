@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * ブリヂストンA表Excel → D1 A表 テーブル インポート (v3)
+ * ブリヂストンA表Excel → D1 A表 テーブル インポート (v4)
  *
  * 使い方:
  *   node scripts/import-bs-a-table-excel.mjs <path-to-excel>
@@ -8,15 +8,21 @@
  * 例: node scripts/import-bs-a-table-excel.mjs "../売上明細/タイヤメーカー価格表/★【YYYY年M月～verX.XX】夏タイヤ価格表_BRIDGESTONE.xlsx"
  *
  * 処理:
- *   1. "価格リスト" シート全行読み込み
- *   2. グループコード → D1カテゴリ (PSR*→PC, LT*/LSR*→LTS, LVR*→バン)
- *   3. PSR8/LTS8/LSR8/LVR8 は 旧モデルフラグ=1
- *   4. ブランドコード → ブランド名 (PO→POTENZA 等)
- *   5. パターン抽出 (商品名称からLI+サイズ+末尾ノイズ除去、TYPE派生保持)
- *   6. サイズの LT/P プレフィックス保持
- *   7. "A表" シートから ★②③④◇△□■*▼ マーク抽出
- *   8. BRIDGESTONE行を全削除→INSERT (冪等)
- *   9. wrangler経由でD1反映
+ *   1. "A表" シートから「掲載商品コード一覧」を抽出 (899件程度)
+ *   2. "A表" シートから ★②③④◇△□■*▼ マークも同時抽出
+ *   3. "価格リスト" シートを読み込み、A表掲載コードに一致する行のみパース
+ *      → これで 価格リスト(4449件)の旧/変種(3550件)を自動除外
+ *   4. グループコード → D1カテゴリ (PSR*→PC, LT*/LSR*→LTS, LVR*→バン)
+ *   5. PSR8/LTS8/LSR8/LVR8 は 旧モデルフラグ=1 (A表掲載分でも一部含まれる)
+ *   6. ブランドコード → ブランド名 (PO→POTENZA 等)
+ *   7. パターン抽出 (商品名称からLI+サイズ+末尾ノイズ除去、TYPE派生保持)
+ *   8. サイズの LT/P プレフィックス保持
+ *   9. BRIDGESTONE行を全削除→INSERT (冪等)
+ *  10. wrangler経由でD1反映
+ *
+ * 重要な変更 (v4):
+ *   - 「価格リスト」全4449行取り込み → 「A表シートに掲載された899件」のみ取り込みに変更
+ *   - これで "195/65R15 の検索結果 51件 → 9件" のようにユーザー視点の表示に一致
  *
  * BS A表取り込みのクセ: scripts/A表取り込みメモ.md を参照
  */
@@ -107,6 +113,27 @@ function esc(s) { if (s === null || s === undefined) return 'NULL'; if (typeof s
 const wb = XLSX.readFile(EXCEL_PATH);
 console.log('読み込み:', EXCEL_PATH);
 
+// Step 1: A表シートから「掲載商品コード」と「マーク」を同時抽出
+const atSheet = wb.Sheets['A表'];
+if (!atSheet) { console.error('A表 シートなし'); process.exit(1); }
+const atRows = XLSX.utils.sheet_to_json(atSheet, { header: 1, defval: '' });
+const codesInAtable = new Set();
+const marks = {};
+for (let i = 11; i < atRows.length; i++) {
+  const r = atRows[i];
+  for (let c = 0; c < r.length; c++) {
+    const v = String(r[c] || '').trim();
+    if (/^\d{8,15}$/.test(v)) {
+      codesInAtable.add(v);
+      const raw = c > 0 ? String(r[c-1] || '').trim() : '';
+      const m = raw.match(/[★②③④◇△□■*▼]+/);
+      if (m) marks[v] = m[0];
+    }
+  }
+}
+console.log('A表掲載コード:', codesInAtable.size, '/ マーク付き:', Object.keys(marks).length);
+
+// Step 2: 価格リストをA表掲載コードでフィルタしながらパース
 const kakakuSheet = wb.Sheets['価格リスト'];
 if (!kakakuSheet) { console.error('価格リスト シートなし'); process.exit(1); }
 const rows = XLSX.utils.sheet_to_json(kakakuSheet, { header: 1, defval: '' });
@@ -114,10 +141,11 @@ const rows = XLSX.utils.sheet_to_json(kakakuSheet, { header: 1, defval: '' });
 const parsed = [];
 for (let i = 4; i < rows.length; i++) {
   const r = rows[i];
+  const code = String(r[2]||'').trim();
+  if (!code || !codesInAtable.has(code)) continue; // ← A表掲載のみ
   const g = String(r[1]||'').trim();
   const cat = groupToCat(g);
   if (!cat) continue;
-  const code = String(r[2]||'').trim();
   const name = String(r[4]||'').trim();
   const rinc = String(r[6]||'').trim();
   const xl = String(r[10]||'').trim() === 'XL';
@@ -131,23 +159,7 @@ for (let i = 4; i < rows.length; i++) {
   const price = (atable && atable !== 0 && atable !== '') ? atable : null;
   parsed.push({ cat, group: g, code, brandCd, brand: brandName, pattern, size, prefix, name, rinc, price, oldModel: isOldModel(g) ? 1 : 0 });
 }
-console.log('有効行:', parsed.length);
-
-const atSheet = wb.Sheets['A表'];
-const atRows = atSheet ? XLSX.utils.sheet_to_json(atSheet, { header: 1, defval: '' }) : [];
-const marks = {};
-for (let i = 11; i < atRows.length; i++) {
-  const r = atRows[i];
-  for (let c = 1; c < r.length; c++) {
-    const v = String(r[c] || '').trim();
-    if (/^\d{8,15}$/.test(v)) {
-      const raw = String(r[c-1] || '').trim();
-      const m = raw.match(/[★②③④◇△□■*▼]+/);
-      if (m) marks[v] = m[0];
-    }
-  }
-}
-console.log('マーク付き:', Object.keys(marks).length);
+console.log('取り込み候補:', parsed.length, '件');
 
 const BATCH = 200;
 const batches = [];

@@ -242,6 +242,11 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-seri
 <!-- Content -->
 <div class="content">
 
+  <!-- Price visibility notice -->
+  <div id="price-mode-banner" style="display:none;margin-bottom:10px;padding:8px 12px;background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;font-size:11px;color:#92400e;">
+    🔒 価格情報（金額・単価・小計）はマスクされています。担当者(向畑/岡崎)のみ閲覧可。
+  </div>
+
   <!-- Search Tab -->
   <div class="tab-pane active" id="tab-search">
     <div class="search-box">
@@ -381,6 +386,31 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-seri
 const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
 const VEHICLE_DB = '16f9f0df45e942069e032715fb2d37b2';
 const CUSTOMER_DB = '1ca8d122be214e3892879932147143c9';
+
+// ── 現在ログイン中ユーザー判定 (価格表示制御用) ──
+const SESSION_KEY = 'foo_portal_session';
+let __currentUserName = '';
+try {
+  const raw = localStorage.getItem(SESSION_KEY);
+  if (raw) {
+    const s = JSON.parse(raw);
+    if (s && new Date(s.expires) > new Date() && s.name) __currentUserName = s.name;
+  }
+} catch(e) {}
+if (!__currentUserName) __currentUserName = localStorage.getItem('tire_name') || '';
+// 半角/全角スペース両対応で正規化
+const __normName = (n) => String(n || '').replace(/\s+/g, '').replace(/　/g, '');
+const PRICE_VISIBLE_USERS = ['向畑充', '岡崎由美'];
+const isPriceVisible = PRICE_VISIBLE_USERS.includes(__normName(__currentUserName));
+// 価格表示用ヘルパ
+const __maskPrice = (yenStr) => isPriceVisible ? yenStr : '🔒';
+// バナー表示
+window.addEventListener('DOMContentLoaded', () => {
+  if (!isPriceVisible) {
+    const b = document.getElementById('price-mode-banner');
+    if (b) b.style.display = 'block';
+  }
+});
 
 const TYPE_EMOJI = {'大型':'🚛','中型':'🚚','小型':'🚗','バン':'🚐','乗用車':'🚗','リフト':'🏗️','トレーラー':'🚜','その他':'🔧'};
 
@@ -662,7 +692,7 @@ async function loadVehicleHistory(plate, container) {
       <div style="background:var(--s2);padding:8px 12px;border-radius:6px;margin-bottom:10px;display:flex;gap:14px;flex-wrap:wrap;">
         <div><span style="color:var(--muted);font-size:11px;">作業回数</span> <b style="font-size:14px;color:var(--accent);">${rows.length}回</b></div>
         <div><span style="color:var(--muted);font-size:11px;">累計明細</span> <b style="font-size:14px;">${totalLines}件</b></div>
-        <div><span style="color:var(--muted);font-size:11px;">累計金額</span> <b style="font-size:14px;color:var(--accent);">${yenF(totalAmount)}</b></div>
+        ${isPriceVisible ? `<div><span style="color:var(--muted);font-size:11px;">累計金額</span> <b style="font-size:14px;color:var(--accent);">${yenF(totalAmount)}</b></div>` : ''}
       </div>
       <div style="font-size:10px;color:var(--muted);margin-bottom:6px;">💡 各行クリックで明細詳細を表示</div>
       <div style="max-height:360px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;">
@@ -673,7 +703,7 @@ async function loadVehicleHistory(plate, container) {
               <th style="padding:6px 8px;text-align:left;font-weight:600;color:var(--muted);">請求先</th>
               <th style="padding:6px 8px;text-align:left;font-weight:600;color:var(--muted);">サイズ／銘柄</th>
               <th style="padding:6px 8px;text-align:right;font-weight:600;color:var(--muted);">明細</th>
-              <th style="padding:6px 8px;text-align:right;font-weight:600;color:var(--muted);">金額</th>
+              ${isPriceVisible ? '<th style="padding:6px 8px;text-align:right;font-weight:600;color:var(--muted);">金額</th>' : ''}
             </tr>
           </thead>
           <tbody>
@@ -683,7 +713,7 @@ async function loadVehicleHistory(plate, container) {
               <td style="padding:6px 8px;color:var(--text-sub);">${esc((r.請求先 || '?').substring(0, 20))}</td>
               <td style="padding:6px 8px;font-family:'DM Mono',monospace;font-size:10px;">${esc((r.サイズ || '-').substring(0, 30))}<br><span style="color:var(--accent);font-weight:600;">${esc((r.銘柄 || '').substring(0, 30))}</span></td>
               <td style="padding:6px 8px;text-align:right;">${r.明細件数 || 0}</td>
-              <td style="padding:6px 8px;text-align:right;font-weight:600;color:var(--accent);">${yenF(r.金額)}</td>
+              ${isPriceVisible ? `<td style="padding:6px 8px;text-align:right;font-weight:600;color:var(--accent);">${yenF(r.金額)}</td>` : ''}
             </tr>
           `).join('')}
           </tbody>
@@ -749,7 +779,7 @@ async function openSlipDetailModal(slipId, plateFilter) {
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px;">
             <div style="background:var(--s2);padding:10px 14px;border-radius:8px;"><div style="font-size:10px;color:var(--muted);font-weight:600;">📅 売上日</div><div style="font-weight:700;font-size:14px;margin-top:2px;">${esc(slip?.売上日 || '-')}</div></div>
             <div style="background:var(--s2);padding:10px 14px;border-radius:8px;"><div style="font-size:10px;color:var(--muted);font-weight:600;">💼 請求先</div><div style="font-weight:700;font-size:14px;margin-top:2px;">${esc(slip?.請求先 || '-')}</div></div>
-            <div style="background:rgba(240,165,0,0.12);padding:10px 14px;border-radius:8px;border:1px solid var(--accent);"><div style="font-size:10px;color:var(--muted);font-weight:600;">💰 税込合計</div><div style="font-weight:900;font-size:16px;color:var(--accent);margin-top:2px;">${yenF(total)}</div></div>
+            ${isPriceVisible ? `<div style="background:rgba(240,165,0,0.12);padding:10px 14px;border-radius:8px;border:1px solid var(--accent);"><div style="font-size:10px;color:var(--muted);font-weight:600;">💰 税込合計</div><div style="font-weight:900;font-size:16px;color:var(--accent);margin-top:2px;">${yenF(total)}</div></div>` : ''}
             <div style="background:var(--s2);padding:10px 14px;border-radius:8px;"><div style="font-size:10px;color:var(--muted);font-weight:600;">📋 ステータス</div><div style="font-weight:700;font-size:14px;margin-top:2px;">${esc(slip?.ステータス || '-')}</div></div>
             <div style="background:var(--s2);padding:10px 14px;border-radius:8px;"><div style="font-size:10px;color:var(--muted);font-weight:600;">👤 担当者</div><div style="font-weight:700;font-size:14px;margin-top:2px;">${esc(slip?.担当者 || '-')}</div></div>
             <div style="background:var(--s2);padding:10px 14px;border-radius:8px;"><div style="font-size:10px;color:var(--muted);font-weight:600;">🚚 車両/明細</div><div style="font-weight:700;font-size:14px;margin-top:2px;">${plateCount}台・${lines.length}明細</div></div>
@@ -764,8 +794,8 @@ async function openSlipDetailModal(slipId, plateFilter) {
                   <th style="padding:10px 10px;text-align:left;color:var(--muted);font-size:11px;letter-spacing:0.05em;">品目／サイズ</th>
                   <th style="padding:10px 10px;text-align:left;color:var(--muted);font-size:11px;letter-spacing:0.05em;">銘柄</th>
                   <th style="padding:10px 10px;text-align:right;color:var(--muted);font-size:11px;letter-spacing:0.05em;">数量</th>
-                  <th style="padding:10px 10px;text-align:right;color:var(--muted);font-size:11px;letter-spacing:0.05em;">単価</th>
-                  <th style="padding:10px 10px;text-align:right;color:var(--muted);font-size:11px;letter-spacing:0.05em;">小計</th>
+                  ${isPriceVisible ? '<th style="padding:10px 10px;text-align:right;color:var(--muted);font-size:11px;letter-spacing:0.05em;">単価</th>' : ''}
+                  ${isPriceVisible ? '<th style="padding:10px 10px;text-align:right;color:var(--muted);font-size:11px;letter-spacing:0.05em;">小計</th>' : ''}
                   <th style="padding:10px 10px;text-align:left;color:var(--muted);font-size:11px;letter-spacing:0.05em;">備考</th>
                 </tr>
               </thead>
@@ -778,8 +808,8 @@ async function openSlipDetailModal(slipId, plateFilter) {
                   <td style="padding:10px 10px;"><div>${esc(l.明細タイトル || l.品目 || '-')}</div>${l.タイヤサイズ ? `<div style="color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;margin-top:2px;">${esc(l.タイヤサイズ)}</div>` : ''}</td>
                   <td style="padding:10px 10px;font-weight:900;color:var(--accent);font-family:'DM Mono',monospace;">${esc(l.タイヤ銘柄 || '-')}</td>
                   <td style="padding:10px 10px;text-align:right;font-weight:600;">${l.数量 || 0}${esc(l.単位 || '')}</td>
-                  <td style="padding:10px 10px;text-align:right;">${yenF(l.単価)}</td>
-                  <td style="padding:10px 10px;text-align:right;font-weight:700;">${yenF(l.税込小計)}</td>
+                  ${isPriceVisible ? `<td style="padding:10px 10px;text-align:right;">${yenF(l.単価)}</td>` : ''}
+                  ${isPriceVisible ? `<td style="padding:10px 10px;text-align:right;font-weight:700;">${yenF(l.税込小計)}</td>` : ''}
                   <td style="padding:10px 10px;color:var(--muted);font-size:10px;max-width:200px;">${esc((l.備考 || '').substring(0,60))}${l.弥生備考 ? `<div style="color:var(--text-sub);margin-top:2px;">弥生: ${esc(l.弥生備考.substring(0,60))}</div>` : ''}</td>
                 </tr>`;
               }).join('')}
@@ -1354,8 +1384,8 @@ function openEditSheet(v) {
     </div>
     <div class="form-row">
       <div class="form-field">
-        <div class="form-label">車軸配置 <span style="font-size:10px;color:var(--muted);font-weight:400;">(前後でサイズ違う場合)</span></div>
-        <select class="form-select" id="edit-axle-config">
+        <div class="form-label">車軸配置</div>
+        <select class="form-select" id="edit-axle-config" onchange="updateRearSizeVisibility()">
           <option value="" ${!v.axleConfig?'selected':''}>選択なし</option>
           <option value="2-2" ${v.axleConfig==='2-2'?'selected':''}>2-2 (乗用車・バン: 4本)</option>
           <option value="2-D" ${v.axleConfig==='2-D'?'selected':''}>2-D (4t/10t: 6本)</option>
@@ -1367,8 +1397,16 @@ function openEditSheet(v) {
       </div>
     </div>
     <div class="form-row">
+      <div class="form-field" style="grid-column:1/-1;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:8px;background:var(--s2);border-radius:6px;">
+          <input type="checkbox" id="edit-different-rear" ${(v.rearSize && v.rearSize !== v.frontSize) || v.axleConfig==='2-D-D' ? 'checked' : ''} onchange="updateRearSizeVisibility()" style="width:18px;height:18px;cursor:pointer;">
+          <span><b>前後でサイズが違う</b> <span style="font-size:11px;color:var(--muted);">(チェックで後輪サイズ入力欄を表示)</span></span>
+        </label>
+      </div>
+    </div>
+    <div class="form-row">
       <div class="form-field"><div class="form-label">前輪サイズ</div><input type="text" class="form-input" id="edit-front-size" value="${v.frontSize}"></div>
-      <div class="form-field"><div class="form-label">後輪サイズ</div><input type="text" class="form-input" id="edit-rear-size" value="${v.rearSize}"></div>
+      <div class="form-field" id="rear-size-field" style="display:none;"><div class="form-label">後輪サイズ</div><input type="text" class="form-input" id="edit-rear-size" value="${v.rearSize}"></div>
     </div>
     <div class="form-row">
       <div class="form-field"><div class="form-label">前輪パターン</div><input type="text" class="form-input" id="edit-front-pattern" value="${v.frontPattern}"></div>
@@ -1441,6 +1479,22 @@ function openEditSheet(v) {
 
   document.getElementById('edit-overlay').classList.add('show');
   document.getElementById('edit-sheet').classList.add('show');
+
+  // 後輪サイズ欄の表示/非表示を初期化
+  updateRearSizeVisibility();
+}
+
+// 「前後でサイズが違う」チェックに応じて後輪サイズ欄を表示/非表示
+function updateRearSizeVisibility() {
+  const cb = document.getElementById('edit-different-rear');
+  const field = document.getElementById('rear-size-field');
+  if (!cb || !field) return;
+  field.style.display = cb.checked ? '' : 'none';
+  // チェック外したら後輪サイズはクリア (前輪と同じ扱いにする)
+  if (!cb.checked) {
+    const r = document.getElementById('edit-rear-size');
+    if (r) r.value = '';
+  }
 }
 
 function closeEditSheet() {

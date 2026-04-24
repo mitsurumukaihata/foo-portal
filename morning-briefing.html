@@ -211,6 +211,12 @@
     <div id="atable-margin"></div>
   </div>
 
+  <!-- A表未掲載の販売商品 -->
+  <div class="card">
+    <h2>🔍 A表未掲載で売れている商品（直近90日）</h2>
+    <div id="atable-missing"></div>
+  </div>
+
   <!-- タイヤ交換予測: 長期間未作業の優良車両 -->
   <div class="card">
     <h2>🚚 再来店チャンス — 2年以上未作業の優良車両</h2>
@@ -730,6 +736,46 @@ async function loadATableMargin() {
   }
 }
 
+async function loadATableMissing() {
+  const el = document.getElementById('atable-missing');
+  try {
+    const r = await sql(`SELECT d.タイヤサイズ, d.タイヤ銘柄,
+      COUNT(*) AS 販売回数, SUM(d.数量) AS 販売数, ROUND(AVG(d.単価),0) AS 平均単価
+    FROM 売上明細 d
+    JOIN 売上伝票 s ON d.売上伝票ID = s.id
+    WHERE d.タイヤサイズ IS NOT NULL AND d.タイヤ銘柄 IS NOT NULL
+      AND d.単価 >= 3000 AND d.数量 > 0
+      AND s.売上日 >= date('now','-90 days')
+      AND NOT EXISTS (
+        SELECT 1 FROM A表 a
+        WHERE a.サイズ = d.タイヤサイズ
+          AND (a.パターン LIKE '%' || d.タイヤ銘柄 || '%' OR d.タイヤ銘柄 LIKE '%' || a.パターン || '%')
+      )
+    GROUP BY d.タイヤサイズ, d.タイヤ銘柄
+    HAVING 販売回数 >= 2
+    ORDER BY 販売回数 DESC, 販売数 DESC
+    LIMIT 20`);
+    const rows = r.results || [];
+    if (!rows.length){ el.innerHTML = '<div class="loading">該当なし(全商品A表カバー✅)</div>'; return; }
+    el.innerHTML = `
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px;">A表に該当パターンなし。A表更新漏れ or A表外商品(廃番/他社/特注)の可能性。</div>
+      <table class="data">
+        <thead><tr><th>サイズ</th><th>銘柄</th><th class="num">販売回数</th><th class="num">販売数</th><th class="num">平均単価</th></tr></thead>
+        <tbody>${rows.map(r => `<tr>
+          <td><b>${esc(r.タイヤサイズ)}</b></td>
+          <td>${esc(r.タイヤ銘柄)}</td>
+          <td class="num">${r.販売回数}</td>
+          <td class="num">${r.販売数}</td>
+          <td class="num">${yenShort(r.平均単価)}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    `;
+  } catch(e) {
+    console.error(e);
+    el.innerHTML = '<div class="loading">データ取得失敗</div>';
+  }
+}
+
 async function loadTireForecast() {
   // 平均交換サイクル = 各車両の最古-最新取引日 / 取引回数
   // 最終取引日 + 平均サイクル で予測
@@ -1188,6 +1234,7 @@ async function loadAll() {
       loadVehicleHealth(),
       loadATableHealth(),
       loadATableMargin(),
+      loadATableMissing(),
       loadTireForecast(),
       loadOverdueVehicles(),
       loadDormant(),

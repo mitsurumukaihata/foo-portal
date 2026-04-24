@@ -1558,7 +1558,7 @@ async function _fetchAndInjectPending() {
     // 発注日（古い順）→倉庫（五日市→志和）→カテゴリ（LTL TB→LTS→バン）
     const WH_ORD  = ['五日市','志和'];
     // 仕入先×パターンからカテゴリを推定
-    const TOYO_LTL = new Set(['M646','M676','M125','M317','M323','M319','M320','M619','M626','M929','M919','M966','M920','M939']);
+    const TOYO_LTL = new Set(['M646','M676','M125','M170','M317','M323','M319','M320','M619','M626','M929','M919','M966','M920','M939']);
     const TOYO_LTS = new Set(['M634','M135','M134e','M131','M804','M935','M937','M934']);
     const BS_LTL   = new Set(['M888','M899','M801','M746','R225','R241','G539','W910','W900S','W911','W970','W999']);
     const BS_LTS   = new Set(['R207','W989','LV01','LT01']);

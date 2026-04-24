@@ -63,6 +63,13 @@ cloudflare-worker/plate-owner-map.json
 cloudflare-worker/numata-vehicles.json
 cloudflare-worker/mgmt-map.json
 cloudflare-worker/customer-dupes.json
+cloudflare-worker/_*.sql
+cloudflare-worker/_*.json
+cloudflare-worker/final-*.sql
+cloudflare-worker/final-*.json
+_bs_*.sql
+_atable_*.sql
+cloudflare-worker/短い車番*.md
 cloudflare-worker/*.js
 !cloudflare-worker/worker.js
 !cloudflare-worker/d1-proxy.js

@@ -205,6 +205,12 @@
     <div id="atable-health"></div>
   </div>
 
+  <!-- A表定価比較（粗利インサイト） -->
+  <div class="card">
+    <h2>💰 A表定価 vs 販売価格（直近90日、単価3,000円以上）</h2>
+    <div id="atable-margin"></div>
+  </div>
+
   <!-- タイヤ交換予測: 長期間未作業の優良車両 -->
   <div class="card">
     <h2>🚚 再来店チャンス — 2年以上未作業の優良車両</h2>
@@ -656,6 +662,71 @@ async function loadATableHealth() {
   } catch(e) {
     console.error(e);
     el.innerHTML = '<div class="loading">データ取得失敗</div>';
+  }
+}
+
+async function loadATableMargin() {
+  const el = document.getElementById('atable-margin');
+  try {
+    // 平均販売単価 vs A表定価 (単価>=3000 で廃タイヤ処分除外)
+    const r1 = await sql(`SELECT
+      COUNT(*) AS 件数,
+      ROUND(AVG(d.単価), 0) AS 平均販売単価,
+      ROUND(AVG(a.価格), 0) AS 平均A表定価,
+      ROUND(AVG(CAST(d.単価 AS REAL) / a.価格 * 100), 1) AS 平均A表比,
+      ROUND(SUM(d.数量 * (a.価格 - d.単価)), 0) AS 合計値引額
+    FROM 売上明細 d
+    JOIN A表 a ON d.タイヤサイズ = a.サイズ AND a.パターン LIKE '%' || d.タイヤ銘柄 || '%' AND (a.旧モデル IS NULL OR a.旧モデル = 0)
+    JOIN 売上伝票 s ON d.売上伝票ID = s.id
+    WHERE d.タイヤサイズ IS NOT NULL AND d.タイヤ銘柄 IS NOT NULL
+      AND d.単価 >= 3000 AND d.数量 > 0
+      AND s.売上日 >= date('now','-90 days')`);
+    // 値引率ランキング (顧客別)
+    const r2 = await sql(`SELECT
+      COALESCE(c.得意先名, e.顧客名) AS 顧客名,
+      COUNT(*) AS 件数,
+      ROUND(AVG(CAST(d.単価 AS REAL) / a.価格 * 100), 1) AS A表比,
+      ROUND(AVG(d.単価), 0) AS 平均販売単価,
+      ROUND(AVG(a.価格), 0) AS 平均定価
+    FROM 売上明細 d
+    JOIN A表 a ON d.タイヤサイズ = a.サイズ AND a.パターン LIKE '%' || d.タイヤ銘柄 || '%' AND (a.旧モデル IS NULL OR a.旧モデル = 0)
+    JOIN 売上伝票 s ON d.売上伝票ID = s.id
+    LEFT JOIN 得意先マスタ c ON s.請求先ID = c.id
+    LEFT JOIN 顧客情報DB e ON s.顧客ID = e.id
+    WHERE d.タイヤサイズ IS NOT NULL AND d.タイヤ銘柄 IS NOT NULL
+      AND d.単価 >= 3000 AND d.数量 > 0
+      AND s.売上日 >= date('now','-90 days')
+    GROUP BY COALESCE(c.得意先名, e.顧客名)
+    HAVING 件数 >= 3
+    ORDER BY A表比 ASC
+    LIMIT 10`);
+    const s = r1.results[0];
+    if (!s || !s.件数) { el.innerHTML = '<div class="loading">該当データなし</div>'; return; }
+    const discount = s.平均A表比 ? (100 - s.平均A表比).toFixed(1) : '-';
+    el.innerHTML = `
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px;">A表(業界定価)に対する販売単価の比率。低いほど値引き大きい。</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px;">
+        <div class="hero-item highlight"><div class="lbl">照合件数</div><div class="val">${s.件数.toLocaleString()}</div><div class="sub">直近90日</div></div>
+        <div class="hero-item"><div class="lbl">平均販売単価</div><div class="val">${yenShort(s.平均販売単価)}</div></div>
+        <div class="hero-item"><div class="lbl">平均A表定価</div><div class="val">${yenShort(s.平均A表定価)}</div></div>
+        <div class="hero-item"><div class="lbl">A表比</div><div class="val" style="color:${s.平均A表比>=80?'var(--green)':s.平均A表比>=60?'var(--accent)':'var(--red)'};">${s.平均A表比}%</div><div class="sub">値引き ${discount}%</div></div>
+        <div class="hero-item"><div class="lbl">総値引額</div><div class="val" style="color:var(--red);">${yenShort(s.合計値引額)}</div></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">🏷️ 値引率が大きい顧客 TOP10</div>
+      <table class="data">
+        <thead><tr><th>顧客名</th><th class="num">件数</th><th class="num">A表比</th><th class="num">平均販売</th><th class="num">平均定価</th></tr></thead>
+        <tbody>${(r2.results || []).map(r => `<tr>
+          <td>${esc((r.顧客名 || '?').substring(0,24))}</td>
+          <td class="num">${r.件数}</td>
+          <td class="num" style="color:${r.A表比<60?'var(--red)':r.A表比<80?'var(--accent)':'var(--green)'};"><b>${r.A表比}%</b></td>
+          <td class="num">${yenShort(r.平均販売単価)}</td>
+          <td class="num">${yenShort(r.平均定価)}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    `;
+  } catch(e) {
+    console.error(e);
+    el.innerHTML = '<div class="loading">データ取得失敗: ' + (e.message || '') + '</div>';
   }
 }
 
@@ -1116,6 +1187,7 @@ async function loadAll() {
       loadNewCustomers(),
       loadVehicleHealth(),
       loadATableHealth(),
+      loadATableMargin(),
       loadTireForecast(),
       loadOverdueVehicles(),
       loadDormant(),

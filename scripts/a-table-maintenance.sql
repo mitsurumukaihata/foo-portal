@@ -102,6 +102,55 @@ WHERE v.車番 IS NOT NULL
 UPDATE A表 SET ブランド='SEIBERLING' WHERE ブランド='SEIBER LING';
 
 -- ------------------------------------------------------------
+-- 6. 商品マスタ ↔ A表 同期 (A表定価 / 車種カテゴリ)
+--    ADD COLUMN は初回のみ成功、2回目以降はエラーになるが無視OK
+-- ------------------------------------------------------------
+-- ALTER TABLE 商品マスタ ADD COLUMN A表定価 INTEGER;
+-- ALTER TABLE 商品マスタ ADD COLUMN 車種カテゴリ TEXT;
+
+-- A表定価: 完全一致
+UPDATE 商品マスタ
+SET A表定価 = (
+  SELECT a.価格 FROM A表 a
+  WHERE a.サイズ = 商品マスタ.タイヤサイズ
+    AND a.パターン = 商品マスタ.タイヤ銘柄
+    AND (a.旧モデル IS NULL OR a.旧モデル = 0)
+  ORDER BY a.価格 DESC LIMIT 1
+)
+WHERE タイヤサイズ IS NOT NULL AND タイヤ銘柄 IS NOT NULL;
+
+-- A表定価: 部分一致 (パターンがスラッシュ区切りのケース)
+UPDATE 商品マスタ
+SET A表定価 = (
+  SELECT a.価格 FROM A表 a
+  WHERE a.サイズ = 商品マスタ.タイヤサイズ
+    AND (a.旧モデル IS NULL OR a.旧モデル = 0)
+    AND (a.パターン LIKE '%' || 商品マスタ.タイヤ銘柄 || '%' OR 商品マスタ.タイヤ銘柄 LIKE '%' || a.パターン || '%')
+  ORDER BY a.価格 DESC LIMIT 1
+)
+WHERE A表定価 IS NULL AND タイヤサイズ IS NOT NULL AND タイヤ銘柄 IS NOT NULL;
+
+-- A表定価: バイアスプライ表記ゆれ対応 (700R16 ⇔ 7.00R16)
+UPDATE 商品マスタ
+SET A表定価 = (
+  SELECT a.価格 FROM A表 a
+  WHERE a.サイズ = substr(商品マスタ.タイヤサイズ,1,1) || '.' || substr(商品マスタ.タイヤサイズ,2)
+    AND (a.旧モデル IS NULL OR a.旧モデル = 0)
+    AND (a.パターン = 商品マスタ.タイヤ銘柄
+         OR a.パターン LIKE '%' || 商品マスタ.タイヤ銘柄 || '%'
+         OR 商品マスタ.タイヤ銘柄 LIKE '%' || a.パターン || '%')
+  ORDER BY a.価格 DESC LIMIT 1
+)
+WHERE A表定価 IS NULL
+  AND タイヤサイズ GLOB '[4-9][0-9]0R*'
+  AND タイヤ銘柄 IS NOT NULL;
+
+-- 車種カテゴリ: サイズマスタから
+UPDATE 商品マスタ
+SET 車種カテゴリ = (SELECT カテゴリ FROM サイズマスタ WHERE サイズ = 商品マスタ.タイヤサイズ)
+WHERE タイヤサイズ IS NOT NULL;
+
+-- ------------------------------------------------------------
 -- 確認用 SELECT
 -- ------------------------------------------------------------
 SELECT 'A表' AS テーブル, COUNT(*) AS 件数 FROM A表

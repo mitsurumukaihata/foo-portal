@@ -39,13 +39,25 @@ FROM (
     AND 車番 NOT IN (SELECT 車番 FROM 車両マスタ WHERE 車番 IS NOT NULL)
 ) d;
 
--- 2. 既存車両のサイズ/パターンが空のものをバックフィル
+-- 2. 既存車両のサイズを実装着明細(タイヤ販売/組替/交換)の最頻値から補完
+--    脱着/バランス/エア調整のみの車両はサイズ不確定なのでNULLで『⚠要確認』タグ付与
+UPDATE 車両マスタ SET 前輪サイズ = NULL,
+  メモ = CASE WHEN メモ LIKE '%サイズ要確認%' THEN メモ
+              ELSE COALESCE(メモ,'') || char(10) || '⚠ サイズ要確認: 売上明細が脱着/サービスのみで実装着サイズ不明' END
+WHERE 前輪サイズ IS NOT NULL
+  AND EXISTS (SELECT 1 FROM 売上明細 d WHERE d.車番 = 車両マスタ.車番)
+  AND NOT EXISTS (SELECT 1 FROM 売上明細 d WHERE d.車番 = 車両マスタ.車番
+    AND (d.明細タイトル LIKE '%タイヤ販売%' OR d.明細タイトル LIKE '%組替%' OR d.明細タイトル LIKE '%交換%'));
+
 UPDATE 車両マスタ SET 前輪サイズ = (
-  SELECT d.タイヤサイズ FROM 売上明細 d JOIN 売上伝票 s ON d.売上伝票ID = s.id
+  SELECT d.タイヤサイズ FROM 売上明細 d
   WHERE d.車番 = 車両マスタ.車番 AND d.タイヤサイズ IS NOT NULL AND d.タイヤサイズ != ''
-  ORDER BY s.売上日 DESC LIMIT 1
+    AND (d.明細タイトル LIKE '%タイヤ販売%' OR d.明細タイトル LIKE '%組替%' OR d.明細タイトル LIKE '%交換%')
+  GROUP BY d.タイヤサイズ ORDER BY COUNT(*) DESC LIMIT 1
 ) WHERE (前輪サイズ IS NULL OR 前輪サイズ = '')
-  AND EXISTS (SELECT 1 FROM 売上明細 d WHERE d.車番 = 車両マスタ.車番 AND d.タイヤサイズ IS NOT NULL AND d.タイヤサイズ != '');
+  AND EXISTS (SELECT 1 FROM 売上明細 d WHERE d.車番 = 車両マスタ.車番
+    AND (d.明細タイトル LIKE '%タイヤ販売%' OR d.明細タイトル LIKE '%組替%' OR d.明細タイトル LIKE '%交換%')
+    AND d.タイヤサイズ IS NOT NULL AND d.タイヤサイズ != '');
 
 UPDATE 車両マスタ SET 前輪パターン = (
   SELECT d.タイヤ銘柄 FROM 売上明細 d JOIN 売上伝票 s ON d.売上伝票ID = s.id

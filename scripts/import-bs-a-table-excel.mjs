@@ -72,40 +72,44 @@ const atSheet = wb.Sheets['A表'];
 if (!atSheet) { console.error('A表 シートなし'); process.exit(1); }
 const atRows = XLSX.utils.sheet_to_json(atSheet, { header: 1, defval: '' });
 
-// Row 9(idx 8)=ブランド、Row 10(idx 9)=パターン(上部セクション用)
-const brandRow = atRows[8] || [];
-const patternRow = atRows[9] || [];
-const maxCols = Math.max(brandRow.length, patternRow.length);
+// ==== 複数セクション対応 ====
+// A表は縦横に複数セクションが並ぶ:
+//  セクション1 (top-left, rows 12-33, cols 2-45): Row 9/10 ← スポーツ系
+//  セクション2 (middle-left, rows 38-59, cols 2-45): Row 35/36 ← 一般用LT
+//  セクション3 (top-right, rows 12-59, cols 47+): Row 9/10 ← MINIVAN/SUV/VAN
+//  セクション4 (LIGHTTRACK, rows 64+, cols 115+): Row 61 combined
 
-// 上部セクション用 colInfo
-let curBrand = '', curPattern = '';
-const topColInfo = {};
-for (let c = 0; c < maxCols; c++) {
-  if (brandRow[c] && String(brandRow[c]).trim()) curBrand = String(brandRow[c]).trim();
-  if (patternRow[c] && String(patternRow[c]).trim()) curPattern = String(patternRow[c]).trim();
-  topColInfo[c] = { brand: curBrand, pattern: curPattern };
+// brand/pattern ヘッダ行は「FOR XXX」セクション見出しの 1-2行下
+// サブヘッダ「コード|コード|価格」のある行が 3行下(row 11, 37, 63)
+// データはサブヘッダ+1〜次のセクション前まで
+
+function buildColInfoFromBrandPatternRows(brandRow, patternRow, startCol = 0, endCol = Infinity) {
+  let curBrand = '', curPattern = '';
+  const info = {};
+  const maxC = Math.min(Math.max(brandRow.length, patternRow.length), endCol);
+  for (let c = startCol; c < maxC; c++) {
+    if (brandRow[c] && String(brandRow[c]).trim()) curBrand = String(brandRow[c]).trim();
+    if (patternRow[c] && String(patternRow[c]).trim()) curPattern = String(patternRow[c]).trim();
+    info[c] = { brand: curBrand, pattern: curPattern };
+  }
+  return info;
 }
 
-// セクションヘッダー("FOR XXX")を検出し、LIGHTTRACK等の下部セクションを特定
-// 下部セクションは独自のブランド/パターン行を持つ
-const sections = []; // [{startRow, minCol, brandPatternRow, ...}]
+// セクション1(top-left) + セクション3(top-right) は共通で Row 9/10 を使用
+const topColInfo = buildColInfoFromBrandPatternRows(atRows[8]||[], atRows[9]||[], 0);
+// セクション2 (middle-left) は Row 35/36
+const midLeftColInfo = buildColInfoFromBrandPatternRows(atRows[34]||[], atRows[35]||[], 0, 47);
+
+// LIGHTTRACK セクション: "FOR LIGHTTRACK" 検出
+const ltSections = [];
 for (let i = 0; i < atRows.length; i++) {
   for (let c = 0; c < atRows[i].length; c++) {
     const v = String(atRows[i][c]||'').trim();
     if (/^FOR\s+LIGHTTRACK/i.test(v)) {
-      // LIGHTTRACK セクションの開始: brand+pattern は1行下、sub-headerは3行下、dataは4行下〜
-      sections.push({
-        name: 'LIGHTTRACK',
-        startRow: i,      // "FOR LIGHTTRACK" の行
-        headerRow: i + 1, // brand+pattern combined
-        dataStartRow: i + 4, // data start (sub-header row + 1)
-        minCol: c         // LIGHTTRACK コラムの開始位置
-      });
+      ltSections.push({ name: 'LIGHTTRACK', startRow: i, headerRow: i+1, dataStartRow: i+4, minCol: c });
     }
   }
 }
-
-// LIGHTTRACK セクション用 colInfo (combined brand+pattern row)
 function buildLtColInfo(sec) {
   const hdr = atRows[sec.headerRow] || [];
   const info = {};
@@ -113,42 +117,61 @@ function buildLtColInfo(sec) {
   for (let c = sec.minCol; c < hdr.length; c++) {
     const v = hdr[c] && String(hdr[c]).trim();
     if (v) curBP = v;
-    info[c] = curBP; // 例: "ECOPIA R214/R201", "DURAVIS M807/M810"
+    info[c] = curBP;
   }
   return info;
 }
-const ltSections = sections.map(sec => ({ ...sec, bpInfo: buildLtColInfo(sec) }));
-console.log('検出した下部セクション:', ltSections.map(s => `${s.name}@row${s.startRow+1}col${s.minCol}`).join(', '));
+const ltSectionsWithInfo = ltSections.map(sec => ({ ...sec, bpInfo: buildLtColInfo(sec) }));
 
-// LIGHTTRACK の brand+pattern 結合文字列を ブランド/パターン に分割
-// パターン: 先頭ワードがブランド名(ECOPIA/DURAVIS/REGNO等)ならそれ、残りがパターン
-const KNOWN_BRANDS = ['ECOPIA','DURAVIS','REGNO','POTENZA','ALENZA','DUELER','Playz','NEXTRY','NEWNO','SEIBER LING','SEIBERLING','FINESSA','TOPRUN','LUFT RVⅡ','LUFT RV','MULTI WEATHER'];
+const KNOWN_BRANDS = ['ECOPIA','DURAVIS','REGNO','POTENZA','ALENZA','DUELER','Playz','NEXTRY','NEWNO','SEIBER LING','SEIBERLING','FINESSA','TOPRUN','LUFT RVⅡ','LUFT RV','MULTI WEATHER','DRIVEGUARD'];
 function splitBP(combined) {
   if (!combined) return { brand: '', pattern: '' };
   for (const b of KNOWN_BRANDS) {
     if (combined.startsWith(b + ' ')) return { brand: b, pattern: combined.slice(b.length).trim() };
     if (combined === b) return { brand: b, pattern: b };
   }
-  // 先頭が英大文字なら全体をパターンとして扱う(ブランド不明)
   return { brand: '', pattern: combined };
 }
 
-// データ行走査: 商品コード → (brand, pattern, mark)
-// セクション判定: 行・列が LIGHTTRACK 範囲なら LIGHTTRACK 用 colInfo、そうでなければ top colInfo
+// 中間セクション(Row 35)の境界を特定
+// Row 34 に "FOR GENERAL USE" があれば、Row 38 以降 Row 59 まで(あるいは次の FOR XXX まで)が対象
+let midLeftStartRow = -1, midLeftEndRow = 59;
+for (let i = 0; i < atRows.length; i++) {
+  for (let c = 0; c < 30; c++) { // 左側のみ
+    const v = String(atRows[i][c]||'').trim();
+    if (/^FOR\s+GENERAL/i.test(v) && i > 10) {
+      midLeftStartRow = i + 4; // FOR行 + brand + pattern + subheader + 1 = data
+      break;
+    }
+  }
+  if (midLeftStartRow > 0) break;
+}
+console.log('セクション範囲:');
+console.log('  Top (Row 9/10):', '全列 rows 12-' + (midLeftStartRow > 0 ? midLeftStartRow - 5 : 33));
+console.log('  MidLeft (Row 35/36):', 'cols 2-45, rows ' + midLeftStartRow + '-' + midLeftEndRow);
+console.log('  LIGHTTRACK:', ltSectionsWithInfo.map(s => `cols ${s.minCol}+, rows ${s.dataStartRow}+`).join(', '));
+
+// データ行走査
 const codeInfo = {};
 for (let i = 11; i < atRows.length; i++) {
   const r = atRows[i];
   for (let c = 0; c < r.length; c++) {
     const v = String(r[c] || '').trim();
     if (/^\d{8,15}$/.test(v)) {
-      // どのセクションか判定
       let bp = null;
-      for (const sec of ltSections) {
+      // 優先: LIGHTTRACK セクション
+      for (const sec of ltSectionsWithInfo) {
         if (i >= sec.dataStartRow && c >= sec.minCol && sec.bpInfo[c]) {
           bp = splitBP(sec.bpInfo[c]);
           break;
         }
       }
+      // 次: 中間セクション (Row 35/36, cols 2-45, rows midLeftStartRow-midLeftEndRow)
+      if (!bp && midLeftStartRow > 0 && i >= midLeftStartRow && i <= midLeftEndRow && c < 47) {
+        const info = midLeftColInfo[c];
+        if (info) bp = { brand: info.brand, pattern: info.pattern };
+      }
+      // デフォルト: top section Row 9/10
       if (!bp) {
         const info = topColInfo[c] || {};
         bp = { brand: info.brand || '', pattern: info.pattern || '' };

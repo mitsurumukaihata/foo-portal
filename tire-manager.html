@@ -2246,14 +2246,17 @@ const PRICE_CAT_MAP = {
   'バン': { name: 'バン',         icon: '🚐' },
   'PC':   { name: '乗用車',       icon: '🚗' },
 };
-// 乗用車(PC)のサブカテゴリ: Notion A表の既存分類
-const PC_SUBCATS = [
-  { key: 'スポーツ',         label: 'スポーツ' },
-  { key: 'コンフォート',     label: 'コンフォート' },
-  { key: 'ミニバン／SUV',    label: 'ミニバン・SUV' },
-  { key: 'エコ（低燃費）',    label: 'エコ' },
-  { key: '',                 label: 'その他' },
-];
+// 乗用車(PC)のブランドchips(D1から動的取得・カテゴリ選択時に読込)
+const PC_SUBCATS = []; // 動的取得に変更
+let _brandChipsCache = {}; // { cat: [{key:brand, label:brand, count}] }
+async function fetchBrandChips(cat) {
+  if (_brandChipsCache[cat]) return _brandChipsCache[cat];
+  const esc = s => String(s).replace(/'/g,"''");
+  const sql = `SELECT ブランド, COUNT(*) AS 件数 FROM A表 WHERE カテゴリ='${esc(cat)}' AND ブランド IS NOT NULL AND ブランド != '' AND (旧モデル IS NULL OR 旧モデル = 0) GROUP BY ブランド ORDER BY 件数 DESC`;
+  const rows = await d1query(sql);
+  _brandChipsCache[cat] = rows.map(r => ({ key: r.ブランド, label: r.ブランド, count: r.件数 }));
+  return _brandChipsCache[cat];
+}
 // D1経由SELECT専用ヘルパ
 async function d1query(sql) {
   const res = await fetch('https://notion-proxy.33322666666mm.workers.dev/d1/sql', {
@@ -2327,8 +2330,9 @@ async function fetchPriceSizes(cat, subCat) {
   PRICE_SIZE_FETCHING[key] = (async () => {
     try {
       const esc = s => String(s).replace(/'/g,"''");
-      let sql = `SELECT DISTINCT サイズ FROM A表 WHERE カテゴリ = '${esc(cat)}' AND サイズ IS NOT NULL AND サイズ != ''`;
-      if (subCat !== undefined && subCat !== null) sql += ` AND カテゴリ詳細 = '${esc(subCat)}'`;
+      // 旧モデル既定で除外
+      let sql = `SELECT DISTINCT サイズ FROM A表 WHERE カテゴリ = '${esc(cat)}' AND サイズ IS NOT NULL AND サイズ != '' AND (旧モデル IS NULL OR 旧モデル = 0)`;
+      if (subCat !== undefined && subCat !== null && subCat !== '') sql += ` AND ブランド = '${esc(subCat)}'`;
       sql += ' ORDER BY サイズ';
       const rows = await d1query(sql);
       const sizes = rows.map(r => r.サイズ).filter(s => s);
@@ -2368,16 +2372,19 @@ function renderPriceHome() {
     el.innerHTML = `<div class="price-search-wrap"><div class="screen-label" style="padding-top:4px;">価格検索</div><div class="screen-title" style="margin-bottom:10px;">A表 価格参照</div><div class="screen-sub" style="margin-bottom:12px;">カテゴリを選んでください</div><div class="cat-grid">${cards}</div></div>`;
     return;
   }
-  // PCの場合はサブカテゴリ chip を表示
+  // PCの場合はブランドchipsを動的表示
   let subcatHtml = '';
   if (priceState.dbKey === 'PC') {
-    const chips = [
-      `<div class="sub-chip${!priceState.subCat?' active':''}" onclick="priceSelectSubCat('')">🎯 すべて</div>`,
-      ...PC_SUBCATS.map(sc =>
-        `<div class="sub-chip${priceState.subCat===sc.key?' active':''}" onclick="priceSelectSubCat('${sc.key.replace(/'/g,"\\'")}')">${sc.label}</div>`
+    const chips = _brandChipsCache['PC'] || [];
+    const chipHtml = [
+      `<div class="sub-chip${!priceState.subCat?' active':''}" onclick="priceSelectSubCat('')">すべて</div>`,
+      ...chips.map(sc =>
+        `<div class="sub-chip${priceState.subCat===sc.key?' active':''}" onclick="priceSelectSubCat('${sc.key.replace(/'/g,"\\'")}')">${sc.label}<span style="font-size:10px;margin-left:4px;opacity:0.7;">(${sc.count})</span></div>`
       )
     ].join('');
-    subcatHtml = `<div class="sub-chip-row" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">${chips}</div>`;
+    subcatHtml = `<div class="sub-chip-row" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">${chipHtml}</div>`;
+    // まだ取得してなければ非同期で取得して再レンダ
+    if (!_brandChipsCache['PC']) fetchBrandChips('PC').then(() => renderPriceHome());
   }
   const curCatName = PRICE_CAT_MAP[priceState.dbKey]?.name || priceState.dbKey;
   const subLabel = priceState.subCat ? ` / ${priceState.subCat}` : '';
@@ -2448,7 +2455,7 @@ async function priceGoFetchPattern(sz) {
     const esc = s => String(s).replace(/'/g,"''");
     let sql = `SELECT id, サイズ, パターン, ブランド, メーカー, カテゴリ詳細, 価格, 備考, 注意, 加重指数, 商品コード, 商品名称, 旧モデル, 規格プレフィックス FROM A表 WHERE カテゴリ = '${esc(priceState.dbKey)}' AND サイズ = '${esc(sz)}'`;
     if (priceState.dbKey === 'PC' && priceState.subCat !== undefined && priceState.subCat !== null && priceState.subCat !== '') {
-      sql += ` AND カテゴリ詳細 = '${esc(priceState.subCat)}'`;
+      sql += ` AND ブランド = '${esc(priceState.subCat)}'`;
     }
     // 旧モデルは既定で後ろに/非表示(priceState.showOldがtrueなら表示)
     sql += ' ORDER BY 旧モデル ASC, メーカー, ブランド, パターン';

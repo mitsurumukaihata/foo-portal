@@ -542,9 +542,16 @@ async function resolveCustomerNames(vehicles) {
     v.memo = memo;
     // 請求先(元請けメーカー)かを判定
     const billerRE = /(トーヨー|ダンロップ|DUNLOP|ブリヂストン|三菱ふそう|ふそう中国|ﾄｰﾖｰ|BSタイヤ|ヨコハマ|ミシュラン|ピレリ|いすゞ|いすず|ISUZU)/;
-    // 請求先が元請けメーカーなら billerName として保持（customerNameと別管理）
+    // 請求先(売上伝票)が元請けメーカーなら billerFromInvoice として保持
     if (v.billingName && billerRE.test(v.billingName)) {
       v.billerFromInvoice = v.billingName;
+    }
+    // メモに「元請け: XXX」があればそれも元請けとして拾う(短い車番で売上明細JOIN失敗対策)
+    if (!v.billerFromInvoice && memo) {
+      const m = memo.match(/元請け[:：]\s*([^\n\/(]+)/);
+      if (m && billerRE.test(m[1])) {
+        v.billerFromInvoice = m[1].trim();
+      }
     }
     const billerFuriRE = /(とーよー|とうよう|だんろっぷ|ぶりぢすとん|ぶりじすとん|みつびしふそう|びーえすたいや|よこはま|みしゅらん|ぴれり|ぶりぢすとんたいやそりゅーしょん)/;
     const isBiller = v.customerName && billerRE.test(v.customerName);

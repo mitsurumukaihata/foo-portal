@@ -2476,18 +2476,63 @@ async function priceGoFetchPattern(sz) {
     window._fooNavStack=[]; fooNavPush(function(){priceClearSearch();}); renderPricePatternStep();
   } catch(e) { priceState.loading=false; document.getElementById('price-content').innerHTML=`<div class="content"><div class="error-box">取得に失敗しました。<br><small>${e.message}</small></div><button class="btn-secondary" onclick="priceState.step='search';renderPriceHome()">← 戻る</button></div>`; }
 }
+// 主要パターンの直リンク (手動キュレーション)
+// キー: パターン名をそのまま
+const DIRECT_CATALOG_URL = {
+  // BRIDGESTONE
+  'POTENZA S007A': 'https://tire.bridgestone.co.jp/car/tire/potenza/s007a/',
+  'POTENZA RE-71RS': 'https://tire.bridgestone.co.jp/car/tire/potenza/re71rs/',
+  'POTENZA Sport': 'https://tire.bridgestone.co.jp/car/tire/potenza/sport/',
+  'POTENZA Adrenalin RE004': 'https://tire.bridgestone.co.jp/car/tire/potenza/adrenaline-re004/',
+  'REGNO GR-XIII': 'https://tire.bridgestone.co.jp/car/tire/regno/gr-x3/',
+  'REGNO GR-XII': 'https://tire.bridgestone.co.jp/car/tire/regno/gr-x2/',
+  'REGNO GRVII': 'https://tire.bridgestone.co.jp/car/tire/regno/grv2/',
+  'ECOPIA NH200': 'https://tire.bridgestone.co.jp/car/tire/ecopia/nh200/',
+  'ECOPIA NH200C': 'https://tire.bridgestone.co.jp/car/tire/ecopia/nh200c/',
+  'NEWNO': 'https://tire.bridgestone.co.jp/car/tire/newno/',
+  'Playz PX-RVⅡ': 'https://tire.bridgestone.co.jp/car/tire/playz/pxrv2/',
+  'DUELER H/L850': 'https://tire.bridgestone.co.jp/car/tire/dueler/hl850/',
+  'DUELER H/P SPORT': 'https://tire.bridgestone.co.jp/car/tire/dueler/hp-sport/',
+  'BLIZZAK VRX3': 'https://tire.bridgestone.co.jp/car/tire/studless/blizzak-vrx3/',
+  // DUNLOP
+  'LE MANS V+': 'https://tyre.dunlop.co.jp/lemans5plus/',
+  'VEURO VE304': 'https://tyre.dunlop.co.jp/veuro/',
+  'ENASAVE EC204': 'https://tyre.dunlop.co.jp/enasave-ec204/',
+  'WINTER MAXX 03': 'https://tyre.dunlop.co.jp/wintermaxx03/',
+  // TOYO
+  'PROXES Sport2': 'https://www.toyotires.jp/product/proxessport2/',
+  'PROXES Comfort II': 'https://www.toyotires.jp/product/proxescomfort2/',
+  'PROXES CL1 SUV': 'https://www.toyotires.jp/product/proxescl1suv/',
+  'NANOENERGY3PLUS': 'https://www.toyotires.jp/product/nanoenergy3plus/',
+  'OBSERVE GIZ2': 'https://www.toyotires.jp/product/observegiz2/',
+  // YOKOHAMA
+  'ADVAN Sport V107': 'https://www.y-yokohama.com/product/tire/advansport-v107/',
+  'ADVAN dB V552': 'https://www.y-yokohama.com/product/tire/advandb-v552/',
+  'BluEarth-GT AE51': 'https://www.y-yokohama.com/product/tire/bluearth-gt-ae51/',
+  'iceGUARD 7': 'https://www.y-yokohama.com/product/tire/iceguard7/',
+  // MICHELIN
+  'Pilot Sport 5': 'https://www.michelin.co.jp/auto/michelin-tires/pilot-sport-5',
+  'PRIMACY 4': 'https://www.michelin.co.jp/auto/michelin-tires/primacy-4',
+  'X-ICE SNOW': 'https://www.michelin.co.jp/auto/michelin-tires/x-ice-snow',
+};
+
 // メーカー別カタログ検索URLビルダー
-// パターン固有の詳細ページがわからなくてもメーカー公式サイト内検索へ誘導
+// 1. DIRECT_CATALOG_URL に登録されている場合は直リンク
+// 2. なければメーカー公式サイト内検索へ誘導
 function makerCatalogUrl(maker, pattern, brand) {
+  // 直リンク優先 (brand+pattern or pattern)
+  const k1 = (brand ? brand + ' ' + pattern : pattern).trim();
+  if (DIRECT_CATALOG_URL[k1]) return DIRECT_CATALOG_URL[k1];
+  if (DIRECT_CATALOG_URL[pattern]) return DIRECT_CATALOG_URL[pattern];
   const q = [brand, pattern].filter(Boolean).join(' ').trim();
   const qe = encodeURIComponent(q);
   switch (maker) {
-    case 'BRIDGESTONE': return 'https://tire.bridgestone.co.jp/search/?q=' + qe;
-    case 'TOYO': case 'TOYO TIRES': return 'https://www.toyotires.jp/search/?q=' + qe;
-    case 'DUNLOP': return 'https://tyre.dunlop.co.jp/search/?q=' + qe;
-    case 'MICHELIN': return 'https://www.michelin.co.jp/auto/search?q=' + qe;
-    case 'PIRELLI': return 'https://www.pirelli.com/tyres/ja-jp/car/search?q=' + qe;
-    case 'YOKOHAMA': return 'https://www.y-yokohama.com/product/tire/?keyword=' + qe;
+    case 'BRIDGESTONE': return 'https://www.google.com/search?q=' + encodeURIComponent('site:tire.bridgestone.co.jp ' + q);
+    case 'TOYO': case 'TOYO TIRES': return 'https://www.google.com/search?q=' + encodeURIComponent('site:toyotires.jp ' + q);
+    case 'DUNLOP': return 'https://www.google.com/search?q=' + encodeURIComponent('site:tyre.dunlop.co.jp ' + q);
+    case 'MICHELIN': return 'https://www.google.com/search?q=' + encodeURIComponent('site:michelin.co.jp ' + q);
+    case 'PIRELLI': return 'https://www.google.com/search?q=' + encodeURIComponent('site:pirelli.com ' + q);
+    case 'YOKOHAMA': return 'https://www.google.com/search?q=' + encodeURIComponent('site:y-yokohama.com ' + q);
     default: return 'https://www.google.com/search?q=' + encodeURIComponent(maker + ' ' + q + ' タイヤ');
   }
 }

@@ -41,6 +41,16 @@ function buildSize(sec, hen, inch, xl, name) {
   let prefix = '';
   if (/\bLT\s*\d{3}\/\d{1,3}/.test(name)) prefix = 'LT';
   else if (/\bP\s*\d{3}\/\d{1,3}/.test(name)) prefix = 'P';
+  // 商品名から R155/R175 等の半インチ(.5)表記を検出してインチに補正
+  // 例: "108L 195/60 R175 M810" → インチを "17" ではなく "17.5" に
+  const nameMatch = String(name).match(/\bR(\d{2,3})(?:LT)?\b/);
+  if (nameMatch) {
+    const rNum = nameMatch[1];
+    if (rNum.length === 3 && rNum.endsWith('5')) {
+      // 3桁で末尾5 → 0.5 インチ表記: 155→15.5, 175→17.5, 135→13.5
+      inch = rNum.substring(0, 2) + '.5';
+    }
+  }
   const base = (hen === '00' || hen === '0' || hen === '99' || !hen) ? sec + 'R' + inch : sec + '/' + hen + 'R' + inch;
   let size = (prefix ? prefix : '') + base;
   if (xl) size += ' XL';

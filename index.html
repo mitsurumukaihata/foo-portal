@@ -414,11 +414,19 @@ body {
   color: #1e3a5f;
 }
 .portal-tab.sales:hover { border-color: #1e3a5f; }
+.portal-tab.kanri {
+  border-color: rgba(91,79,212,0.5);
+  background: linear-gradient(135deg, rgba(91,79,212,0.14), rgba(91,79,212,0.04));
+  color: #5b4fd4;
+}
+.portal-tab.kanri:hover { border-color: #5b4fd4; }
 [data-theme="dark"] .portal-tab.keiri { color: #7aa66b; }
 [data-theme="dark"] .portal-tab.sales { color: #6a8fbf; }
+[data-theme="dark"] .portal-tab.kanri { color: #a89cec; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) .portal-tab.keiri { color: #7aa66b; }
   :root:not([data-theme]) .portal-tab.sales { color: #6a8fbf; }
+  :root:not([data-theme]) .portal-tab.kanri { color: #a89cec; }
 }
 .portal-tab-icon {
   display:inline-flex;
@@ -1785,7 +1793,7 @@ const APP_DEFS = [
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>` },
   { key: '👤 顧客360°ビュー', id: 'customer360', label: '顧客360°ビュー', sub: '1顧客の全情報 · 取引・車両・推移', section: '事務', url: 'https://mitsurumukaihata.github.io/foo-portal/customer-360.html', allAccess: true, nameWhitelist: ['向畑充'],
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><circle cx="12" cy="12" r="10" stroke-dasharray="2 2"/></svg>` },
-  { key: '🗄 D1 Admin', id: 'd1admin', label: 'D1 Admin', sub: 'データベース直接操作・SQL実行', section: '事務', url: 'https://mitsurumukaihata.github.io/foo-portal/d1-admin.html', allAccess: true, nameWhitelist: ['向畑充'],
+  { key: '🗄 D1 Admin', id: 'd1admin', label: 'D1 Admin', sub: 'データベース直接操作・SQL実行', section: '管理', url: 'https://mitsurumukaihata.github.io/foo-portal/d1-admin.html', allAccess: true, nameWhitelist: ['向畑充'],
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6a9 3 0 0 0 18 0V5"/><path d="M3 11v6a9 3 0 0 0 18 0v-6"/></svg>` },
   { key: '📋 発注管理',          id: 'order',   label: '発注管理',           sub: '仕入れ発注 · 入出庫DB連携', section: '事務',   url: 'https://mitsurumukaihata.github.io/foo-portal/order.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>` },
@@ -2009,9 +2017,10 @@ const PORTAL_ICONS = {
   shanai: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg>',
   sales:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 4 7-8"/><path d="M14 8h7v7"/><path d="M3 21h18"/></svg>',
   keiri:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><rect x="8" y="6" width="8" height="3" rx="0.5"/><circle cx="9" cy="13" r="0.8" fill="currentColor"/><circle cx="12" cy="13" r="0.8" fill="currentColor"/><circle cx="15" cy="13" r="0.8" fill="currentColor"/><circle cx="9" cy="17" r="0.8" fill="currentColor"/><circle cx="12" cy="17" r="0.8" fill="currentColor"/><circle cx="15" cy="17" r="0.8" fill="currentColor"/></svg>',
+  kanri:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
 };
 
-function renderPortalTabs(showKeiri, showSales) {
+function renderPortalTabs(showKeiri, showSales, showKanri) {
   const tabs = document.getElementById('portal-tabs');
   if (!tabs) return;
   let html = `<div class="portal-tab active"><span class="portal-tab-icon">${PORTAL_ICONS.shanai}</span>社内</div>`;
@@ -2020,6 +2029,9 @@ function renderPortalTabs(showKeiri, showSales) {
   }
   if (showKeiri) {
     html += `<a class="portal-tab keiri" href="keiri-portal.html" target="_blank" rel="noopener"><span class="portal-tab-icon">${PORTAL_ICONS.keiri}</span>経理<span class="portal-tab-ext">↗</span></a>`;
+  }
+  if (showKanri) {
+    html += `<a class="portal-tab kanri" href="kanri-portal.html" target="_blank" rel="noopener"><span class="portal-tab-icon">${PORTAL_ICONS.kanri}</span>管理<span class="portal-tab-ext">↗</span></a>`;
   }
   tabs.innerHTML = html;
 }
@@ -2049,14 +2061,16 @@ function renderPortalApps(user) {
   const showKeiriPortal = isKeiri || nameNoSpace === '向畑充';
   // 売上管理ポータル: 向畑充 + 岡崎のみ
   const showSalesPortal = nameNoSpace === '向畑充' || nameNoSpace.includes('岡崎');
+  // 管理ポータル: 管理者 + 向畑充
+  const showKanriPortal = isAdmin || nameNoSpace === '向畑充';
 
   // ─── ヘッダーのポータル切替タブを描画 ────────────────────────────────
-  renderPortalTabs(showKeiriPortal, showSalesPortal);
+  renderPortalTabs(showKeiriPortal, showSalesPortal, showKanriPortal);
 
   let html = '';
 
-  // '経理' セクションは経理ポータルに移動したので社内ポータルから除外
-  const sectionOrder = ['現場・業務', '事務', 'EC/マーケ', 'コミュニティ', 'ニュース', '人事', 'マニュアル', '管理', '給与'];
+  // '経理' '管理' セクションはそれぞれのポータルに移動したので社内ポータルから除外
+  const sectionOrder = ['現場・業務', '事務', 'EC/マーケ', 'コミュニティ', 'ニュース', '人事', 'マニュアル', '給与'];
 
   sectionOrder.forEach(secName => {
     const items = sections[secName];
@@ -2067,7 +2081,7 @@ function renderPortalApps(user) {
 
     html += `<div class="sec"><div class="sec-label">${secName}</div>`;
 
-    const useGrid = (secName === 'コミュニティ' || secName === 'マニュアル' || secName === '人事' || secName === 'EC/マーケ' || secName === '管理');
+    const useGrid = (secName === 'コミュニティ' || secName === 'マニュアル' || secName === '人事' || secName === 'EC/マーケ');
 
     if (useGrid) {
       html += `<div class="grid2">`;

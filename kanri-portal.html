@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#5b4fd4">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="F.o.o 管理">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<title>管理ポータル | f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+/* 管理カラーテーマ（紫/グレー） */
+:root {
+  --bg: #141322;
+  --s1: #0e0d1a;
+  --s2: #1c1b30;
+  --s3: #262542;
+  --border: #35335c;
+  --border2: #494676;
+  --text: #ededf5;
+  --muted: #8a86a8;
+  --accent: #8b7ee3;
+  --accent2: #a89cec;
+  --gold: #c9a227;
+  --navy: #1e3a5f;
+  --red: #ef4444;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #f5f3fb; --s1: #ffffff; --s2: #ece8f7; --s3: #dfd8f0;
+    --border: #cdc2e6; --border2: #a998d1; --text: #141322; --muted: #6a6385;
+    --accent: #5b4fd4; --accent2: #4338a8; --gold: #b8910d;
+    --navy: #1e3a5f; --red: #dc2626;
+  }
+}
+[data-theme="dark"] {
+  --bg: #141322; --s1: #0e0d1a; --s2: #1c1b30; --s3: #262542;
+  --border: #35335c; --border2: #494676; --text: #ededf5; --muted: #8a86a8;
+  --accent: #8b7ee3; --accent2: #a89cec; --gold: #c9a227;
+  --navy: #1e3a5f; --red: #ef4444;
+}
+[data-theme="light"] {
+  --bg: #f5f3fb; --s1: #ffffff; --s2: #ece8f7; --s3: #dfd8f0;
+  --border: #cdc2e6; --border2: #a998d1; --text: #141322; --muted: #6a6385;
+  --accent: #5b4fd4; --accent2: #4338a8; --gold: #b8910d;
+  --navy: #1e3a5f; --red: #dc2626;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; max-width:480px; margin:0 auto; }
+
+@media (min-width: 700px) {
+  body { max-width: 720px; }
+  .header { padding: 22px 32px 18px; }
+  .content { padding: 32px; }
+  .header-title { font-size: 26px; }
+  .card-grid { flex-direction: row; flex-wrap: wrap; gap: 16px; }
+  .card-grid .app-card { flex: 1 1 calc(50% - 8px); min-width: 260px; }
+}
+@media (min-width: 900px) { body { max-width: 880px; } }
+@media (min-width: 1100px) {
+  body { max-width: 1100px; }
+  .header { padding: 28px 40px 22px; }
+  .content { padding: 40px; }
+  .header-title { font-size: 30px; }
+  .card-grid .app-card { flex: 1 1 calc(33.333% - 12px); }
+}
+
+.header { background:var(--s1); border-bottom:0.5px solid var(--border); padding:14px 20px 10px; position:sticky; top:0; z-index:100; }
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+.header-brand { font-size:10px; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+.header-brand .tag-kanri { background:var(--accent); color:#fff; padding:2px 7px; border-radius:10px; font-weight:700; font-size:9px; margin-left:6px; letter-spacing:0.05em; }
+.header-back { font-size:11px; color:var(--muted); text-decoration:none; border:0.5px solid var(--border); border-radius:20px; padding:3px 10px; }
+.header-title { font-size:20px; font-weight:900; letter-spacing:-0.02em; margin-top:4px; }
+.header-title span { color:var(--accent); }
+
+.portal-tabs { display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap; }
+.portal-tab {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:7px 14px; background:var(--s2); border:1.5px solid var(--border);
+  border-radius:22px; font-size:12px; font-weight:700; color:var(--muted);
+  cursor:pointer; transition:all 0.15s; text-decoration:none; white-space:nowrap;
+}
+.portal-tab.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+.portal-tab.shanai {
+  border-color:rgba(240,165,0,0.5);
+  background:linear-gradient(135deg, rgba(240,165,0,0.14), rgba(240,165,0,0.04));
+  color:#e07000;
+}
+.portal-tab.sales {
+  border-color:rgba(30,58,95,0.5);
+  background:linear-gradient(135deg, rgba(30,58,95,0.14), rgba(201,162,39,0.06));
+  color:#1e3a5f;
+}
+.portal-tab.keiri {
+  border-color:rgba(61,124,74,0.5);
+  background:linear-gradient(135deg, rgba(61,124,74,0.14), rgba(61,124,74,0.04));
+  color:#3d7c4a;
+}
+[data-theme="dark"] .portal-tab.shanai { color:#f0a500; }
+[data-theme="dark"] .portal-tab.sales { color:#6a8fbf; }
+[data-theme="dark"] .portal-tab.keiri { color:#7aa66b; }
+.portal-tab-icon { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; }
+.portal-tab-icon svg { width:16px; height:16px; }
+.portal-tab-ext { font-size:10px; opacity:0.7; margin-left:2px; }
+
+.content { padding:20px 20px 48px; }
+.screen-label { font-size:10px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:6px; margin-top:4px; }
+.greeting { font-size:13px; color:var(--muted); margin-bottom:18px; line-height:1.6; }
+.greeting strong { color:var(--accent2); font-weight:700; }
+
+.card-grid { display:flex; flex-direction:column; gap:14px; }
+.app-card {
+  background:linear-gradient(135deg, var(--s2) 0%, var(--s3) 100%);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:22px 20px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:16px;
+  transition:transform 0.12s, border-color 0.15s, box-shadow 0.15s;
+  box-shadow:0 2px 8px rgba(0,0,0,0.12);
+  text-decoration:none;
+  color:var(--text);
+}
+.app-card:active { transform:scale(0.98); }
+.app-card:hover { border-color:var(--accent); box-shadow:0 4px 12px rgba(139,126,227,0.24); }
+.app-icon { font-size:36px; flex-shrink:0; }
+.app-body { flex:1; min-width:0; }
+.app-name { font-size:17px; font-weight:900; letter-spacing:-0.01em; margin-bottom:3px; }
+.app-desc { font-size:11px; color:var(--muted); line-height:1.5; }
+.app-arrow { color:var(--muted); font-size:22px; font-weight:300; }
+
+.denied { padding:60px 20px; text-align:center; }
+.denied-icon { font-size:48px; margin-bottom:16px; }
+.denied-title { font-size:22px; font-weight:900; margin-bottom:8px; }
+.denied-title span { color:var(--red); }
+.denied-msg { font-size:13px; color:var(--muted); line-height:1.7; margin-bottom:28px; }
+.denied-back { display:inline-block; background:var(--accent); border-radius:10px; padding:13px 28px; color:#fff; font-size:14px; font-weight:700; text-decoration:none; }
+
+.foot { text-align:center; padding:24px 20px 32px; font-size:10px; color:var(--muted); letter-spacing:0.1em; }
+.foot .brand { font-weight:700; color:var(--accent); }
+
+.spinner { width:28px; height:28px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 12px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-wrap { text-align:center; padding:60px 20px; }
+.loading-text { font-size:13px; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<div id="loading" class="loading-wrap">
+  <div class="spinner"></div>
+  <div class="loading-text">読み込み中...</div>
+</div>
+
+<div id="denied" class="denied" style="display:none;">
+  <div class="denied-icon">🔒</div>
+  <div class="denied-title">権限が<span>ありません</span></div>
+  <div class="denied-msg">
+    管理ポータルは管理者と<br>向畑 充のみアクセスできます。
+  </div>
+  <a class="denied-back" href="https://mitsurumukaihata.github.io/foo-portal/">← 通常ポータルへ</a>
+</div>
+
+<div id="app" style="display:none;">
+  <div class="header">
+    <div class="header-top">
+      <div class="header-brand">F.o.o · 管理<span class="tag-kanri">KANRI</span></div>
+      <a class="header-back" href="https://mitsurumukaihata.github.io/foo-portal/">← 通常ポータル</a>
+    </div>
+    <div class="header-title">管理<span>ポータル</span></div>
+    <div class="portal-tabs" id="portal-tabs">
+      <!-- init() で動的描画 -->
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="greeting" id="greeting"></div>
+
+    <div class="screen-label">管理者専用アプリ <span style="color:var(--muted);text-transform:none;">（新しいタブで開く）</span></div>
+    <div class="card-grid">
+      <a class="app-card" href="d1-admin.html" target="_blank" rel="noopener">
+        <div class="app-icon">🗄️</div>
+        <div class="app-body">
+          <div class="app-name">D1 Admin <span style="font-size:11px;color:var(--muted);font-weight:400;">↗</span></div>
+          <div class="app-desc">データベース直接操作・SQL実行・スキーマ管理</div>
+        </div>
+        <div class="app-arrow">›</div>
+      </a>
+
+      <a class="app-card" href="db-renewal.html" target="_blank" rel="noopener">
+        <div class="app-icon">🔄</div>
+        <div class="app-body">
+          <div class="app-name">DB繰越管理 <span style="font-size:11px;color:var(--muted);font-weight:400;">↗</span></div>
+          <div class="app-desc">在庫DB繰越 · データ最適化 · 年次処理</div>
+        </div>
+        <div class="app-arrow">›</div>
+      </a>
+    </div>
+
+    <div class="foot">
+      <span class="brand">F.o.o</span> · 管理ポータル · v1.0
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const t = localStorage.getItem('foo_portal_theme') || 'auto';
+  if (t !== 'auto') document.documentElement.setAttribute('data-theme', t);
+})();
+
+const SESSION_KEY  = 'foo_portal_session';
+const SESSION_DAYS = 30;
+
+function loadSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (!d || new Date(d.expires) < new Date()) { localStorage.removeItem(SESSION_KEY); return null; }
+    const expires = new Date(); expires.setDate(expires.getDate() + SESSION_DAYS);
+    d.expires = expires.toISOString();
+    localStorage.setItem(SESSION_KEY, JSON.stringify(d));
+    return d;
+  } catch(e) { return null; }
+}
+
+function isKanriAllowed(session) {
+  if (!session || !session.name) return false;
+  const name = session.name.replace(/\s/g, '');
+  const group = session.group || '';
+  return group === '管理者' || name === '向畑充';
+}
+
+function init() {
+  const session = loadSession();
+  const loading = document.getElementById('loading');
+  const app = document.getElementById('app');
+  const denied = document.getElementById('denied');
+
+  if (!session) {
+    location.href = 'https://mitsurumukaihata.github.io/foo-portal/';
+    return;
+  }
+  if (!isKanriAllowed(session)) {
+    loading.style.display = 'none';
+    denied.style.display = 'block';
+    return;
+  }
+
+  const hour = new Date().getHours();
+  const greetWord = hour < 10 ? 'おはようございます' : (hour < 18 ? 'こんにちは' : 'お疲れさまです');
+  const greetEl = document.getElementById('greeting');
+  greetEl.innerHTML = `${greetWord}、<strong>${session.name}</strong>さん。<br>システム管理メニューです。`;
+
+  // ポータル切替タブ（この画面は管理がアクティブ）
+  const SVG_SHANAI = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg>';
+  const SVG_SALES  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 4 7-8"/><path d="M14 8h7v7"/><path d="M3 21h18"/></svg>';
+  const SVG_KEIRI  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><rect x="8" y="6" width="8" height="3" rx="0.5"/><circle cx="9" cy="13" r="0.8" fill="currentColor"/><circle cx="12" cy="13" r="0.8" fill="currentColor"/><circle cx="15" cy="13" r="0.8" fill="currentColor"/><circle cx="9" cy="17" r="0.8" fill="currentColor"/><circle cx="12" cy="17" r="0.8" fill="currentColor"/><circle cx="15" cy="17" r="0.8" fill="currentColor"/></svg>';
+  const SVG_KANRI  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+  const nameNoSp = (session.name || '').replace(/\s/g, '');
+  const isAdmin = (session.group || '') === '管理者' || nameNoSp === '向畑充';
+  const showSales = nameNoSp === '向畑充' || nameNoSp.includes('岡崎');
+  const showKeiri = (session.group || '') === '経理' || nameNoSp === '向畑充';
+  let tabHtml = `<a class="portal-tab shanai" href="https://mitsurumukaihata.github.io/foo-portal/"><span class="portal-tab-icon">${SVG_SHANAI}</span>社内</a>`;
+  if (showSales) {
+    tabHtml += `<a class="portal-tab sales" href="morning-briefing.html" target="_blank" rel="noopener"><span class="portal-tab-icon">${SVG_SALES}</span>売上管理<span class="portal-tab-ext">↗</span></a>`;
+  }
+  if (showKeiri) {
+    tabHtml += `<a class="portal-tab keiri" href="keiri-portal.html" target="_blank" rel="noopener"><span class="portal-tab-icon">${SVG_KEIRI}</span>経理<span class="portal-tab-ext">↗</span></a>`;
+  }
+  tabHtml += `<div class="portal-tab active"><span class="portal-tab-icon">${SVG_KANRI}</span>管理</div>`;
+  document.getElementById('portal-tabs').innerHTML = tabHtml;
+
+  loading.style.display = 'none';
+  app.style.display = 'block';
+}
+
+init();
+</script>
+</body>
+</html>

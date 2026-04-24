@@ -199,6 +199,12 @@
     <div id="vehicle-health"></div>
   </div>
 
+  <!-- A表健康度 -->
+  <div class="card">
+    <h2>📖 A表健康度（業界価格表カバレッジ）</h2>
+    <div id="atable-health"></div>
+  </div>
+
   <!-- タイヤ交換予測: 長期間未作業の優良車両 -->
   <div class="card">
     <h2>🚚 再来店チャンス — 2年以上未作業の優良車両</h2>
@@ -589,6 +595,68 @@ async function loadVehicleHealth() {
       <div class="hero-item"><div class="lbl">旧(重複)</div><div class="val" style="color:var(--muted);">${d.旧重複}</div><div class="sub">アーカイブ</div></div>
     </div>
   `;
+}
+
+async function loadATableHealth() {
+  const el = document.getElementById('atable-health');
+  try {
+    // A表の基本集計
+    const r1 = await sql(`SELECT
+      COUNT(*) AS 全件,
+      SUM(CASE WHEN カテゴリ='PC' THEN 1 ELSE 0 END) AS PC件,
+      SUM(CASE WHEN カテゴリ='LTS' THEN 1 ELSE 0 END) AS LTS件,
+      SUM(CASE WHEN カテゴリ='バン' THEN 1 ELSE 0 END) AS VAN件,
+      SUM(CASE WHEN 旧モデル=1 THEN 1 ELSE 0 END) AS 旧件,
+      COUNT(DISTINCT ブランド) AS ブランド数,
+      COUNT(DISTINCT パターン) AS パターン数,
+      COUNT(DISTINCT サイズ) AS サイズ数
+    FROM A表`);
+    // サイズマスタカバレッジ
+    const r2 = await sql(`SELECT COUNT(*) AS 全件, SUM(CASE WHEN カテゴリ='PC' THEN 1 ELSE 0 END) AS PC件, SUM(CASE WHEN カテゴリ='LTS' THEN 1 ELSE 0 END) AS LTS件, SUM(CASE WHEN カテゴリ='バン' THEN 1 ELSE 0 END) AS VAN件 FROM サイズマスタ`).catch(()=>({results:[{全件:0}]}));
+    // 今月のA表カバレッジ（売上明細のサイズがサイズマスタにあるか）
+    const r3 = await sql(`SELECT
+      COUNT(*) AS 明細件数,
+      SUM(CASE WHEN m.サイズ IS NOT NULL THEN 1 ELSE 0 END) AS カバー件
+    FROM 売上明細 d
+    LEFT JOIN サイズマスタ m ON d.サイズ = m.サイズ
+    JOIN 売上伝票 s ON d.売上伝票ID = s.id
+    WHERE d.サイズ IS NOT NULL AND d.サイズ != ''
+      AND s.売上日 >= date('now','start of month')`).catch(()=>({results:[{明細件数:0,カバー件:0}]}));
+    // 要確認サイズ / 不整合車両
+    const r4 = await sql(`SELECT COUNT(*) AS c FROM 要確認サイズ`).catch(()=>({results:[{c:0}]}));
+    const r5 = await sql(`SELECT COUNT(*) AS c FROM 不整合車両`).catch(()=>({results:[{c:0}]}));
+
+    const a = r1.results[0];
+    const m = r2.results[0];
+    const s = r3.results[0];
+    const anom = r4.results[0].c;
+    const bad = r5.results[0].c;
+    const cover = s.明細件数 > 0 ? Math.round((s.カバー件 / s.明細件数) * 100) : 0;
+    const score = Math.round(
+      Math.min(a.全件/900, 1) * 30 +
+      Math.min(m.全件/450, 1) * 20 +
+      (cover/100) * 30 +
+      (anom === 0 ? 10 : Math.max(0, 10 - anom)) +
+      (bad === 0 ? 10 : Math.max(0, 10 - bad/5))
+    );
+    const statusLabel = score >= 90 ? '🟢 優秀' : score >= 70 ? '🟡 良好' : score >= 50 ? '🟠 注意' : '🔴 要整備';
+    el.innerHTML = `
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px;">BRIDGESTONE A表 (業界価格表) 取込 / サイズマスタ / 売上カバレッジ</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;">
+        <div class="hero-item highlight"><div class="lbl">A表件数</div><div class="val">${a.全件.toLocaleString()}</div><div class="sub">PC ${a.PC件}/LTS ${a.LTS件}/バン ${a.VAN件}</div></div>
+        <div class="hero-item"><div class="lbl">健康度スコア</div><div class="val" style="color:${score>=70?'var(--green)':'var(--red)'};">${score}/100</div><div class="sub">${statusLabel}</div></div>
+        <div class="hero-item"><div class="lbl">ブランド/パターン</div><div class="val">${a.ブランド数}/${a.パターン数}</div><div class="sub">サイズ ${a.サイズ数}</div></div>
+        <div class="hero-item"><div class="lbl">サイズマスタ</div><div class="val">${m.全件}</div><div class="sub">PC ${m.PC件}/LTS ${m.LTS件}/バン ${m.VAN件}</div></div>
+        <div class="hero-item"><div class="lbl">今月売上カバー率</div><div class="val" style="color:${cover>=80?'var(--green)':'var(--red)'};">${cover}%</div><div class="sub">${s.カバー件}/${s.明細件数}件</div></div>
+        <div class="hero-item"><div class="lbl">旧モデル</div><div class="val" style="color:var(--muted);">${a.旧件}</div><div class="sub">非表示対象</div></div>
+        <div class="hero-item"><div class="lbl">要確認サイズ</div><div class="val" style="color:${anom>0?'var(--red)':'var(--green)'};">${anom}</div><div class="sub">異常値</div></div>
+        <div class="hero-item"><div class="lbl">不整合車両</div><div class="val" style="color:${bad>0?'var(--red)':'var(--green)'};">${bad}</div><div class="sub">車種×サイズ</div></div>
+      </div>
+    `;
+  } catch(e) {
+    console.error(e);
+    el.innerHTML = '<div class="loading">データ取得失敗</div>';
+  }
 }
 
 async function loadTireForecast() {
@@ -1047,6 +1115,7 @@ async function loadAll() {
       loadMovers(),
       loadNewCustomers(),
       loadVehicleHealth(),
+      loadATableHealth(),
       loadTireForecast(),
       loadOverdueVehicles(),
       loadDormant(),

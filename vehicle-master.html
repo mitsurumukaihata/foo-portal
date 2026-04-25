@@ -555,6 +555,7 @@ async function fetchVehicles(filterTitle) {
     LEFT JOIN 顧客情報DB c ON v.顧客ID = c.id
     WHERE 1=1 ${filterClause}
     ORDER BY v.created_time DESC
+    LIMIT ${filterTitle ? 200 : 100}
   `;
   const res = await fetch('https://notion-proxy.33322666666mm.workers.dev/d1/sql', {
     method: 'POST',

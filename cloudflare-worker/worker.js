@@ -878,6 +878,163 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       }
     }
 
+    // 給与マスタ UPSERT (経理が時給/保険料等を入力)
+    if (url.pathname === '/d1/upsert-salary-master' && request.method === 'POST' && env.DB) {
+      try {
+        const r = await request.json();
+        if (!r.社員ID || !r.適用年月) return new Response(JSON.stringify({ error: '社員ID & 適用年月 required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        const now = new Date().toISOString();
+        const stmt = env.DB.prepare(`INSERT INTO 給与マスタ
+          (社員ID, 適用年月, 給与体系, 基本給, 時給, 役職手当, 通勤手当, 資格手当, その他手当,
+           健康保険料, 厚生年金, 介護保険料, 雇用保険料率, 住民税月額, 扶養人数, メモ, 更新者, created_time, last_edited_time)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+          ON CONFLICT(社員ID, 適用年月) DO UPDATE SET
+            給与体系=excluded.給与体系, 基本給=excluded.基本給, 時給=excluded.時給,
+            役職手当=excluded.役職手当, 通勤手当=excluded.通勤手当,
+            資格手当=excluded.資格手当, その他手当=excluded.その他手当,
+            健康保険料=excluded.健康保険料, 厚生年金=excluded.厚生年金,
+            介護保険料=excluded.介護保険料, 雇用保険料率=excluded.雇用保険料率,
+            住民税月額=excluded.住民税月額, 扶養人数=excluded.扶養人数,
+            メモ=excluded.メモ, 更新者=excluded.更新者, last_edited_time=excluded.last_edited_time`).bind(
+          r.社員ID, r.適用年月, r.給与体系 || null, r.基本給 || 0, r.時給 || 0,
+          r.役職手当 || 0, r.通勤手当 || 0, r.資格手当 || 0, r.その他手当 || 0,
+          r.健康保険料 || 0, r.厚生年金 || 0, r.介護保険料 || 0, r.雇用保険料率 || 0.006,
+          r.住民税月額 || 0, r.扶養人数 || 0, r.メモ || null, r.更新者 || null, now, now
+        );
+        const res = await stmt.run();
+        return new Response(JSON.stringify({ success: true, changes: res.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
+    // 給与明細 UPSERT
+    if (url.pathname === '/d1/upsert-payslip' && request.method === 'POST' && env.DB) {
+      try {
+        const r = await request.json();
+        if (!r.社員ID || !r.支給年月) return new Response(JSON.stringify({ error: '社員ID & 支給年月 required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        const id = r.id || crypto.randomUUID();
+        const now = new Date().toISOString();
+        const stmt = env.DB.prepare(`INSERT INTO 給与明細
+          (id, 社員ID, 社員氏名, 支給年月, 対象期間_開始, 対象期間_終了,
+           基本給, 残業手当, 休日出勤手当, 深夜手当, 通勤手当, 役職手当, 資格手当, その他手当, 支給合計,
+           健康保険料, 厚生年金, 介護保険料, 雇用保険料, 所得税, 住民税, その他控除, 控除合計,
+           差引支給額, 出勤日数, 出勤時間, 残業時間, 有給日数, 欠勤日数,
+           ステータス, 作成者, メモ, created_time, last_edited_time)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+          ON CONFLICT(社員ID, 支給年月) DO UPDATE SET
+            社員氏名=excluded.社員氏名, 対象期間_開始=excluded.対象期間_開始, 対象期間_終了=excluded.対象期間_終了,
+            基本給=excluded.基本給, 残業手当=excluded.残業手当, 休日出勤手当=excluded.休日出勤手当,
+            深夜手当=excluded.深夜手当, 通勤手当=excluded.通勤手当, 役職手当=excluded.役職手当,
+            資格手当=excluded.資格手当, その他手当=excluded.その他手当, 支給合計=excluded.支給合計,
+            健康保険料=excluded.健康保険料, 厚生年金=excluded.厚生年金, 介護保険料=excluded.介護保険料,
+            雇用保険料=excluded.雇用保険料, 所得税=excluded.所得税, 住民税=excluded.住民税,
+            その他控除=excluded.その他控除, 控除合計=excluded.控除合計, 差引支給額=excluded.差引支給額,
+            出勤日数=excluded.出勤日数, 出勤時間=excluded.出勤時間, 残業時間=excluded.残業時間,
+            有給日数=excluded.有給日数, 欠勤日数=excluded.欠勤日数,
+            ステータス=excluded.ステータス, メモ=excluded.メモ, last_edited_time=excluded.last_edited_time`).bind(
+          id, r.社員ID, r.社員氏名 || null, r.支給年月, r.対象期間_開始 || null, r.対象期間_終了 || null,
+          r.基本給 || 0, r.残業手当 || 0, r.休日出勤手当 || 0, r.深夜手当 || 0,
+          r.通勤手当 || 0, r.役職手当 || 0, r.資格手当 || 0, r.その他手当 || 0, r.支給合計 || 0,
+          r.健康保険料 || 0, r.厚生年金 || 0, r.介護保険料 || 0, r.雇用保険料 || 0,
+          r.所得税 || 0, r.住民税 || 0, r.その他控除 || 0, r.控除合計 || 0, r.差引支給額 || 0,
+          r.出勤日数 || 0, r.出勤時間 || 0, r.残業時間 || 0, r.有給日数 || 0, r.欠勤日数 || 0,
+          r.ステータス || '下書き', r.作成者 || null, r.メモ || null, now, now
+        );
+        const res = await stmt.run();
+        return new Response(JSON.stringify({ success: true, id, changes: res.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
+    // 経理チケット UPSERT
+    if (url.pathname === '/d1/upsert-keiri-ticket' && request.method === 'POST' && env.DB) {
+      try {
+        const r = await request.json();
+        if (!r.種別 || !r.日付 || r.金額 == null) return new Response(JSON.stringify({ error: '種別/日付/金額 required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        const id = r.id || crypto.randomUUID();
+        const now = new Date().toISOString();
+        const stmt = env.DB.prepare(`INSERT INTO 経理チケット
+          (id, 種別, 日付, 申請者, 申請者ID, 金額, 科目, 内容, 支払先, 領収書_URL,
+           ステータス, 承認者, 承認日, 振込予定日, 振込実行日, 弥生連携済, メモ, created_time, last_edited_time)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+          ON CONFLICT(id) DO UPDATE SET
+            種別=excluded.種別, 日付=excluded.日付, 申請者=excluded.申請者, 申請者ID=excluded.申請者ID,
+            金額=excluded.金額, 科目=excluded.科目, 内容=excluded.内容, 支払先=excluded.支払先,
+            領収書_URL=excluded.領収書_URL, ステータス=excluded.ステータス, 承認者=excluded.承認者,
+            承認日=excluded.承認日, 振込予定日=excluded.振込予定日, 振込実行日=excluded.振込実行日,
+            弥生連携済=excluded.弥生連携済, メモ=excluded.メモ, last_edited_time=excluded.last_edited_time`).bind(
+          id, r.種別, r.日付, r.申請者 || null, r.申請者ID || null, r.金額,
+          r.科目 || null, r.内容 || null, r.支払先 || null, r.領収書_URL || null,
+          r.ステータス || '申請中', r.承認者 || null, r.承認日 || null,
+          r.振込予定日 || null, r.振込実行日 || null, r.弥生連携済 || 0,
+          r.メモ || null, now, now
+        );
+        const res = await stmt.run();
+        return new Response(JSON.stringify({ success: true, id, changes: res.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
+    // 賞与明細 UPSERT
+    if (url.pathname === '/d1/upsert-bonus' && request.method === 'POST' && env.DB) {
+      try {
+        const r = await request.json();
+        if (!r.社員ID || !r.支給年月) return new Response(JSON.stringify({ error: '社員ID & 支給年月 required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        const id = r.id || crypto.randomUUID();
+        const now = new Date().toISOString();
+        const stmt = env.DB.prepare(`INSERT INTO 賞与明細
+          (id, 社員ID, 社員氏名, 支給年月, 賞与種別, 基本給, 支給月数, 賞与額, 業績加算, 特別加算,
+           支給合計, 健康保険料, 厚生年金, 介護保険料, 雇用保険料, 所得税, 控除合計, 差引支給額,
+           ステータス, 作成者, メモ, created_time, last_edited_time)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
+          id, r.社員ID, r.社員氏名 || null, r.支給年月, r.賞与種別 || null,
+          r.基本給 || 0, r.支給月数 || 0, r.賞与額 || 0, r.業績加算 || 0, r.特別加算 || 0,
+          r.支給合計 || 0, r.健康保険料 || 0, r.厚生年金 || 0, r.介護保険料 || 0,
+          r.雇用保険料 || 0, r.所得税 || 0, r.控除合計 || 0, r.差引支給額 || 0,
+          r.ステータス || '下書き', r.作成者 || null, r.メモ || null, now, now
+        );
+        const res = await stmt.run();
+        return new Response(JSON.stringify({ success: true, id, changes: res.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
+    // 社員マスタ UPSERT (Notion→D1 同期用)
+    if (url.pathname === '/d1/upsert-employee' && request.method === 'POST' && env.DB) {
+      try {
+        const r = await request.json();
+        if (!r.id || !r.氏名) return new Response(JSON.stringify({ error: 'id & 氏名 required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        const stmt = env.DB.prepare(`INSERT INTO 社員マスタ
+          (id, 氏名, 在籍, 権限, アプリグループ, メールアドレス, 給与体系, 基本給, 時給,
+           通勤手当, 住民税月額, 健康保険月額, 厚生年金月額, 扶養人数, 所定労働日数, 所定労働時間,
+           表示順, PIN, メモ, 最終ログイン, created_time, last_edited_time)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+          ON CONFLICT(id) DO UPDATE SET
+            氏名=excluded.氏名, 在籍=excluded.在籍, 権限=excluded.権限,
+            アプリグループ=excluded.アプリグループ, メールアドレス=excluded.メールアドレス,
+            給与体系=excluded.給与体系, 基本給=excluded.基本給, 時給=excluded.時給,
+            通勤手当=excluded.通勤手当, 住民税月額=excluded.住民税月額,
+            健康保険月額=excluded.健康保険月額, 厚生年金月額=excluded.厚生年金月額,
+            扶養人数=excluded.扶養人数, 所定労働日数=excluded.所定労働日数,
+            所定労働時間=excluded.所定労働時間, 表示順=excluded.表示順,
+            PIN=excluded.PIN, メモ=excluded.メモ, 最終ログイン=excluded.最終ログイン,
+            last_edited_time=excluded.last_edited_time`).bind(
+          r.id, r.氏名, r.在籍, r.権限, r.アプリグループ, r.メールアドレス, r.給与体系,
+          r.基本給, r.時給, r.通勤手当, r.住民税月額, r.健康保険月額, r.厚生年金月額,
+          r.扶養人数, r.所定労働日数, r.所定労働時間, r.表示順, r.PIN, r.メモ,
+          r.最終ログイン, r.created_time, r.last_edited_time
+        );
+        const res = await stmt.run();
+        return new Response(JSON.stringify({ success: true, changes: res.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
     // 指定顧客IDの車両の管理番号を一括NULLクリア
     if (url.pathname === '/d1/clear-mgmt-no' && request.method === 'POST' && env.DB) {
       try {

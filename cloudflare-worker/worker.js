@@ -1003,6 +1003,20 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       }
     }
 
+    // 社員フラグ更新 (シフト手当対象等の単一列toggle)
+    if (url.pathname === '/d1/update-employee-flag' && request.method === 'POST' && env.DB) {
+      try {
+        const { id, field, value } = await request.json();
+        const ALLOWED = ['シフト手当対象'];
+        if (!id || !ALLOWED.includes(field)) return new Response(JSON.stringify({ error: 'invalid id/field' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        const stmt = env.DB.prepare(`UPDATE 社員マスタ SET "${field}" = ? WHERE id = ?`).bind(value ? 1 : 0, id);
+        const res = await stmt.run();
+        return new Response(JSON.stringify({ success: true, changes: res.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
     // 社員マスタ UPSERT (Notion→D1 同期用)
     if (url.pathname === '/d1/upsert-employee' && request.method === 'POST' && env.DB) {
       try {

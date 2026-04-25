@@ -165,9 +165,21 @@ document.getElementById('month-picker').value = (() => {
 
 let _employees = [];
 async function loadEmployees() {
-  const r = await sql(`SELECT id, 氏名, 給与体系, 表示順 FROM 社員マスタ WHERE 在籍 = '在籍中' ORDER BY 表示順, 氏名`);
+  const r = await sql(`SELECT id, 氏名, 給与体系, 表示順, シフト手当対象 FROM 社員マスタ WHERE 在籍 = '在籍中' ORDER BY 表示順, 氏名`);
   _employees = r.results || [];
   return _employees;
+}
+
+async function toggleShiftEligibility(eid, val) {
+  const r = await fetch(D1_WORKER + '/d1/update-employee-flag', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: eid, field: 'シフト手当対象', value: val ? 1 : 0 })
+  });
+  const j = await r.json();
+  if (!j.success) alert('更新失敗: ' + (j.error || ''));
+  // ローカル状態更新
+  const e = _employees.find(x => x.id === eid);
+  if (e) e.シフト手当対象 = val ? 1 : 0;
 }
 
 // シフト手当の支給対象月判定 (締め日15日 = 当月支給とすると、給与計算期間と支給月の対応):
@@ -193,12 +205,14 @@ async function loadSalaryMaster() {
   el.innerHTML = `
     <div style="margin-bottom:8px;font-size:12px;color:${showShift?'var(--red)':'var(--muted)'};font-weight:${showShift?'700':'400'};">
       ${showShift ? '🌟 この月はシフト手当対象月 (1/16〜3/15 または 5/16〜10/15期間)' : '⚪ この月はシフト手当対象外'}
+      ${showShift ? '<br><span style="font-size:10px;color:var(--muted);font-weight:400;">※ シフト手当対象社員のみ入力可。対象切替は「対」列のチェックボックス。</span>' : ''}
     </div>`;
   el.innerHTML += `
     <div style="overflow-x:auto;">
     <table class="data">
       <thead><tr>
         <th>氏名</th>
+        ${showShift ? '<th style="background:#fef3c7;width:32px;" title="シフト手当対象">対</th>' : ''}
         <th>給与体系</th>
         <th>基本給</th>
         <th>時給</th>
@@ -218,9 +232,11 @@ async function loadSalaryMaster() {
       ${_employees.map(e => {
         const m = masterMap[e.id] || {};
         const has = !!masterMap[e.id];
+        const isShiftElig = !!e.シフト手当対象;
         return `
         <tr data-eid="${e.id}">
           <td><b>${esc(e.氏名)}</b></td>
+          ${showShift ? `<td style="background:#fef3c7;text-align:center;"><input type="checkbox" ${isShiftElig?'checked':''} onchange="toggleShiftEligibility('${e.id}', this.checked); this.closest('tr').querySelector('[data-field=シフト手当]').disabled = !this.checked; if(!this.checked){this.closest('tr').querySelector('[data-field=シフト手当]').value=0;}" title="シフト手当対象社員"></td>` : ''}
           <td>
             <select class="text-input sm-input" data-field="給与体系">
               <option value="">-</option>
@@ -233,7 +249,7 @@ async function loadSalaryMaster() {
           <td><input type="number" class="num-input sm-input" data-field="役職手当" value="${m.役職手当||0}"></td>
           <td><input type="number" class="num-input sm-input" data-field="通勤手当" value="${m.通勤手当||0}"></td>
           <td><input type="number" class="num-input sm-input" data-field="資格手当" value="${m.資格手当||0}"></td>
-          ${showShift ? `<td style="background:#fff8e7;"><input type="number" class="num-input sm-input" data-field="シフト手当" value="${m.シフト手当||0}"></td>` : ''}
+          ${showShift ? `<td style="background:#fff8e7;"><input type="number" class="num-input sm-input" data-field="シフト手当" value="${isShiftElig ? (m.シフト手当||0) : 0}" ${isShiftElig?'':'disabled style="background:#eee;color:#999;"'}></td>` : ''}
           <td><input type="number" class="num-input sm-input" data-field="健康保険料" value="${m.健康保険料||0}"></td>
           <td><input type="number" class="num-input sm-input" data-field="厚生年金" value="${m.厚生年金||0}"></td>
           <td><input type="number" class="num-input sm-input" data-field="介護保険料" value="${m.介護保険料||0}"></td>

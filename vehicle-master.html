@@ -499,13 +499,32 @@ async function fetchVehicles(filterTitle) {
     const raw = filterTitle.replace(/'/g, "''");
     // 数字のみなら先頭ゼロを除去した版でも検索（例:"0140"→"140"、"0012"→"12"）
     const zeroStripped = /^\d+$/.test(normalized) ? normalized.replace(/^0+/, '') : normalized;
-    // 車番(正規化)/管理番号/顧客名/メモ 全てで検索
+    // 顧客名/メモ向け: 全角スペース・半角スペースで分割してAND部分一致
+    // 例: "光立 本社" → 顧客名に「光立」AND「本社」両方含む
+    // 1語のみで2文字以上の漢字列なら、漢字クラスタごとに分割して AND 検索もフォールバック
+    // 例: "光立本社" → 「光立」AND「本社」(隣接漢字を2文字ずつブロック化)
+    const tokens = filterTitle.split(/[\s　]+/).filter(t => t.length > 0);
+    let nameAndMemoClause;
+    if (tokens.length > 1) {
+      // 明示的なスペース区切り: 各トークンをAND
+      const buildAnd = (col) => tokens.map(t => `${col} LIKE '%${t.replace(/'/g, "''")}%'`).join(' AND ');
+      nameAndMemoClause = `(${buildAnd('e.得意先名')}) OR (${buildAnd('c.顧客名')}) OR (${buildAnd('v.メモ')})`;
+    } else if (raw.length >= 4 && /^[\u4E00-\u9FFF]+$/.test(raw)) {
+      // 4文字以上の漢字連続: 2文字ずつ分割してAND (例: "光立本社" → 「光立」AND「本社」)
+      const half = Math.ceil(raw.length / 2);
+      const t1 = raw.substring(0, half);
+      const t2 = raw.substring(half);
+      const fuzzyAnd = (col) => `(${col} LIKE '%${t1}%' AND ${col} LIKE '%${t2}%')`;
+      nameAndMemoClause = `e.得意先名 LIKE '%${raw}%' OR c.顧客名 LIKE '%${raw}%' OR v.メモ LIKE '%${raw}%'
+        OR ${fuzzyAnd('e.得意先名')} OR ${fuzzyAnd('c.顧客名')} OR ${fuzzyAnd('v.メモ')}`;
+    } else {
+      // デフォルト: 1トークンで部分一致
+      nameAndMemoClause = `e.得意先名 LIKE '%${raw}%' OR c.顧客名 LIKE '%${raw}%' OR v.メモ LIKE '%${raw}%'`;
+    }
     filterClause = `AND (REPLACE(REPLACE(REPLACE(v.車番, '-', ''), ' ', ''), '　', '') LIKE '%${normalized}%'
       OR REPLACE(REPLACE(REPLACE(v.車番, '-', ''), ' ', ''), '　', '') LIKE '%${zeroStripped}%'
       OR v.管理番号 LIKE '%${raw}%'
-      OR e.得意先名 LIKE '%${raw}%'
-      OR c.顧客名 LIKE '%${raw}%'
-      OR v.メモ LIKE '%${raw}%')`;
+      OR ${nameAndMemoClause})`;
   }
   const sql = `
     SELECT v.id, v.車番, v.車種, v.前輪サイズ, v.後輪サイズ, v.前輪パターン, v.後輪パターン,

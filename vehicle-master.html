@@ -244,7 +244,7 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-seri
 
   <!-- Price visibility notice -->
   <div id="price-mode-banner" style="display:none;margin-bottom:10px;padding:8px 12px;background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;font-size:11px;color:#92400e;">
-    🔒 価格情報（金額・単価・小計）はマスクされています。担当者(向畑/岡崎)のみ閲覧可。
+    🔒 価格情報（金額・単価・小計）は非表示です。価格確認は売上入力アプリで行ってください。
   </div>
 
   <!-- Search Tab -->
@@ -387,29 +387,13 @@ const WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
 const VEHICLE_DB = '16f9f0df45e942069e032715fb2d37b2';
 const CUSTOMER_DB = '1ca8d122be214e3892879932147143c9';
 
-// ── 現在ログイン中ユーザー判定 (価格表示制御用) ──
-const SESSION_KEY = 'foo_portal_session';
-let __currentUserName = '';
-try {
-  const raw = localStorage.getItem(SESSION_KEY);
-  if (raw) {
-    const s = JSON.parse(raw);
-    if (s && new Date(s.expires) > new Date() && s.name) __currentUserName = s.name;
-  }
-} catch(e) {}
-if (!__currentUserName) __currentUserName = localStorage.getItem('tire_name') || '';
-// 半角/全角スペース両対応で正規化
-const __normName = (n) => String(n || '').replace(/\s+/g, '').replace(/　/g, '');
-const PRICE_VISIBLE_USERS = ['向畑充', '岡崎由美'];
-const isPriceVisible = PRICE_VISIBLE_USERS.includes(__normName(__currentUserName));
-// 価格表示用ヘルパ
-const __maskPrice = (yenStr) => isPriceVisible ? yenStr : '🔒';
-// バナー表示
+// ── 価格表示制御 ──
+// 2026/4/25 方針変更: 向畑/岡崎含め 全社員に価格を非表示
+const isPriceVisible = false;
+const __maskPrice = (yenStr) => '🔒';
 window.addEventListener('DOMContentLoaded', () => {
-  if (!isPriceVisible) {
-    const b = document.getElementById('price-mode-banner');
-    if (b) b.style.display = 'block';
-  }
+  const b = document.getElementById('price-mode-banner');
+  if (b) b.style.display = 'block';
 });
 
 const TYPE_EMOJI = {'大型':'🚛','中型':'🚚','小型':'🚗','バン':'🚐','乗用車':'🚗','リフト':'🏗️','トレーラー':'🚜','その他':'🔧'};

@@ -305,8 +305,9 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', s
 .dial-drum::-webkit-scrollbar { display:none; }
 .dial-item { height:44px; display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:700; font-family:'DM Mono',monospace; color:var(--text); scroll-snap-align:center; }
 .dial-highlight { position:absolute; top:50%; left:20px; right:20px; height:44px; transform:translateY(-50%); border-top:2px solid var(--accent); border-bottom:2px solid var(--accent); pointer-events:none; border-radius:4px; background:rgba(240,165,0,0.05); }
-/* スクショ用見積表示 */
-.ss-overlay { position:fixed; inset:0; background:#fff; z-index:3000; overflow-y:auto; padding:32px 24px 40px; color:#111; font-family:'Noto Sans JP',sans-serif; }
+/* スクショ用見積表示 (スマホサイズ固定) */
+.ss-overlay { position:fixed; inset:0; background:#1a1a1a; z-index:3000; overflow-y:auto; padding:20px 0 40px; color:#111; font-family:'Noto Sans JP',sans-serif; }
+.ss-frame { max-width:390px; width:100%; margin:0 auto; background:#fff; border-radius:16px; padding:28px 22px 32px; box-shadow:0 8px 30px rgba(0,0,0,0.4); }
 .ss-close-btn { display:block; width:100%; margin-top:32px; background:#111; color:#fff; border:none; border-radius:10px; padding:14px; font-size:14px; font-weight:700; cursor:pointer; }
 .ss-header-row { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
 .ss-logo { font-size:36px; font-weight:900; letter-spacing:-0.06em; color:#111; line-height:1; }
@@ -2299,7 +2300,7 @@ function showEstimateScreenshot(cardId, bp, patStr, sizeStr, makerStr) {
   const tireUnit=bp!==null?Math.round(bp*pct/100):0;
   const tQty=getPriceQty(cardId,'tqty',4);
   const items=[
-    {name:`タイヤ (${pct===100?'A表':pct+'%'})`,unit:tireUnit,qty:tQty},
+    {name:`タイヤ`,unit:tireUnit,qty:tQty},
     {name:'工賃',unit:priceEstVal(cardId+'-ku'),qty:getPriceQty(cardId,'kq',4)},
     {name:'廃タイヤ',unit:priceEstVal(cardId+'-hu'),qty:getPriceQty(cardId,'hq',4)},
     {name:'出張',unit:priceEstVal(cardId+'-su'),qty:getPriceQty(cardId,'sq',1)},
@@ -2317,7 +2318,7 @@ function showEstimateScreenshot(cardId, bp, patStr, sizeStr, makerStr) {
   const rows=activeItems.map(it=>`<tr><td>${it.name}</td><td>¥${it.unit.toLocaleString()}</td><td>${it.qty}</td><td>¥${(it.unit*it.qty).toLocaleString()}</td></tr>`).join('');
   const ov=document.createElement('div');
   ov.className='ss-overlay'; ov.id='ss-overlay';
-  ov.innerHTML=`<div class="ss-header-row"><div class="ss-logo">f<span>.</span>o<span>.</span>o</div><div class="ss-company-info"><div class="ss-brand">有限会社タイヤマネージャー f.o.o</div><div class="ss-company-addr">〒731-5141 広島県広島市佐伯区千同３丁目３９４−１<br>TEL: 090-7899-5191　info@tiremanager-foo.com</div></div></div><div class="ss-doc-title">見積書</div><div class="ss-date">${dateStr}</div>${cust?`<div class="ss-customer-row">${cust} 御中</div>`:`<div class="ss-customer-empty">お客様名　</div>`}<div class="ss-tire-box"><div class="ss-tire-maker">${makerStr}</div><div class="ss-tire-row"><div class="ss-tire-pattern">${patStr}</div><div class="ss-tire-size">${sizeStr}</div></div></div><table class="ss-table"><thead><tr><th>項目</th><th>単価</th><th>数量</th><th>金額</th></tr></thead><tbody>${rows}</tbody><tfoot><tr class="ss-subtotal"><td colspan="3">税別合計</td><td>¥${total.toLocaleString()}</td></tr><tr class="ss-total"><td colspan="3">税込合計（10%）</td><td>¥${taxTotal.toLocaleString()}</td></tr></tfoot></table><div class="ss-memo-box"><span style="font-size:11px;color:#aaa;display:block;margin-bottom:4px;">備考</span>${memo||'　'}</div><div class="ss-notice">【ご注意】本見積書の価格は予告なく変更になる場合がございます。また、在庫状況によりご希望の商品をご用意できない場合がございます。あらかじめご了承ください。</div><div class="ss-footer">スクリーンショットして共有してください</div><button class="ss-close-btn" onclick="document.getElementById('ss-overlay').remove()">✕ 閉じる</button>`;
+  ov.innerHTML=`<div class="ss-frame"><div class="ss-header-row"><div class="ss-logo">f<span>.</span>o<span>.</span>o</div><div class="ss-company-info"><div class="ss-brand">有限会社タイヤマネージャー f.o.o</div><div class="ss-company-addr">〒731-5141 広島県広島市佐伯区千同３丁目３９４−１<br>TEL: 090-7899-5191　info@tiremanager-foo.com</div></div></div><div class="ss-doc-title">見積書</div><div class="ss-date">${dateStr}</div>${cust?`<div class="ss-customer-row">${cust} 御中</div>`:`<div class="ss-customer-empty">お客様名　</div>`}<div class="ss-tire-box"><div class="ss-tire-maker">${makerStr}</div><div class="ss-tire-row"><div class="ss-tire-pattern">${patStr}</div><div class="ss-tire-size">${sizeStr}</div></div></div><table class="ss-table"><thead><tr><th>項目</th><th>単価</th><th>数量</th><th>金額</th></tr></thead><tbody>${rows}</tbody><tfoot><tr class="ss-subtotal"><td colspan="3">税別合計</td><td>¥${total.toLocaleString()}</td></tr><tr class="ss-total"><td colspan="3">税込合計（10%）</td><td>¥${taxTotal.toLocaleString()}</td></tr></tfoot></table><div class="ss-memo-box"><span style="font-size:11px;color:#aaa;display:block;margin-bottom:4px;">備考</span>${memo||'　'}</div><div class="ss-notice">【ご注意】本見積書の価格は予告なく変更になる場合がございます。また、在庫状況によりご希望の商品をご用意できない場合がございます。あらかじめご了承ください。</div><div class="ss-footer">スクリーンショットして共有してください</div><button class="ss-close-btn" onclick="document.getElementById('ss-overlay').remove()">✕ 閉じる</button></div>`;
   document.body.appendChild(ov);
 }
 const PRICE_SIZE_CACHE = {};   // { cat: [sizes] }  OR  { cat+subcat: [sizes] }

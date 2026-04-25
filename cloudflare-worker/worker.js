@@ -788,6 +788,19 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       }
     }
 
+    // 得意先名のリネーム
+    if (url.pathname === '/d1/rename-customer' && request.method === 'POST' && env.DB) {
+      try {
+        const { id, new_name } = await request.json();
+        if (!id || !new_name) return new Response(JSON.stringify({ error: 'id & new_name required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        const stmt = env.DB.prepare(`UPDATE 得意先マスタ SET 得意先名 = ? WHERE id = ?`).bind(new_name, id);
+        const res = await stmt.run();
+        return new Response(JSON.stringify({ success: true, changes: res.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
     // 「タイヤ販売(新品/中古/更生)」優先で前輪サイズを再計算
     // 既存ロジック: 組替も含む装着系最頻値 → 組替本数(=旧サイズ)が勝つ問題があった
     if (url.pathname === '/d1/recalc-front-size' && request.method === 'POST' && env.DB) {

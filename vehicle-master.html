@@ -254,6 +254,10 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-seri
 
   <!-- List Tab -->
   <div class="tab-pane" id="tab-list">
+    <div class="search-box" style="margin-bottom:8px;">
+      <input type="text" id="list-search-input" placeholder="顧客名・車番で絞り込み（途中の文字でもOK）..." autocomplete="off" style="width:100%;padding:10px 38px 10px 14px;font-size:14px;border:1.5px solid var(--border);border-radius:10px;background:var(--surface);">
+      <button class="search-clear" id="list-search-clear">&times;</button>
+    </div>
     <div class="filter-chips" id="filter-chips"></div>
     <div class="filter-chips" id="biller-filter-chips"></div>
     <div class="list-summary" id="list-summary"></div>
@@ -1077,6 +1081,25 @@ function getBillerTag(v){
   return v.customerName ? 'direct' : '';
 }
 function loadList() {
+  // 検索入力イベント (初回のみ登録)
+  const listSearchInp = document.getElementById('list-search-input');
+  const listSearchClr = document.getElementById('list-search-clear');
+  if (listSearchInp && !listSearchInp.dataset.bound) {
+    listSearchInp.dataset.bound = '1';
+    let listSearchTimer;
+    listSearchInp.addEventListener('input', () => {
+      const v = listSearchInp.value.trim();
+      listSearchClr.classList.toggle('show', v.length > 0);
+      clearTimeout(listSearchTimer);
+      listSearchTimer = setTimeout(() => loadList(), 200);
+    });
+    listSearchClr?.addEventListener('click', () => {
+      listSearchInp.value = '';
+      listSearchClr.classList.remove('show');
+      loadList();
+      listSearchInp.focus();
+    });
+  }
   const chipContainer = document.getElementById('filter-chips');
   const billerContainer = document.getElementById('biller-filter-chips');
   const listResults = document.getElementById('list-results');
@@ -1121,6 +1144,18 @@ function loadList() {
   let filtered = allVehicles;
   if (currentFilter) filtered = filtered.filter(v => v.type === currentFilter);
   if (currentBillerFilter) filtered = filtered.filter(v => getBillerTag(v) === currentBillerFilter);
+  // 顧客名/ふりがな/車番での部分一致絞り込み (途中の文字でもOK)
+  const listQuery = (document.getElementById('list-search-input')?.value || '').trim();
+  if (listQuery) {
+    const norm = (s) => String(s || '').toLowerCase();
+    const q = norm(listQuery);
+    filtered = filtered.filter(v =>
+      norm(v.customerName).includes(q) ||
+      norm(v.furigana).includes(q) ||
+      norm(v.plate).includes(q) ||
+      norm(v.memo).includes(q)
+    );
+  }
 
   // Group by customer + ふりがな for sorting
   const groups = {};

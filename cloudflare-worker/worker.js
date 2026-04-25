@@ -760,6 +760,34 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       }
     }
 
+    // サービス系明細(組替/脱着/バランス/その他)で車両装着サイズと不一致のサイズをNULLクリア
+    if (url.pathname === '/d1/clear-service-mismatch-sizes' && request.method === 'POST' && env.DB) {
+      try {
+        const body2 = await request.json().catch(() => ({}));
+        const dryrun = !!body2.dryrun;
+        const whereCl = `品目 IN ('組替','脱着','バランス','Fバランス','その他')
+          AND タイヤサイズ IS NOT NULL AND タイヤサイズ != ''
+          AND 車番 IN (
+            SELECT v.車番 FROM 車両マスタ v
+            WHERE v.前輪サイズ IS NOT NULL AND v.前輪サイズ != ''
+          )
+          AND タイヤサイズ NOT IN (
+            SELECT v.前輪サイズ FROM 車両マスタ v WHERE v.車番 = 売上明細.車番
+            UNION ALL
+            SELECT v.後輪サイズ FROM 車両マスタ v WHERE v.車番 = 売上明細.車番 AND v.後輪サイズ IS NOT NULL
+          )`;
+        if (dryrun) {
+          const r = await env.DB.prepare(`SELECT COUNT(*) AS c FROM 売上明細 WHERE ${whereCl}`).all();
+          return new Response(JSON.stringify({ success: true, dryrun: true, willClear: r.results[0].c }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+        }
+        const stmt = env.DB.prepare(`UPDATE 売上明細 SET タイヤサイズ = NULL WHERE ${whereCl}`);
+        const res = await stmt.run();
+        return new Response(JSON.stringify({ success: true, cleared: res.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
     // 「タイヤ販売(新品/中古/更生)」優先で前輪サイズを再計算
     // 既存ロジック: 組替も含む装着系最頻値 → 組替本数(=旧サイズ)が勝つ問題があった
     if (url.pathname === '/d1/recalc-front-size' && request.method === 'POST' && env.DB) {

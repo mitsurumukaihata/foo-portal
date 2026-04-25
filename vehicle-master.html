@@ -906,6 +906,9 @@ function renderCard(v, container) {
       <div class="v-detail-row"><span class="v-detail-label">本数</span><span class="v-detail-val">${v.count || '-'}</span></div>
       <div class="v-detail-row"><span class="v-detail-label">空気圧</span><span class="v-detail-val">${v.pressure || '-'}</span></div>
       <div class="v-detail-row"><span class="v-detail-label">メモ</span><span class="v-detail-val">${v.memo || '-'}</span></div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1.5px solid var(--border);">
+        <a href="size-mismatch.html" target="_blank" rel="noopener" style="display:inline-block;padding:6px 12px;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:6px;text-decoration:none;font-size:12px;font-weight:700;">⚠️ サイズ不整合レポートを開く →</a>
+      </div>
       <div class="v-history-section" data-plate="${v.plate}" style="margin-top:14px;padding-top:12px;border-top:1.5px solid var(--border);">
         <div style="font-weight:700;font-size:13px;color:var(--accent);margin-bottom:8px;">🔧 タイヤ交換履歴</div>
         <div class="v-history-content" style="font-size:12px;color:var(--muted);">クリックで展開時に読込みます...</div>

@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="theme-color" content="#3d7c4a">
+<title>🧾 給与明細作成 (D1版) | f.o.o 経理</title>
+<style>
+  :root {
+    --bg: #fdf6ec; --surface: #fff; --surface2: #faf2e5;
+    --border: #ead7bd; --text: #3d2c16; --muted: #8a6a3e;
+    --accent: #f0a500; --accent2: #d18800; --green: #2e7d32; --red: #c62828; --blue: #1976d2; --purple: #7c3aed;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:-apple-system,'Hiragino Sans',sans-serif; background:var(--bg); color:var(--text); font-size:13px; line-height:1.55; }
+  .header { background:linear-gradient(135deg,#7aa66b,#3d7c4a); color:#fff; padding:20px; text-align:center; }
+  .header h1 { margin:0 0 4px; font-size:20px; }
+  .container { padding:14px; max-width:1100px; margin:0 auto; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 18px; margin-bottom:14px; box-shadow:0 2px 6px rgba(0,0,0,0.04); }
+  .card h2 { margin:0 0 10px; font-size:15px; color:var(--accent2); }
+  .filter-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+  .filter-tab { padding:6px 12px; border:1px solid var(--border); background:var(--surface); border-radius:6px; cursor:pointer; font-size:12px; }
+  .filter-tab.active { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:700; }
+  .help-box { font-size:11px; color:var(--muted); background:var(--surface2); padding:8px 12px; border-radius:6px; margin-bottom:10px; line-height:1.7; }
+  table.data { width:100%; border-collapse:collapse; font-size:12px; }
+  table.data th, table.data td { padding:6px 8px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
+  table.data th { background:var(--surface2); font-size:10px; color:var(--muted); }
+  table.data td.num { text-align:right; font-family:'DM Mono',monospace; }
+  .num-input { width:90px; padding:4px 6px; font-size:12px; text-align:right; border:1px solid var(--border); border-radius:4px; font-family:'DM Mono',monospace; }
+  .btn { padding:6px 12px; border:1px solid var(--accent); background:var(--accent); color:#fff; border-radius:5px; cursor:pointer; font-size:12px; font-weight:700; }
+  .btn:hover { background:var(--accent2); }
+  .btn.secondary { background:var(--surface); color:var(--accent); }
+  .btn.success { background:var(--green); border-color:var(--green); }
+  .btn.danger { background:var(--red); border-color:var(--red); }
+  .btn:disabled { opacity:0.4; cursor:not-allowed; }
+  .month-picker { padding:6px 10px; font-size:13px; border:1px solid var(--border); border-radius:5px; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700; }
+  .badge.draft { background:#fef3c7; color:#92400e; }
+  .badge.confirmed { background:#dbeafe; color:#1e40af; }
+  .badge.published { background:#d1fae5; color:#065f46; }
+  .loading { text-align:center; padding:30px; color:var(--muted); }
+  .stat-box { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:10px 14px; }
+  .stat-box .lbl { font-size:10px; color:var(--muted); }
+  .stat-box .val { font-size:18px; font-weight:900; color:var(--accent2); font-family:'DM Mono',monospace; }
+  .grid-3 { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; }
+  details summary { cursor:pointer; padding:6px; font-weight:700; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🧾 給与明細作成 (D1版)</h1>
+  <div style="font-size:12px;opacity:0.9;">勤怠 → 給与計算 → 確定 → 公開</div>
+</div>
+
+<nav style="background:#fff;border-bottom:1px solid var(--border);padding:8px 14px;overflow-x:auto;white-space:nowrap;">
+  <a href="index.html" style="display:inline-block;padding:5px 10px;background:var(--accent);color:#fff;border-radius:5px;text-decoration:none;font-size:11px;font-weight:700;margin-right:4px;">🏠 ポータル</a>
+  <a href="keiri-portal.html" style="display:inline-block;padding:5px 10px;background:var(--surface2);color:var(--text);border-radius:5px;text-decoration:none;font-size:11px;margin-right:4px;">💼 経理ポータル</a>
+  <a href="keiri-master.html" style="display:inline-block;padding:5px 10px;background:var(--surface2);color:var(--text);border-radius:5px;text-decoration:none;font-size:11px;margin-right:4px;">⚙️ 経理マスタ</a>
+  <a href="payslip-d1.html" style="display:inline-block;padding:5px 10px;background:var(--surface2);color:var(--text);border-radius:5px;text-decoration:none;font-size:11px;">💴 明細閲覧</a>
+</nav>
+
+<div class="container">
+
+  <!-- 期間選択 + 一覧 -->
+  <div class="card">
+    <h2>📅 給与計算月の選択</h2>
+    <div class="help-box">
+      💡 締め日は <b>毎月15日</b>。例: 4月支給 = 3/16〜4/15 の勤怠から集計。<br>
+      💡 まず月を選択 → 「📊 集計&生成」で勤怠データから明細下書きを自動作成。<br>
+      💡 各社員の明細を確認・修正 → 「✅ 確定」 → 「🚀 公開」 で社員に閲覧可能に。
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+      <label>支給年月:</label>
+      <input type="month" id="month-picker" class="month-picker" value="">
+      <button class="btn" onclick="generateDrafts()">📊 集計 & 下書き生成</button>
+      <button class="btn secondary" onclick="loadPayslips()">🔄 一覧再読込</button>
+    </div>
+    <div id="month-summary" style="margin-bottom:10px;"></div>
+    <div id="payslip-list"><div class="loading">月を選択してください</div></div>
+  </div>
+
+  <!-- 編集パネル -->
+  <div class="card" id="edit-panel" style="display:none;">
+    <h2 id="edit-title">明細編集</h2>
+    <div id="edit-content"></div>
+  </div>
+
+</div>
+
+<script>
+const D1_WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
+const SESSION_KEY = 'foo_portal_session';
+
+async function sql(q, params = []) {
+  const r = await fetch(D1_WORKER + '/d1/sql', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sql: q, params })
+  });
+  return r.json();
+}
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const yen = n => '¥' + (Math.round(n) || 0).toLocaleString();
+
+// 現在ユーザー
+let _user = null;
+try {
+  const raw = localStorage.getItem(SESSION_KEY);
+  if (raw) {
+    const s = JSON.parse(raw);
+    if (s && new Date(s.expires) > new Date()) _user = s;
+  }
+} catch(e) {}
+
+// 初期月: 当月
+document.getElementById('month-picker').value = (() => {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+})();
+
+let _payslips = [];
+let _employees = [];
+
+// シフト手当対象月判定
+function isShiftAllowanceMonth(yyyymm) {
+  if (!yyyymm) return false;
+  const m = parseInt(yyyymm.split('-')[1], 10);
+  return [2, 3, 6, 7, 8, 9, 10].includes(m);
+}
+
+// 締め日基準の対象期間 (支給年月 → 前月16日〜当月15日)
+function getPeriod(yyyymm) {
+  const [y, m] = yyyymm.split('-').map(Number);
+  const startDate = new Date(y, m - 2, 16);
+  const endDate = new Date(y, m - 1, 15);
+  const fmt = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  return { start: fmt(startDate), end: fmt(endDate) };
+}
+
+// 概算所得税 (月額表 甲欄近似)
+function estimateIncomeTax(taxableAmount, dependents) {
+  if (taxableAmount < 88000) return 0;
+  let tax = 0;
+  if (taxableAmount < 100000) tax = (taxableAmount - 88000) * 0.05;
+  else if (taxableAmount < 150000) tax = 600 + (taxableAmount - 100000) * 0.02;
+  else if (taxableAmount < 200000) tax = 1600 + (taxableAmount - 150000) * 0.04;
+  else if (taxableAmount < 270000) tax = 3600 + (taxableAmount - 200000) * 0.06;
+  else if (taxableAmount < 350000) tax = 7800 + (taxableAmount - 270000) * 0.08;
+  else if (taxableAmount < 500000) tax = 14200 + (taxableAmount - 350000) * 0.10;
+  else tax = 29200 + (taxableAmount - 500000) * 0.15;
+  tax -= (dependents || 0) * 1600;
+  return Math.max(0, Math.round(tax));
+}
+
+// 勤怠サマリ (D1勤怠管理から集計)
+async function summarizeKintai(employeeName, period) {
+  const r = await sql(`SELECT * FROM 勤怠管理 WHERE 社員名 = ? AND 日付 >= ? AND 日付 <= ?`, [employeeName, period.start, period.end]);
+  const records = r.results || [];
+  let workDays = 0, totalMinutes = 0, overtimeMinutes = 0, yukyuHours = 0, absentDays = 0;
+  for (const k of records) {
+    if (k.欠勤) { absentDays++; continue; }
+    if (k.有給使用) { yukyuHours += k.有給使用時間 || 8; continue; }
+    if (k.出勤 != null && k.退勤 != null) {
+      workDays++;
+      const startMin = Math.floor(k.出勤 / 100) * 60 + (k.出勤 % 100);
+      const endMin = Math.floor(k.退勤 / 100) * 60 + (k.退勤 % 100);
+      const breakMin = 60; // 休憩1時間
+      const work = Math.max(0, endMin - startMin - breakMin);
+      totalMinutes += work;
+      // 8時間超を残業
+      if (work > 480) overtimeMinutes += work - 480;
+    }
+  }
+  return {
+    出勤日数: workDays,
+    出勤時間: Math.round(totalMinutes / 60 * 10) / 10,
+    残業時間: Math.round(overtimeMinutes / 60 * 10) / 10,
+    有給日数: Math.round(yukyuHours / 8 * 10) / 10,
+    欠勤日数: absentDays,
+    生記録: records.length,
+  };
+}
+
+// 明細計算
+function calcPayslip(emp, master, summary, yyyymm) {
+  const p = { ...summary };
+  // 基本給/残業手当
+  if (master.給与体系 === '時給') {
+    const hourly = master.時給 || 0;
+    const normalHours = (summary.出勤時間 || 0) - (summary.残業時間 || 0);
+    p.基本給 = Math.round(normalHours * hourly);
+    p.残業手当 = Math.round((summary.残業時間 || 0) * hourly * 1.25);
+  } else {
+    const baseSalary = master.基本給 || 0;
+    const workDays = emp.所定労働日数 || 21;
+    const workHours = emp.所定労働時間 || 168;
+    const deductPerDay = workDays > 0 ? baseSalary / workDays : 0;
+    p.基本給 = baseSalary - Math.round((summary.欠勤日数 || 0) * deductPerDay);
+    const hourly = workHours > 0 ? baseSalary / workHours : 0;
+    p.残業手当 = Math.round((summary.残業時間 || 0) * hourly * 1.25);
+  }
+  p.通勤手当 = master.通勤手当 || 0;
+  p.役職手当 = master.役職手当 || 0;
+  p.資格手当 = master.資格手当 || 0;
+  // シフト手当 (期間+対象社員フラグ)
+  const shiftElig = !!emp.シフト手当対象;
+  p.シフト手当 = (isShiftAllowanceMonth(yyyymm) && shiftElig) ? (master.シフト手当 || 0) : 0;
+  p.その他手当 = master.その他手当 || 0;
+  p.休日出勤手当 = 0;
+  p.深夜手当 = 0;
+  p.支給合計 = p.基本給 + p.残業手当 + p.通勤手当 + p.役職手当 + p.資格手当 + p.シフト手当 + p.その他手当;
+  // 控除
+  p.健康保険料 = master.健康保険料 || 0;
+  p.厚生年金 = master.厚生年金 || 0;
+  p.介護保険料 = master.介護保険料 || 0;
+  p.雇用保険料 = Math.round(p.支給合計 * (master.雇用保険料率 || 0.006));
+  const social = p.健康保険料 + p.厚生年金 + p.介護保険料 + p.雇用保険料;
+  const taxable = p.支給合計 - social;
+  p.所得税 = estimateIncomeTax(taxable, master.扶養人数 || 0);
+  p.住民税 = master.住民税月額 || 0;
+  p.その他控除 = 0;
+  p.控除合計 = social + p.所得税 + p.住民税 + p.その他控除;
+  p.差引支給額 = p.支給合計 - p.控除合計;
+  return p;
+}
+
+async function loadEmployeesAndMaster(yyyymm) {
+  const eR = await sql(`SELECT * FROM 社員マスタ WHERE 在籍 = '在籍中' ORDER BY 表示順, 氏名`);
+  _employees = eR.results || [];
+  const mR = await sql(`SELECT * FROM 給与マスタ WHERE 適用年月 = ?`, [yyyymm]);
+  const masterMap = {};
+  (mR.results || []).forEach(m => masterMap[m.社員ID] = m);
+  return { employees: _employees, masterMap };
+}
+
+async function generateDrafts() {
+  const yyyymm = document.getElementById('month-picker').value;
+  if (!yyyymm) { alert('支給年月を選択してください'); return; }
+  if (!confirm(`${yyyymm} 支給分の給与明細(下書き)を全社員分生成します。\n既存の確定/公開分は上書きしません。`)) return;
+  const period = getPeriod(yyyymm);
+  const { employees, masterMap } = await loadEmployeesAndMaster(yyyymm);
+  const existingR = await sql(`SELECT 社員ID, ステータス FROM 給与明細 WHERE 支給年月 = ?`, [yyyymm]);
+  const existing = {};
+  (existingR.results || []).forEach(r => existing[r.社員ID] = r.ステータス);
+  let ok = 0, skip = 0, ng = 0;
+  for (const e of employees) {
+    if (existing[e.id] && existing[e.id] !== '下書き') { skip++; continue; }
+    const master = masterMap[e.id];
+    if (!master) { ng++; continue; }
+    const summary = await summarizeKintai(e.氏名, period);
+    const calc = calcPayslip(e, master, summary, yyyymm);
+    const payload = {
+      社員ID: e.id, 社員氏名: e.氏名, 支給年月: yyyymm,
+      対象期間_開始: period.start, 対象期間_終了: period.end,
+      ...calc,
+      ステータス: '下書き', 作成者: _user?.name || 'システム',
+    };
+    const r = await fetch(D1_WORKER + '/d1/upsert-payslip', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const j = await r.json();
+    if (j.success) ok++; else ng++;
+  }
+  alert(`✅ ${ok}名生成 / ⏭ ${skip}名スキップ(確定済) / ❌ ${ng}名失敗(マスタ未設定)`);
+  await loadPayslips();
+}
+
+async function loadPayslips() {
+  const yyyymm = document.getElementById('month-picker').value;
+  if (!yyyymm) return;
+  const el = document.getElementById('payslip-list');
+  el.innerHTML = '<div class="loading">読込中...</div>';
+  const r = await sql(`SELECT * FROM 給与明細 WHERE 支給年月 = ? ORDER BY 社員氏名`, [yyyymm]);
+  _payslips = r.results || [];
+  if (!_payslips.length) {
+    el.innerHTML = '<div class="loading">明細未生成。「📊 集計 & 下書き生成」ボタンを押してください</div>';
+    document.getElementById('month-summary').innerHTML = '';
+    return;
+  }
+  const totals = _payslips.reduce((t, p) => ({
+    支給: t.支給 + (p.支給合計 || 0),
+    控除: t.控除 + (p.控除合計 || 0),
+    差引: t.差引 + (p.差引支給額 || 0),
+  }), { 支給:0, 控除:0, 差引:0 });
+  const counts = { 下書き:0, 承認待ち:0, 確定:0, 公開:0 };
+  _payslips.forEach(p => { counts[p.ステータス] = (counts[p.ステータス] || 0) + 1; });
+  document.getElementById('month-summary').innerHTML = `
+    <div class="grid-3">
+      <div class="stat-box"><div class="lbl">支給合計</div><div class="val">${yen(totals.支給)}</div></div>
+      <div class="stat-box"><div class="lbl">控除合計</div><div class="val">${yen(totals.控除)}</div></div>
+      <div class="stat-box"><div class="lbl">差引支給額</div><div class="val" style="color:var(--green);">${yen(totals.差引)}</div></div>
+      <div class="stat-box"><div class="lbl">人数</div><div class="val">${_payslips.length}名</div></div>
+      <div class="stat-box"><div class="lbl">下書き / 確定 / 公開</div><div class="val" style="font-size:14px;">${counts.下書き} / ${counts.確定} / ${counts.公開}</div></div>
+    </div>`;
+  el.innerHTML = `
+    <div style="overflow-x:auto;margin-top:10px;">
+    <table class="data">
+      <thead><tr>
+        <th>氏名</th>
+        <th class="num">出勤</th>
+        <th class="num">残業</th>
+        <th class="num">支給合計</th>
+        <th class="num">控除合計</th>
+        <th class="num">差引支給額</th>
+        <th>状態</th>
+        <th>操作</th>
+      </tr></thead>
+      <tbody>
+      ${_payslips.map(p => `
+        <tr>
+          <td><b>${esc(p.社員氏名)}</b></td>
+          <td class="num">${p.出勤日数 || 0}日 ${(p.出勤時間||0)}h</td>
+          <td class="num">${(p.残業時間||0)}h</td>
+          <td class="num">${yen(p.支給合計)}</td>
+          <td class="num">${yen(p.控除合計)}</td>
+          <td class="num"><b>${yen(p.差引支給額)}</b></td>
+          <td><span class="badge ${p.ステータス==='公開'?'published':p.ステータス==='確定'?'confirmed':'draft'}">${esc(p.ステータス)}</span></td>
+          <td>
+            <button class="btn secondary" onclick="editPayslip('${p.id}')">✏️ 編集</button>
+            ${p.ステータス==='下書き'?`<button class="btn" onclick="updateStatus('${p.id}','確定')">✅ 確定</button>`:''}
+            ${p.ステータス==='確定'?`<button class="btn success" onclick="updateStatus('${p.id}','公開')">🚀 公開</button>`:''}
+            ${p.ステータス==='公開'?`<button class="btn secondary" onclick="updateStatus('${p.id}','確定')">↩️ 公開取消</button>`:''}
+          </td>
+        </tr>
+      `).join('')}
+      </tbody>
+    </table>
+    </div>
+    <div style="margin-top:10px;text-align:right;">
+      ${_payslips.some(p => p.ステータス === '下書き') ? '<button class="btn" onclick="bulkConfirm()">✅ 全て確定 (下書き → 確定)</button>' : ''}
+      ${_payslips.some(p => p.ステータス === '確定') ? '<button class="btn success" onclick="bulkPublish()" style="margin-left:8px;">🚀 全て公開 (確定 → 公開)</button>' : ''}
+    </div>
+  `;
+}
+
+async function updateStatus(id, status) {
+  if (status === '公開' && !confirm('公開すると社員が閲覧できるようになります。よろしいですか？')) return;
+  const p = _payslips.find(x => x.id === id);
+  if (!p) return;
+  const payload = { ...p, ステータス: status };
+  if (status === '公開') payload.公開日 = new Date().toISOString();
+  if (status === '確定') payload.代表承認日 = new Date().toISOString();
+  const r = await fetch(D1_WORKER + '/d1/upsert-payslip', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const j = await r.json();
+  if (j.success) { await loadPayslips(); }
+  else alert('❌ ' + (j.error || ''));
+}
+
+async function bulkConfirm() {
+  const targets = _payslips.filter(p => p.ステータス === '下書き');
+  if (!confirm(`${targets.length}件を「確定」にします。よろしいですか？`)) return;
+  for (const p of targets) await updateStatus(p.id, '確定');
+}
+
+async function bulkPublish() {
+  const targets = _payslips.filter(p => p.ステータス === '確定');
+  if (!confirm(`${targets.length}件を「公開」して社員に閲覧可能にします。よろしいですか？`)) return;
+  for (const p of targets) await updateStatus(p.id, '公開');
+}
+
+async function editPayslip(id) {
+  const p = _payslips.find(x => x.id === id);
+  if (!p) return;
+  const panel = document.getElementById('edit-panel');
+  panel.style.display = '';
+  document.getElementById('edit-title').textContent = `✏️ 編集: ${p.社員氏名} (${p.支給年月})`;
+  const fields = [
+    ['基本給','基本給'], ['残業手当','残業手当'], ['通勤手当','通勤手当'],
+    ['役職手当','役職手当'], ['資格手当','資格手当'], ['シフト手当','シフト手当'],
+    ['その他手当','その他手当'],
+    ['健康保険料','健康保険料'], ['厚生年金','厚生年金'], ['介護保険料','介護保険料'],
+    ['雇用保険料','雇用保険料'], ['所得税','所得税'], ['住民税','住民税'], ['その他控除','その他控除'],
+  ];
+  document.getElementById('edit-content').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;">
+      ${fields.map(([lbl,key]) => `
+        <label style="display:flex;justify-content:space-between;align-items:center;font-size:11px;">
+          <span>${lbl}</span>
+          <input type="number" class="num-input" id="ef-${key}" value="${p[key]||0}" oninput="recalcEdit('${id}')">
+        </label>
+      `).join('')}
+    </div>
+    <div class="grid-3" style="margin-top:14px;">
+      <div class="stat-box"><div class="lbl">支給合計</div><div class="val" id="ef-支給合計">${yen(p.支給合計)}</div></div>
+      <div class="stat-box"><div class="lbl">控除合計</div><div class="val" id="ef-控除合計">${yen(p.控除合計)}</div></div>
+      <div class="stat-box"><div class="lbl">差引支給額</div><div class="val" id="ef-差引" style="color:var(--green);">${yen(p.差引支給額)}</div></div>
+    </div>
+    <div style="margin-top:10px;">
+      <label style="font-size:11px;color:var(--muted);">メモ</label>
+      <textarea id="ef-memo" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px;min-height:50px;font-family:inherit;font-size:12px;">${esc(p.メモ||'')}</textarea>
+    </div>
+    <div style="margin-top:14px;text-align:right;">
+      <button class="btn secondary" onclick="document.getElementById('edit-panel').style.display='none'">キャンセル</button>
+      <button class="btn" onclick="savePayslipEdit('${id}')">💾 保存</button>
+    </div>
+  `;
+  panel.scrollIntoView({ behavior: 'smooth' });
+}
+
+function recalcEdit(id) {
+  const get = k => Number(document.getElementById('ef-' + k).value) || 0;
+  const sup = get('基本給') + get('残業手当') + get('通勤手当') + get('役職手当') + get('資格手当') + get('シフト手当') + get('その他手当');
+  const ko = get('健康保険料') + get('厚生年金') + get('介護保険料') + get('雇用保険料') + get('所得税') + get('住民税') + get('その他控除');
+  document.getElementById('ef-支給合計').textContent = yen(sup);
+  document.getElementById('ef-控除合計').textContent = yen(ko);
+  document.getElementById('ef-差引').textContent = yen(sup - ko);
+}
+
+async function savePayslipEdit(id) {
+  const p = _payslips.find(x => x.id === id);
+  if (!p) return;
+  const get = k => Number(document.getElementById('ef-' + k).value) || 0;
+  const updated = { ...p,
+    基本給: get('基本給'), 残業手当: get('残業手当'), 通勤手当: get('通勤手当'),
+    役職手当: get('役職手当'), 資格手当: get('資格手当'), シフト手当: get('シフト手当'),
+    その他手当: get('その他手当'),
+    健康保険料: get('健康保険料'), 厚生年金: get('厚生年金'), 介護保険料: get('介護保険料'),
+    雇用保険料: get('雇用保険料'), 所得税: get('所得税'), 住民税: get('住民税'), その他控除: get('その他控除'),
+    メモ: document.getElementById('ef-memo').value,
+  };
+  updated.支給合計 = updated.基本給 + updated.残業手当 + updated.通勤手当 + updated.役職手当 + updated.資格手当 + updated.シフト手当 + updated.その他手当;
+  updated.控除合計 = updated.健康保険料 + updated.厚生年金 + updated.介護保険料 + updated.雇用保険料 + updated.所得税 + updated.住民税 + updated.その他控除;
+  updated.差引支給額 = updated.支給合計 - updated.控除合計;
+  const r = await fetch(D1_WORKER + '/d1/upsert-payslip', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updated)
+  });
+  const j = await r.json();
+  if (j.success) {
+    alert('✅ 保存しました');
+    document.getElementById('edit-panel').style.display = 'none';
+    await loadPayslips();
+  } else alert('❌ ' + (j.error || ''));
+}
+
+loadPayslips();
+</script>
+
+</body>
+</html>

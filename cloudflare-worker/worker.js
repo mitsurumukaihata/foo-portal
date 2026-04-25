@@ -713,6 +713,19 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       }
     }
 
+    // 売上明細の車番を更新 (弥生備考ヒントから振り直し用)
+    if (url.pathname === '/d1/update-detail-plate' && request.method === 'POST' && env.DB) {
+      try {
+        const { detail_id, plate } = await request.json();
+        if (!detail_id) return new Response(JSON.stringify({ error: 'detail_id required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        const stmt = env.DB.prepare(`UPDATE 売上明細 SET 車番 = ? WHERE id = ?`).bind(plate || null, detail_id);
+        const res = await stmt.run();
+        return new Response(JSON.stringify({ success: true, changes: res.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
     // 売上明細のタイヤサイズをNULLクリア (サイズ不整合修正用)
     if (url.pathname === '/d1/clear-detail-size' && request.method === 'POST' && env.DB) {
       try {

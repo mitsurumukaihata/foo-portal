@@ -74,9 +74,17 @@
     </div>
   </div>
 
-  <!-- フィルタ -->
-  <div class="card">
-    <h2>🔍 不整合明細一覧</h2>
+  <!-- 主タブ: サイズ不整合 vs 車番不一致 -->
+  <div class="card" style="padding-bottom:8px;">
+    <div class="filter-tabs" id="main-tabs">
+      <div class="filter-tab active" data-main="size">📐 サイズ不整合</div>
+      <div class="filter-tab" data-main="plate">🚗 車番不一致 (弥生備考にヒント)</div>
+    </div>
+  </div>
+
+  <!-- フィルタ (サイズ不整合用) -->
+  <div class="card" id="size-section">
+    <h2>🔍 サイズ不整合明細一覧</h2>
     <div class="filter-tabs" id="category-tabs">
       <div class="filter-tab active" data-cat="install">🚨 装着系（要確認）</div>
       <div class="filter-tab" data-cat="service">🔧 サービス系（テンプレ残り）</div>
@@ -89,6 +97,15 @@
       <div class="filter-tab" data-period="all">全期間</div>
     </div>
     <div id="result-list" style="margin-top:12px;"><div class="loading"><div class="spinner"></div><br>読込中...</div></div>
+  </div>
+
+  <!-- 車番不一致 -->
+  <div class="card" id="plate-section" style="display:none;">
+    <h2>🚗 車番不一致明細 (弥生備考に別車番のヒントあり)</h2>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">
+      売上明細の車番と弥生備考の文字列が違うケース。弥生入力時に複数車両を1伝票で処理した可能性。
+    </div>
+    <div id="plate-result" style="margin-top:12px;"><div class="loading"><div class="spinner"></div><br>読込中...</div></div>
   </div>
 
   <!-- 一括処理 -->
@@ -289,6 +306,109 @@ async function bulkClearServiceSizes() {
     document.getElementById('bulk-result').innerHTML = '❌ エラー: ' + e.message;
   }
 }
+
+// ── 車番不一致 (弥生備考ヒント) ──
+async function loadPlateMismatch() {
+  const el = document.getElementById('plate-result');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div><br>読込中...</div>';
+  // 弥生備考に車番らしき文字 (例:「広島430と918」「さ91-83分」「123あ45-67」) があり、現在の車番と異なる行
+  const r = await sql(`SELECT
+    d.id AS detail_id, d.車番 AS 現在車番, d.品目, d.タイヤサイズ, d.数量, d.弥生備考, d.備考,
+    s.売上日, s.伝票タイトル
+    FROM 売上明細 d
+    JOIN 売上伝票 s ON d.売上伝票ID = s.id
+    WHERE d.弥生備考 IS NOT NULL AND d.弥生備考 != ''
+      AND d.弥生備考 != d.車番
+      AND (d.弥生備考 GLOB '*[ぁ-んァ-ヶ一-龯]*[0-9]*-[0-9]*'
+           OR d.弥生備考 GLOB '*[0-9][0-9]*-[0-9][0-9]*')
+    ORDER BY s.売上日 DESC
+    LIMIT 300`);
+  const rows = r.results || [];
+  if (!rows.length) { el.innerHTML = '<div class="empty">✅ 該当なし</div>'; return; }
+  // 車両マスタにある車番リストを取得 (推定先のチェック用)
+  const plateRes = await sql(`SELECT 車番 FROM 車両マスタ WHERE 車番 NOT LIKE '%(旧%'`);
+  const plateSet = new Set((plateRes.results || []).map(r => r.車番));
+  // 弥生備考から車番候補を抽出
+  const extractPlate = (memo) => {
+    if (!memo) return null;
+    // パターン1: 「ひらがな・漢字 + 数字3-4桁 + ひらがな + 数字-数字」全形
+    let m = memo.match(/([ぁ-んァ-ヶ一-龯]+\d{3,4}[ぁ-んァ-ヶ]\d{1,4}-?\d{1,4})/);
+    if (m) return m[1].replace(/(\d+)(\d{2})$/, '$1-$2').replace(/--/g, '-');
+    // パターン2: 「ひらがな + 数字-数字」(後半部のみ、例: さ91-83)
+    m = memo.match(/([ぁ-んァ-ヶ一-龯]\d{1,4}-\d{1,4})/);
+    if (m) return m[1];
+    return null;
+  };
+  el.innerHTML = `
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">${rows.length}件 (最大300件)</div>
+    <div style="overflow-x:auto;">
+    <table class="data">
+      <thead>
+        <tr>
+          <th>売上日</th>
+          <th>現在車番</th>
+          <th>品目</th>
+          <th>サイズ</th>
+          <th>弥生備考 (車番ヒント)</th>
+          <th>推定車番</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+      ${rows.map(r => {
+        const cand = extractPlate(r.弥生備考);
+        // 抽出車番を含む既存マスタ車両を検索
+        const matched = cand ? Array.from(plateSet).find(p => p.includes(cand) || cand.includes(p)) : null;
+        return `
+        <tr>
+          <td>${esc(r.売上日)}</td>
+          <td><b style="font-family:'DM Mono',monospace;">${esc(r.現在車番 || '-')}</b></td>
+          <td>${esc(r.品目)}</td>
+          <td style="font-family:'DM Mono',monospace;">${esc(r.タイヤサイズ || '-')}</td>
+          <td style="color:var(--accent);font-weight:700;">${esc(r.弥生備考)}</td>
+          <td>${matched ? `<b style="color:var(--green);font-family:'DM Mono',monospace;">${esc(matched)}</b>` : (cand ? `<span style="color:var(--red);font-family:'DM Mono',monospace;">${esc(cand)}<br><span style="font-size:9px;color:var(--muted);">(マスタ未登録)</span></span>` : '<span style="color:var(--muted);">不明</span>')}</td>
+          <td>
+            ${matched ? `<button class="action-btn primary" onclick="reassignPlate('${r.detail_id}','${matched.replace(/'/g,"\\'")}')">→ 振り直し</button>` : ''}
+            <button class="action-btn" onclick="window.open('vehicle-master.html?plate=' + encodeURIComponent('${esc(r.現在車番 || '')}'), '_blank')">現在車両</button>
+          </td>
+        </tr>`;
+      }).join('')}
+      </tbody>
+    </table>
+    </div>
+  `;
+}
+
+async function reassignPlate(detailId, newPlate) {
+  if (!confirm(`この明細の車番を「${newPlate}」に変更します。よろしいですか？`)) return;
+  try {
+    const r = await fetch(D1_WORKER + '/d1/update-detail-plate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ detail_id: detailId, plate: newPlate })
+    });
+    const j = await r.json();
+    if (j.success) {
+      alert(`✅ 振り直し完了 (${j.changes}行)`);
+      loadPlateMismatch();
+    } else {
+      alert('❌ エラー: ' + (j.error || '不明'));
+    }
+  } catch(e) {
+    alert('❌ 通信エラー: ' + e.message);
+  }
+}
+
+// 主タブ切替
+document.querySelectorAll('#main-tabs .filter-tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('#main-tabs .filter-tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    const m = t.dataset.main;
+    document.getElementById('size-section').style.display = m === 'size' ? '' : 'none';
+    document.getElementById('plate-section').style.display = m === 'plate' ? '' : 'none';
+    if (m === 'plate') loadPlateMismatch();
+  });
+});
 
 document.querySelectorAll('#category-tabs .filter-tab').forEach(t => {
   t.addEventListener('click', () => {

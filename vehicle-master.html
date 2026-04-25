@@ -507,7 +507,7 @@ async function fetchVehicles(filterTitle) {
       OR ${nameAndMemoClause})`;
   }
   const sql = `
-    SELECT v.id, v.車番, v.車種, v.前輪サイズ, v.後輪サイズ, v.前輪パターン, v.後輪パターン,
+    SELECT v.id, v.車番, v.車種, v.仕様, v.前輪サイズ, v.後輪サイズ, v.前輪パターン, v.後輪パターン,
            v.カテゴリ AS タイヤカテゴリ, v.本数, v.メモ, v.管理番号, v.車軸配置, v.created_time,
            v.顧客ID,
            COALESCE(
@@ -568,6 +568,7 @@ async function fetchVehicles(filterTitle) {
     billingName: r.請求先名 || '',
     furigana: r.ふりがな || '',
     type: r.車種 || '',
+    modelName: r.仕様 || '',
     frontSize: r.前輪サイズ || '',
     rearSize: r.後輪サイズ || '',
     frontPattern: r.前輪パターン || '',
@@ -878,7 +879,7 @@ function renderCard(v, container) {
     <div class="v-card-detail">
       <div class="v-detail-row"><span class="v-detail-label">車番</span><span class="v-detail-val">${v.plate}</span></div>
       <div class="v-detail-row"><span class="v-detail-label">顧客</span><span class="v-detail-val">${v.customerName || '-'}</span></div>
-      <div class="v-detail-row"><span class="v-detail-label">車種</span><span class="v-detail-val">${emoji} ${v.type || '-'}</span></div>
+      <div class="v-detail-row"><span class="v-detail-label">車種</span><span class="v-detail-val">${emoji} ${v.type || '-'}${v.modelName ? ` <span style="font-size:11px;color:var(--muted);">(${v.modelName})</span>` : ''}</span></div>
       <div class="v-detail-row"><span class="v-detail-label">車軸配置</span><span class="v-detail-val">${v.axleConfig ? `<span style="font-family:'DM Mono',monospace;font-weight:700;padding:2px 8px;background:var(--surface2);border-radius:4px;">${v.axleConfig}</span>` : '-'}</span></div>
       <div class="v-detail-row"><span class="v-detail-label">前輪サイズ</span><span class="v-detail-val">${v.frontSize || '-'}</span></div>
       <div class="v-detail-row"><span class="v-detail-label">前輪パターン</span><span class="v-detail-val">${v.frontPattern || '-'}</span></div>
@@ -1149,6 +1150,7 @@ function loadList() {
   if (currentFilter) filtered = filtered.filter(v => v.type === currentFilter);
   if (currentBillerFilter) filtered = filtered.filter(v => getBillerTag(v) === currentBillerFilter);
   // 顧客名/ふりがな/車番での部分一致絞り込み (途中の文字でもOK)
+  // メモは検索対象外 (関連顧客のメモがヒットして混在するのを防ぐ)
   const listQuery = (document.getElementById('list-search-input')?.value || '').trim();
   if (listQuery) {
     const norm = (s) => String(s || '').toLowerCase();
@@ -1156,8 +1158,7 @@ function loadList() {
     filtered = filtered.filter(v =>
       norm(v.customerName).includes(q) ||
       norm(v.furigana).includes(q) ||
-      norm(v.plate).includes(q) ||
-      norm(v.memo).includes(q)
+      norm(v.plate).includes(q)
     );
   }
 
@@ -1408,7 +1409,7 @@ function openEditSheet(v) {
     </div>
     <div class="form-field">
       <div class="form-label">車種</div>
-      <select class="form-select" id="edit-type">
+      <select class="form-select" id="edit-type" onchange="updateModelNameVisibility()">
         <option value="">選択</option>
         <option value="大型" ${v.type==='大型'?'selected':''}>🚛 大型</option>
         <option value="中型" ${v.type==='中型'?'selected':''}>🚚 中型</option>
@@ -1419,6 +1420,10 @@ function openEditSheet(v) {
         <option value="トレーラー" ${v.type==='トレーラー'?'selected':''}>🚜 トレーラー</option>
         <option value="その他" ${v.type==='その他'?'selected':''}>🔧 その他</option>
       </select>
+    </div>
+    <div class="form-field" id="edit-model-name-field" style="display:${v.type==='乗用車'?'block':'none'};">
+      <div class="form-label">車名 <span style="font-size:10px;color:var(--muted);font-weight:400;">(プリウス、ハイエース等)</span></div>
+      <input type="text" class="form-input" id="edit-model-name" value="${v.modelName||''}" placeholder="例: プリウス / N-BOX / ハイエース">
     </div>
     <div class="form-row">
       <div class="form-field">
@@ -1518,8 +1523,21 @@ function openEditSheet(v) {
   document.getElementById('edit-overlay').classList.add('show');
   document.getElementById('edit-sheet').classList.add('show');
 
-  // 後輪サイズ欄の表示/非表示を初期化
+  // 後輪サイズ欄/車名欄の表示/非表示を初期化
   updateRearSizeVisibility();
+  updateModelNameVisibility();
+}
+
+// 車種=乗用車 のときだけ車名欄を表示
+function updateModelNameVisibility() {
+  const type = document.getElementById('edit-type')?.value;
+  const field = document.getElementById('edit-model-name-field');
+  if (!field) return;
+  field.style.display = type === '乗用車' ? 'block' : 'none';
+  if (type !== '乗用車') {
+    const inp = document.getElementById('edit-model-name');
+    if (inp) inp.value = '';
+  }
 }
 
 // 「前後でサイズが違う」チェックに応じて後輪サイズ欄を表示/非表示
@@ -1560,6 +1578,9 @@ async function saveEdit() {
     }
     const type = document.getElementById('edit-type').value;
     props['車種'] = type ? { select: { name: type } } : { select: null };
+    // 車名 (仕様列に格納)
+    const modelName = document.getElementById('edit-model-name')?.value.trim() || '';
+    props['仕様'] = { rich_text: modelName ? [{ text: { content: modelName } }] : [] };
 
     const setRichText = (key, id) => {
       const val = document.getElementById(id).value.trim();
@@ -1589,6 +1610,7 @@ async function saveEdit() {
         id: editingPageId,
         車番: document.getElementById('edit-plate').value.trim(),
         車種: document.getElementById('edit-type').value || null,
+        仕様: document.getElementById('edit-model-name')?.value.trim() || null,
         前輪サイズ: document.getElementById('edit-front-size').value.trim() || null,
         後輪サイズ: document.getElementById('edit-rear-size').value.trim() || null,
         前輪パターン: document.getElementById('edit-front-pattern').value.trim() || null,

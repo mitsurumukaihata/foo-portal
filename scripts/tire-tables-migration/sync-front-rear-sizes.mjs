@@ -48,16 +48,19 @@ function sanitizeSize(s) {
 }
 
 // 車軸配置の自動判定
+// ⚠ 2-D-D は TB(R22.5/R20)サイズの3軸大型のみ。LTS/PC/バンサイズは絶対に2-D-Dにしない
 function inferAxleConfig(v) {
   const fr = v.frQty || 0;
   const rr = v.rrQty || 0;
   const total = fr + rr;
-  if (total >= 10) return '2-D-D';
+  const isTB = (s) => s && (/R22\.5/.test(s) || /R20\b/.test(s));
+  // TBサイズかつ合計10本以上 → 確実な2-D-D
+  if (isTB(v.frSize) && total >= 10) return '2-D-D';
+  // TBサイズでFr≠Rr → 2-D-D候補
+  if (isTB(v.frSize) && v.frSize && v.rrSize && v.frSize !== v.rrSize) return '2-D-D';
   if (total === 6) return '2-D';
   if (total === 4) return '2-2';
-  // 数量不明だがサイズが違う = 大型のFr/Rr異形と判断 → 2-D-D
-  if (v.frSize && v.rrSize && v.frSize !== v.rrSize) return '2-D-D';
-  return null;
+  return null; // 不明はnull (上書きしない)
 }
 
 // 車番候補検索 (顧客名または車番末尾マッチ)

@@ -685,6 +685,19 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       }
     }
 
+    // 車軸配置の不整合一括修正 (LTS/PC/バンサイズの2-D-D → 2-Dへ)
+    if (url.pathname === '/d1/fix-axle-config' && request.method === 'POST' && env.DB) {
+      try {
+        const stmt = env.DB.prepare(`UPDATE 車両マスタ SET 車軸配置 = '2-D'
+          WHERE 車軸配置 = '2-D-D' AND 車番 NOT LIKE '%(旧%'
+          AND 前輪サイズ NOT LIKE '%R22.5%' AND 前輪サイズ NOT LIKE '%R20%'`);
+        const res = await stmt.run();
+        return new Response(JSON.stringify({ success: true, changes: res.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
     // 車両マスタ更新 (vehicle-master.html 編集用)
     // Notion側は別途 PATCH で更新済み・D1も即時反映するための専用エンドポイント
     if (url.pathname === '/d1/update-vehicle' && request.method === 'POST' && env.DB) {

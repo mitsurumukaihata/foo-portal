@@ -80,6 +80,7 @@
       <div class="filter-tab active" data-main="size">📐 サイズ不整合</div>
       <div class="filter-tab" data-main="plate">🚗 車番不一致 (弥生備考)</div>
       <div class="filter-tab" data-main="dup">🔁 重複車両</div>
+      <div class="filter-tab" data-main="reassign">👤 顧客振分</div>
     </div>
   </div>
 
@@ -117,6 +118,24 @@
       正しい方にチェック → 統合実行で売上明細を移管し、もう一方を削除します。
     </div>
     <div id="dup-result" style="margin-top:12px;"><div class="loading"><div class="spinner"></div><br>読込中...</div></div>
+  </div>
+
+  <!-- 顧客振分 -->
+  <div class="card" id="reassign-section" style="display:none;">
+    <h2>👤 顧客振分タスク (車両を別顧客に振替)</h2>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">
+      ① 元顧客を選択 → 配下の車両一覧表示<br>
+      ② 各車両の振替先をプルダウンで選択 (チェック)<br>
+      ③ 「選択行を一括振替」で実行<br>
+      例: サカイ広島西の78台 → 北/南/西に振り分け
+    </div>
+    <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <label style="font-size:12px;font-weight:700;">元顧客:</label>
+      <input type="text" id="src-customer-search" placeholder="顧客名検索 (例: サカイ)" style="flex:1;min-width:180px;padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px;">
+      <select id="src-customer-select" style="flex:1;min-width:200px;padding:6px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px;background:var(--surface);"></select>
+      <button class="action-btn" onclick="loadReassignVehicles()">📋 車両表示</button>
+    </div>
+    <div id="reassign-result"></div>
   </div>
 
   <!-- 一括処理 -->
@@ -532,6 +551,108 @@ async function mergeDup(grpId, shortId, longId, shortPlate, longPlate) {
   } catch(e) { alert('❌ 通信エラー: ' + e.message); }
 }
 
+// ── 顧客振分 ──
+let _allCustomers = [];
+async function loadAllCustomers() {
+  const r = await sql(`SELECT id, 得意先名 AS name, '得意先' AS k FROM 得意先マスタ WHERE 得意先名 IS NOT NULL
+    UNION ALL SELECT id, 顧客名, '顧客情報' FROM 顧客情報DB WHERE 顧客名 IS NOT NULL
+    ORDER BY name`);
+  _allCustomers = r.results || [];
+  fillCustomerOptions(_allCustomers);
+}
+function fillCustomerOptions(list) {
+  const sel = document.getElementById('src-customer-select');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">-- 元顧客を選択 --</option>' + list.map(c =>
+    `<option value="${c.id}">${esc(c.name)} [${c.k}]</option>`
+  ).join('');
+}
+async function loadReassignVehicles() {
+  const cid = document.getElementById('src-customer-select').value;
+  const el = document.getElementById('reassign-result');
+  if (!cid) { el.innerHTML = '<div class="empty">元顧客を選択してください</div>'; return; }
+  el.innerHTML = '<div class="loading"><div class="spinner"></div><br>読込中...</div>';
+  const r = await sql(`SELECT v.id, v.車番, v.前輪サイズ, v.車種, IFNULL(substr(v.メモ,1,80),'') AS メモ抜粋
+    FROM 車両マスタ v WHERE v.顧客ID = ? AND v.車番 NOT LIKE '%(旧%' ORDER BY v.車番`, [cid]);
+  const rows = r.results || [];
+  if (!rows.length) { el.innerHTML = '<div class="empty">この顧客の車両はありません</div>'; return; }
+  // 振替先候補 (得意先 + 顧客情報)
+  const optHtml = '<option value="">-- 振替先 --</option>' + _allCustomers.map(c =>
+    `<option value="${c.id}">${esc(c.name)}</option>`
+  ).join('');
+  el.innerHTML = `
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <span>${rows.length}台 (元顧客の車両)</span>
+      <span>
+        <button class="action-btn" onclick="reassignBulkSet('')">振替先一括解除</button>
+        <button class="action-btn primary" onclick="reassignBulkExec()" style="margin-left:8px;">▶ チェック行を一括振替</button>
+      </span>
+    </div>
+    <div style="overflow-x:auto;">
+    <table class="data">
+      <thead><tr>
+        <th style="width:34px;"><input type="checkbox" id="reassign-master-check" onchange="reassignToggleAll(this.checked)"></th>
+        <th>車番</th>
+        <th>車種</th>
+        <th>サイズ</th>
+        <th>メモ抜粋</th>
+        <th>振替先</th>
+      </tr></thead>
+      <tbody>
+      ${rows.map(r => `
+        <tr>
+          <td><input type="checkbox" class="reassign-row-check" data-vid="${r.id}"></td>
+          <td><a href="vehicle-master.html?plate=${encodeURIComponent(r.車番)}" target="_blank" rel="noopener" style="font-family:'DM Mono',monospace;font-weight:700;color:var(--accent);text-decoration:none;">${esc(r.車番)}</a></td>
+          <td>${esc(r.車種||'-')}</td>
+          <td style="font-family:'DM Mono',monospace;">${esc(r.前輪サイズ||'-')}</td>
+          <td style="font-size:10px;color:var(--muted);max-width:300px;">${esc(r.メモ抜粋)}</td>
+          <td><select class="reassign-target" data-vid="${r.id}" style="padding:4px 8px;font-size:11px;border:1px solid var(--border);border-radius:4px;background:var(--surface);">${optHtml}</select></td>
+        </tr>
+      `).join('')}
+      </tbody>
+    </table>
+    </div>
+  `;
+}
+function reassignToggleAll(on) {
+  document.querySelectorAll('.reassign-row-check').forEach(cb => cb.checked = on);
+}
+function reassignBulkSet(targetId) {
+  document.querySelectorAll('.reassign-target').forEach(s => { s.value = targetId; });
+}
+async function reassignBulkExec() {
+  const checked = document.querySelectorAll('.reassign-row-check:checked');
+  if (!checked.length) { alert('チェックされた行がありません'); return; }
+  const tasks = [];
+  checked.forEach(cb => {
+    const vid = cb.dataset.vid;
+    const sel = document.querySelector(`select.reassign-target[data-vid="${vid}"]`);
+    if (sel?.value) tasks.push({ vid, target: sel.value });
+  });
+  if (!tasks.length) { alert('振替先が選択されていません'); return; }
+  if (!confirm(`${tasks.length}台を振替実行します。よろしいですか？`)) return;
+  let ok = 0;
+  for (const t of tasks) {
+    const r = await fetch(D1_WORKER + '/d1/update-vehicle', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: t.vid, 顧客ID: t.target })
+    });
+    const j = await r.json();
+    if (j.success) ok++;
+  }
+  alert(`✅ ${ok}台振替完了`);
+  loadReassignVehicles();
+}
+
+// 顧客検索
+document.addEventListener('input', e => {
+  if (e.target.id === 'src-customer-search') {
+    const q = e.target.value.toLowerCase();
+    const filtered = q ? _allCustomers.filter(c => c.name.toLowerCase().includes(q)) : _allCustomers;
+    fillCustomerOptions(filtered);
+  }
+});
+
 // 主タブ切替
 document.querySelectorAll('#main-tabs .filter-tab').forEach(t => {
   t.addEventListener('click', () => {
@@ -541,8 +662,10 @@ document.querySelectorAll('#main-tabs .filter-tab').forEach(t => {
     document.getElementById('size-section').style.display = m === 'size' ? '' : 'none';
     document.getElementById('plate-section').style.display = m === 'plate' ? '' : 'none';
     document.getElementById('dup-section').style.display = m === 'dup' ? '' : 'none';
+    document.getElementById('reassign-section').style.display = m === 'reassign' ? '' : 'none';
     if (m === 'plate') loadPlateMismatch();
     if (m === 'dup') loadDuplicates();
+    if (m === 'reassign' && _allCustomers.length === 0) loadAllCustomers();
   });
 });
 

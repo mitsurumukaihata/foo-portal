@@ -760,6 +760,17 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       }
     }
 
+    // 車両マスタ「(旧)」サフィックス車両を一括削除 (バックアップ後の整理用)
+    if (url.pathname === '/d1/delete-archived-vehicles' && request.method === 'POST' && env.DB) {
+      try {
+        const stmt = env.DB.prepare(`DELETE FROM 車両マスタ WHERE 車番 LIKE '%(旧%'`);
+        const res = await stmt.run();
+        return new Response(JSON.stringify({ success: true, deleted: res.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
     // 車両マスタ更新 (vehicle-master.html 編集用)
     // Notion側は別途 PATCH で更新済み・D1も即時反映するための専用エンドポイント
     if (url.pathname === '/d1/update-vehicle' && request.method === 'POST' && env.DB) {

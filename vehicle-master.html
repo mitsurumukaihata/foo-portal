@@ -1628,7 +1628,28 @@ async function deleteVehicle(pageId, plate) {
 })();
 
 // ── Init ──
-loadRecentVehicles();
+// URLパラメータ ?plate=XXX があれば自動で検索 (size-mismatch.html等から飛んでくる用)
+(function autoSearchFromUrl() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const plate = params.get('plate');
+    if (plate) {
+      // 検索タブに切り替え
+      switchToTab('search');
+      searchInput.value = plate;
+      searchClear.classList.add('show');
+      doSearch(plate).then(() => {
+        // 該当車両のカードに自動スクロール (検索結果は1件想定)
+        setTimeout(() => {
+          const card = searchResults.querySelector('.v-card');
+          if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 200);
+      });
+      return;
+    }
+  } catch(e) { console.warn('autoSearchFromUrl:', e); }
+  loadRecentVehicles();
+})();
 </script>
 <script src="foo-mobile.js"></script>
 <script src="foo-swipe.js"></script>

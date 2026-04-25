@@ -2305,11 +2305,19 @@ function showEstimateScreenshot(cardId, bp, patStr, sizeStr, makerStr) {
     {name:'廃タイヤ',unit:priceEstVal(cardId+'-hu'),qty:getPriceQty(cardId,'hq',4)},
     {name:'出張',unit:priceEstVal(cardId+'-su'),qty:getPriceQty(cardId,'sq',1)},
   ];
-  const o1n=priceEstStr(cardId+'-o1n')||'その他1', o1u=priceEstVal(cardId+'-o1u'), o1q=getPriceQty(cardId,'o1q',1);
-  if(o1u>0) items.push({name:o1n,unit:o1u,qty:o1q});
-  const o2n=priceEstStr(cardId+'-o2n')||'その他2', o2u=priceEstVal(cardId+'-o2u'), o2q=getPriceQty(cardId,'o2q',1);
-  if(o2u>0) items.push({name:o2n,unit:o2u,qty:o2q});
-  const activeItems=items.filter(it=>it.unit>0&&it.qty>0);
+  // その他1/2 は「名前が入力されている」または「単価が0より大きい」場合に追加
+  const o1nRaw=priceEstStr(cardId+'-o1n').trim(), o1u=priceEstVal(cardId+'-o1u'), o1q=getPriceQty(cardId,'o1q',1);
+  if(o1nRaw||o1u>0) items.push({name:o1nRaw||'その他1',unit:o1u,qty:o1q});
+  const o2nRaw=priceEstStr(cardId+'-o2n').trim(), o2u=priceEstVal(cardId+'-o2u'), o2q=getPriceQty(cardId,'o2q',1);
+  if(o2nRaw||o2u>0) items.push({name:o2nRaw||'その他2',unit:o2u,qty:o2q});
+  // 表示条件: 名前が「タイヤ/工賃/廃タイヤ/出張」など固定項目は単価>0&数量>0を要求、
+  //           その他系(カスタム名)は名前があれば単価0でも表示 (品目だけ提示するケース対応)
+  const FIXED_NAMES=['タイヤ','工賃','廃タイヤ','出張'];
+  const activeItems=items.filter(it=>{
+    if(FIXED_NAMES.includes(it.name)) return it.unit>0&&it.qty>0;
+    // その他系: 名前があれば表示 (単価ゼロのメモ的用途も許可)
+    return !!it.name && it.qty>0;
+  });
   const total=activeItems.reduce((s,it)=>s+it.unit*it.qty,0);
   const taxTotal=Math.round(total*1.1);
   const memo=document.getElementById(cardId+'-memo')?.value||'';

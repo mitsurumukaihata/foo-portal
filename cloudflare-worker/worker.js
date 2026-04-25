@@ -878,6 +878,20 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       }
     }
 
+    // 指定顧客IDの車両の管理番号を一括NULLクリア
+    if (url.pathname === '/d1/clear-mgmt-no' && request.method === 'POST' && env.DB) {
+      try {
+        const { customer_ids } = await request.json();
+        if (!Array.isArray(customer_ids) || !customer_ids.length) return new Response(JSON.stringify({ error: 'customer_ids[] required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        const ph = customer_ids.map(() => '?').join(',');
+        const stmt = env.DB.prepare(`UPDATE 車両マスタ SET 管理番号 = NULL WHERE 顧客ID IN (${ph}) AND 管理番号 IS NOT NULL AND 車番 NOT LIKE '%(旧%'`).bind(...customer_ids);
+        const res = await stmt.run();
+        return new Response(JSON.stringify({ success: true, cleared: res.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
     // 顧客情報DB に新規エンドユーザー作成
     if (url.pathname === '/d1/create-enduser' && request.method === 'POST' && env.DB) {
       try {

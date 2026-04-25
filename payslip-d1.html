@@ -214,32 +214,69 @@ function logout() {
 }
 
 // ── メイン画面 ──
+// 管理者判定 (向畑充・岡崎・向畑綾花は全員分閲覧可)
+const __ADMIN_NAMES = ['向畑充', '岡崎由美', '向畑綾花'];
+const __normN = n => String(n || '').replace(/\s+/g, '').replace(/　/g, '');
+function isAdmin() { return __ADMIN_NAMES.includes(__normN(_currentUser?.name)); }
+
+let _viewingEmployeeId = null; // 管理者が他社員を閲覧中ならそのID
+let _viewingEmployeeName = null;
+
 async function showMain() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('main-screen').style.display = '';
-  document.getElementById('header-name').textContent = _currentUser.name + ' さん';
+  // 初期は自分を見る
+  _viewingEmployeeId = _currentUser.id;
+  _viewingEmployeeName = _currentUser.name;
+  document.getElementById('header-name').textContent = _currentUser.name + ' さん' + (isAdmin() ? ' (管理者)' : '');
   await loadPayslipList();
+}
+
+async function showEmployeePicker() {
+  const r = await sql(`SELECT id, 氏名 FROM 社員マスタ WHERE 在籍 = '在籍中' ORDER BY 表示順, 氏名`);
+  const list = r.results || [];
+  const html = `
+    <a href="javascript:loadPayslipList()" class="back-link">← 戻る</a>
+    <div class="card">
+      <h2>👥 社員選択 (管理者モード)</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;">
+        ${list.map(e => `
+          <button class="staff-btn ${e.id === _viewingEmployeeId ? 'selected' : ''}" onclick="pickEmployee('${e.id}', '${esc(e.氏名)}')">${esc(e.氏名)}</button>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  document.getElementById('content-area').innerHTML = html;
+}
+
+function pickEmployee(id, name) {
+  _viewingEmployeeId = id;
+  _viewingEmployeeName = name;
+  loadPayslipList();
 }
 
 async function loadPayslipList() {
   const el = document.getElementById('content-area');
   el.innerHTML = '<div class="loading">読込中...</div>';
-  // 公開済の明細のみ表示 (代表が公開ステータスにしたもの)
+  const targetId = _viewingEmployeeId || _currentUser.id;
+  // 管理者は下書き含む全ステータス、一般は公開・確定のみ
+  const statusFilter = isAdmin() ? "" : "AND ステータス IN ('公開', '確定')";
   const r = await sql(`SELECT id, 支給年月, 支給合計, 控除合計, 差引支給額, ステータス, PDF_URL
-    FROM 給与明細 WHERE 社員ID = ? AND ステータス IN ('公開', '確定')
-    ORDER BY 支給年月 DESC LIMIT 36`, [_currentUser.id]);
+    FROM 給与明細 WHERE 社員ID = ? ${statusFilter}
+    ORDER BY 支給年月 DESC LIMIT 36`, [targetId]);
   const rows = r.results || [];
-  // 賞与も
   const rb = await sql(`SELECT id, 支給年月, 賞与種別, 支給合計, 控除合計, 差引支給額, ステータス
-    FROM 賞与明細 WHERE 社員ID = ? AND ステータス IN ('公開', '確定')
-    ORDER BY 支給年月 DESC LIMIT 12`, [_currentUser.id]);
+    FROM 賞与明細 WHERE 社員ID = ? ${statusFilter}
+    ORDER BY 支給年月 DESC LIMIT 12`, [targetId]);
   const bonusRows = rb.results || [];
 
   el.innerHTML = `
     <div class="action-bar">
       <button class="action-btn secondary" onclick="logout()">🚪 ログアウト</button>
       <button class="action-btn secondary" onclick="window.location.reload()">🔄 更新</button>
+      ${isAdmin() ? `<button class="action-btn" onclick="showEmployeePicker()">👥 社員切替</button>` : ''}
     </div>
+    ${_viewingEmployeeId !== _currentUser.id ? `<div style="background:var(--surface2);padding:8px 12px;border-radius:8px;margin-bottom:10px;font-size:12px;">👤 閲覧中: <b>${esc(_viewingEmployeeName)}</b> さんの明細 (管理者モード)</div>` : ''}
     ${rows.length === 0 && bonusRows.length === 0 ? `
       <div class="card empty">
         <div class="empty-icon">📭</div>

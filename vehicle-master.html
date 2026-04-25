@@ -623,9 +623,13 @@ async function resolveCustomerNames(vehicles) {
 
     // 強化: メモに具体的なEUがあり、customerNameと異なる(=支店/EU名の方が具体) なら上書き
     // 例: 顧客ID=シモハナ物流、メモ=シモハナ沼田 → シモハナ沼田で表示
+    // ただし、顧客名が既にEU名と同じ系列(4文字以上の接頭辞共有)なら上書きしない
+    // 例: 顧客=アクティオ広島西、メモ=アクティオ広島西マイクロン → そのままアクティオ広島西
+    const sharePrefix = (a, b, n=4) => a && b && a.substring(0, n) === b.substring(0, n);
     const shouldOverride = euName && v.customerName &&
       euName !== v.customerName &&
       !v.customerName.includes(euName) && // 親名がEU名を包含してたら維持
+      !sharePrefix(v.customerName, euName) && // 同系列名は上書きしない (新規追加)
       (isBiller || euName.length > v.customerName.length || v.customerName.includes(euName.split(/[\s　]/)[0]));
     if (isBiller && euName) {
       v.billerName = v.customerName;

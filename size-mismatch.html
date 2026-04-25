@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>⚠️ サイズ不整合明細 | f.o.o</title>
+<style>
+  :root {
+    --bg: #fdf6ec; --surface: #fff; --surface2: #faf2e5;
+    --border: #ead7bd; --text: #3d2c16; --muted: #8a6a3e;
+    --accent: #f0a500; --accent2: #d18800; --red: #c62828; --green: #2e7d32; --blue: #1976d2;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:-apple-system,'Hiragino Sans',sans-serif; background:var(--bg); color:var(--text); font-size:13px; line-height:1.55; }
+  .header { background:linear-gradient(135deg,#dc2626,#f97316); color:#fff; padding:20px; text-align:center; }
+  .header h1 { margin:0 0 4px; font-size:20px; }
+  .container { padding:14px; max-width:1200px; margin:0 auto; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 18px; margin-bottom:14px; box-shadow:0 2px 6px rgba(0,0,0,0.04); }
+  .card h2 { margin:0 0 10px; font-size:15px; color:var(--accent2); }
+  .summary-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-bottom:14px; }
+  .stat-box { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:10px 14px; text-align:center; }
+  .stat-box .lbl { font-size:10px; color:var(--muted); }
+  .stat-box .val { font-size:22px; font-weight:900; color:var(--accent2); }
+  .stat-box.danger .val { color:var(--red); }
+  .stat-box.warn .val { color:var(--accent); }
+  .filter-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+  .filter-tab { padding:6px 12px; border:1px solid var(--border); background:var(--surface); border-radius:6px; cursor:pointer; font-size:12px; }
+  .filter-tab.active { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:700; }
+  table.data { width:100%; border-collapse:collapse; font-size:11px; }
+  table.data th, table.data td { padding:6px 8px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
+  table.data th { background:var(--surface2); font-size:10px; color:var(--muted); }
+  table.data tr:hover { background:#fef3c7; }
+  table.data tr.clickable { cursor:pointer; }
+  .badge { display:inline-block; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; }
+  .badge.pc { background:#dbeafe; color:#1e40af; }
+  .badge.lts { background:#fef3c7; color:#92400e; }
+  .badge.van { background:#d1fae5; color:#065f46; }
+  .badge.danger { background:#fee2e2; color:#991b1b; }
+  .badge.warn { background:#fef3c7; color:#92400e; }
+  .loading { text-align:center; padding:30px; color:var(--muted); }
+  .spinner { display:inline-block; width:20px; height:20px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .action-btn { padding:5px 10px; font-size:11px; border:1px solid var(--accent); background:var(--surface); color:var(--accent); border-radius:5px; cursor:pointer; }
+  .action-btn:hover { background:var(--accent); color:#fff; }
+  .action-btn.primary { background:var(--accent); color:#fff; }
+  .action-btn.danger { border-color:var(--red); color:var(--red); }
+  .action-btn.danger:hover { background:var(--red); color:#fff; }
+  .empty { text-align:center; padding:30px; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>⚠️ サイズ不整合明細レポート</h1>
+  <div style="font-size:12px;opacity:0.9;">車種カテゴリと売上明細サイズが一致しない行を抽出</div>
+</div>
+
+<nav style="background:#fff;border-bottom:1px solid var(--border);padding:8px 14px;overflow-x:auto;white-space:nowrap;">
+  <a href="index.html" style="display:inline-block;padding:5px 10px;background:var(--accent);color:#fff;border-radius:5px;text-decoration:none;font-size:11px;font-weight:700;margin-right:4px;">🏠 ポータル</a>
+  <a href="vehicle-master.html" style="display:inline-block;padding:5px 10px;background:var(--surface2);color:var(--text);border-radius:5px;text-decoration:none;font-size:11px;margin-right:4px;">🚚 車両マスタ</a>
+  <a href="morning-briefing.html" style="display:inline-block;padding:5px 10px;background:var(--surface2);color:var(--text);border-radius:5px;text-decoration:none;font-size:11px;">☀️ ブリーフィング</a>
+</nav>
+
+<div class="container">
+
+  <!-- サマリ -->
+  <div class="card">
+    <h2>📊 集計</h2>
+    <div class="summary-grid" id="summary"></div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px;">
+      💡 <b>装着系</b>(組替/販売新品/販売中古) = 本当に他車のサイズが紛れている可能性高い<br>
+      💡 <b>サービス系</b>(脱着/バランス) = 弥生入力時のテンプレ残りの可能性高い
+    </div>
+  </div>
+
+  <!-- フィルタ -->
+  <div class="card">
+    <h2>🔍 不整合明細一覧</h2>
+    <div class="filter-tabs" id="category-tabs">
+      <div class="filter-tab active" data-cat="install">🚨 装着系（要確認）</div>
+      <div class="filter-tab" data-cat="service">🔧 サービス系（テンプレ残り）</div>
+      <div class="filter-tab" data-cat="all">📋 全て</div>
+    </div>
+    <div class="filter-tabs">
+      <div class="filter-tab active" data-period="2y">直近2年</div>
+      <div class="filter-tab" data-period="1y">直近1年</div>
+      <div class="filter-tab" data-period="6m">直近6ヶ月</div>
+      <div class="filter-tab" data-period="all">全期間</div>
+    </div>
+    <div id="result-list" style="margin-top:12px;"><div class="loading"><div class="spinner"></div><br>読込中...</div></div>
+  </div>
+
+  <!-- 一括処理 -->
+  <div class="card">
+    <h2>🛠 一括クリーンアップ</h2>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">
+      サービス系明細(脱着/バランス/Fバランス/廃タイヤ)のタイヤサイズはテンプレ残りで意味なしのケースが多いため、一括NULLクリアできます。
+    </div>
+    <button class="action-btn danger" onclick="bulkClearServiceSizes()">サービス系明細のサイズを一括NULLクリア</button>
+    <div id="bulk-result" style="margin-top:8px;font-size:11px;"></div>
+  </div>
+
+</div>
+
+<script>
+const D1_WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
+let currentFilter = 'install';
+let currentPeriod = '2y';
+
+async function sql(q, params = []) {
+  const r = await fetch(D1_WORKER + '/d1/sql', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sql: q, params })
+  });
+  return r.json();
+}
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const PERIOD_FILTER = {
+  '2y': "AND s.売上日 >= date('now','-24 months')",
+  '1y': "AND s.売上日 >= date('now','-12 months')",
+  '6m': "AND s.売上日 >= date('now','-6 months')",
+  'all': ''
+};
+
+const INSTALL_ITEMS = "('組替','タイヤ販売(新品)','タイヤ販売(中古)','タイヤ販売(更生)','f.o.oパック')";
+const SERVICE_ITEMS = "('脱着','バランス','Fバランス','廃タイヤ','空気圧','出張')";
+
+const CATEGORY_FILTER = {
+  install: `AND d.品目 IN ${INSTALL_ITEMS}`,
+  service: `AND d.品目 IN ${SERVICE_ITEMS}`,
+  all: ''
+};
+
+const MISMATCH_WHERE = `
+  d.車番 IS NOT NULL AND d.車番 != ''
+  AND d.タイヤサイズ IS NOT NULL AND d.タイヤサイズ != ''
+  AND v.車種 IS NOT NULL
+  AND (
+    (v.車種 = '乗用車' AND m.カテゴリ != 'PC') OR
+    (v.車種 = 'バン' AND m.カテゴリ != 'バン') OR
+    (v.車種 IN ('小型','中型','大型','トレーラー') AND m.カテゴリ != 'LTS')
+  )
+`;
+
+const CAT_BADGE = {
+  'PC': '<span class="badge pc">PC</span>',
+  'LTS': '<span class="badge lts">LTS</span>',
+  'バン': '<span class="badge van">バン</span>'
+};
+
+async function loadSummary() {
+  const r = await sql(`SELECT
+    SUM(CASE WHEN d.品目 IN ${INSTALL_ITEMS} THEN 1 ELSE 0 END) AS 装着系,
+    SUM(CASE WHEN d.品目 IN ${SERVICE_ITEMS} THEN 1 ELSE 0 END) AS サービス系,
+    COUNT(*) AS 総件数,
+    SUM(CASE WHEN s.売上日 >= date('now','-12 months') THEN 1 ELSE 0 END) AS 直近1年,
+    COUNT(DISTINCT d.車番) AS 影響車両数
+    FROM 売上明細 d JOIN 売上伝票 s ON d.売上伝票ID = s.id
+    JOIN 車両マスタ v ON v.車番 = d.車番
+    JOIN サイズマスタ m ON m.サイズ = d.タイヤサイズ
+    WHERE ${MISMATCH_WHERE}`);
+  const s = r.results[0];
+  document.getElementById('summary').innerHTML = `
+    <div class="stat-box"><div class="lbl">不整合明細 総件数</div><div class="val">${(s.総件数 || 0).toLocaleString()}</div></div>
+    <div class="stat-box danger"><div class="lbl">装着系（要確認）</div><div class="val">${(s.装着系 || 0).toLocaleString()}</div></div>
+    <div class="stat-box warn"><div class="lbl">サービス系（テンプレ残り？）</div><div class="val">${(s.サービス系 || 0).toLocaleString()}</div></div>
+    <div class="stat-box"><div class="lbl">影響車両数</div><div class="val">${(s.影響車両数 || 0).toLocaleString()}</div></div>
+    <div class="stat-box"><div class="lbl">直近1年</div><div class="val">${(s.直近1年 || 0).toLocaleString()}</div></div>
+  `;
+}
+
+async function loadList() {
+  const listEl = document.getElementById('result-list');
+  listEl.innerHTML = '<div class="loading"><div class="spinner"></div><br>読込中...</div>';
+  const periodClause = PERIOD_FILTER[currentPeriod];
+  const catClause = CATEGORY_FILTER[currentFilter];
+  const r = await sql(`SELECT
+    s.id AS slip_id, s.売上日, s.伝票タイトル,
+    d.id AS detail_id, d.車番, d.品目, d.タイヤサイズ, d.タイヤ銘柄, d.数量,
+    v.車種, m.カテゴリ AS サイズカテゴリ
+    FROM 売上明細 d
+    JOIN 売上伝票 s ON d.売上伝票ID = s.id
+    JOIN 車両マスタ v ON v.車番 = d.車番
+    JOIN サイズマスタ m ON m.サイズ = d.タイヤサイズ
+    WHERE ${MISMATCH_WHERE} ${periodClause} ${catClause}
+    ORDER BY s.売上日 DESC
+    LIMIT 300`);
+  const rows = r.results || [];
+  if (!rows.length) {
+    listEl.innerHTML = '<div class="empty">✅ 該当なし</div>';
+    return;
+  }
+  // 同じ伝票で同じ車番の他の明細サイズを検索する用に伝票IDをまとめる
+  listEl.innerHTML = `
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">${rows.length}件 (最大300件)</div>
+    <div style="overflow-x:auto;">
+    <table class="data">
+      <thead>
+        <tr>
+          <th>売上日</th>
+          <th>車番</th>
+          <th>車種</th>
+          <th>品目</th>
+          <th>サイズ</th>
+          <th>銘柄</th>
+          <th>不整合</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+      ${rows.map(r => `
+        <tr class="clickable" onclick="window.open('vehicle-master.html?plate=' + encodeURIComponent('${esc(r.車番)}'),'_blank')">
+          <td>${esc(r.売上日)}</td>
+          <td><b style="font-family:'DM Mono',monospace;">${esc(r.車番)}</b></td>
+          <td>${esc(r.車種)}</td>
+          <td>${esc(r.品目)}</td>
+          <td style="font-family:'DM Mono',monospace;">${esc(r.タイヤサイズ)} ${CAT_BADGE[r.サイズカテゴリ] || ''}</td>
+          <td style="font-family:'DM Mono',monospace;">${esc(r.タイヤ銘柄 || '-')}</td>
+          <td><span class="badge danger">${esc(r.車種)}にしては<br>${esc(r.サイズカテゴリ)}サイズ</span></td>
+          <td onclick="event.stopPropagation()">
+            <button class="action-btn" onclick="clearSize('${r.detail_id}')">✕ サイズクリア</button>
+          </td>
+        </tr>
+      `).join('')}
+      </tbody>
+    </table>
+    </div>
+  `;
+}
+
+async function clearSize(detailId) {
+  if (!confirm('この明細のタイヤサイズをクリアします。\n（履歴の他フィールドは残ります）\nよろしいですか？')) return;
+  try {
+    const r = await fetch(D1_WORKER + '/d1/clear-detail-size', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ detail_id: detailId })
+    });
+    const j = await r.json();
+    if (j.success) {
+      alert(`✅ クリア完了 (${j.changes}行)`);
+      loadList();
+      loadSummary();
+    } else {
+      alert('❌ エラー: ' + (j.error || '不明'));
+    }
+  } catch(e) {
+    alert('❌ 通信エラー: ' + e.message);
+  }
+}
+
+async function bulkClearServiceSizes() {
+  if (!confirm('サービス系明細(脱着/バランス/Fバランス/廃タイヤ/空気圧/出張)のうち、車種カテゴリと不一致なサイズを持つ行を全て NULL クリアします。\n\nこの操作は元に戻せません。実行しますか？')) return;
+  document.getElementById('bulk-result').innerHTML = '<span class="spinner"></span> 対象行を取得中...';
+  try {
+    // 対象IDを取得
+    const r1 = await sql(`SELECT d.id FROM 売上明細 d
+      JOIN 売上伝票 s ON d.売上伝票ID = s.id
+      JOIN 車両マスタ v ON v.車番 = d.車番
+      JOIN サイズマスタ m ON m.サイズ = d.タイヤサイズ
+      WHERE ${MISMATCH_WHERE} AND d.品目 IN ${SERVICE_ITEMS}`);
+    const ids = (r1.results || []).map(r => r.id);
+    if (!ids.length) {
+      document.getElementById('bulk-result').textContent = '✅ 対象なし';
+      return;
+    }
+    if (!confirm(`${ids.length}件を NULL クリアします。本当に実行しますか？`)) return;
+    document.getElementById('bulk-result').innerHTML = `<span class="spinner"></span> ${ids.length}件をクリア中...`;
+    // 1000件ずつバッチ実行
+    let total = 0;
+    for (let i = 0; i < ids.length; i += 1000) {
+      const batch = ids.slice(i, i + 1000);
+      const r2 = await fetch(D1_WORKER + '/d1/clear-detail-size', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ detail_ids: batch })
+      });
+      const j = await r2.json();
+      if (j.error) throw new Error(j.error);
+      total += j.changes || 0;
+    }
+    document.getElementById('bulk-result').innerHTML = `✅ ${total}行クリア完了`;
+    loadList();
+    loadSummary();
+  } catch(e) {
+    document.getElementById('bulk-result').innerHTML = '❌ エラー: ' + e.message;
+  }
+}
+
+document.querySelectorAll('#category-tabs .filter-tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('#category-tabs .filter-tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    currentFilter = t.dataset.cat;
+    loadList();
+  });
+});
+document.querySelectorAll('.filter-tab[data-period]').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.filter-tab[data-period]').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    currentPeriod = t.dataset.period;
+    loadList();
+  });
+});
+
+loadSummary();
+loadList();
+</script>
+
+</body>
+</html>

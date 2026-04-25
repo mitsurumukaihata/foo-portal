@@ -685,6 +685,22 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       }
     }
 
+    // 売上明細のタイヤサイズをNULLクリア (サイズ不整合修正用)
+    if (url.pathname === '/d1/clear-detail-size' && request.method === 'POST' && env.DB) {
+      try {
+        const { detail_id, detail_ids } = await request.json();
+        const ids = detail_ids || (detail_id ? [detail_id] : []);
+        if (!ids.length) return new Response(JSON.stringify({ error: 'detail_id or detail_ids required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        if (ids.length > 5000) return new Response(JSON.stringify({ error: 'too many ids (max 5000)' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        const placeholders = ids.map(() => '?').join(',');
+        const stmt = env.DB.prepare(`UPDATE 売上明細 SET タイヤサイズ = NULL WHERE id IN (${placeholders})`).bind(...ids);
+        const res = await stmt.run();
+        return new Response(JSON.stringify({ success: true, changes: res.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
     // D1 特殊エンドポイント: /d1/sql で直接SQL実行（admin用）
     if (url.pathname === '/d1/sql' && request.method === 'POST' && env.DB) {
       try {

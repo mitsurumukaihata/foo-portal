@@ -805,6 +805,27 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       }
     }
 
+    // PC専用サイズ車両の車種を「乗用車」に統一
+    if (url.pathname === '/d1/normalize-pc-vehicle-type' && request.method === 'POST' && env.DB) {
+      try {
+        const body2 = await request.json().catch(() => ({}));
+        const dryrun = !!body2.dryrun;
+        const sqlText = `UPDATE 車両マスタ SET 車種 = '乗用車'
+          WHERE 車番 NOT LIKE '%(旧%'
+            AND (車種 IS NULL OR 車種 != '乗用車')
+            AND 前輪サイズ IN (SELECT サイズ FROM サイズマスタ WHERE カテゴリ群 = 'PC')`;
+        if (dryrun) {
+          const r = await env.DB.prepare(sqlText.replace(/^UPDATE 車両マスタ SET 車種 = '乗用車'\s+/, 'SELECT COUNT(*) AS c FROM 車両マスタ ')).all();
+          return new Response(JSON.stringify({ success: true, dryrun: true, willChange: r.results[0].c }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+        }
+        const stmt = env.DB.prepare(sqlText);
+        const res = await stmt.run();
+        return new Response(JSON.stringify({ success: true, changes: res.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
     // 得意先名のリネーム
     if (url.pathname === '/d1/rename-customer' && request.method === 'POST' && env.DB) {
       try {

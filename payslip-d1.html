@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="theme-color" content="#3d7c4a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="manifest" href="payslip-manifest.json">
+<title>💴 給与明細 | f.o.o</title>
+<style>
+  :root {
+    --bg: #fdf6ec; --surface: #fff; --surface2: #faf2e5;
+    --border: #ead7bd; --text: #3d2c16; --muted: #8a6a3e;
+    --accent: #f0a500; --accent2: #d18800; --green: #2e7d32; --red: #c62828; --blue: #1976d2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+      --bg: #18181f; --surface: #1e1e26; --surface2: #26262f;
+      --border: #2c2c38; --text: #f0f0f2; --muted: #68687a;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font-family: -apple-system, 'Hiragino Sans', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.55; }
+  .header { background: linear-gradient(135deg, #7aa66b, #3d7c4a); color: #fff; padding: 22px 18px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  .header h1 { margin: 0 0 4px; font-size: 20px; }
+  .header .sub { font-size: 11px; opacity: 0.85; }
+  .container { padding: 14px; max-width: 720px; margin: 0 auto; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+  .card h2 { margin: 0 0 12px; font-size: 14px; color: var(--accent2); }
+
+  /* ログイン */
+  .login-screen { padding: 40px 20px; max-width: 360px; margin: 30px auto; }
+  .login-title { font-size: 22px; font-weight: 900; text-align: center; margin-bottom: 30px; color: var(--accent2); }
+  .staff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .staff-btn { padding: 12px; background: var(--surface); border: 2px solid var(--border); border-radius: 10px; font-size: 14px; font-weight: 700; color: var(--text); cursor: pointer; transition: all 0.15s; }
+  .staff-btn:hover, .staff-btn.selected { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .pin-input { width: 100%; padding: 16px; font-size: 24px; text-align: center; letter-spacing: 8px; border: 2px solid var(--border); border-radius: 10px; font-family: 'DM Mono', monospace; background: var(--surface); color: var(--text); }
+  .login-btn { width: 100%; margin-top: 14px; padding: 14px; background: var(--accent); color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; }
+  .login-btn:disabled { opacity: 0.4; }
+
+  /* 明細リスト */
+  .payslip-list-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; cursor: pointer; transition: all 0.15s; }
+  .payslip-list-item:hover { background: var(--surface2); border-color: var(--accent); }
+  .payslip-list-item .month { font-size: 16px; font-weight: 900; }
+  .payslip-list-item .amount { font-size: 18px; font-weight: 900; color: var(--accent); font-family: 'DM Mono', monospace; }
+  .payslip-list-item .badge { display: inline-block; padding: 2px 8px; font-size: 10px; border-radius: 4px; margin-left: 6px; }
+  .badge.public { background: #d1fae5; color: #065f46; }
+  .badge.draft { background: #fef3c7; color: #92400e; }
+
+  /* 明細詳細 (印刷可能) */
+  .payslip-paper {
+    background: #fff;
+    color: #111;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 28px 24px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    max-width: 600px;
+    margin: 0 auto 14px;
+    font-family: 'Noto Sans JP', sans-serif;
+  }
+  .payslip-paper .ps-header { border-bottom: 3px double #333; padding-bottom: 14px; margin-bottom: 18px; text-align: center; }
+  .payslip-paper .ps-title { font-size: 22px; font-weight: 900; letter-spacing: 0.1em; }
+  .payslip-paper .ps-period { font-size: 14px; margin-top: 4px; color: #555; }
+  .payslip-paper .ps-meta { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 16px; padding: 10px 12px; background: #f9f9f9; border-radius: 6px; }
+  .payslip-paper .ps-section { margin-bottom: 16px; }
+  .payslip-paper .ps-section-title { font-size: 11px; font-weight: 700; color: #555; letter-spacing: 0.1em; padding: 4px 8px; background: #efefef; border-left: 3px solid var(--accent); margin-bottom: 8px; }
+  .payslip-paper .ps-row { display: flex; justify-content: space-between; padding: 5px 8px; font-size: 13px; border-bottom: 1px dashed #eee; }
+  .payslip-paper .ps-row:last-child { border-bottom: none; }
+  .payslip-paper .ps-row .name { color: #444; }
+  .payslip-paper .ps-row .val { font-family: 'DM Mono', monospace; font-weight: 700; }
+  .payslip-paper .ps-subtotal { display: flex; justify-content: space-between; padding: 8px 10px; background: #f5f5f5; font-weight: 900; font-size: 14px; margin-top: 4px; border-radius: 4px; }
+  .payslip-paper .ps-subtotal .val { font-family: 'DM Mono', monospace; }
+  .payslip-paper .ps-total { display: flex; justify-content: space-between; padding: 14px 16px; background: linear-gradient(135deg, #fff7ed, #fef3c7); border: 2px solid var(--accent); font-weight: 900; font-size: 18px; border-radius: 8px; margin-top: 18px; }
+  .payslip-paper .ps-total .val { color: var(--accent2); font-family: 'DM Mono', monospace; font-size: 22px; }
+  .payslip-paper .ps-kintai { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 14px; }
+  .payslip-paper .ps-kintai-item { background: #f9f9f9; padding: 8px 10px; border-radius: 5px; font-size: 11px; text-align: center; }
+  .payslip-paper .ps-kintai-item .lbl { color: #777; font-size: 10px; }
+  .payslip-paper .ps-kintai-item .val { font-family: 'DM Mono', monospace; font-weight: 700; font-size: 14px; }
+  .payslip-paper .ps-memo { font-size: 11px; color: #777; padding: 10px 12px; background: #f9f9f9; border-radius: 6px; margin-top: 14px; line-height: 1.7; }
+  .payslip-paper .ps-footer { font-size: 10px; color: #999; text-align: center; margin-top: 18px; padding-top: 10px; border-top: 1px solid #eee; }
+
+  /* アクション */
+  .action-bar { display: flex; gap: 8px; flex-wrap: wrap; padding: 12px; background: var(--surface); border-radius: 10px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+  .action-btn { flex: 1; min-width: 100px; padding: 10px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .action-btn.secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .back-link { display: inline-block; padding: 6px 12px; background: var(--surface2); color: var(--text); text-decoration: none; border-radius: 5px; font-size: 12px; margin-bottom: 10px; }
+
+  .empty { text-align: center; padding: 40px 20px; color: var(--muted); }
+  .empty-icon { font-size: 40px; margin-bottom: 8px; }
+  .loading { text-align: center; padding: 30px; color: var(--muted); }
+
+  /* 印刷時 */
+  @media print {
+    body { background: #fff; }
+    .header, .action-bar, .back-link, nav { display: none !important; }
+    .container { padding: 0; max-width: none; }
+    .payslip-paper { box-shadow: none; border: 1px solid #ccc; max-width: 100%; padding: 20px; }
+    @page { size: A4; margin: 12mm; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ログイン画面 -->
+<div id="login-screen">
+  <div class="login-screen">
+    <div class="login-title">💴 給与明細<br><span style="font-size:12px;font-weight:400;color:var(--muted);">f.o.o タイヤマネージャー</span></div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;text-align:center;">あなたの名前を選択してください</div>
+    <div class="staff-grid" id="staff-grid"></div>
+    <input type="password" inputmode="numeric" maxlength="4" class="pin-input" id="pin-input" placeholder="PIN">
+    <button class="login-btn" id="login-btn" disabled>ログイン</button>
+    <div id="login-error" style="color:var(--red);font-size:12px;text-align:center;margin-top:10px;"></div>
+  </div>
+</div>
+
+<!-- メイン画面 -->
+<div id="main-screen" style="display:none;">
+  <div class="header">
+    <h1>💴 給与明細</h1>
+    <div class="sub" id="header-name"></div>
+  </div>
+  <div class="container">
+    <div id="content-area"></div>
+  </div>
+</div>
+
+<script>
+const D1_WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
+const SESSION_KEY = 'foo_payslip_session';
+
+async function sql(q, params = []) {
+  const r = await fetch(D1_WORKER + '/d1/sql', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sql: q, params })
+  });
+  return r.json();
+}
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const yen = n => '¥' + (Math.round(n) || 0).toLocaleString();
+
+let _employees = [];
+let _selectedEmp = null;
+let _currentUser = null;
+
+// ── ログイン処理 ──
+async function initLogin() {
+  // セッション確認
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      if (s && new Date(s.expires) > new Date()) {
+        _currentUser = s;
+        showMain();
+        return;
+      }
+    }
+  } catch(e) {}
+
+  const r = await sql(`SELECT id, 氏名, 表示順 FROM 社員マスタ WHERE 在籍 = '在籍中' ORDER BY 表示順, 氏名`);
+  _employees = r.results || [];
+  const grid = document.getElementById('staff-grid');
+  grid.innerHTML = _employees.map(e => `
+    <button class="staff-btn" data-id="${e.id}" onclick="selectStaff('${e.id}')">${esc(e.氏名)}</button>
+  `).join('');
+
+  document.getElementById('pin-input').addEventListener('input', e => {
+    const v = e.target.value.replace(/\D/g, '');
+    e.target.value = v;
+    document.getElementById('login-btn').disabled = !(v.length === 4 && _selectedEmp);
+  });
+  document.getElementById('login-btn').onclick = doLogin;
+}
+
+function selectStaff(id) {
+  _selectedEmp = _employees.find(e => e.id === id);
+  document.querySelectorAll('.staff-btn').forEach(b => b.classList.toggle('selected', b.dataset.id === id));
+  const pin = document.getElementById('pin-input').value;
+  document.getElementById('login-btn').disabled = !(pin.length === 4 && _selectedEmp);
+}
+
+async function doLogin() {
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  if (!_selectedEmp) return;
+  const pin = document.getElementById('pin-input').value;
+  // PIN照合
+  const r = await sql(`SELECT id, 氏名, PIN FROM 社員マスタ WHERE id = ?`, [_selectedEmp.id]);
+  const emp = r.results?.[0];
+  if (!emp) { errEl.textContent = '社員データ取得失敗'; return; }
+  if (emp.PIN && String(emp.PIN) !== pin) {
+    errEl.textContent = 'PINが違います';
+    return;
+  }
+  _currentUser = {
+    id: emp.id,
+    name: emp.氏名,
+    expires: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString() // 12h
+  };
+  localStorage.setItem(SESSION_KEY, JSON.stringify(_currentUser));
+  showMain();
+}
+
+function logout() {
+  localStorage.removeItem(SESSION_KEY);
+  location.reload();
+}
+
+// ── メイン画面 ──
+async function showMain() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('main-screen').style.display = '';
+  document.getElementById('header-name').textContent = _currentUser.name + ' さん';
+  await loadPayslipList();
+}
+
+async function loadPayslipList() {
+  const el = document.getElementById('content-area');
+  el.innerHTML = '<div class="loading">読込中...</div>';
+  // 公開済の明細のみ表示 (代表が公開ステータスにしたもの)
+  const r = await sql(`SELECT id, 支給年月, 支給合計, 控除合計, 差引支給額, ステータス, PDF_URL
+    FROM 給与明細 WHERE 社員ID = ? AND ステータス IN ('公開', '確定')
+    ORDER BY 支給年月 DESC LIMIT 36`, [_currentUser.id]);
+  const rows = r.results || [];
+  // 賞与も
+  const rb = await sql(`SELECT id, 支給年月, 賞与種別, 支給合計, 控除合計, 差引支給額, ステータス
+    FROM 賞与明細 WHERE 社員ID = ? AND ステータス IN ('公開', '確定')
+    ORDER BY 支給年月 DESC LIMIT 12`, [_currentUser.id]);
+  const bonusRows = rb.results || [];
+
+  el.innerHTML = `
+    <div class="action-bar">
+      <button class="action-btn secondary" onclick="logout()">🚪 ログアウト</button>
+      <button class="action-btn secondary" onclick="window.location.reload()">🔄 更新</button>
+    </div>
+    ${rows.length === 0 && bonusRows.length === 0 ? `
+      <div class="card empty">
+        <div class="empty-icon">📭</div>
+        <div>まだ公開された明細はありません</div>
+      </div>
+    ` : ''}
+    ${rows.length ? `
+      <div class="card">
+        <h2>📅 給与明細 (${rows.length}件)</h2>
+        ${rows.map(r => `
+          <div class="payslip-list-item" onclick="showPayslip('${r.id}','salary')">
+            <div>
+              <div class="month">${esc(r.支給年月)}</div>
+              <div style="font-size:11px;color:var(--muted);">支給 ${yen(r.支給合計)} - 控除 ${yen(r.控除合計)}</div>
+            </div>
+            <div>
+              <div class="amount">${yen(r.差引支給額)}</div>
+              <span class="badge ${r.ステータス==='公開'?'public':'draft'}">${esc(r.ステータス)}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
+    ${bonusRows.length ? `
+      <div class="card">
+        <h2>🎁 賞与明細 (${bonusRows.length}件)</h2>
+        ${bonusRows.map(r => `
+          <div class="payslip-list-item" onclick="showPayslip('${r.id}','bonus')">
+            <div>
+              <div class="month">${esc(r.支給年月)} ${esc(r.賞与種別||'')}</div>
+              <div style="font-size:11px;color:var(--muted);">支給 ${yen(r.支給合計)} - 控除 ${yen(r.控除合計)}</div>
+            </div>
+            <div>
+              <div class="amount">${yen(r.差引支給額)}</div>
+              <span class="badge public">${esc(r.ステータス)}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
+  `;
+}
+
+async function showPayslip(id, type) {
+  const el = document.getElementById('content-area');
+  el.innerHTML = '<div class="loading">読込中...</div>';
+  const table = type === 'bonus' ? '賞与明細' : '給与明細';
+  const r = await sql(`SELECT * FROM ${table} WHERE id = ?`, [id]);
+  const p = r.results?.[0];
+  if (!p) { el.innerHTML = '<div class="empty">明細が見つかりません</div>'; return; }
+  const isBonus = type === 'bonus';
+  el.innerHTML = `
+    <a href="javascript:loadPayslipList()" class="back-link">← 一覧に戻る</a>
+    <div class="action-bar">
+      <button class="action-btn" onclick="window.print()">🖨 印刷 / PDF保存</button>
+      <button class="action-btn secondary" onclick="loadPayslipList()">📋 一覧</button>
+    </div>
+    <div class="payslip-paper" id="payslip-paper">
+      <div class="ps-header">
+        <div class="ps-title">${isBonus ? '賞 与 明 細 書' : '給 与 明 細 書'}</div>
+        <div class="ps-period">${esc(p.支給年月)} ${isBonus ? esc(p.賞与種別||'') : '支給分'}</div>
+      </div>
+      <div class="ps-meta">
+        <div><b>${esc(p.社員氏名 || _currentUser.name)}</b> 様</div>
+        <div>有限会社タイヤマネージャー f.o.o</div>
+      </div>
+      ${!isBonus && (p.出勤日数 || p.出勤時間) ? `
+        <div class="ps-kintai">
+          <div class="ps-kintai-item"><div class="lbl">出勤日数</div><div class="val">${p.出勤日数 || 0}日</div></div>
+          <div class="ps-kintai-item"><div class="lbl">出勤時間</div><div class="val">${p.出勤時間 || 0}h</div></div>
+          <div class="ps-kintai-item"><div class="lbl">残業時間</div><div class="val">${p.残業時間 || 0}h</div></div>
+          <div class="ps-kintai-item"><div class="lbl">有給</div><div class="val">${p.有給日数 || 0}日</div></div>
+          <div class="ps-kintai-item"><div class="lbl">欠勤</div><div class="val">${p.欠勤日数 || 0}日</div></div>
+          <div class="ps-kintai-item"><div class="lbl">対象期間</div><div class="val" style="font-size:10px;">${esc(p.対象期間_開始||'-')}〜${esc(p.対象期間_終了||'-')}</div></div>
+        </div>
+      ` : ''}
+      <div class="ps-section">
+        <div class="ps-section-title">支 給</div>
+        ${row('基本給', p.基本給)}
+        ${!isBonus ? row('残業手当', p.残業手当) : ''}
+        ${!isBonus ? row('休日出勤手当', p.休日出勤手当) : ''}
+        ${!isBonus ? row('深夜手当', p.深夜手当) : ''}
+        ${row('通勤手当', p.通勤手当)}
+        ${row('役職手当', p.役職手当)}
+        ${row('資格手当', p.資格手当)}
+        ${row('その他手当', p.その他手当)}
+        ${isBonus ? row('業績加算', p.業績加算) : ''}
+        ${isBonus ? row('特別加算', p.特別加算) : ''}
+        ${isBonus ? row('賞与額', p.賞与額) : ''}
+        <div class="ps-subtotal"><span>支給合計</span><span class="val">${yen(p.支給合計)}</span></div>
+      </div>
+      <div class="ps-section">
+        <div class="ps-section-title">控 除</div>
+        ${row('健康保険料', p.健康保険料)}
+        ${row('厚生年金', p.厚生年金)}
+        ${row('介護保険料', p.介護保険料)}
+        ${row('雇用保険料', p.雇用保険料)}
+        ${row('所得税', p.所得税)}
+        ${!isBonus ? row('住民税', p.住民税) : ''}
+        ${!isBonus ? row('その他控除', p.その他控除) : ''}
+        <div class="ps-subtotal"><span>控除合計</span><span class="val">${yen(p.控除合計)}</span></div>
+      </div>
+      <div class="ps-total"><span>差 引 支 給 額</span><span class="val">${yen(p.差引支給額)}</span></div>
+      ${p.メモ ? `<div class="ps-memo">📝 ${esc(p.メモ)}</div>` : ''}
+      <div class="ps-footer">公開日: ${esc(p.公開日 || p.last_edited_time || '-')}</div>
+    </div>
+  `;
+}
+
+function row(name, val) {
+  if (!val || val === 0) return '';
+  return `<div class="ps-row"><span class="name">${name}</span><span class="val">${yen(val)}</span></div>`;
+}
+
+initLogin();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "f.o.o 給与明細",
+  "short_name": "給与明細",
+  "description": "f.o.o タイヤマネージャー 給与明細閲覧アプリ",
+  "start_url": "/foo-portal/payslip-d1.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fdf6ec",
+  "theme_color": "#3d7c4a",
+  "lang": "ja",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

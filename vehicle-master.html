@@ -243,11 +243,6 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-seri
 <!-- Content -->
 <div class="content">
 
-  <!-- Price visibility notice -->
-  <div id="price-mode-banner" style="display:none;margin-bottom:10px;padding:8px 12px;background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;font-size:11px;color:#92400e;">
-    🔒 価格情報（金額・単価・小計）は非表示です。価格確認は売上入力アプリで行ってください。
-  </div>
-
   <!-- Search Tab -->
   <div class="tab-pane active" id="tab-search">
     <div class="search-box">
@@ -392,10 +387,6 @@ const CUSTOMER_DB = '1ca8d122be214e3892879932147143c9';
 // 2026/4/25 方針変更: 向畑/岡崎含め 全社員に価格を非表示
 const isPriceVisible = false;
 const __maskPrice = (yenStr) => '🔒';
-window.addEventListener('DOMContentLoaded', () => {
-  const b = document.getElementById('price-mode-banner');
-  if (b) b.style.display = 'block';
-});
 
 const TYPE_EMOJI = {'大型':'🚛','中型':'🚚','小型':'🚗','バン':'🚐','乗用車':'🚗','リフト':'🏗️','トレーラー':'🚜','その他':'🔧'};
 

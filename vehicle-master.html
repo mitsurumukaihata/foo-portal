@@ -1565,18 +1565,28 @@ async function saveEdit() {
 
     await notionAPI('/pages/' + editingPageId, 'PATCH', { properties: props });
 
-    // 車軸配置はD1専用カラム → 直接UPDATE
-    const axleConfig = document.getElementById('edit-axle-config').value;
+    // D1 同期: 全フィールドを D1 にも即時反映 (画面はD1から読むため)
     try {
-      await fetch(D1_WORKER + '/d1/sql', {
+      const d1Body = {
+        id: editingPageId,
+        車番: document.getElementById('edit-plate').value.trim(),
+        車種: document.getElementById('edit-type').value || null,
+        前輪サイズ: document.getElementById('edit-front-size').value.trim() || null,
+        後輪サイズ: document.getElementById('edit-rear-size').value.trim() || null,
+        前輪パターン: document.getElementById('edit-front-pattern').value.trim() || null,
+        後輪パターン: document.getElementById('edit-rear-pattern').value.trim() || null,
+        本数: document.getElementById('edit-count').value ? parseInt(document.getElementById('edit-count').value) : null,
+        カテゴリ: document.getElementById('edit-category').value || null,
+        メモ: document.getElementById('edit-memo').value.trim() || null,
+        車軸配置: document.getElementById('edit-axle-config').value || null,
+        顧客ID: editSelectedCustomerId || null,
+      };
+      await fetch(D1_WORKER + '/d1/update-vehicle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sql: 'UPDATE 車両マスタ SET 車軸配置 = ? WHERE id = ?',
-          params: [axleConfig || null, editingPageId]
-        })
+        body: JSON.stringify(d1Body)
       });
-    } catch (e) { console.warn('axleConfig D1 update failed:', e); }
+    } catch (e) { console.warn('D1 update failed:', e); }
 
     showToast('更新しました', 'success');
     closeEditSheet();

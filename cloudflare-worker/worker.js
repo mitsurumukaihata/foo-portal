@@ -685,6 +685,34 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       }
     }
 
+    // 車両マスタ更新 (vehicle-master.html 編集用)
+    // Notion側は別途 PATCH で更新済み・D1も即時反映するための専用エンドポイント
+    if (url.pathname === '/d1/update-vehicle' && request.method === 'POST' && env.DB) {
+      try {
+        const body2 = await request.json();
+        const { id } = body2;
+        if (!id) return new Response(JSON.stringify({ error: 'id required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        // 許可カラムのホワイトリスト (任意のカラムを上書きさせない)
+        const ALLOWED_FIELDS = ['車番','車種','前輪サイズ','後輪サイズ','前輪パターン','後輪パターン','本数','カテゴリ','メモ','管理番号','車軸配置','顧客ID'];
+        const sets = [];
+        const params = [];
+        for (const f of ALLOWED_FIELDS) {
+          if (Object.prototype.hasOwnProperty.call(body2, f)) {
+            sets.push(`"${f}" = ?`);
+            const v = body2[f];
+            params.push(v === '' ? null : v);
+          }
+        }
+        if (!sets.length) return new Response(JSON.stringify({ error: 'no fields to update' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        params.push(id);
+        const stmt = env.DB.prepare(`UPDATE 車両マスタ SET ${sets.join(', ')} WHERE id = ?`).bind(...params);
+        const res = await stmt.run();
+        return new Response(JSON.stringify({ success: true, changes: res.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
     // 売上明細のタイヤサイズをNULLクリア (サイズ不整合修正用)
     if (url.pathname === '/d1/clear-detail-size' && request.method === 'POST' && env.DB) {
       try {

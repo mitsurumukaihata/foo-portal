@@ -107,15 +107,10 @@
 </head>
 <body>
 
-<!-- ログイン画面 -->
+<!-- ログイン待機画面 (initFromPortalSession で内容差し替え) -->
 <div id="login-screen">
   <div class="login-screen">
-    <div class="login-title">💴 給与明細<br><span style="font-size:12px;font-weight:400;color:var(--muted);">f.o.o タイヤマネージャー</span></div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;text-align:center;">あなたの名前を選択してください</div>
-    <div class="staff-grid" id="staff-grid"></div>
-    <input type="password" inputmode="numeric" maxlength="4" class="pin-input" id="pin-input" placeholder="PIN">
-    <button class="login-btn" id="login-btn" disabled>ログイン</button>
-    <div id="login-error" style="color:var(--red);font-size:12px;text-align:center;margin-top:10px;"></div>
+    <div class="loading">読込中...</div>
   </div>
 </div>
 
@@ -132,7 +127,7 @@
 
 <script>
 const D1_WORKER = 'https://notion-proxy.33322666666mm.workers.dev';
-const SESSION_KEY = 'foo_payslip_session';
+const SESSION_KEY = 'foo_portal_session'; // index.html の共通セッション
 
 async function sql(q, params = []) {
   const r = await fetch(D1_WORKER + '/d1/sql', {
@@ -149,73 +144,52 @@ let _employees = [];
 let _selectedEmp = null;
 let _currentUser = null;
 
-// ── ログイン処理 ──
-async function initLogin() {
-  // セッション確認
+// ── 既存ポータルセッション読込 ──
+async function initFromPortalSession() {
+  let session = null;
   try {
     const raw = localStorage.getItem(SESSION_KEY);
     if (raw) {
       const s = JSON.parse(raw);
-      if (s && new Date(s.expires) > new Date()) {
-        _currentUser = s;
-        showMain();
-        return;
-      }
+      if (s && new Date(s.expires) > new Date() && s.name) session = s;
     }
   } catch(e) {}
 
-  const r = await sql(`SELECT id, 氏名, 表示順 FROM 社員マスタ WHERE 在籍 = '在籍中' ORDER BY 表示順, 氏名`);
-  _employees = r.results || [];
-  const grid = document.getElementById('staff-grid');
-  grid.innerHTML = _employees.map(e => `
-    <button class="staff-btn" data-id="${e.id}" onclick="selectStaff('${e.id}')">${esc(e.氏名)}</button>
-  `).join('');
-
-  document.getElementById('pin-input').addEventListener('input', e => {
-    const v = e.target.value.replace(/\D/g, '');
-    e.target.value = v;
-    document.getElementById('login-btn').disabled = !(v.length === 4 && _selectedEmp);
-  });
-  document.getElementById('login-btn').onclick = doLogin;
-}
-
-function selectStaff(id) {
-  _selectedEmp = _employees.find(e => e.id === id);
-  document.querySelectorAll('.staff-btn').forEach(b => b.classList.toggle('selected', b.dataset.id === id));
-  const pin = document.getElementById('pin-input').value;
-  document.getElementById('login-btn').disabled = !(pin.length === 4 && _selectedEmp);
-}
-
-async function doLogin() {
-  const errEl = document.getElementById('login-error');
-  errEl.textContent = '';
-  if (!_selectedEmp) return;
-  const pin = document.getElementById('pin-input').value;
-  // PIN照合
-  const r = await sql(`SELECT id, 氏名, PIN FROM 社員マスタ WHERE id = ?`, [_selectedEmp.id]);
-  const emp = r.results?.[0];
-  if (!emp) { errEl.textContent = '社員データ取得失敗'; return; }
-  if (emp.PIN && String(emp.PIN) !== pin) {
-    errEl.textContent = 'PINが違います';
+  if (!session) {
+    // 未ログイン → ポータルへ
+    document.getElementById('login-screen').innerHTML = `
+      <div class="login-screen">
+        <div class="login-title">🔒 ログインが必要です</div>
+        <div style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:20px;line-height:1.7;">
+          先に社内ポータルからログインしてください。
+        </div>
+        <a href="https://mitsurumukaihata.github.io/foo-portal/" class="login-btn" style="display:block;text-align:center;text-decoration:none;">🏠 ポータルへ</a>
+      </div>
+    `;
     return;
   }
-  _currentUser = {
-    id: emp.id,
-    name: emp.氏名,
-    expires: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString() // 12h
-  };
-  localStorage.setItem(SESSION_KEY, JSON.stringify(_currentUser));
+
+  // 名前から社員IDを引く
+  const normName = String(session.name).replace(/\s+/g, '').replace(/　/g, '');
+  const r = await sql(`SELECT id, 氏名, PIN FROM 社員マスタ WHERE REPLACE(REPLACE(氏名,' ',''),'　','') = ?`, [normName]);
+  const emp = r.results?.[0];
+  if (!emp) {
+    document.getElementById('login-screen').innerHTML = `<div class="login-screen"><div class="login-title">⚠️ 社員データが見つかりません</div><div style="font-size:12px;color:var(--muted);text-align:center;">${esc(session.name)} は社員マスタに登録されていません</div></div>`;
+    return;
+  }
+  _currentUser = { id: emp.id, name: emp.氏名 };
   showMain();
 }
 
 function logout() {
-  localStorage.removeItem(SESSION_KEY);
-  location.reload();
+  // 共通セッションには手を付けず、ポータルへ戻すだけ
+  location.href = 'https://mitsurumukaihata.github.io/foo-portal/';
 }
 
 // ── メイン画面 ──
-// 管理者判定 (向畑充・岡崎・向畑綾花は全員分閲覧可)
-const __ADMIN_NAMES = ['向畑充', '岡崎由美', '向畑綾花'];
+// 全員分閲覧可: 向畑充(管理者) + 向畑綾花(経理) のみ
+// (岡崎由美は事務なので個人明細のみ閲覧可)
+const __ADMIN_NAMES = ['向畑充', '向畑綾花'];
 const __normN = n => String(n || '').replace(/\s+/g, '').replace(/　/g, '');
 function isAdmin() { return __ADMIN_NAMES.includes(__normN(_currentUser?.name)); }
 
@@ -272,7 +246,7 @@ async function loadPayslipList() {
 
   el.innerHTML = `
     <div class="action-bar">
-      <button class="action-btn secondary" onclick="logout()">🚪 ログアウト</button>
+      <button class="action-btn secondary" onclick="logout()">🏠 ポータルへ戻る</button>
       <button class="action-btn secondary" onclick="window.location.reload()">🔄 更新</button>
       ${isAdmin() ? `<button class="action-btn" onclick="showEmployeePicker()">👥 社員切替</button>` : ''}
     </div>
@@ -391,7 +365,7 @@ function row(name, val) {
   return `<div class="ps-row"><span class="name">${name}</span><span class="val">${yen(val)}</span></div>`;
 }
 
-initLogin();
+initFromPortalSession();
 </script>
 
 </body>

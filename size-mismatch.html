@@ -134,14 +134,16 @@ const CATEGORY_FILTER = {
   all: ''
 };
 
+// 同じサイズが複数カテゴリ (例: 165/80R13 は PC・バン両方) で使われるケースを考慮
+// カテゴリ群 (CSV) を見て、車両カテゴリが一切含まれない場合のみ「不整合」と判定
 const MISMATCH_WHERE = `
   d.車番 IS NOT NULL AND d.車番 != ''
   AND d.タイヤサイズ IS NOT NULL AND d.タイヤサイズ != ''
   AND v.車種 IS NOT NULL
   AND (
-    (v.車種 = '乗用車' AND m.カテゴリ != 'PC') OR
-    (v.車種 = 'バン' AND m.カテゴリ != 'バン') OR
-    (v.車種 IN ('小型','中型','大型','トレーラー') AND m.カテゴリ != 'LTS')
+    (v.車種 = '乗用車' AND INSTR(IFNULL(m.カテゴリ群, m.カテゴリ), 'PC') = 0) OR
+    (v.車種 = 'バン' AND INSTR(IFNULL(m.カテゴリ群, m.カテゴリ), 'バン') = 0) OR
+    (v.車種 IN ('小型','中型','大型','トレーラー') AND INSTR(IFNULL(m.カテゴリ群, m.カテゴリ), 'LTS') = 0)
   )
 `;
 
@@ -180,7 +182,7 @@ async function loadList() {
   const r = await sql(`SELECT
     s.id AS slip_id, s.売上日, s.伝票タイトル,
     d.id AS detail_id, d.車番, d.品目, d.タイヤサイズ, d.タイヤ銘柄, d.数量,
-    v.車種, m.カテゴリ AS サイズカテゴリ
+    v.車種, IFNULL(m.カテゴリ群, m.カテゴリ) AS サイズカテゴリ
     FROM 売上明細 d
     JOIN 売上伝票 s ON d.売上伝票ID = s.id
     JOIN 車両マスタ v ON v.車番 = d.車番
@@ -217,9 +219,9 @@ async function loadList() {
           <td><b style="font-family:'DM Mono',monospace;">${esc(r.車番)}</b></td>
           <td>${esc(r.車種)}</td>
           <td>${esc(r.品目)}</td>
-          <td style="font-family:'DM Mono',monospace;">${esc(r.タイヤサイズ)} ${CAT_BADGE[r.サイズカテゴリ] || ''}</td>
+          <td style="font-family:'DM Mono',monospace;">${esc(r.タイヤサイズ)} ${(r.サイズカテゴリ || '').split(',').map(c => CAT_BADGE[c.trim()] || '').join('')}</td>
           <td style="font-family:'DM Mono',monospace;">${esc(r.タイヤ銘柄 || '-')}</td>
-          <td><span class="badge danger">${esc(r.車種)}にしては<br>${esc(r.サイズカテゴリ)}サイズ</span></td>
+          <td><span class="badge danger">${esc(r.車種)}には<br>${esc(r.サイズカテゴリ)}専用サイズ</span></td>
           <td onclick="event.stopPropagation()">
             <button class="action-btn" onclick="clearSize('${r.detail_id}')">✕ サイズクリア</button>
           </td>

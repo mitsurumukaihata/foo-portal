@@ -35,17 +35,21 @@ CREATE INDEX IF NOT EXISTS idx_a表_パターン ON A表(パターン);
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS サイズマスタ (
   サイズ TEXT PRIMARY KEY,
-  カテゴリ TEXT,        -- PC / LTS / バン
+  カテゴリ TEXT,        -- 主カテゴリ (PC > LTS > バン 優先)
+  カテゴリ群 TEXT,      -- 同サイズが複数カテゴリで使われる場合 (例: 165/80R13 → "PC,バン")
   件数 INTEGER
 );
+-- ALTER TABLE サイズマスタ ADD COLUMN カテゴリ群 TEXT; -- 既存DBへのマイグレーション
 
 -- 再構築 (A表から集計)
 DELETE FROM サイズマスタ;
-INSERT INTO サイズマスタ (サイズ, カテゴリ, 件数)
+INSERT INTO サイズマスタ (サイズ, カテゴリ, カテゴリ群, 件数)
 SELECT サイズ,
-  -- 同じサイズで複数カテゴリあれば優先: PC > LTS > バン
+  -- 主カテゴリ: PC > LTS > バン 優先
   (SELECT カテゴリ FROM A表 a2 WHERE a2.サイズ = a.サイズ
    ORDER BY CASE カテゴリ WHEN 'PC' THEN 1 WHEN 'LTS' THEN 2 WHEN 'バン' THEN 3 ELSE 4 END LIMIT 1) AS cat,
+  -- カテゴリ群: 全有効カテゴリをCSV (165/80R13 など同サイズ複数カテゴリへの対応)
+  (SELECT GROUP_CONCAT(DISTINCT カテゴリ) FROM A表 a3 WHERE a3.サイズ = a.サイズ AND カテゴリ IS NOT NULL) AS cats,
   COUNT(*) AS cnt
 FROM A表 a
 WHERE サイズ IS NOT NULL AND サイズ != ''

@@ -2341,7 +2341,19 @@ async function fetchPriceSizes(cat, subCat) {
       const esc = s => String(s).replace(/'/g,"''");
       // 旧モデル既定で除外
       let sql = `SELECT DISTINCT サイズ FROM A表 WHERE カテゴリ = '${esc(cat)}' AND サイズ IS NOT NULL AND サイズ != '' AND (旧モデル IS NULL OR 旧モデル = 0)`;
-      if (subCat !== undefined && subCat !== null && subCat !== '') sql += ` AND ブランド = '${esc(subCat)}'`;
+      // PC × クラス指定: そのクラスに属するパターン群でIN絞り込み
+      if (subCat !== undefined && subCat !== null && subCat !== '') {
+        if (cat === 'PC' && CLASS_DEF[subCat]) {
+          const pats = Object.keys(PATTERN_CLASS).filter(p => PATTERN_CLASS[p] === subCat);
+          if (pats.length > 0) {
+            const inList = pats.map(p => `'${esc(p)}'`).join(',');
+            sql += ` AND (パターン IN (${inList}) OR ブランド IN (${inList}))`;
+          }
+        } else {
+          // 旧来のブランド絞り込み(他カテゴリ用)
+          sql += ` AND ブランド = '${esc(subCat)}'`;
+        }
+      }
       sql += ' ORDER BY サイズ';
       const rows = await d1query(sql);
       const sizes = rows.map(r => r.サイズ).filter(s => s);
@@ -2381,22 +2393,21 @@ function renderPriceHome() {
     el.innerHTML = `<div class="price-search-wrap"><div class="screen-label" style="padding-top:4px;">価格検索</div><div class="screen-title" style="margin-bottom:10px;">A表 価格参照</div><div class="screen-sub" style="margin-bottom:12px;">カテゴリを選んでください</div><div class="cat-grid">${cards}</div></div>`;
     return;
   }
-  // PCの場合はブランドchipsを動的表示
+  // PCの場合は車格クラスchipsを表示 (各メーカー公式シリーズ準拠)
   let subcatHtml = '';
   if (priceState.dbKey === 'PC') {
-    const chips = _brandChipsCache['PC'] || [];
     const chipHtml = [
-      `<div class="sub-chip${!priceState.subCat?' active':''}" onclick="priceSelectSubCat('')">すべて</div>`,
-      ...chips.map(sc =>
-        `<div class="sub-chip${priceState.subCat===sc.key?' active':''}" onclick="priceSelectSubCat('${sc.key.replace(/'/g,"\\'")}')">${sc.label}<span style="font-size:10px;margin-left:4px;opacity:0.7;">(${sc.count})</span></div>`
-      )
+      `<div class="sub-chip${!priceState.subCat?' active':''}" onclick="priceSelectSubCat('')">🛒 すべて</div>`,
+      ...CLASS_ORDER.map(k => {
+        const c = CLASS_DEF[k];
+        const sel = priceState.subCat === k ? ' active' : '';
+        return `<div class="sub-chip${sel}" onclick="priceSelectSubCat('${k}')" title="${c.desc}">${c.icon} ${c.label}</div>`;
+      })
     ].join('');
     subcatHtml = `<div class="sub-chip-row" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">${chipHtml}</div>`;
-    // まだ取得してなければ非同期で取得して再レンダ
-    if (!_brandChipsCache['PC']) fetchBrandChips('PC').then(() => renderPriceHome());
   }
   const curCatName = PRICE_CAT_MAP[priceState.dbKey]?.name || priceState.dbKey;
-  const subLabel = priceState.subCat ? ` / ${priceState.subCat}` : '';
+  const subLabel = priceState.subCat && CLASS_DEF[priceState.subCat] ? ` / ${CLASS_DEF[priceState.subCat].icon} ${CLASS_DEF[priceState.subCat].label}` : '';
   el.innerHTML = `<div class="price-search-wrap">
     <button class="btn-secondary" style="margin-bottom:10px;margin-top:4px;" onclick="priceState.dbKey='';priceState.subCat='';renderPriceHome()">← カテゴリを変更</button>
     <div class="screen-label" style="padding-top:4px;">${curCatName}${subLabel}</div>
@@ -2464,7 +2475,16 @@ async function priceGoFetchPattern(sz) {
     const esc = s => String(s).replace(/'/g,"''");
     let sql = `SELECT id, サイズ, パターン, ブランド, メーカー, カテゴリ詳細, 価格, 備考, 注意, 加重指数, 商品コード, 商品名称, 旧モデル, 規格プレフィックス FROM A表 WHERE カテゴリ = '${esc(priceState.dbKey)}' AND サイズ = '${esc(sz)}'`;
     if (priceState.dbKey === 'PC' && priceState.subCat !== undefined && priceState.subCat !== null && priceState.subCat !== '') {
-      sql += ` AND ブランド = '${esc(priceState.subCat)}'`;
+      if (CLASS_DEF[priceState.subCat]) {
+        // クラス絞り込み: そのクラスに属するパターン名/ブランド名でIN
+        const pats = Object.keys(PATTERN_CLASS).filter(p => PATTERN_CLASS[p] === priceState.subCat);
+        if (pats.length > 0) {
+          const inList = pats.map(p => `'${esc(p)}'`).join(',');
+          sql += ` AND (パターン IN (${inList}) OR ブランド IN (${inList}))`;
+        }
+      } else {
+        sql += ` AND ブランド = '${esc(priceState.subCat)}'`;
+      }
     }
     // 旧モデルは既定で後ろに/非表示(priceState.showOldがtrueなら表示)
     sql += ' ORDER BY 旧モデル ASC, メーカー, ブランド, パターン';
@@ -2486,10 +2506,9 @@ async function priceGoFetchPattern(sz) {
   } catch(e) { priceState.loading=false; document.getElementById('price-content').innerHTML=`<div class="content"><div class="error-box">取得に失敗しました。<br><small>${e.message}</small></div><button class="btn-secondary" onclick="priceState.step='search';renderPriceHome()">← 戻る</button></div>`; }
 }
 // 主要パターンの直リンク (2026/4 時点で実URLを確認済み)
-// 確認できなかったものはブランドページにフォールバック
+// 確認できなかったものはブランドページにフォールバック → 公式サイト内検索
 const DIRECT_CATALOG_URL = {
-  // BRIDGESTONE (https://tire.bridgestone.co.jp/ 2026/4実URL確認)
-  // キーは A表の パターン列そのまま(Roman numeral Ⅲ含む) + 別表記エイリアス
+  // ─────────── BRIDGESTONE (https://tire.bridgestone.co.jp/ 2026/4実URL確認) ───────────
   'REGNO': 'https://tire.bridgestone.co.jp/regno/',
   'GRXⅢ': 'https://tire.bridgestone.co.jp/regno/gr-x3/',
   'GR-XIII': 'https://tire.bridgestone.co.jp/regno/gr-x3/',
@@ -2502,6 +2521,7 @@ const DIRECT_CATALOG_URL = {
   'RE-71RZ': 'https://tire.bridgestone.co.jp/potenza/re71rz/',
   'Adrenalin RE005': 'https://tire.bridgestone.co.jp/potenza/re005/',
   'RE005': 'https://tire.bridgestone.co.jp/potenza/re005/',
+  'S007/Adrenalin RE005': 'https://tire.bridgestone.co.jp/potenza/re005/',
   'ECOPIA': 'https://tire.bridgestone.co.jp/ecopia/',
   'NH200/NH200C': 'https://tire.bridgestone.co.jp/ecopia/nh200/',
   'NH200': 'https://tire.bridgestone.co.jp/ecopia/nh200/',
@@ -2514,9 +2534,10 @@ const DIRECT_CATALOG_URL = {
   'PXRVⅡ': 'https://tire.bridgestone.co.jp/playz/px-rv2/',
   'PX-RV2': 'https://tire.bridgestone.co.jp/playz/px-rv2/',
   'DUELER': 'https://tire.bridgestone.co.jp/dueler/',
-  'H/L 850': 'https://tire.bridgestone.co.jp/dueler/',
+  'H/L 850': 'https://tire.bridgestone.co.jp/dueler/hl850/',
   'A/T002': 'https://tire.bridgestone.co.jp/dueler/at002/',
   'M/T674': 'https://tire.bridgestone.co.jp/dueler/mt674/',
+  'H/P SPORT A/T 00/69 M/T 67': 'https://tire.bridgestone.co.jp/dueler/',
   'BLIZZAK': 'https://tire.bridgestone.co.jp/blizzak/',
   'VRX3': 'https://tire.bridgestone.co.jp/blizzak/vrx3/',
   'DM-V3': 'https://tire.bridgestone.co.jp/blizzak/dm-v3/',
@@ -2525,25 +2546,271 @@ const DIRECT_CATALOG_URL = {
   '001': 'https://tire.bridgestone.co.jp/alenza/001/',
   'LX100': 'https://tire.bridgestone.co.jp/alenza/lx100/',
   'LX200': 'https://tire.bridgestone.co.jp/alenza/lx100/',
-  // TOYO (https://www.toyotires.jp/product/{slug}/ 2026/4確認)
-  'NANOENERGY 3 PLUS': 'https://www.toyotires.jp/product/ne3plus',
-  'NANOENERGY 3': 'https://www.toyotires.jp/product/ne3',
+  'FINESSA HB01': 'https://tire.bridgestone.co.jp/',
+  'HB01': 'https://tire.bridgestone.co.jp/',
+  'LUFT RVⅡ': 'https://tire.bridgestone.co.jp/',
+  'SEIBERLING SL': 'https://www.seiberling.co.jp/',
+  'SL': 'https://www.seiberling.co.jp/',
+  // ─────────── TOYO (https://www.toyotires.jp/product/{slug}/) ───────────
+  'NANOENERGY 3 PLUS': 'https://www.toyotires.jp/product/ne3plus/',
+  'NANOENERGY 3': 'https://www.toyotires.jp/product/ne3/',
   'NANOENERGY': 'https://www.toyotires.jp/product/ne/',
-  'PROXES AT3': 'https://www.toyotires.jp/product/opat3',
-  'OBSERVE GIZ2': 'https://www.toyotires.jp/product/obgiz2',
-  'OBSERVE GIZ3': 'https://www.toyotires.jp/product/obgiz3',
-  'OBSERVE GARIT GIZ': 'https://www.toyotires.jp/product/obgrgiz',
-  'OPEN COUNTRY R/T': 'https://www.toyotires.jp/product/oc/',
+  'PROXES Sport': 'https://www.toyotires.jp/product/sport/',
+  'PROXES Sport2': 'https://www.toyotires.jp/product/sport2/',
+  'PROXES R888R': 'https://www.toyotires.jp/product/r888r/',
+  'PROXES CF3': 'https://www.toyotires.jp/product/cf3/',
+  'PROXES CL1 SUV': 'https://www.toyotires.jp/product/cl1suv/',
+  'PROXES C1S': 'https://www.toyotires.jp/product/c1s/',
+  'PROXES T1 Sport SUV': 'https://www.toyotires.jp/product/t1sportsuv/',
+  'PROXES AT3': 'https://www.toyotires.jp/product/opat3/',
+  'TRANPATH mp7': 'https://www.toyotires.jp/product/mp7/',
+  'TRANPATH ML': 'https://www.toyotires.jp/product/ml/',
+  'OBSERVE GIZ2': 'https://www.toyotires.jp/product/obgiz2/',
+  'OBSERVE GIZ3': 'https://www.toyotires.jp/product/obgiz3/',
+  'OBSERVE GARIT GIZ': 'https://www.toyotires.jp/product/obgrgiz/',
+  'OBSERVE GSi-6': 'https://www.toyotires.jp/product/gsi6/',
+  'OPEN COUNTRY R/T': 'https://www.toyotires.jp/product/ocrt/',
+  'OPEN COUNTRY A/T3': 'https://www.toyotires.jp/product/ocat3/',
+  'OPEN COUNTRY M/T-R': 'https://www.toyotires.jp/product/ocmtr/',
+  'OPEN COUNTRY U/T': 'https://www.toyotires.jp/product/ocut/',
   'CELSIUS': 'https://www.toyotires.jp/product/celsius/',
-  // YOKOHAMA (/product/tire/{slug}/ 2026/4確認)
-  'ADVAN V107': 'https://www.y-yokohama.com/product/tire/advan_v107/',
+  'CELSIUS AS2': 'https://www.toyotires.jp/product/celsiusas2/',
+  // ─────────── DUNLOP (https://tyre.dunlop.co.jp/tyre/{series}/{slug}/) ───────────
+  'VEURO VE304': 'https://tyre.dunlop.co.jp/tyre/veuro/ve304/',
+  'LE MANS V': 'https://tyre.dunlop.co.jp/tyre/lemans/v/',
+  'LE MANS V+': 'https://tyre.dunlop.co.jp/tyre/lemans/v_plus/',
+  'EC204': 'https://tyre.dunlop.co.jp/tyre/enasave/ec204/',
+  'EC205': 'https://tyre.dunlop.co.jp/tyre/enasave/ec204/',
+  'エナセーブ EC204': 'https://tyre.dunlop.co.jp/tyre/enasave/ec204/',
+  'エナセーブ EC205': 'https://tyre.dunlop.co.jp/tyre/enasave/ec204/',
+  'エナセーブ RV505': 'https://tyre.dunlop.co.jp/tyre/enasave/rv505/',
+  'RV505': 'https://tyre.dunlop.co.jp/tyre/enasave/rv505/',
+  'DIREZZA DZ102': 'https://tyre.dunlop.co.jp/tyre/direzza/dz102/',
+  'DIREZZA ZⅢ': 'https://tyre.dunlop.co.jp/tyre/direzza/z3/',
+  'DIREZZA Z3': 'https://tyre.dunlop.co.jp/tyre/direzza/z3/',
+  'SP SPORT MAXX 060+': 'https://tyre.dunlop.co.jp/tyre/spsportmaxx/060plus/',
+  'SPORT MAXX 060+': 'https://tyre.dunlop.co.jp/tyre/spsportmaxx/060plus/',
+  'SPORT MAXX RS': 'https://tyre.dunlop.co.jp/tyre/spsportmaxx/rs/',
+  'SP SPORT MAXX RS': 'https://tyre.dunlop.co.jp/tyre/spsportmaxx/rs/',
+  'SPORT MAXX LUX': 'https://tyre.dunlop.co.jp/tyre/spsportmaxx/lux/',
+  'SP SPORT MAXX LUX': 'https://tyre.dunlop.co.jp/tyre/spsportmaxx/lux/',
+  'GRANDTREK PT5': 'https://tyre.dunlop.co.jp/tyre/grandtrek/pt5/',
+  'GRANDTREK AT5': 'https://tyre.dunlop.co.jp/tyre/grandtrek/at5/',
+  'GRANDTREK MT2': 'https://tyre.dunlop.co.jp/tyre/grandtrek/mt2/',
+  'GRANDTREK TG4': 'https://tyre.dunlop.co.jp/tyre/grandtrek/tg4/',
+  'WINTER MAXX 03': 'https://tyre.dunlop.co.jp/tyre/wintermaxx/03/',
+  'WINTER MAXX SJ8+': 'https://tyre.dunlop.co.jp/tyre/wintermaxx/sj8_plus/',
+  'WINTER MAXX SV01': 'https://tyre.dunlop.co.jp/tyre/wintermaxx/sv01/',
+  'ALL SEASON MAXX AS1': 'https://tyre.dunlop.co.jp/tyre/allseasonmaxx/as1/',
+  // ─────────── YOKOHAMA (https://www.y-yokohama.com/product/tire/{slug}/) ───────────
+  'ADVAN Sport V107': 'https://www.y-yokohama.com/product/tire/advan_sport_v107/',
+  'ADVAN V107': 'https://www.y-yokohama.com/product/tire/advan_sport_v107/',
   'ADVAN dB V553': 'https://www.y-yokohama.com/product/tire/advan_db_v553/',
+  'ADVAN dB V552': 'https://www.y-yokohama.com/product/tire/advan_db_v552/',
   'ADVAN AD09': 'https://www.y-yokohama.com/product/tire/advan_ad09/',
   'ADVAN Fleva V701': 'https://www.y-yokohama.com/product/tire/advan_fleva_v701/',
-  'BluEarth-4S AW21': 'https://www.y-yokohama.com/product/tire/bluearth_4s_aw21/',
+  'ADVAN NEOVA AD09': 'https://www.y-yokohama.com/product/tire/advan_neova_ad09/',
+  'ADVAN NEOVA AD08R': 'https://www.y-yokohama.com/product/tire/advan_neova_ad08r/',
   'BluEarth': 'https://www.y-yokohama.com/product/tire/bluearth/',
-  // DUNLOP: URL構造不明のため Google site: 検索にフォールバック
+  'BluEarth-GT AE51': 'https://www.y-yokohama.com/product/tire/bluearth_gt_ae51/',
+  'BluEarth-XT AE61': 'https://www.y-yokohama.com/product/tire/bluearth_xt_ae61/',
+  'BluEarth-RV RV03': 'https://www.y-yokohama.com/product/tire/bluearth_rv_rv03/',
+  'BluEarth-RV RV03CK': 'https://www.y-yokohama.com/product/tire/bluearth_rv_rv03ck/',
+  'BluEarth-AE AE-01F': 'https://www.y-yokohama.com/product/tire/bluearth_ae_ae01f/',
+  'BluEarth-Es ES32': 'https://www.y-yokohama.com/product/tire/bluearth_es_es32/',
+  'BluEarth-4S AW21': 'https://www.y-yokohama.com/product/tire/bluearth_4s_aw21/',
+  'GEOLANDAR X-AT G016': 'https://www.y-yokohama.com/product/tire/geolandar_x_at_g016/',
+  'GEOLANDAR A/T G015': 'https://www.y-yokohama.com/product/tire/geolandar_at_g015/',
+  'GEOLANDAR M/T G003': 'https://www.y-yokohama.com/product/tire/geolandar_mt_g003/',
+  'iceGUARD 7': 'https://www.y-yokohama.com/product/tire/iceguard7/',
+  'iceGUARD 7 iG70': 'https://www.y-yokohama.com/product/tire/iceguard7/',
+  'iceGUARD SUV G075': 'https://www.y-yokohama.com/product/tire/iceguard_suv_g075/',
+  // ─────────── MICHELIN (https://www.michelin.co.jp/auto/) ───────────
+  'PILOT SPORT 5': 'https://www.michelin.co.jp/auto/tires/pilot-sport-5',
+  'PILOT SPORT 4': 'https://www.michelin.co.jp/auto/tires/pilot-sport-4',
+  'PILOT SPORT 4S': 'https://www.michelin.co.jp/auto/tires/pilot-sport-4-s',
+  'PILOT SPORT 4 SUV': 'https://www.michelin.co.jp/auto/tires/pilot-sport-4-suv',
+  'PRIMACY 4+': 'https://www.michelin.co.jp/auto/tires/primacy-4-plus',
+  'PRIMACY 4': 'https://www.michelin.co.jp/auto/tires/primacy-4',
+  'PRIMACY SUV+': 'https://www.michelin.co.jp/auto/tires/primacy-suv-plus',
+  'CROSSCLIMATE 2': 'https://www.michelin.co.jp/auto/tires/crossclimate-2',
+  'CROSSCLIMATE 2 SUV': 'https://www.michelin.co.jp/auto/tires/crossclimate-2-suv',
+  'X-ICE SNOW': 'https://www.michelin.co.jp/auto/tires/x-ice-snow',
+  'X-ICE SNOW SUV': 'https://www.michelin.co.jp/auto/tires/x-ice-snow-suv',
+  'LATITUDE TOUR HP': 'https://www.michelin.co.jp/auto/tires/latitude-tour-hp',
+  // ─────────── PIRELLI (https://www.pirelli.com/tyres/ja-jp/) ───────────
+  'P ZERO': 'https://www.pirelli.com/tyres/ja-jp/car/catalog/product/p-zero',
+  'P ZERO PZ4': 'https://www.pirelli.com/tyres/ja-jp/car/catalog/product/p-zero',
+  'CINTURATO P7': 'https://www.pirelli.com/tyres/ja-jp/car/catalog/product/cinturato-p7',
+  'POWERGY': 'https://www.pirelli.com/tyres/ja-jp/car/catalog/product/powergy',
+  'SCORPION': 'https://www.pirelli.com/tyres/ja-jp/car/catalog/product/scorpion',
+  'ICE ZERO ASIMMETRICO': 'https://www.pirelli.com/tyres/ja-jp/car/catalog/product/ice-zero-asimmetrico',
 };
+
+// ─────────── 車格クラス分類 (各メーカー公式シリーズ準拠) ───────────
+// PCタブで使用。パターン → クラスキー
+const PATTERN_CLASS = {
+  // ✨ プレミアム/ラグジュアリー (高級セダン・コンフォート最上位)
+  'GRXⅢ': 'luxury', 'GR-XIII': 'luxury', 'GR-X3': 'luxury',
+  'GRXⅢRV': 'luxury',
+  'VEURO VE304': 'luxury',
+  'SP SPORT MAXX LUX': 'luxury', 'SPORT MAXX LUX': 'luxury',
+  'PROXES Sport': 'luxury', 'PROXES Sport2': 'luxury',
+  'ADVAN dB V553': 'luxury', 'ADVAN dB V552': 'luxury',
+  'ADVAN Sport V107': 'luxury', 'ADVAN V107': 'luxury',
+  'PRIMACY 4+': 'luxury', 'PRIMACY 4': 'luxury',
+  // 🏁 スポーツ (走行性能・サーキット系)
+  'POTENZA': 'sport', 'S007A': 'sport', 'S007': 'sport',
+  'RE71RZ': 'sport', 'RE-71RZ': 'sport',
+  'Adrenalin RE005': 'sport', 'RE005': 'sport', 'S007/Adrenalin RE005': 'sport',
+  'DIREZZA DZ102': 'sport', 'DIREZZA ZⅢ': 'sport', 'DIREZZA Z3': 'sport',
+  'SP SPORT MAXX 060+': 'sport', 'SPORT MAXX 060+': 'sport',
+  'SPORT MAXX RS': 'sport', 'SP SPORT MAXX RS': 'sport',
+  'PROXES R888R': 'sport',
+  'ADVAN AD09': 'sport', 'ADVAN Fleva V701': 'sport',
+  'ADVAN NEOVA AD09': 'sport', 'ADVAN NEOVA AD08R': 'sport',
+  'PILOT SPORT 5': 'sport', 'PILOT SPORT 4': 'sport', 'PILOT SPORT 4S': 'sport',
+  'P ZERO': 'sport', 'P ZERO PZ4': 'sport',
+  // 🌱 エコ・低燃費 (NEWNO/ECOPIA/ENASAVE/NANOENERGY/BluEarth)
+  'ECOPIA': 'eco', 'NH200/NH200C': 'eco', 'NH200': 'eco', 'NH200C': 'eco',
+  'EP001S': 'eco', 'EV-01': 'eco',
+  'NEWNO': 'eco',
+  'EC204': 'eco', 'EC205': 'eco', 'エナセーブ EC204': 'eco', 'エナセーブ EC205': 'eco',
+  'NANOENERGY 3 PLUS': 'eco', 'NANOENERGY 3': 'eco', 'NANOENERGY': 'eco',
+  'BluEarth': 'eco', 'BluEarth-AE AE-01F': 'eco', 'BluEarth-Es ES32': 'eco',
+  'BluEarth-GT AE51': 'eco',
+  'POWERGY': 'eco', 'CINTURATO P7': 'eco',
+  // 👨‍👩‍👧 コンフォート/ファミリー (ミニバン・コンパクトカー含む)
+  'Playz': 'comfort', 'PXRVⅡ': 'comfort', 'PX-RV2': 'comfort', 'PX2': 'comfort',
+  'LE MANS V': 'comfort', 'LE MANS V+': 'comfort',
+  'TRANPATH mp7': 'comfort', 'TRANPATH ML': 'comfort',
+  'PROXES CF3': 'comfort', 'PROXES C1S': 'comfort',
+  'BluEarth-RV RV03': 'comfort', 'BluEarth-RV RV03CK': 'comfort',
+  'エナセーブ RV505': 'comfort', 'RV505': 'comfort',
+  'FINESSA HB01': 'comfort', 'HB01': 'comfort',
+  'LUFT RVⅡ': 'comfort',
+  'SEIBERLING SL': 'comfort', 'SL': 'comfort',
+  // 🏔 SUV/クロカン
+  'DUELER': 'suv', 'H/L 850': 'suv',
+  'A/T002': 'suv', 'M/T674': 'suv', 'H/P SPORT A/T 00/69 M/T 67': 'suv',
+  'ALENZA': 'suv', '001': 'suv', 'LX100': 'suv', 'LX200': 'suv',
+  'GRANDTREK PT5': 'suv', 'GRANDTREK AT5': 'suv',
+  'GRANDTREK MT2': 'suv', 'GRANDTREK TG4': 'suv',
+  'OPEN COUNTRY R/T': 'suv', 'OPEN COUNTRY A/T3': 'suv',
+  'OPEN COUNTRY M/T-R': 'suv', 'OPEN COUNTRY U/T': 'suv',
+  'PROXES AT3': 'suv', 'PROXES CL1 SUV': 'suv', 'PROXES T1 Sport SUV': 'suv',
+  'GEOLANDAR X-AT G016': 'suv', 'GEOLANDAR A/T G015': 'suv', 'GEOLANDAR M/T G003': 'suv',
+  'PILOT SPORT 4 SUV': 'suv', 'PRIMACY SUV+': 'suv', 'LATITUDE TOUR HP': 'suv',
+  'SCORPION': 'suv',
+  // ❄️ スタッドレス (冬)
+  'BLIZZAK': 'studless', 'VRX3': 'studless', 'DM-V3': 'studless', 'WZ-1': 'studless',
+  'WINTER MAXX 03': 'studless', 'WINTER MAXX SJ8+': 'studless', 'WINTER MAXX SV01': 'studless',
+  'OBSERVE GIZ2': 'studless', 'OBSERVE GIZ3': 'studless',
+  'OBSERVE GARIT GIZ': 'studless', 'OBSERVE GSi-6': 'studless',
+  'iceGUARD 7': 'studless', 'iceGUARD 7 iG70': 'studless', 'iceGUARD SUV G075': 'studless',
+  'X-ICE SNOW': 'studless', 'X-ICE SNOW SUV': 'studless',
+  'ICE ZERO ASIMMETRICO': 'studless',
+  // ☀️❄️ オールシーズン
+  'CELSIUS': 'allseason', 'CELSIUS AS2': 'allseason',
+  'BluEarth-4S AW21': 'allseason',
+  'ALL SEASON MAXX AS1': 'allseason',
+  'CROSSCLIMATE 2': 'allseason', 'CROSSCLIMATE 2 SUV': 'allseason',
+  'BluEarth-XT AE61': 'allseason',
+};
+
+// 車格クラス定義 (PCタブのチップ)
+const CLASS_DEF = {
+  luxury:    { icon: '✨', label: 'ラグジュアリー', desc: '高級セダン・静粛性最優先' },
+  sport:     { icon: '🏁', label: 'スポーツ',       desc: 'ハンドリング・走行性能重視' },
+  eco:       { icon: '🌱', label: 'エコ・低燃費',   desc: 'コンパクトカー・燃費重視' },
+  comfort:   { icon: '👨‍👩‍👧', label: 'コンフォート', desc: 'ミニバン・ファミリー' },
+  suv:       { icon: '🏔', label: 'SUV',           desc: 'SUV・クロカン・ピックアップ' },
+  studless:  { icon: '❄️', label: 'スタッドレス',   desc: '冬用・氷雪路面' },
+  allseason: { icon: '☀️❄️', label: 'オールシーズン', desc: '通年・軽い積雪OK' },
+};
+const CLASS_ORDER = ['luxury', 'sport', 'comfort', 'eco', 'suv', 'studless', 'allseason'];
+
+// パターン → クラスキー解決 (ブランド+パターン or パターンのみ)
+function patternToClass(pattern, brand) {
+  if (!pattern) return null;
+  const k1 = (brand ? brand + ' ' + pattern : pattern).trim();
+  if (PATTERN_CLASS[k1]) return PATTERN_CLASS[k1];
+  if (PATTERN_CLASS[pattern]) return PATTERN_CLASS[pattern];
+  // ブランド名そのものでも解決を試みる(REGNO/POTENZA等)
+  if (brand && PATTERN_CLASS[brand]) return PATTERN_CLASS[brand];
+  return null;
+}
+
+// ─────────── パターン別 おすすめポイント・客への薦め方 ───────────
+// 各メーカー公式の特徴と、現場での実用シーン(社員→客への提案台本)
+const PATTERN_RECOMMEND = {
+  // ▼ ラグジュアリー
+  'GRXⅢ': { point: '静粛性◎・偏摩耗抑制・ロングライフ。BSの最高峰コンフォート。', pitch: '「現行のレグノからの履き替えで、さらに静かに。30〜50代の高級セダンユーザー(クラウン/レクサスES/カムリ)に。」' },
+  'GRXⅢRV': { point: 'ミニバン・SUV専用レグノ。ふらつき軽減と静粛性両立。', pitch: '「アルファード・ヴェルファイア・ハリアーのお客様に。家族の会話が静かな車内ではっきり聞こえます。」' },
+  'VEURO VE304': { point: 'ダンロップ最上級コンフォート。静粛性とロングライフ。', pitch: '「DUNLOPブランド指定のお客様で、静かさ重視ならこちら。レグノGRXⅢと比較しやすいクラスです。」' },
+  'SP SPORT MAXX LUX': { point: 'プレミアムSUV/セダン向け。剛性とエレガンス両立。', pitch: '「輸入車・大径ホイール装着車のリプレイス用。BSのALENZAやMICHELIN PRIMACYと並ぶ位置付け。」' },
+  'ADVAN dB V553': { point: 'ヨコハマの最高峰コンフォート。耳障りな音の周波数を低減。', pitch: '「クラウン・レクサスIS/ES・スカイラインに。レグノと同等価格帯の代替提案。」' },
+  'ADVAN Sport V107': { point: '欧州プレミアムスポーツ。高速安定性◎', pitch: '「ベンツ・BMW・ポルシェ等の純正サイズに。輸入車オーナーの差別化提案。」' },
+  'PRIMACY 4+': { point: 'ミシュラン最新コンフォート。摩耗末期まで性能維持。', pitch: '「長く乗りたい派、ロングライフ重視のお客様に。BS派ではない方への提案カードに。」' },
+  // ▼ スポーツ
+  'S007A': { point: 'BSフラッグシップスポーツ。ドライ・ウェット・耐摩耗のバランス◎', pitch: '「34GT-R・スイフトスポーツ・GR系のお客様に。サーキット走行もこなせるストリート系。」' },
+  'RE71RZ': { point: 'ストリート最強グリップ系。ジムカーナ・走行会向け。', pitch: '「走り方に拘るお客様限定。摩耗早いことを必ず説明し、納得頂いてから。」' },
+  'Adrenalin RE005': { point: 'スポーツコンフォート。日常+ワインディング両立。', pitch: '「スポーティセダン(マツダ3/レヴォーグ)に。S007Aは予算オーバーの方に。」' },
+  'DIREZZA DZ102': { point: 'コスパ◎エントリースポーツ。', pitch: '「予算抑えめでスポーティに走りたい若いお客様に。ZⅢへのアップグレードもセット提案。」' },
+  'DIREZZA ZⅢ': { point: 'サーキット直結のドライグリップ。', pitch: '「走行会・峠走行メインのお客様に。普段使いには摩耗の早さに注意して提案。」' },
+  'SPORT MAXX 060+': { point: 'プレミアムスポーツ。ウェット制動とハンドリング両立。', pitch: '「DUNLOP指定のスポーツセダン・GTカー(GR86/BRZ)に。S007Aと比較検討カードに。」' },
+  'ADVAN AD09': { point: 'NEOVAより日常性◎、Flevaよりスポーティ。中間ポジション。', pitch: '「NEOVAは攻めすぎ・Flevaは物足りない、と感じる中級スポーツ派に。」' },
+  'PILOT SPORT 5': { point: 'ミシュラン最新スポーツ。ウェットが特に強い。', pitch: '「梅雨〜夏のドライブが多いお客様。雨の高速走行で安心感を訴求。」' },
+  // ▼ エコ・低燃費
+  'NH200/NH200C': { point: '転がり抵抗最小クラス。プリウス・アクアの純正サイズ豊富。', pitch: '「燃費にこだわるお客様に。年間1〜2万円の燃料代節約と試算で提案。」' },
+  'NH200': { point: '転がり抵抗最小クラス。プリウス・アクアの純正サイズ豊富。', pitch: '「燃費にこだわるお客様に。年間1〜2万円の燃料代節約と試算で提案。」' },
+  'NEWNO': { point: 'BSの新スタンダード。ECOPIA EX20の後継的位置付け。', pitch: '「価格帯抑えつつBSに乗りたいお客様に。軽自動車・コンパクトカーの定番。」' },
+  'NANOENERGY 3 PLUS': { point: 'TOYOコスパエコ。NEWNOより価格優位。', pitch: '「軽・コンパクトのリピーターに。価格重視で提案。」' },
+  'EC204': { point: 'DUNLOPロングセラーエコ。タクシー・社用車に多採用。', pitch: '「社用車・タクシー・営業車のオーナーに。耐摩耗とコスパ両立。」' },
+  'EC205': { point: 'EC204の後継。低燃費とウェット性能向上。', pitch: '「EC204リピーターのアップグレード提案。」' },
+  'BluEarth-GT AE51': { point: 'YOKOHAMAのスポーティエコ。ウェット◎', pitch: '「セダン・ハッチバックに。ECOPIAやEC204より走り重視のお客様に。」' },
+  // ▼ コンフォート/ファミリー
+  'PXRVⅡ': { point: 'BS Playzの偏摩耗抑制技術。ミニバン専用設計。', pitch: '「ノア・ヴォクシー・セレナのファミリー層に。タイヤの片減りで悩んだ方へ。」' },
+  'LE MANS V+': { point: 'DUNLOPの静粛性ロングライフ。', pitch: '「ミニバン・セダンのお客様に。BSのレグノは予算オーバーの方への代替案。」' },
+  'TRANPATH mp7': { point: 'TOYOのミニバン専用。ふらつき軽減と耐偏摩耗。', pitch: '「ステップワゴン・セレナ・アルファードのお客様に。Playzとほぼ同位置。」' },
+  'BluEarth-RV RV03': { point: 'YOKOHAMAミニバン専用エコ。', pitch: '「PXRVⅡ・mp7と並ぶYOKOHAMA陣の選択肢。」' },
+  'エナセーブ RV505': { point: 'DUNLOPミニバン専用エコ。耐摩耗◎', pitch: '「ロングライフ重視のミニバンユーザーに。」' },
+  'FINESSA HB01': { point: 'BSのコスト優先モデル。', pitch: '「価格重視のお客様や、リース車の交換に。」' },
+  'SEIBERLING SL': { point: 'BSグループの低価格ブランド。', pitch: '「軽自動車・コンパクトの予算最優先のお客様に。」' },
+  // ▼ SUV
+  'H/L 850': { point: 'BS DUELER の街乗りSUV定番。静粛性◎', pitch: '「ハリアー・CX-5・フォレスター等のオンロード派SUVに。」' },
+  '001': { point: 'ALENZA最新オンロードSUV。プレミアムSUV向け。', pitch: '「ランクル300・LX・X5等の高級SUVに。レグノ並みの静粛性。」' },
+  'LX100': { point: 'ALENZAのスタンダード。日本車SUVに最適化。', pitch: '「日本車SUVのリプレイス定番。コスパ重視のSUVオーナーに。」' },
+  'LX200': { point: 'LX100の後継。さらなる静粛性とロングライフ。', pitch: '「LX100リピーターへのアップグレード提案。」' },
+  'GRANDTREK PT5': { point: 'DUNLOP SUVのオンロード系。', pitch: '「ALENZA・GEOLANDARの代替案として。DUNLOP指定なら第一候補。」' },
+  'GRANDTREK AT5': { point: 'オン/オフ両用SUV。', pitch: '「アウトドア派のSUV・ピックアップオーナーに。」' },
+  'OPEN COUNTRY R/T': { point: 'TOYOのアグレッシブSUV。見た目◎', pitch: '「ジムニー・ハイラックス・ランクルカスタム派に。映える見た目重視。」' },
+  'OPEN COUNTRY A/T3': { point: 'オン重視のオールテレーン。', pitch: '「ジムニー・デリカD:5の街乗り+林道派に。」' },
+  'PROXES AT3': { point: 'TOYOプロクセスのSUV版。オンロード重視。', pitch: '「街乗りSUV(RAV4・CX-8等)に。OPEN COUNTRYは見た目派、これは性能派。」' },
+  'GEOLANDAR X-AT G016': { point: 'YOKOHAMAのアグレッシブAT。', pitch: '「OPEN COUNTRY R/Tと競合。YOKOHAMA派・地味めデザイン派に。」' },
+  // ▼ スタッドレス
+  'VRX3': { point: 'BS最高峰スタッドレス。氷上ブレーキ業界トップクラス。', pitch: '「凍結路を走る通勤の方、雪国出身の方に。家族を守る最上位提案。」' },
+  'DM-V3': { point: 'SUV専用スタッドレス。VRX3のSUV版。', pitch: '「ハリアー・CX-5・ランクル等の冬用に。」' },
+  'WZ-1': { point: 'BS スタッドレスの新スタンダード。VRX3より価格優位。', pitch: '「VRX3は予算オーバー、でもBSが良いお客様に。」' },
+  'WINTER MAXX 03': { point: 'DUNLOPの最新スタッドレス。氷上性能向上。', pitch: '「DUNLOP派、コスパ重視のお客様に。VRX3の対抗馬。」' },
+  'OBSERVE GIZ3': { point: 'TOYOの最新冬用。氷上+耐摩耗バランス◎', pitch: '「TOYO派、ロングライフ重視のお客様に。」' },
+  'iceGUARD 7': { point: 'YOKOHAMAの最新スタッドレス。摩耗末期まで効く。', pitch: '「ヨコハマ派、長く使いたいお客様に。」' },
+  'iceGUARD SUV G075': { point: 'YOKOHAMAのSUVスタッドレス。', pitch: '「DM-V3の対抗馬。YOKOHAMA派のSUVオーナーに。」' },
+  // ▼ オールシーズン
+  'CELSIUS': { point: 'TOYO初代オールシーズン。雪マーク付き。', pitch: '「年に数回の積雪、スタッドレス置き場ない都市部の方に。」' },
+  'CELSIUS AS2': { point: 'CELSIUSの後継。性能向上。', pitch: '「CELSIUSリピーターのアップグレード提案。」' },
+  'BluEarth-4S AW21': { point: 'YOKOHAMA初のオールシーズン。', pitch: '「都市部の軽い積雪ユーザーに。タイヤ交換の手間を省きたい方。」' },
+  'CROSSCLIMATE 2': { point: 'ミシュランの定番オールシーズン。', pitch: '「輸入車オーナー・性能重視で1セット運用したい方に。」' },
+};
+
+// パターン名→ おすすめ情報の解決
+function patternToRecommend(pattern, brand) {
+  if (!pattern) return null;
+  const k1 = (brand ? brand + ' ' + pattern : pattern).trim();
+  if (PATTERN_RECOMMEND[k1]) return PATTERN_RECOMMEND[k1];
+  if (PATTERN_RECOMMEND[pattern]) return PATTERN_RECOMMEND[pattern];
+  return null;
+}
 
 // メーカー別カタログ検索URLビルダー
 // 1. DIRECT_CATALOG_URL に登録されている場合は直リンク
@@ -2568,8 +2835,9 @@ function makerCatalogUrl(maker, pattern, brand) {
 function priceOpenCatalog(ev, maker, pattern, brand) {
   ev.stopPropagation();
   const url = makerCatalogUrl(maker, pattern, brand);
-  // Google検索URLは直接開く (metaが取れない)、公式サイトURLはプレビュー表示
-  if (url.includes('google.com/search')) {
+  // Google検索URLでも、自社おすすめがあるならプレビューモーダルを出す(検索リンク+自社情報)
+  const rec = patternToRecommend(pattern, brand);
+  if (url.includes('google.com/search') && !rec) {
     window.open(url, '_blank', 'noopener');
     return;
   }
@@ -2596,6 +2864,31 @@ function priceShowCatalogPreview(url, maker, pattern, brand) {
     <div id="catalog-preview-body" style="font-size:12px;color:var(--muted);padding:20px 0;text-align:center;">読み込み中...</div>
   `;
   modal.appendChild(box);
+  // 自社おすすめ情報を組み立て (常に表示)
+  const rec = patternToRecommend(pattern, brand);
+  const recHtml = rec ? `
+    <div style="background:linear-gradient(135deg,#fff8e1,#fff3c4);border-left:4px solid #f0a500;border-radius:8px;padding:12px 14px;margin:14px 0;text-align:left;">
+      <div style="font-size:11px;font-weight:800;color:#b97a00;letter-spacing:0.04em;margin-bottom:6px;">💡 オススメポイント (社内メモ)</div>
+      <div style="font-size:13px;color:#1f2937;line-height:1.6;margin-bottom:10px;">${rec.point}</div>
+      <div style="font-size:11px;font-weight:800;color:#b97a00;letter-spacing:0.04em;margin-bottom:6px;">🗣 お客様への薦め方</div>
+      <div style="font-size:12px;color:#374151;line-height:1.7;font-style:italic;">${rec.pitch}</div>
+    </div>` : '';
+  const isGoogleUrl = url.includes('google.com/search');
+  const openBtnLabel = isGoogleUrl ? 'Google で検索する →' : '公式ページを開く →';
+  // Google検索URLの場合はOGP取得しない (検索結果ページのmetaは無意味)
+  if (isGoogleUrl) {
+    const body = document.getElementById('catalog-preview-body');
+    if (body) {
+      body.innerHTML = `
+        <div style="text-align:left;font-size:12px;color:var(--muted);margin-bottom:8px;">
+          メーカー公式直リンク未登録のため、Google検索を経由します。
+        </div>
+        ${recHtml}
+        <button onclick="window.open('${url.replace(/'/g,"\\'")}','_blank','noopener');document.getElementById('catalog-preview-modal').remove();" style="padding:8px 18px;background:var(--accent);color:#fff;border:0;border-radius:6px;cursor:pointer;font-weight:700;">${openBtnLabel}</button>
+      `;
+    }
+    return;
+  }
   const proxy = 'https://notion-proxy.33322666666mm.workers.dev/catalog-meta?url=' + encodeURIComponent(url);
   fetch(proxy).then(r => r.json()).then(d => {
     const body = document.getElementById('catalog-preview-body');
@@ -2604,6 +2897,7 @@ function priceShowCatalogPreview(url, maker, pattern, brand) {
       body.innerHTML = `
         <div style="color:#dc2626;margin-bottom:12px;">⚠ ページ取得エラー: ${d.error}</div>
         <div style="font-size:11px;word-break:break-all;margin-bottom:12px;color:#6b7280;">${url}</div>
+        ${recHtml}
         <button onclick="window.open('${url.replace(/'/g,"\\'")}','_blank','noopener');document.getElementById('catalog-preview-modal').remove();" style="padding:8px 18px;background:var(--accent);color:#fff;border:0;border-radius:6px;cursor:pointer;font-weight:700;">新しいタブで開く</button>
         <div style="margin-top:10px;"><a href="https://www.google.com/search?q=${encodeURIComponent(maker + ' ' + (brand?brand+' ':'') + pattern + ' タイヤ')}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);">Google で検索 →</a></div>
       `;
@@ -2614,7 +2908,8 @@ function priceShowCatalogPreview(url, maker, pattern, brand) {
       ${d.title ? `<div style="font-size:16px;font-weight:700;color:#111;text-align:left;margin-bottom:6px;">${d.title}</div>` : ''}
       ${d.siteName ? `<div style="font-size:10px;color:var(--muted);text-align:left;margin-bottom:8px;">${d.siteName}</div>` : ''}
       ${d.description ? `<div style="font-size:12px;color:#444;text-align:left;line-height:1.6;margin-bottom:16px;">${d.description}</div>` : ''}
-      <button onclick="window.open('${url.replace(/'/g,"\\'")}','_blank','noopener');document.getElementById('catalog-preview-modal').remove();" style="padding:8px 18px;background:var(--accent);color:#fff;border:0;border-radius:6px;cursor:pointer;font-weight:700;">公式ページを開く →</button>
+      ${recHtml}
+      <button onclick="window.open('${url.replace(/'/g,"\\'")}','_blank','noopener');document.getElementById('catalog-preview-modal').remove();" style="padding:8px 18px;background:var(--accent);color:#fff;border:0;border-radius:6px;cursor:pointer;font-weight:700;">${openBtnLabel}</button>
     `;
   }).catch(e => {
     const body = document.getElementById('catalog-preview-body');

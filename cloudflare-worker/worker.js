@@ -878,6 +878,23 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       }
     }
 
+    // 顧客情報DB に新規エンドユーザー作成
+    if (url.pathname === '/d1/create-enduser' && request.method === 'POST' && env.DB) {
+      try {
+        const { name } = await request.json();
+        if (!name) return new Response(JSON.stringify({ error: 'name required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        // 既存チェック
+        const exists = await env.DB.prepare(`SELECT id FROM 顧客情報DB WHERE 顧客名 = ?`).bind(name).all();
+        if (exists.results?.length) return new Response(JSON.stringify({ success: true, id: exists.results[0].id, existed: true }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+        const id = crypto.randomUUID();
+        const now = new Date().toISOString();
+        await env.DB.prepare(`INSERT INTO 顧客情報DB (id, 顧客名, created_time, last_edited_time) VALUES (?, ?, ?, ?)`).bind(id, name, now, now).run();
+        return new Response(JSON.stringify({ success: true, id, existed: false }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
     // 得意先名/顧客名のリネーム (得意先マスタ・顧客情報DB 両対応)
     if (url.pathname === '/d1/rename-customer' && request.method === 'POST' && env.DB) {
       try {

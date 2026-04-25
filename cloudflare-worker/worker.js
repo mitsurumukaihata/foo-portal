@@ -878,14 +878,14 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       }
     }
 
-    // 得意先名のリネーム
+    // 得意先名/顧客名のリネーム (得意先マスタ・顧客情報DB 両対応)
     if (url.pathname === '/d1/rename-customer' && request.method === 'POST' && env.DB) {
       try {
         const { id, new_name } = await request.json();
         if (!id || !new_name) return new Response(JSON.stringify({ error: 'id & new_name required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
-        const stmt = env.DB.prepare(`UPDATE 得意先マスタ SET 得意先名 = ? WHERE id = ?`).bind(new_name, id);
-        const res = await stmt.run();
-        return new Response(JSON.stringify({ success: true, changes: res.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+        const r1 = await env.DB.prepare(`UPDATE 得意先マスタ SET 得意先名 = ? WHERE id = ?`).bind(new_name, id).run();
+        const r2 = await env.DB.prepare(`UPDATE 顧客情報DB SET 顧客名 = ? WHERE id = ?`).bind(new_name, id).run();
+        return new Response(JSON.stringify({ success: true, customers: r1.meta?.changes || 0, endusers: r2.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
       } catch(e) {
         return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
       }

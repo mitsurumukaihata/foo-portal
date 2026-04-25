@@ -225,11 +225,19 @@ async function loadList() {
   }
   // 同じ伝票で同じ車番の他の明細サイズを検索する用に伝票IDをまとめる
   listEl.innerHTML = `
-    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">${rows.length}件 (最大300件)</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <span>${rows.length}件 (最大300件)</span>
+      <span>
+        <button class="action-btn" onclick="toggleAllSizeChecks(true)">☑ 全選択</button>
+        <button class="action-btn" onclick="toggleAllSizeChecks(false)">☐ 全解除</button>
+        <button class="action-btn primary" onclick="bulkClearSizeSelected()" style="margin-left:8px;">✕ 選択行のサイズを一括クリア</button>
+      </span>
+    </div>
     <div style="overflow-x:auto;">
     <table class="data">
       <thead>
         <tr>
+          <th style="width:34px;"><input type="checkbox" id="size-master-check" onchange="toggleAllSizeChecks(this.checked)" checked></th>
           <th>売上日</th>
           <th>車番</th>
           <th>車種</th>
@@ -237,28 +245,52 @@ async function loadList() {
           <th>サイズ</th>
           <th>銘柄</th>
           <th>不整合</th>
-          <th>操作</th>
         </tr>
       </thead>
       <tbody>
       ${rows.map(r => `
-        <tr class="clickable" onclick="window.open('vehicle-master.html?plate=' + encodeURIComponent('${esc(r.車番)}'),'_blank')">
+        <tr>
+          <td><input type="checkbox" class="size-row-check" value="${r.detail_id}" checked></td>
           <td>${esc(r.売上日)}</td>
-          <td><b style="font-family:'DM Mono',monospace;">${esc(r.車番)}</b></td>
+          <td><a href="vehicle-master.html?plate=${encodeURIComponent(r.車番)}" target="_blank" rel="noopener" style="font-family:'DM Mono',monospace;font-weight:700;color:var(--accent);text-decoration:none;">${esc(r.車番)}</a></td>
           <td>${esc(r.車種)}</td>
           <td>${esc(r.品目)}</td>
           <td style="font-family:'DM Mono',monospace;">${esc(r.タイヤサイズ)} ${(r.サイズカテゴリ || '').split(',').map(c => CAT_BADGE[c.trim()] || '').join('')}</td>
           <td style="font-family:'DM Mono',monospace;">${esc(r.タイヤ銘柄 || '-')}</td>
           <td><span class="badge danger">${esc(r.車種)}には<br>${esc(r.サイズカテゴリ)}専用サイズ</span></td>
-          <td onclick="event.stopPropagation()">
-            <button class="action-btn" onclick="clearSize('${r.detail_id}')">✕ サイズクリア</button>
-          </td>
         </tr>
       `).join('')}
       </tbody>
     </table>
     </div>
   `;
+}
+
+// 全選択/全解除
+function toggleAllSizeChecks(on) {
+  document.querySelectorAll('.size-row-check').forEach(cb => cb.checked = on);
+  const m = document.getElementById('size-master-check'); if (m) m.checked = on;
+}
+
+// 選択行を一括クリア
+async function bulkClearSizeSelected() {
+  const ids = Array.from(document.querySelectorAll('.size-row-check:checked')).map(cb => cb.value);
+  if (!ids.length) { alert('選択された行がありません'); return; }
+  if (!confirm(`${ids.length}件の明細のタイヤサイズを一括 NULL クリアします。\nよろしいですか？`)) return;
+  try {
+    const r = await fetch(D1_WORKER + '/d1/clear-detail-size', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ detail_ids: ids })
+    });
+    const j = await r.json();
+    if (j.success) {
+      alert(`✅ クリア完了 (${j.changes}件)`);
+      loadList();
+      loadSummary();
+    } else {
+      alert('❌ ' + (j.error || 'エラー'));
+    }
+  } catch(e) { alert('❌ 通信エラー: ' + e.message); }
 }
 
 async function clearSize(detailId) {

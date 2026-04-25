@@ -858,6 +858,14 @@ body::-webkit-scrollbar { display:none; }
       </div>
       <div class="card">
         <div class="card-title">📊 月別ピボット（得意先×月）</div>
+        <div id="bc-pivot-sort-bar" style="display:none;margin-bottom:8px;flex-wrap:wrap;gap:4px;">
+          <button class="sub-chip active" data-sort="total"   onclick="setBcSort('total')">🏆 総額ランキング</button>
+          <button class="sub-chip"        data-sort="latest"  onclick="setBcSort('latest')">📅 最新月売上</button>
+          <button class="sub-chip"        data-sort="growth"  onclick="setBcSort('growth')">📈 直近伸び率</button>
+          <button class="sub-chip"        data-sort="freq"    onclick="setBcSort('freq')">🔁 取引頻度</button>
+          <button class="sub-chip"        data-sort="avg"     onclick="setBcSort('avg')">💰 月平均</button>
+          <button class="sub-chip"        data-sort="name"    onclick="setBcSort('name')">🔤 名前順</button>
+        </div>
         <div id="bc-pivot"><div class="empty">集計実行後に表示</div></div>
       </div>
     </div>
@@ -2610,8 +2618,64 @@ function renderBcRanking(sorted, totalAmt) {
     `;
   }).join('') + (sorted.length > 30 ? `<div style="margin-top:10px;color:var(--muted);font-size:11px;text-align:center;">(上位30社のみ表示 / 全 ${sorted.length} 社)</div>` : '');
 }
+// ピボット並び替えモード
+let _bcSortMode = 'total';
+function setBcSort(mode) {
+  _bcSortMode = mode;
+  document.querySelectorAll('#bc-pivot-sort-bar .sub-chip').forEach(b => {
+    b.classList.toggle('active', b.dataset.sort === mode);
+  });
+  if (_bcData?.sorted) renderBcPivot(_bcData.sorted, _bcData.ymList);
+}
+// 並び替え用比較関数 (元配列を非破壊で並び替え)
+function applyBcSort(rows, ymList) {
+  const arr = [...rows];
+  const latestYm = ymList[ymList.length - 1];
+  const prevYm   = ymList.length >= 2 ? ymList[ymList.length - 2] : null;
+  switch (_bcSortMode) {
+    case 'latest':
+      arr.sort((a, b) => (b[1].perYm.get(latestYm) || 0) - (a[1].perYm.get(latestYm) || 0));
+      break;
+    case 'growth': {
+      // 直近月 / その前月 - 1。前月0は0扱い、両方0は最下位
+      arr.sort((a, b) => {
+        const al = a[1].perYm.get(latestYm) || 0, ap = prevYm ? (a[1].perYm.get(prevYm) || 0) : 0;
+        const bl = b[1].perYm.get(latestYm) || 0, bp = prevYm ? (b[1].perYm.get(prevYm) || 0) : 0;
+        const ag = ap > 0 ? (al - ap) / ap : (al > 0 ? Infinity : -Infinity);
+        const bg = bp > 0 ? (bl - bp) / bp : (bl > 0 ? Infinity : -Infinity);
+        return bg - ag;
+      });
+      break;
+    }
+    case 'freq':
+      // 売上が立った月数の多い順、同数なら総額
+      arr.sort((a, b) => {
+        const am = a[1].perYm.size, bm = b[1].perYm.size;
+        if (bm !== am) return bm - am;
+        return b[1].total - a[1].total;
+      });
+      break;
+    case 'avg':
+      // 取引月数で割った月平均
+      arr.sort((a, b) => (b[1].total / Math.max(1, b[1].perYm.size)) - (a[1].total / Math.max(1, a[1].perYm.size)));
+      break;
+    case 'name':
+      arr.sort((a, b) => a[0].localeCompare(b[0], 'ja'));
+      break;
+    case 'total':
+    default:
+      arr.sort((a, b) => b[1].total - a[1].total);
+  }
+  return arr;
+}
+
 function renderBcPivot(sorted, ymList) {
   if (!sorted.length) { document.getElementById('bc-pivot').innerHTML = '<div class="empty">データなし</div>'; return; }
+  // 並び替え適用
+  sorted = applyBcSort(sorted, ymList);
+  // ソートバーを表示
+  const sortBar = document.getElementById('bc-pivot-sort-bar');
+  if (sortBar) sortBar.style.display = 'flex';
   // ヒートマップ用：最大値
   let maxVal = 0;
   for (const [, v] of sorted) for (const amt of v.perYm.values()) if (amt > maxVal) maxVal = amt;
@@ -2626,20 +2690,52 @@ function renderBcPivot(sorted, ymList) {
   const top = sorted.slice(0, 50);
   const headYm = ymList.map(ym => `<th class="right">${ym.slice(2).replace('-','/')}</th>`).join('');
   const totals = ymList.map(() => 0);
+  const latestYm = ymList[ymList.length - 1];
+  const prevYm   = ymList.length >= 2 ? ymList[ymList.length - 2] : null;
+  // 並び替え基準のメトリック列ヘッダ
+  const METRIC_LABELS = {
+    total:  null, // 合計列があるので不要
+    latest: '最新月',
+    growth: '伸び率',
+    freq:   '取引月',
+    avg:    '月平均',
+    name:   null,
+  };
+  const metricLabel = METRIC_LABELS[_bcSortMode];
+  const metricHeader = metricLabel ? `<th class="right" style="background:rgba(240,165,0,0.12);">${metricLabel}</th>` : '';
+  const calcMetric = (v) => {
+    switch (_bcSortMode) {
+      case 'latest': return fmtShort(v.perYm.get(latestYm) || 0);
+      case 'growth': {
+        const al = v.perYm.get(latestYm) || 0;
+        const ap = prevYm ? (v.perYm.get(prevYm) || 0) : 0;
+        if (ap === 0) return al > 0 ? '<span style="color:#10b981;">NEW</span>' : '—';
+        const g = ((al - ap) / ap) * 100;
+        const col = g >= 0 ? '#10b981' : '#ef4444';
+        const arrow = g >= 0 ? '▲' : '▼';
+        return `<span style="color:${col};font-weight:700;">${arrow}${Math.abs(g).toFixed(0)}%</span>`;
+      }
+      case 'freq': return v.perYm.size + '/' + ymList.length + 'ヶ月';
+      case 'avg':  return fmtShort(v.total / Math.max(1, v.perYm.size));
+      default: return '';
+    }
+  };
   const rows = top.map(([name, v]) => {
     const cells = ymList.map((ym, i) => {
       const amt = v.perYm.get(ym) || 0;
       totals[i] += amt;
       return `<td class="right ${heatCls(amt)}">${amt ? fmtShort(amt) : ''}</td>`;
     }).join('');
-    return `<tr><td class="name" title="${escHtml(name)}">${escHtml(name.slice(0, 24))}</td>${cells}<td class="right total-col">${fmtShort(v.total)}</td></tr>`;
+    const metricCell = metricLabel ? `<td class="right" style="background:rgba(240,165,0,0.06);font-weight:700;">${calcMetric(v)}</td>` : '';
+    return `<tr><td class="name" title="${escHtml(name)}">${escHtml(name.slice(0, 24))}</td>${cells}<td class="right total-col">${fmtShort(v.total)}</td>${metricCell}</tr>`;
   }).join('');
   const totalAll = totals.reduce((a, b) => a + b, 0);
-  const footer = `<tr><td class="name">合計</td>${totals.map(t => `<td class="right">${fmtShort(t)}</td>`).join('')}<td class="right total-col">${fmtShort(totalAll)}</td></tr>`;
+  const footerMetric = metricLabel ? '<td></td>' : '';
+  const footer = `<tr><td class="name">合計</td>${totals.map(t => `<td class="right">${fmtShort(t)}</td>`).join('')}<td class="right total-col">${fmtShort(totalAll)}</td>${footerMetric}</tr>`;
   document.getElementById('bc-pivot').innerHTML = `
     <div class="pivot-wrap">
       <table class="pivot-table">
-        <thead><tr><th class="name-col">得意先</th>${headYm}<th class="right">合計</th></tr></thead>
+        <thead><tr><th class="name-col">得意先</th>${headYm}<th class="right">合計</th>${metricHeader}</tr></thead>
         <tbody>${rows}</tbody>
         <tfoot>${footer}</tfoot>
       </table>

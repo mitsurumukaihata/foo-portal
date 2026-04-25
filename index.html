@@ -1816,20 +1816,20 @@ const APP_DEFS = [
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/><line x1="12" y1="17" x2="12" y2="21"/><polyline points="7 8 12 13 17 8"/></svg>` },
   { key: '📸 広報協力', id: 'sns_upload', label: 'SNS用素材アップロード', sub: '撮影素材の共有 · Google Drive連携', section: 'EC/マーケ', url: 'https://mitsurumukaihata.github.io/foo-portal/sns-upload.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>` },
-  // ── コミュニティ ──
-  { key: '📣 会議内容',          id: 'meeting', label: '会議内容',           sub: '全体会議 · 個別会議 · 振り返り', section: 'コミュニティ', url: 'https://mitsurumukaihata.github.io/foo-portal/meeting-list.html',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>` },
+  // ── コミュニティ ── (並び順: 部長/リーダー/マーケEC/会議内容/アクション/会議録音/用語集)
   { key: '👔 部長コミュニティ',   id: 'manager', label: '部長コミュニティ',   sub: 'コミュ · 会議 · タスク · 面談', section: 'コミュニティ', url: 'https://mitsurumukaihata.github.io/foo-portal/manager.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>` },
   { key: '🏅 リーダーコミュニティ', id: 'leader', label: 'リーダーコミュニティ', sub: 'コミュ · タスク · 思い', section: 'コミュニティ', url: 'https://mitsurumukaihata.github.io/foo-portal/leader.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>` },
-  { key: '📢 マーケ・EC', id: 'marketing', label: 'マーケ・EC', sub: 'コミュ · オークション · SNS', section: 'コミュニティ', url: 'https://mitsurumukaihata.github.io/foo-portal/marketing.html',
+  { key: '📢 マーケ/ECコミュニティ', id: 'marketing', label: 'マーケ/ECコミュニティ', sub: 'コミュ · オークション · SNS', section: 'コミュニティ', url: 'https://mitsurumukaihata.github.io/foo-portal/marketing.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="12" y1="7" x2="12" y2="13"/></svg>` },
+  { key: '📣 会議内容',          id: 'meeting', label: '会議内容',           sub: '全体会議 · 個別会議 · 振り返り', section: 'コミュニティ', url: 'https://mitsurumukaihata.github.io/foo-portal/meeting-list.html',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>` },
+  { key: '✅ アクション管理', id: 'action_manager', label: 'アクション管理', sub: '会議のアクション · PDCA · 振り返り', section: 'コミュニティ', url: 'https://mitsurumukaihata.github.io/foo-portal/action-manager.html',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>` },
   { key: '🎙️ 会議録音', id: 'meeting_recorder', label: '会議録音', sub: '録音 · 文字起こし · 要約', section: 'コミュニティ', url: 'https://mitsurumukaihata.github.io/foo-portal/meeting-recorder.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>` },
-  { key: '🎙️ 会議録音', id: 'action_manager', label: 'アクション管理', sub: '会議のアクション · PDCA · 振り返り', section: 'コミュニティ', url: 'https://mitsurumukaihata.github.io/foo-portal/action-manager.html',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>` },
-  { key: '📖 用語集', id: 'dictionary', label: '📖 用語集', sub: 'AI学習 · 要確認用語の確認', section: 'コミュニティ', url: 'https://mitsurumukaihata.github.io/foo-portal/dictionary.html',
+  { key: '用語集', id: 'dictionary', label: '用語集', sub: 'AI学習 · 要確認用語の確認', section: 'コミュニティ', url: 'https://mitsurumukaihata.github.io/foo-portal/dictionary.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>` },
   // ── ニュース ──
   { key: '📰 業界ニュース', id: 'news', label: '業界ニュース', sub: 'タイヤ · 運送 · ディーラー · Indeed', section: 'ニュース', url: 'https://mitsurumukaihata.github.io/foo-portal/news.html',
@@ -2207,7 +2207,7 @@ const BADGE_TARGETS = {
   }
 };
 
-const APP_LABELS = { manager: '部長コミュニティ', leader: 'リーダーコミュニティ', marketing: 'マーケ・EC', news: '業界ニュース' };
+const APP_LABELS = { manager: '部長コミュニティ', leader: 'リーダーコミュニティ', marketing: 'マーケ/ECコミュニティ', news: '業界ニュース' };
 let _firstBadgeApp = null;
 
 async function checkBadges(user) {
@@ -2271,17 +2271,34 @@ async function checkBadges(user) {
           })
         });
         const data = await res.json();
+        // 投稿者別カウント (○○さんから N件 表示用)
+        const posterCounts = {};
         if (data.results) {
           for (const p of data.results) {
             const poster = p.properties?.['投稿者']?.select?.name || p.created_by?.name || '';
-            if (poster !== userName) count++;
+            if (poster && poster !== userName) {
+              count++;
+              posterCounts[poster] = (posterCounts[poster] || 0) + 1;
+            }
           }
         }
+        // バナー詳細用: 投稿者ごとに集約 (例: "矢島明和さんから2件")
+        cfg._posterCounts = posterCounts;
       }
       if (count > 0) {
         el.textContent = count > 9 ? '9+' : count;
         el.style.display = 'flex';
-        bannerParts.push(APP_LABELS[appId] + ' ' + count + '件');
+        // バナー: 投稿者別がある場合は「○○さんから N件」、なければアプリ名のみ
+        const pc = cfg._posterCounts || {};
+        const appLabel = APP_LABELS[appId];
+        const posterEntries = Object.entries(pc).sort((a,b) => b[1]-a[1]);
+        if (posterEntries.length > 0) {
+          posterEntries.forEach(([name, n]) => {
+            bannerParts.push(`${name}さんから${n}件 (${appLabel})`);
+          });
+        } else {
+          bannerParts.push(`${appLabel} ${count}件`);
+        }
         totalAll += count;
         if (!_firstBadgeApp) _firstBadgeApp = appId;
       }

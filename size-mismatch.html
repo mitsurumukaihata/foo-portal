@@ -74,11 +74,12 @@
     </div>
   </div>
 
-  <!-- 主タブ: サイズ不整合 vs 車番不一致 -->
+  <!-- 主タブ -->
   <div class="card" style="padding-bottom:8px;">
     <div class="filter-tabs" id="main-tabs">
       <div class="filter-tab active" data-main="size">📐 サイズ不整合</div>
-      <div class="filter-tab" data-main="plate">🚗 車番不一致 (弥生備考にヒント)</div>
+      <div class="filter-tab" data-main="plate">🚗 車番不一致 (弥生備考)</div>
+      <div class="filter-tab" data-main="dup">🔁 重複車両</div>
     </div>
   </div>
 
@@ -106,6 +107,16 @@
       売上明細の車番と弥生備考の文字列が違うケース。弥生入力時に複数車両を1伝票で処理した可能性。
     </div>
     <div id="plate-result" style="margin-top:12px;"><div class="loading"><div class="spinner"></div><br>読込中...</div></div>
+  </div>
+
+  <!-- 重複車両 -->
+  <div class="card" id="dup-section" style="display:none;">
+    <h2>🔁 重複車両ペア (顧客別)</h2>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">
+      同じ顧客内で「短い車番が長い車番のサフィックスと一致」する重複候補を検出。
+      正しい方にチェック → 統合実行で売上明細を移管し、もう一方を削除します。
+    </div>
+    <div id="dup-result" style="margin-top:12px;"><div class="loading"><div class="spinner"></div><br>読込中...</div></div>
   </div>
 
   <!-- 一括処理 -->
@@ -398,6 +409,97 @@ async function reassignPlate(detailId, newPlate) {
   }
 }
 
+// ── 重複車両ペア ──
+async function loadDuplicates() {
+  const el = document.getElementById('dup-result');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div><br>読込中...</div>';
+  try {
+    const r = await fetch(D1_WORKER + '/d1/duplicate-vehicles', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const j = await r.json();
+    const pairs = j.pairs || [];
+    if (!pairs.length) { el.innerHTML = '<div class="empty">✅ 重複候補なし</div>'; return; }
+    // 顧客別グルーピング
+    const groups = {};
+    pairs.forEach(p => {
+      const k = p.顧客名 || '(顧客未設定)';
+      if (!groups[k]) groups[k] = [];
+      groups[k].push(p);
+    });
+    let html = `<div style="font-size:11px;color:var(--muted);margin-bottom:8px;">${pairs.length}ペア / ${Object.keys(groups).length}顧客</div>`;
+    for (const [cust, list] of Object.entries(groups).sort((a,b)=>b[1].length-a[1].length)) {
+      html += `<details open style="margin-bottom:14px;border:1px solid var(--border);border-radius:8px;background:var(--surface);">
+        <summary style="padding:10px 14px;font-weight:700;cursor:pointer;background:var(--surface2);border-radius:8px 8px 0 0;">
+          👤 ${esc(cust)} <span style="font-weight:400;color:var(--muted);font-size:11px;">(${list.length}ペア)</span>
+        </summary>
+        <div style="padding:10px;">
+        <table class="data" style="margin-bottom:8px;">
+          <thead><tr>
+            <th style="width:30px;">残</th>
+            <th>車番</th>
+            <th class="num">明細</th>
+            <th>最終取引</th>
+            <th>サイズ</th>
+            <th>車種</th>
+            <th>操作</th>
+          </tr></thead>
+          <tbody>
+        ${list.map((p, idx) => {
+          const grpId = 'dup-' + p.short_id + '-' + p.long_id;
+          return `
+          <tr style="border-top:2px solid var(--border);">
+            <td><input type="radio" name="${grpId}" value="long" checked id="${grpId}-l"></td>
+            <td><label for="${grpId}-l" style="cursor:pointer;"><b style="font-family:'DM Mono',monospace;">${esc(p.long_plate)}</b> <span style="color:var(--muted);font-size:10px;">(完全)</span></label></td>
+            <td class="num">${p.long_sales || 0}</td>
+            <td>${esc(p.long_last || '-')}</td>
+            <td style="font-family:'DM Mono',monospace;">${esc(p.long_size || '-')}</td>
+            <td>${esc(p.long_type || '-')}</td>
+            <td rowspan="2"><button class="action-btn primary" onclick="mergeDup('${grpId}','${p.short_id}','${p.long_id}','${esc(p.short_plate).replace(/'/g,"\\'")}','${esc(p.long_plate).replace(/'/g,"\\'")}')">統合実行</button></td>
+          </tr>
+          <tr>
+            <td><input type="radio" name="${grpId}" value="short" id="${grpId}-s"></td>
+            <td><label for="${grpId}-s" style="cursor:pointer;"><span style="font-family:'DM Mono',monospace;color:var(--accent);">${esc(p.short_plate)}</span> <span style="color:var(--muted);font-size:10px;">(短縮)</span></label></td>
+            <td class="num">${p.short_sales || 0}</td>
+            <td>${esc(p.short_last || '-')}</td>
+            <td style="font-family:'DM Mono',monospace;">${esc(p.short_size || '-')}</td>
+            <td>${esc(p.short_type || '-')}</td>
+          </tr>
+        `}).join('')}
+          </tbody>
+        </table>
+        </div>
+      </details>`;
+    }
+    el.innerHTML = html;
+  } catch (e) {
+    el.innerHTML = '<div class="empty">エラー: ' + e.message + '</div>';
+  }
+}
+
+async function mergeDup(grpId, shortId, longId, shortPlate, longPlate) {
+  const sel = document.querySelector(`input[name="${grpId}"]:checked`);
+  const keep = sel?.value === 'short' ? shortId : longId;
+  const del = sel?.value === 'short' ? longId : shortId;
+  const keepP = sel?.value === 'short' ? shortPlate : longPlate;
+  const delP = sel?.value === 'short' ? longPlate : shortPlate;
+  if (!confirm(`「${delP}」を削除し、その売上明細を「${keepP}」に統合します。\nよろしいですか？`)) return;
+  try {
+    const r = await fetch(D1_WORKER + '/d1/merge-duplicate-vehicle', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keep_id: keep, delete_id: del })
+    });
+    const j = await r.json();
+    if (j.success) {
+      alert(`✅ 統合完了\n  売上明細 ${j.moved}件を移管\n  車両マスタ ${j.deleted}件を削除`);
+      loadDuplicates();
+    } else {
+      alert('❌ ' + (j.error || 'エラー'));
+    }
+  } catch(e) { alert('❌ 通信エラー: ' + e.message); }
+}
+
 // 主タブ切替
 document.querySelectorAll('#main-tabs .filter-tab').forEach(t => {
   t.addEventListener('click', () => {
@@ -406,7 +508,9 @@ document.querySelectorAll('#main-tabs .filter-tab').forEach(t => {
     const m = t.dataset.main;
     document.getElementById('size-section').style.display = m === 'size' ? '' : 'none';
     document.getElementById('plate-section').style.display = m === 'plate' ? '' : 'none';
+    document.getElementById('dup-section').style.display = m === 'dup' ? '' : 'none';
     if (m === 'plate') loadPlateMismatch();
+    if (m === 'dup') loadDuplicates();
   });
 });
 

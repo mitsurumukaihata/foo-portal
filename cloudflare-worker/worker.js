@@ -805,6 +805,58 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       }
     }
 
+    // 重複車両ペアの一覧取得
+    if (url.pathname === '/d1/duplicate-vehicles' && request.method === 'POST' && env.DB) {
+      try {
+        const r = await env.DB.prepare(`
+          WITH v AS (
+            SELECT id, 車番, 顧客ID, 前輪サイズ, 車種, メモ,
+              REPLACE(REPLACE(REPLACE(REPLACE(車番,'-',''),' ',''),'　',''),'・','') AS norm
+            FROM 車両マスタ WHERE 車番 NOT LIKE '%(旧%' AND 顧客ID IS NOT NULL
+          )
+          SELECT
+            v1.id AS short_id, v1.車番 AS short_plate, v1.前輪サイズ AS short_size, v1.車種 AS short_type,
+            v2.id AS long_id, v2.車番 AS long_plate, v2.前輪サイズ AS long_size, v2.車種 AS long_type,
+            COALESCE(e.得意先名, c.顧客名) AS 顧客名,
+            (SELECT COUNT(*) FROM 売上明細 WHERE 車番 = v1.車番) AS short_sales,
+            (SELECT COUNT(*) FROM 売上明細 WHERE 車番 = v2.車番) AS long_sales,
+            (SELECT MAX(s.売上日) FROM 売上明細 d JOIN 売上伝票 s ON d.売上伝票ID=s.id WHERE d.車番 = v1.車番) AS short_last,
+            (SELECT MAX(s.売上日) FROM 売上明細 d JOIN 売上伝票 s ON d.売上伝票ID=s.id WHERE d.車番 = v2.車番) AS long_last
+          FROM v v1
+          JOIN v v2 ON v1.顧客ID = v2.顧客ID AND v1.id != v2.id
+            AND length(v1.norm) < length(v2.norm)
+            AND v2.norm LIKE '%' || v1.norm
+          LEFT JOIN 得意先マスタ e ON v1.顧客ID = e.id
+          LEFT JOIN 顧客情報DB c ON v1.顧客ID = c.id
+          ORDER BY 顧客名, v2.車番
+        `).all();
+        return new Response(JSON.stringify({ success: true, pairs: r.results }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
+    // 重複車両を統合: keep_id の車番に売上明細をマージし、delete_id を削除
+    if (url.pathname === '/d1/merge-duplicate-vehicle' && request.method === 'POST' && env.DB) {
+      try {
+        const { keep_id, delete_id } = await request.json();
+        if (!keep_id || !delete_id) return new Response(JSON.stringify({ error: 'keep_id & delete_id required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        // keep_id の車番取得
+        const k = await env.DB.prepare(`SELECT 車番 FROM 車両マスタ WHERE id = ?`).bind(keep_id).all();
+        const d = await env.DB.prepare(`SELECT 車番 FROM 車両マスタ WHERE id = ?`).bind(delete_id).all();
+        if (!k.results.length || !d.results.length) return new Response(JSON.stringify({ error: 'vehicle not found' }), { status: 404, headers: { ...cors, "Content-Type": "application/json" } });
+        const keepPlate = k.results[0].車番;
+        const delPlate = d.results[0].車番;
+        // 売上明細の車番を更新
+        const moved = await env.DB.prepare(`UPDATE 売上明細 SET 車番 = ? WHERE 車番 = ?`).bind(keepPlate, delPlate).run();
+        // 削除
+        const deleted = await env.DB.prepare(`DELETE FROM 車両マスタ WHERE id = ?`).bind(delete_id).run();
+        return new Response(JSON.stringify({ success: true, moved: moved.meta?.changes || 0, deleted: deleted.meta?.changes || 0, keepPlate, delPlate }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
     // PC専用サイズ車両の車種を「乗用車」に統一
     if (url.pathname === '/d1/normalize-pc-vehicle-type' && request.method === 'POST' && env.DB) {
       try {

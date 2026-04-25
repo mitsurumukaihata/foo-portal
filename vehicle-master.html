@@ -569,6 +569,7 @@ async function fetchVehicles(filterTitle) {
     furigana: r.ふりがな || '',
     type: r.車種 || '',
     modelName: r.仕様 || '',
+    mgmtNo: r.管理番号 || '',
     frontSize: r.前輪サイズ || '',
     rearSize: r.後輪サイズ || '',
     frontPattern: r.前輪パターン || '',
@@ -837,7 +838,10 @@ function renderCard(v, container) {
   card.innerHTML = `
     <div class="v-card-main">
       <div class="v-card-top">
-        <div class="v-plate">${v.plate}</div>
+        <div>
+          <div class="v-plate">${v.plate}</div>
+          ${v.mgmtNo && !/^管理#/.test(v.plate) && String(v.mgmtNo) !== String(v.plate) ? `<div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px;">管理: ${v.mgmtNo}</div>` : ''}
+        </div>
         ${v.type ? `<div class="v-type-badge">${emoji} ${v.type}</div>` : ''}
       </div>
       ${v.customerName ? `<div class="v-customer">👤 ${v.customerName}</div>` : ''}
@@ -878,6 +882,7 @@ function renderCard(v, container) {
     </div>
     <div class="v-card-detail">
       <div class="v-detail-row"><span class="v-detail-label">車番</span><span class="v-detail-val">${v.plate}</span></div>
+      ${v.mgmtNo ? `<div class="v-detail-row"><span class="v-detail-label">管理番号</span><span class="v-detail-val" style="font-family:'DM Mono',monospace;">${v.mgmtNo}</span></div>` : ''}
       <div class="v-detail-row"><span class="v-detail-label">顧客</span><span class="v-detail-val">${v.customerName || '-'}</span></div>
       <div class="v-detail-row"><span class="v-detail-label">車種</span><span class="v-detail-val">${emoji} ${v.type || '-'}${v.modelName ? ` <span style="font-size:11px;color:var(--muted);">(${v.modelName})</span>` : ''}</span></div>
       <div class="v-detail-row"><span class="v-detail-label">車軸配置</span><span class="v-detail-val">${v.axleConfig ? `<span style="font-family:'DM Mono',monospace;font-weight:700;padding:2px 8px;background:var(--surface2);border-radius:4px;">${v.axleConfig}</span>` : '-'}</span></div>
@@ -1395,8 +1400,12 @@ function openEditSheet(v) {
   const body = document.getElementById('edit-body');
   body.innerHTML = `
     <div class="form-field">
-      <div class="form-label">車番</div>
+      <div class="form-label">車番 <span style="font-size:10px;color:var(--muted);font-weight:400;">(フル車番。例: 広島100か12-34)</span></div>
       <input type="text" class="form-input" id="edit-plate" value="${v.plate}">
+    </div>
+    <div class="form-field">
+      <div class="form-label">管理番号 <span style="font-size:10px;color:var(--muted);font-weight:400;">(リョーキ・ムロオ・西尾・オカケン等の社内管理番号)</span></div>
+      <input type="text" class="form-input" id="edit-mgmt-no" value="${v.mgmtNo||''}" placeholder="例: 1863">
     </div>
     <div class="form-field customer-wrap">
       <div class="form-label">顧客</div>
@@ -1586,6 +1595,7 @@ async function saveEdit() {
       const val = document.getElementById(id).value.trim();
       props[key] = { rich_text: val ? [{ text: { content: val } }] : [] };
     };
+    setRichText('管理番号', 'edit-mgmt-no');
     setRichText('前輪サイズ', 'edit-front-size');
     setRichText('後輪サイズ', 'edit-rear-size');
     setRichText('前輪パターン', 'edit-front-pattern');
@@ -1611,6 +1621,7 @@ async function saveEdit() {
         車番: document.getElementById('edit-plate').value.trim(),
         車種: document.getElementById('edit-type').value || null,
         仕様: document.getElementById('edit-model-name')?.value.trim() || null,
+        管理番号: document.getElementById('edit-mgmt-no')?.value.trim() || null,
         前輪サイズ: document.getElementById('edit-front-size').value.trim() || null,
         後輪サイズ: document.getElementById('edit-rear-size').value.trim() || null,
         前輪パターン: document.getElementById('edit-front-pattern').value.trim() || null,

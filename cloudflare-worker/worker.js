@@ -760,6 +760,40 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       }
     }
 
+    // 「タイヤ販売(新品/中古/更生)」優先で前輪サイズを再計算
+    // 既存ロジック: 組替も含む装着系最頻値 → 組替本数(=旧サイズ)が勝つ問題があった
+    if (url.pathname === '/d1/recalc-front-size' && request.method === 'POST' && env.DB) {
+      try {
+        const body2 = await request.json().catch(() => ({}));
+        const dryrun = !!body2.dryrun;
+        // 真の販売(新品/中古/更生)優先で前輪サイズを取得
+        const r = await env.DB.prepare(`WITH true_size AS (
+          SELECT v.id, v.車番, v.前輪サイズ AS 現在,
+            (SELECT d.タイヤサイズ FROM 売上明細 d JOIN 売上伝票 s ON d.売上伝票ID = s.id
+              WHERE d.車番 = v.車番 AND d.タイヤサイズ IS NOT NULL AND d.タイヤサイズ != ''
+                AND d.品目 IN ('タイヤ販売(新品)','タイヤ販売(中古)','タイヤ販売(更生)')
+              GROUP BY d.タイヤサイズ
+              ORDER BY MAX(s.売上日) DESC, COUNT(*) DESC LIMIT 1) AS 真サイズ
+          FROM 車両マスタ v
+          WHERE v.車番 NOT LIKE '%(旧%' AND v.前輪サイズ IS NOT NULL
+        )
+        SELECT id, 車番, 現在, 真サイズ FROM true_size
+        WHERE 真サイズ IS NOT NULL AND 真サイズ != 現在`).all();
+        const changes = r.results || [];
+        if (dryrun) {
+          return new Response(JSON.stringify({ success: true, dryrun: true, willChange: changes.length, samples: changes.slice(0, 30) }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+        }
+        let applied = 0;
+        for (const c of changes) {
+          await env.DB.prepare(`UPDATE 車両マスタ SET 前輪サイズ = ? WHERE id = ?`).bind(c.真サイズ, c.id).run();
+          applied++;
+        }
+        return new Response(JSON.stringify({ success: true, applied }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
     // 車両マスタ「(旧)」サフィックス車両を一括削除 (バックアップ後の整理用)
     if (url.pathname === '/d1/delete-archived-vehicles' && request.method === 'POST' && env.DB) {
       try {

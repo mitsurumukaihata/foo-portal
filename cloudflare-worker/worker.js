@@ -685,6 +685,68 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       }
     }
 
+    // 車軸配置の自動判定 (売上明細の最大数量から推定)
+    // 2-2-D-D: 低床(R19.5/R17.5)サイズで12本以上
+    // 2-D-D: TB(R22.5/R20)サイズで10本以上
+    // 2-D: 6本
+    if (url.pathname === '/d1/infer-axle-config' && request.method === 'POST' && env.DB) {
+      try {
+        const dryrun = (await request.json().catch(() => ({}))).dryrun || false;
+        // 各車両の最大装着本数を集計
+        const candidatesQ = `WITH max_qty AS (
+            SELECT v.id, v.車番, v.車軸配置, v.前輪サイズ,
+                   MAX(d.数量) AS 最大本数
+            FROM 車両マスタ v
+            JOIN 売上明細 d ON d.車番 = v.車番
+            WHERE d.品目 IN ('組替','タイヤ販売(新品)','タイヤ販売(中古)','f.o.oパック')
+              AND v.車番 NOT LIKE '%(旧%'
+              AND v.前輪サイズ IS NOT NULL
+            GROUP BY v.id, v.車番, v.車軸配置, v.前輪サイズ
+          )
+          SELECT id, 車番, 車軸配置 AS 現在, 前輪サイズ, 最大本数,
+            -- アップグレードのみ。ダウングレードは禁止 (8本=部分作業のケースが多いため)
+            CASE
+              -- 12本以上 + 低床(R19.5/R17.5) → 2-2-D-D 確定
+              WHEN (前輪サイズ LIKE '%R19.5%' OR 前輪サイズ LIKE '%R17.5%') AND 最大本数 >= 12 THEN '2-2-D-D'
+              -- 14本以上 + TB(R22.5) → 2-D-D-D
+              WHEN 前輪サイズ LIKE '%R22.5%' AND 最大本数 >= 14 THEN '2-D-D-D'
+              -- 10本以上 + TB → 2-D-D
+              WHEN (前輪サイズ LIKE '%R22.5%' OR 前輪サイズ LIKE '%R20%') AND 最大本数 >= 10 THEN '2-D-D'
+              -- 現状空かつ6本=2-D
+              WHEN 最大本数 >= 6 THEN '2-D'
+              ELSE NULL
+            END AS 推定
+          FROM max_qty
+          WHERE 最大本数 >= 6`;
+        const r = await env.DB.prepare(candidatesQ).all();
+        const rows = r.results || [];
+        // 「より多軸への更新のみ」を許可 (ダウングレード禁止)
+        const RANK = { '2-2': 0, '2-D': 1, '2-D-D': 2, '2-2-D-D': 3, '2-D-D-D': 3, 'トレーラー': 0 };
+        const changes = rows.filter(r => {
+          if (!r.推定 || r.現在 === r.推定) return false;
+          const cur = RANK[r.現在] ?? -1;
+          const next = RANK[r.推定] ?? -1;
+          // 新規 (空) または より多軸へのアップグレードのみ
+          return r.現在 == null || cur < next;
+        });
+        if (dryrun) {
+          return new Response(JSON.stringify({ success: true, dryrun: true, total: rows.length, willChange: changes.length, samples: changes.slice(0, 30) }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+        }
+        // 実行
+        let applied = 0;
+        for (let i = 0; i < changes.length; i += 200) {
+          const batch = changes.slice(i, i + 200);
+          for (const c of batch) {
+            await env.DB.prepare(`UPDATE 車両マスタ SET 車軸配置 = ? WHERE id = ?`).bind(c.推定, c.id).run();
+            applied++;
+          }
+        }
+        return new Response(JSON.stringify({ success: true, applied, totalCandidates: changes.length }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
     // 車軸配置の不整合一括修正 (LTS/PC/バンサイズの2-D-D → 2-Dへ)
     if (url.pathname === '/d1/fix-axle-config' && request.method === 'POST' && env.DB) {
       try {

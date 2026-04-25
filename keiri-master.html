@@ -71,7 +71,8 @@
     <div class="help-box">
       💡 <b>適用年月</b>: この月から適用する値。例: 2026/4 から時給を変えたら「2026-04」で行追加。<br>
       💡 <b>月額の社会保険料</b>: 協会けんぽ料額表を見て入力 (健康保険料・厚生年金・介護保険料は給与月額により自動決定)。<br>
-      💡 <b>住民税月額</b>: 6月に市町村から特別徴収税額決定通知書が届いたら更新。
+      💡 <b>住民税月額</b>: 6月に市町村から特別徴収税額決定通知書が届いたら更新。<br>
+      💡 <b>シフト手当</b>: <span style="color:var(--red);font-weight:700;">1/16〜3/15・5/16〜10/15期間のみ支給対象</span> (該当月で自動表示)。社員ごとに月額を登録。
     </div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
       <label>適用年月:</label>
@@ -169,6 +170,15 @@ async function loadEmployees() {
   return _employees;
 }
 
+// シフト手当の支給対象月判定 (締め日15日 = 当月支給とすると、給与計算期間と支給月の対応):
+// 給与計算期間 1/16〜3/15 = 2月支給・3月支給 → シフト手当対象
+// 給与計算期間 5/16〜10/15 = 6月〜10月支給 → シフト手当対象
+function isShiftAllowanceMonth(yyyymm) {
+  if (!yyyymm) return false;
+  const m = parseInt(yyyymm.split('-')[1], 10);
+  return [2, 3, 6, 7, 8, 9, 10].includes(m);
+}
+
 async function loadSalaryMaster() {
   const month = document.getElementById('month-picker').value;
   if (!month) { alert('適用年月を選択してください'); return; }
@@ -179,7 +189,12 @@ async function loadSalaryMaster() {
   const r = await sql(`SELECT * FROM 給与マスタ WHERE 適用年月 = ?`, [month]);
   const masterMap = {};
   (r.results || []).forEach(m => masterMap[m.社員ID] = m);
+  const showShift = isShiftAllowanceMonth(month);
   el.innerHTML = `
+    <div style="margin-bottom:8px;font-size:12px;color:${showShift?'var(--red)':'var(--muted)'};font-weight:${showShift?'700':'400'};">
+      ${showShift ? '🌟 この月はシフト手当対象月 (1/16〜3/15 または 5/16〜10/15期間)' : '⚪ この月はシフト手当対象外'}
+    </div>`;
+  el.innerHTML += `
     <div style="overflow-x:auto;">
     <table class="data">
       <thead><tr>
@@ -190,6 +205,7 @@ async function loadSalaryMaster() {
         <th>役職手当</th>
         <th>通勤手当</th>
         <th>資格手当</th>
+        ${showShift ? '<th style="background:#fef3c7;">🌟シフト手当</th>' : ''}
         <th>健康保険料</th>
         <th>厚生年金</th>
         <th>介護保険料</th>
@@ -217,6 +233,7 @@ async function loadSalaryMaster() {
           <td><input type="number" class="num-input sm-input" data-field="役職手当" value="${m.役職手当||0}"></td>
           <td><input type="number" class="num-input sm-input" data-field="通勤手当" value="${m.通勤手当||0}"></td>
           <td><input type="number" class="num-input sm-input" data-field="資格手当" value="${m.資格手当||0}"></td>
+          ${showShift ? `<td style="background:#fff8e7;"><input type="number" class="num-input sm-input" data-field="シフト手当" value="${m.シフト手当||0}"></td>` : ''}
           <td><input type="number" class="num-input sm-input" data-field="健康保険料" value="${m.健康保険料||0}"></td>
           <td><input type="number" class="num-input sm-input" data-field="厚生年金" value="${m.厚生年金||0}"></td>
           <td><input type="number" class="num-input sm-input" data-field="介護保険料" value="${m.介護保険料||0}"></td>

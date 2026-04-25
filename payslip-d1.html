@@ -336,6 +336,7 @@ async function showPayslip(id, type) {
         ${row('通勤手当', p.通勤手当)}
         ${row('役職手当', p.役職手当)}
         ${row('資格手当', p.資格手当)}
+        ${!isBonus ? row('シフト手当', p.シフト手当) : ''}
         ${row('その他手当', p.その他手当)}
         ${isBonus ? row('業績加算', p.業績加算) : ''}
         ${isBonus ? row('特別加算', p.特別加算) : ''}

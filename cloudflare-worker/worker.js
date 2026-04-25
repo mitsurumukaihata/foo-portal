@@ -885,19 +885,19 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
         if (!r.社員ID || !r.適用年月) return new Response(JSON.stringify({ error: '社員ID & 適用年月 required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
         const now = new Date().toISOString();
         const stmt = env.DB.prepare(`INSERT INTO 給与マスタ
-          (社員ID, 適用年月, 給与体系, 基本給, 時給, 役職手当, 通勤手当, 資格手当, その他手当,
+          (社員ID, 適用年月, 給与体系, 基本給, 時給, 役職手当, 通勤手当, 資格手当, シフト手当, その他手当,
            健康保険料, 厚生年金, 介護保険料, 雇用保険料率, 住民税月額, 扶養人数, メモ, 更新者, created_time, last_edited_time)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
           ON CONFLICT(社員ID, 適用年月) DO UPDATE SET
             給与体系=excluded.給与体系, 基本給=excluded.基本給, 時給=excluded.時給,
             役職手当=excluded.役職手当, 通勤手当=excluded.通勤手当,
-            資格手当=excluded.資格手当, その他手当=excluded.その他手当,
+            資格手当=excluded.資格手当, シフト手当=excluded.シフト手当, その他手当=excluded.その他手当,
             健康保険料=excluded.健康保険料, 厚生年金=excluded.厚生年金,
             介護保険料=excluded.介護保険料, 雇用保険料率=excluded.雇用保険料率,
             住民税月額=excluded.住民税月額, 扶養人数=excluded.扶養人数,
             メモ=excluded.メモ, 更新者=excluded.更新者, last_edited_time=excluded.last_edited_time`).bind(
           r.社員ID, r.適用年月, r.給与体系 || null, r.基本給 || 0, r.時給 || 0,
-          r.役職手当 || 0, r.通勤手当 || 0, r.資格手当 || 0, r.その他手当 || 0,
+          r.役職手当 || 0, r.通勤手当 || 0, r.資格手当 || 0, r.シフト手当 || 0, r.その他手当 || 0,
           r.健康保険料 || 0, r.厚生年金 || 0, r.介護保険料 || 0, r.雇用保険料率 || 0.006,
           r.住民税月額 || 0, r.扶養人数 || 0, r.メモ || null, r.更新者 || null, now, now
         );
@@ -917,16 +917,16 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
         const now = new Date().toISOString();
         const stmt = env.DB.prepare(`INSERT INTO 給与明細
           (id, 社員ID, 社員氏名, 支給年月, 対象期間_開始, 対象期間_終了,
-           基本給, 残業手当, 休日出勤手当, 深夜手当, 通勤手当, 役職手当, 資格手当, その他手当, 支給合計,
+           基本給, 残業手当, 休日出勤手当, 深夜手当, 通勤手当, 役職手当, 資格手当, シフト手当, その他手当, 支給合計,
            健康保険料, 厚生年金, 介護保険料, 雇用保険料, 所得税, 住民税, その他控除, 控除合計,
            差引支給額, 出勤日数, 出勤時間, 残業時間, 有給日数, 欠勤日数,
            ステータス, 作成者, メモ, created_time, last_edited_time)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
           ON CONFLICT(社員ID, 支給年月) DO UPDATE SET
             社員氏名=excluded.社員氏名, 対象期間_開始=excluded.対象期間_開始, 対象期間_終了=excluded.対象期間_終了,
             基本給=excluded.基本給, 残業手当=excluded.残業手当, 休日出勤手当=excluded.休日出勤手当,
             深夜手当=excluded.深夜手当, 通勤手当=excluded.通勤手当, 役職手当=excluded.役職手当,
-            資格手当=excluded.資格手当, その他手当=excluded.その他手当, 支給合計=excluded.支給合計,
+            資格手当=excluded.資格手当, シフト手当=excluded.シフト手当, その他手当=excluded.その他手当, 支給合計=excluded.支給合計,
             健康保険料=excluded.健康保険料, 厚生年金=excluded.厚生年金, 介護保険料=excluded.介護保険料,
             雇用保険料=excluded.雇用保険料, 所得税=excluded.所得税, 住民税=excluded.住民税,
             その他控除=excluded.その他控除, 控除合計=excluded.控除合計, 差引支給額=excluded.差引支給額,
@@ -935,7 +935,7 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
             ステータス=excluded.ステータス, メモ=excluded.メモ, last_edited_time=excluded.last_edited_time`).bind(
           id, r.社員ID, r.社員氏名 || null, r.支給年月, r.対象期間_開始 || null, r.対象期間_終了 || null,
           r.基本給 || 0, r.残業手当 || 0, r.休日出勤手当 || 0, r.深夜手当 || 0,
-          r.通勤手当 || 0, r.役職手当 || 0, r.資格手当 || 0, r.その他手当 || 0, r.支給合計 || 0,
+          r.通勤手当 || 0, r.役職手当 || 0, r.資格手当 || 0, r.シフト手当 || 0, r.その他手当 || 0, r.支給合計 || 0,
           r.健康保険料 || 0, r.厚生年金 || 0, r.介護保険料 || 0, r.雇用保険料 || 0,
           r.所得税 || 0, r.住民税 || 0, r.その他控除 || 0, r.控除合計 || 0, r.差引支給額 || 0,
           r.出勤日数 || 0, r.出勤時間 || 0, r.残業時間 || 0, r.有給日数 || 0, r.欠勤日数 || 0,

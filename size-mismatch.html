@@ -81,6 +81,8 @@
       <div class="filter-tab" data-main="plate">🚗 車番不一致 (弥生備考)</div>
       <div class="filter-tab" data-main="dup">🔁 重複車両</div>
       <div class="filter-tab" data-main="reassign">👤 顧客振分</div>
+      <div class="filter-tab" data-main="sakai">🔧 サカイ支店振分</div>
+      <div class="filter-tab" data-main="missing">🆔 番号不明</div>
     </div>
   </div>
 
@@ -118,6 +120,31 @@
       正しい方にチェック → 統合実行で売上明細を移管し、もう一方を削除します。
     </div>
     <div id="dup-result" style="margin-top:12px;"><div class="loading"><div class="spinner"></div><br>読込中...</div></div>
+  </div>
+
+  <!-- サカイ支店振分 -->
+  <div class="card" id="sakai-section" style="display:none;">
+    <h2>🔧 サカイ系車両を支店別に振分</h2>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">
+      振替先は <b>サカイ広島支社 / サカイ広島北 / サカイ広島南 / サカイ広島西</b> の4択のみ。<br>
+      行をチェック → プルダウンで支店選択 → 一括振替で実行。
+    </div>
+    <div id="sakai-result"><div class="loading"><div class="spinner"></div><br>読込中...</div></div>
+  </div>
+
+  <!-- 番号不明リスト -->
+  <div class="card" id="missing-section" style="display:none;">
+    <h2>🆔 番号不明リスト (車番なし or 管理番号なし)</h2>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">
+      事務員さんが手入力で補完するためのリスト。タブで切替:<br>
+      ・<b>車番なし</b>: 「管理#XXX」「数字のみ」など、フル車番が未入力<br>
+      ・<b>管理番号なし</b>: 管理番号運用顧客 (リョーキ・ムロオ等) で 管理番号空欄
+    </div>
+    <div class="filter-tabs" style="margin-bottom:10px;">
+      <div class="filter-tab active" data-missing="plate" onclick="switchMissingTab('plate')">🔢 車番不明</div>
+      <div class="filter-tab" data-missing="mgmt" onclick="switchMissingTab('mgmt')">🆔 管理番号不明</div>
+    </div>
+    <div id="missing-result"><div class="loading"><div class="spinner"></div><br>読込中...</div></div>
   </div>
 
   <!-- 顧客振分 -->
@@ -653,6 +680,175 @@ document.addEventListener('input', e => {
   }
 });
 
+// ── サカイ専用支店振分 ──
+const SAKAI_BRANCHES = [
+  { id: 'e71c6256-391b-4306-b015-e6f03265c0b4', name: 'サカイ広島支社' },
+  { id: '349a695f-8e88-8133-a643-cdb6326af9fc', name: 'サカイ広島北' },
+  { id: '857b0e19-83c5-4af1-960f-fdd18ddc8756', name: 'サカイ広島南' },
+  { id: '327a695f-8e88-81a3-9e2e-d39d2081e20c', name: 'サカイ広島西' },
+];
+async function loadSakaiReassign() {
+  const el = document.getElementById('sakai-result');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div><br>読込中...</div>';
+  // サカイ広島系の全車両 (4支店どこかに紐付いている)
+  const ph = SAKAI_BRANCHES.map(() => '?').join(',');
+  const r = await sql(`SELECT v.id, v.車番, v.車種, v.前輪サイズ, IFNULL(substr(v.メモ,1,80),'') AS メモ抜粋, COALESCE(e.得意先名, c.顧客名) AS 現顧客
+    FROM 車両マスタ v
+    LEFT JOIN 得意先マスタ e ON v.顧客ID = e.id
+    LEFT JOIN 顧客情報DB c ON v.顧客ID = c.id
+    WHERE v.顧客ID IN (${ph}) AND v.車番 NOT LIKE '%(旧%'
+    ORDER BY 現顧客, v.車番`, SAKAI_BRANCHES.map(b => b.id));
+  const rows = r.results || [];
+  if (!rows.length) { el.innerHTML = '<div class="empty">サカイ系車両なし</div>'; return; }
+  // 支店別カウント
+  const counts = {};
+  rows.forEach(v => { counts[v.現顧客] = (counts[v.現顧客] || 0) + 1; });
+  const optHtml = '<option value="">-- 支店選択 --</option>' + SAKAI_BRANCHES.map(b =>
+    `<option value="${b.id}">${esc(b.name)}</option>`
+  ).join('');
+  el.innerHTML = `
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <span>${rows.length}台 (現状: ${Object.entries(counts).map(([k,v])=>`${k} ${v}台`).join(' / ')})</span>
+      <span>
+        <button class="action-btn" onclick="sakaiBulkSet('')">解除</button>
+        <button class="action-btn" onclick="sakaiBulkSet('${SAKAI_BRANCHES[0].id}')">→支社</button>
+        <button class="action-btn" onclick="sakaiBulkSet('${SAKAI_BRANCHES[1].id}')">→北</button>
+        <button class="action-btn" onclick="sakaiBulkSet('${SAKAI_BRANCHES[2].id}')">→南</button>
+        <button class="action-btn" onclick="sakaiBulkSet('${SAKAI_BRANCHES[3].id}')">→西</button>
+        <button class="action-btn primary" onclick="sakaiBulkExec()" style="margin-left:8px;">▶ チェック行を一括振替</button>
+      </span>
+    </div>
+    <div style="overflow-x:auto;">
+    <table class="data">
+      <thead><tr>
+        <th style="width:34px;"><input type="checkbox" onchange="document.querySelectorAll('.sakai-row-check').forEach(cb=>cb.checked=this.checked)"></th>
+        <th>車番</th>
+        <th>現顧客</th>
+        <th>車種</th>
+        <th>サイズ</th>
+        <th>メモ抜粋</th>
+        <th>振替先</th>
+      </tr></thead>
+      <tbody>
+      ${rows.map(r => `
+        <tr>
+          <td><input type="checkbox" class="sakai-row-check" data-vid="${r.id}"></td>
+          <td><a href="vehicle-master.html?plate=${encodeURIComponent(r.車番)}" target="_blank" rel="noopener" style="font-family:'DM Mono',monospace;font-weight:700;color:var(--accent);text-decoration:none;">${esc(r.車番)}</a></td>
+          <td style="font-size:11px;">${esc(r.現顧客 || '-')}</td>
+          <td>${esc(r.車種 || '-')}</td>
+          <td style="font-family:'DM Mono',monospace;">${esc(r.前輪サイズ || '-')}</td>
+          <td style="font-size:10px;color:var(--muted);max-width:300px;">${esc(r.メモ抜粋)}</td>
+          <td><select class="sakai-target" data-vid="${r.id}" style="padding:4px 8px;font-size:11px;border:1px solid var(--border);border-radius:4px;background:var(--surface);">${optHtml}</select></td>
+        </tr>
+      `).join('')}
+      </tbody>
+    </table>
+    </div>
+  `;
+}
+function sakaiBulkSet(targetId) {
+  document.querySelectorAll('.sakai-target').forEach(s => { s.value = targetId; });
+}
+async function sakaiBulkExec() {
+  const checked = document.querySelectorAll('.sakai-row-check:checked');
+  if (!checked.length) { alert('チェックされた行がありません'); return; }
+  const tasks = [];
+  checked.forEach(cb => {
+    const vid = cb.dataset.vid;
+    const sel = document.querySelector(`select.sakai-target[data-vid="${vid}"]`);
+    if (sel?.value) tasks.push({ vid, target: sel.value });
+  });
+  if (!tasks.length) { alert('振替先(支店)が選択されていません'); return; }
+  if (!confirm(`${tasks.length}台を振替実行します。よろしいですか？`)) return;
+  let ok = 0;
+  for (const t of tasks) {
+    const r = await fetch(D1_WORKER + '/d1/update-vehicle', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: t.vid, 顧客ID: t.target })
+    });
+    const j = await r.json();
+    if (j.success) ok++;
+  }
+  alert(`✅ ${ok}台振替完了`);
+  loadSakaiReassign();
+}
+
+// ── 番号不明リスト ──
+let _missingTab = 'plate';
+function switchMissingTab(t) {
+  _missingTab = t;
+  document.querySelectorAll('[data-missing]').forEach(x => x.classList.toggle('active', x.dataset.missing === t));
+  loadMissingNumbers();
+}
+async function loadMissingNumbers() {
+  const el = document.getElementById('missing-result');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div><br>読込中...</div>';
+  let q;
+  if (_missingTab === 'plate') {
+    // 車番が「管理#」「数字のみ」「短い」など正規でない車両
+    q = `SELECT v.id, v.車番, v.管理番号, v.車種, v.前輪サイズ, COALESCE(e.得意先名,c.顧客名) AS 顧客
+      FROM 車両マスタ v
+      LEFT JOIN 得意先マスタ e ON v.顧客ID=e.id
+      LEFT JOIN 顧客情報DB c ON v.顧客ID=c.id
+      WHERE v.車番 NOT LIKE '%(旧%' AND (
+        v.車番 LIKE '管理#%' OR v.車番 GLOB '[0-9]*' OR length(v.車番) <= 6
+      )
+      ORDER BY 顧客, v.車番 LIMIT 500`;
+  } else {
+    // 管理番号運用顧客 (リョーキ・ムロオ等) で 管理番号空欄の車両
+    q = `SELECT v.id, v.車番, v.管理番号, v.車種, v.前輪サイズ, COALESCE(e.得意先名,c.顧客名) AS 顧客
+      FROM 車両マスタ v
+      LEFT JOIN 得意先マスタ e ON v.顧客ID=e.id
+      LEFT JOIN 顧客情報DB c ON v.顧客ID=c.id
+      WHERE v.車番 NOT LIKE '%(旧%' AND (v.管理番号 IS NULL OR v.管理番号 = '')
+        AND COALESCE(e.得意先名,c.顧客名,'') REGEXP '(リョーキ|ムロオ|太陽建機|AFYS|西尾|オカケン|シンヨー|ハヤタニ|サークルコンパクト|JSOF)'
+      ORDER BY 顧客, v.車番 LIMIT 500`;
+    // SQLite has no REGEXP by default; use OR LIKE chain
+    q = `SELECT v.id, v.車番, v.管理番号, v.車種, v.前輪サイズ, COALESCE(e.得意先名,c.顧客名) AS 顧客
+      FROM 車両マスタ v
+      LEFT JOIN 得意先マスタ e ON v.顧客ID=e.id
+      LEFT JOIN 顧客情報DB c ON v.顧客ID=c.id
+      WHERE v.車番 NOT LIKE '%(旧%' AND (v.管理番号 IS NULL OR v.管理番号 = '')
+        AND (COALESCE(e.得意先名,c.顧客名,'') LIKE '%リョーキ%'
+          OR COALESCE(e.得意先名,c.顧客名,'') LIKE '%ムロオ%'
+          OR COALESCE(e.得意先名,c.顧客名,'') LIKE '%太陽建機%'
+          OR COALESCE(e.得意先名,c.顧客名,'') LIKE '%AFYS%'
+          OR COALESCE(e.得意先名,c.顧客名,'') LIKE '%西尾%'
+          OR COALESCE(e.得意先名,c.顧客名,'') LIKE '%オカケン%')
+      ORDER BY 顧客, v.車番 LIMIT 500`;
+  }
+  const r = await sql(q);
+  const rows = r.results || [];
+  if (!rows.length) { el.innerHTML = '<div class="empty">該当なし ✅</div>'; return; }
+  el.innerHTML = `
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">${rows.length}件 (最大500件)</div>
+    <div style="overflow-x:auto;">
+    <table class="data">
+      <thead><tr>
+        <th>顧客</th>
+        <th>車番</th>
+        <th>管理番号</th>
+        <th>車種</th>
+        <th>サイズ</th>
+        <th>編集</th>
+      </tr></thead>
+      <tbody>
+      ${rows.map(r => `
+        <tr>
+          <td style="font-size:11px;">${esc(r.顧客 || '-')}</td>
+          <td><a href="vehicle-master.html?plate=${encodeURIComponent(r.車番)}" target="_blank" rel="noopener" style="font-family:'DM Mono',monospace;font-weight:700;color:var(--accent);">${esc(r.車番)}</a></td>
+          <td style="font-family:'DM Mono',monospace;">${esc(r.管理番号 || '-')}</td>
+          <td>${esc(r.車種 || '-')}</td>
+          <td style="font-family:'DM Mono',monospace;">${esc(r.前輪サイズ || '-')}</td>
+          <td><a href="vehicle-master.html?plate=${encodeURIComponent(r.車番)}" target="_blank" rel="noopener"><button class="action-btn">✏️ 編集</button></a></td>
+        </tr>
+      `).join('')}
+      </tbody>
+    </table>
+    </div>
+  `;
+}
+
 // 主タブ切替
 document.querySelectorAll('#main-tabs .filter-tab').forEach(t => {
   t.addEventListener('click', () => {
@@ -663,9 +859,13 @@ document.querySelectorAll('#main-tabs .filter-tab').forEach(t => {
     document.getElementById('plate-section').style.display = m === 'plate' ? '' : 'none';
     document.getElementById('dup-section').style.display = m === 'dup' ? '' : 'none';
     document.getElementById('reassign-section').style.display = m === 'reassign' ? '' : 'none';
+    document.getElementById('sakai-section').style.display = m === 'sakai' ? '' : 'none';
+    document.getElementById('missing-section').style.display = m === 'missing' ? '' : 'none';
     if (m === 'plate') loadPlateMismatch();
     if (m === 'dup') loadDuplicates();
     if (m === 'reassign' && _allCustomers.length === 0) loadAllCustomers();
+    if (m === 'sakai') loadSakaiReassign();
+    if (m === 'missing') loadMissingNumbers();
   });
 });
 

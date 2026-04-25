@@ -788,6 +788,23 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       }
     }
 
+    // 車両を別顧客に一括振替 (条件: メモに特定文字列を含む)
+    if (url.pathname === '/d1/reassign-customer' && request.method === 'POST' && env.DB) {
+      try {
+        const { target_customer_id, memo_keywords } = await request.json();
+        if (!target_customer_id || !Array.isArray(memo_keywords) || memo_keywords.length === 0)
+          return new Response(JSON.stringify({ error: 'target_customer_id & memo_keywords[] required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        const orClauses = memo_keywords.map(() => 'メモ LIKE ?').join(' OR ');
+        const params = [target_customer_id, ...memo_keywords.map(k => '%' + k + '%'), target_customer_id];
+        const sql2 = `UPDATE 車両マスタ SET 顧客ID = ? WHERE 車番 NOT LIKE '%(旧%' AND (${orClauses}) AND 顧客ID != ?`;
+        const stmt = env.DB.prepare(sql2).bind(...params);
+        const res = await stmt.run();
+        return new Response(JSON.stringify({ success: true, changes: res.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
     // 得意先名のリネーム
     if (url.pathname === '/d1/rename-customer' && request.method === 'POST' && env.DB) {
       try {

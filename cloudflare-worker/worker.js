@@ -1085,6 +1085,67 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       }
     }
 
+    // R2アップロード: タイヤパターン画像 (事務員アップ用)
+    // POST /r2/upload-pattern-image?pattern=GRX3&kind=hero または kind=tread
+    // body: 画像バイナリ (image/jpeg, image/png, image/webp)
+    // response: { url: 'https://notion-proxy.../r2/pattern-image/GRX3/hero.jpg' }
+    if (url.pathname === '/r2/upload-pattern-image' && request.method === 'POST' && env.BACKUP) {
+      try {
+        const pat = url.searchParams.get('pattern');
+        const kind = url.searchParams.get('kind') || 'hero'; // hero or tread
+        if (!pat) return new Response(JSON.stringify({ error: 'pattern required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        if (!['hero','tread'].includes(kind)) return new Response(JSON.stringify({ error: 'kind must be hero or tread' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        // Content-Type からファイル拡張子を決定
+        const ct = request.headers.get('content-type') || 'image/jpeg';
+        const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : 'jpg';
+        // ファイル名はパターン名を slug 化(英数字以外をハイフン化、日本語はそのまま)
+        const safePat = pat.replace(/[\\\/\?#%]/g, '_');
+        const key = `pattern-images/${safePat}/${kind}.${ext}`;
+        const body = await request.arrayBuffer();
+        if (body.byteLength === 0) return new Response(JSON.stringify({ error: 'empty body' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        if (body.byteLength > 5 * 1024 * 1024) return new Response(JSON.stringify({ error: 'over 5MB' }), { status: 413, headers: { ...cors, "Content-Type": "application/json" } });
+        await env.BACKUP.put(key, body, { httpMetadata: { contentType: ct } });
+        // 公開URL (Worker経由で配信)
+        const publicUrl = `https://notion-proxy.33322666666mm.workers.dev/r2/pattern-image/${encodeURIComponent(safePat)}/${kind}.${ext}`;
+        return new Response(JSON.stringify({ success: true, url: publicUrl, key }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
+    // R2配信: GET /r2/pattern-image/{pattern}/{kind}.{ext}
+    if (url.pathname.startsWith('/r2/pattern-image/') && request.method === 'GET' && env.BACKUP) {
+      try {
+        const rest = url.pathname.replace('/r2/pattern-image/', '');
+        const parts = rest.split('/');
+        if (parts.length !== 2) return new Response('bad path', { status: 400, headers: cors });
+        const pat = decodeURIComponent(parts[0]);
+        const fname = parts[1];
+        const key = `pattern-images/${pat}/${fname}`;
+        const obj = await env.BACKUP.get(key);
+        if (!obj) return new Response('not found', { status: 404, headers: cors });
+        return new Response(obj.body, {
+          status: 200,
+          headers: { ...cors, 'Content-Type': obj.httpMetadata?.contentType || 'image/jpeg', 'Cache-Control': 'public, max-age=86400' }
+        });
+      } catch(e) {
+        return new Response('error: ' + e.message, { status: 500, headers: cors });
+      }
+    }
+
+    // 得意先マスタ ふりがな単独更新 (事務員用)
+    if (url.pathname === '/d1/update-tokuisaki-furigana' && request.method === 'POST' && env.DB) {
+      try {
+        const { id, ふりがな } = await request.json();
+        if (!id) return new Response(JSON.stringify({ error: 'id required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        const now = new Date().toISOString();
+        const res = await env.DB.prepare('UPDATE 得意先マスタ SET ふりがな=?, last_edited_time=? WHERE id=?').bind(ふりがな || null, now, id).run();
+        return new Response(JSON.stringify({ success: true, changes: res.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
     // タイヤパターン画像の登録/更新 (事務員用)
     if (url.pathname === '/d1/upsert-pattern-image' && request.method === 'POST' && env.DB) {
       try {

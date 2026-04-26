@@ -57,13 +57,24 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
 .status-pending { background:var(--s3); color:var(--muted); }
 .status-partial { background:#fbbf24; color:#fff; }
 
-.url-row { display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:center; margin-bottom:6px; }
-.url-label { font-size:11px; font-weight:700; color:var(--muted); width:80px; }
-.url-input { padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:11px; font-family:'DM Mono',monospace; }
-.url-preview { width:60px; height:60px; object-fit:contain; border:1px solid var(--border); border-radius:6px; background:var(--s2); }
-.btn-save { padding:8px 16px; background:var(--accent); color:#fff; border:0; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; margin-top:6px; }
+.img-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; }
+.img-slot { display:flex; flex-direction:column; align-items:center; }
+.img-slot-label { font-size:10px; font-weight:700; color:var(--muted); margin-bottom:4px; }
+.img-preview-wrap { width:100%; height:120px; border:1px solid var(--border); border-radius:8px; background:var(--s2); display:flex; align-items:center; justify-content:center; overflow:hidden; margin-bottom:6px; }
+.img-big { width:100%; height:100%; object-fit:contain; }
+.img-empty { font-size:11px; color:var(--muted); }
+.btn-upload { display:inline-block; padding:8px 14px; background:var(--accent); color:#fff; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; text-align:center; }
+.btn-upload:hover { opacity:0.9; }
 .btn-clear { padding:6px 10px; background:var(--s2); border:1px solid var(--border); border-radius:6px; font-size:11px; cursor:pointer; }
-.btn-save:disabled { opacity:0.4; cursor:not-allowed; }
+
+/* ふりがなタブ */
+.furi-row { display:grid; grid-template-columns:1fr 1fr auto; gap:10px; align-items:center; padding:10px 12px; background:var(--card); border:1px solid var(--border); border-radius:8px; margin-bottom:6px; }
+.furi-name { font-size:13px; font-weight:700; }
+.furi-input { padding:8px 12px; border:1px solid var(--border); border-radius:6px; font-size:14px; font-family:'Noto Sans JP'; }
+.furi-input:focus { outline:none; border-color:var(--accent); }
+.furi-meta { font-size:9px; color:var(--muted); }
+.btn-save-mini { padding:6px 12px; background:var(--green); color:#fff; border:0; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; }
+.btn-save-mini:disabled { opacity:0.4; cursor:not-allowed; }
 
 .help-box { background:#eff6ff; border:1px solid #bfdbfe; border-left:4px solid var(--blue); padding:12px 14px; border-radius:8px; margin-bottom:14px; font-size:12px; color:#1e40af; line-height:1.7; }
 .help-box strong { color:var(--blue); }
@@ -83,6 +94,7 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
 
 <div class="tabs">
   <div class="tab active" data-tab="images">📸 タイヤ画像収集</div>
+  <div class="tab" data-tab="furigana">📞 ふりがな入力</div>
   <!-- 将来ここにお願いタブを追加 -->
 </div>
 
@@ -95,14 +107,15 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
       下のリストから1パターンずつメーカー公式サイトを開いて、画像URLをコピーして登録してください。
     </div>
     <div class="help-box">
-      <strong>📝 やり方</strong><br>
-      ①「公式サイト→」リンクをクリック<br>
-      ② メーカー公式ページの中で<strong>タイヤ全体写真</strong>を右クリック → 「画像のアドレスをコピー」<br>
-      ③ 「商品画像URL」欄にペースト<br>
-      ④ <strong>溝（トレッドパターン）の写真</strong>も同じ手順で「トレッドURL」にペースト（あれば）<br>
-      ⑤ 「💾 登録」ボタンを押す → 価格検索画面にすぐ反映されます<br>
+      <strong>📝 やり方 (スクショ・写真アップロード)</strong><br>
+      ①「公式サイト→」リンクをクリックして開く<br>
+      ② <strong>タイヤ全体の写真をスクショ</strong> (Windows: Win+Shift+S / Mac: Cmd+Shift+4 / スマホ: 電源+音量↓)<br>
+      ③ 「📷 商品画像」ボタンを押してスクショを選択 → 自動アップロード<br>
+      ④ <strong>溝（トレッドパターン）のアップ写真</strong>もスクショして「📷 トレッド画像」へ (あれば)<br>
+      ⑤ 完了！価格検索画面にすぐ反映されます<br>
       <br>
-      <strong>💡 ヒント</strong>: 全部やる必要はありません。よく出るパターン（GRXⅢ, ECOPIA NH200, VRX3 等）から優先で。
+      <strong>💡 ヒント</strong>: スマホで撮った実物写真でもOK。全部やる必要はありません。よく出るパターン (GRXⅢ, NH200, VRX3, S007A 等) から優先で。<br>
+      <strong>容量制限</strong>: 1枚あたり 5MB まで (大体のスクショはOK)
     </div>
   </div>
 
@@ -123,6 +136,41 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
   <input type="search" class="search-input" id="search" placeholder="パターン名・ブランドで検索">
 
   <div class="pattern-list" id="list">
+    <div class="loading">読み込み中...</div>
+  </div>
+</div>
+
+<!-- ════════ ふりがな入力 ════════ -->
+<div class="section" id="section-furigana">
+  <div class="task-card">
+    <div class="task-title">📞 得意先マスタの「ふりがな」入力</div>
+    <div class="task-desc">
+      アプリで得意先を「あいうえお順」に並べたり、「あ行で絞り込み」できるようにするための入力作業です。
+    </div>
+    <div class="help-box">
+      <strong>📝 やり方</strong><br>
+      ① 入力欄に <strong>ひらがな・小文字</strong> でふりがなを入力<br>
+      ② 「💾」ボタンを押す → 即保存<br>
+      <br>
+      <strong>例</strong><br>
+      ・「株式会社ムロオ」→ <strong>むろお</strong><br>
+      ・「TOYO TIRES JAPAN」→ <strong>とーよーたいやーす</strong> (社名読み方準拠)<br>
+      ・「(有) 太陽建機」→ <strong>たいようけんき</strong> (記号は省略)<br>
+      <br>
+      <strong>💡 ヒント</strong>: 「有限会社」「株式会社」「(株)」等は省略してOK。読みづらい場合は代表に聞いて。
+    </div>
+  </div>
+
+  <div class="summary" id="furi-summary"></div>
+
+  <div class="filter-bar">
+    <div class="chip active" data-furi-filter="pending">未入力のみ</div>
+    <div class="chip" data-furi-filter="done">入力済</div>
+    <div class="chip" data-furi-filter="all">全件 (有効のみ)</div>
+  </div>
+  <input type="search" class="search-input" id="furi-search" placeholder="得意先名で検索">
+
+  <div id="furi-list">
     <div class="loading">読み込み中...</div>
   </div>
 </div>
@@ -289,47 +337,72 @@ function buildRow(r) {
         <span class="cat-badge">${r.cat} · ${r.cnt}件</span>
         ${status}
       </div>
-      <div style="margin-bottom:8px;"><a href="${url}" target="_blank" rel="noopener" style="font-size:11px;color:var(--blue);">🔗 公式サイト→</a></div>
-      <div class="url-row">
-        <span class="url-label">商品画像URL</span>
-        <input type="url" class="url-input" id="${id}_img" placeholder="https://..." value="${imgUrl}">
-        ${imgUrl ? `<img src="${imgUrl}" class="url-preview" onerror="this.style.opacity=0.3">` : '<div class="url-preview" style="display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted);">未設定</div>'}
-      </div>
-      <div class="url-row">
-        <span class="url-label">トレッドURL</span>
-        <input type="url" class="url-input" id="${id}_tread" placeholder="https://...（溝の写真があれば）" value="${treadUrl}">
-        ${treadUrl ? `<img src="${treadUrl}" class="url-preview" onerror="this.style.opacity=0.3">` : '<div class="url-preview" style="display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted);">未設定</div>'}
+      <div style="margin-bottom:8px;"><a href="${url}" target="_blank" rel="noopener" style="font-size:11px;color:var(--blue);">🔗 公式サイト→ (参考画像チェック)</a></div>
+      <div class="img-grid">
+        <div class="img-slot">
+          <div class="img-slot-label">商品画像 (タイヤ全体)</div>
+          <div class="img-preview-wrap" id="${id}_img_wrap">
+            ${imgUrl ? `<img src="${imgUrl}" class="img-big" onerror="this.style.opacity=0.3">` : '<div class="img-empty">未登録</div>'}
+          </div>
+          <label class="btn-upload">
+            📷 ${imgUrl ? '差し替え' : '商品画像'}
+            <input type="file" accept="image/*" hidden onchange="uploadImg(this, '${id}', 'hero', ${JSON.stringify(r).replace(/"/g,'&quot;')})">
+          </label>
+        </div>
+        <div class="img-slot">
+          <div class="img-slot-label">トレッド画像 (溝のアップ)</div>
+          <div class="img-preview-wrap" id="${id}_tread_wrap">
+            ${treadUrl ? `<img src="${treadUrl}" class="img-big" onerror="this.style.opacity=0.3">` : '<div class="img-empty">未登録</div>'}
+          </div>
+          <label class="btn-upload">
+            📷 ${treadUrl ? '差し替え' : 'トレッド画像'}
+            <input type="file" accept="image/*" hidden onchange="uploadImg(this, '${id}', 'tread', ${JSON.stringify(r).replace(/"/g,'&quot;')})">
+          </label>
+        </div>
       </div>
       ${meta}
-      <div style="display:flex;gap:6px;margin-top:8px;">
-        <button class="btn-save" onclick="save('${id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">💾 登録</button>
-        ${hasImg ? `<button class="btn-clear" onclick="del('${r.pattern.replace(/'/g,"\\'")}')">クリア</button>` : ''}
-      </div>
+      ${hasImg ? `<div style="margin-top:8px;"><button class="btn-clear" onclick="del('${r.pattern.replace(/'/g,"\\'")}')">🗑 全クリア</button></div>` : ''}
     </div>
   `;
 }
 
-async function save(id, r) {
-  const imgUrl = document.getElementById(id + '_img').value.trim();
-  const treadUrl = document.getElementById(id + '_tread').value.trim();
-  if (!imgUrl && !treadUrl) { showToast('URLを入力してください', true); return; }
+// 画像アップロード(R2)→D1更新
+async function uploadImg(input, id, kind, r) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { showToast('5MBまでです', true); return; }
+  const wrapId = id + (kind === 'hero' ? '_img_wrap' : '_tread_wrap');
+  document.getElementById(wrapId).innerHTML = '<div class="img-empty">アップロード中...</div>';
   try {
-    const res = await fetch(PROXY + '/d1/upsert-pattern-image', {
+    // R2へPUT
+    const upRes = await fetch(PROXY + '/r2/upload-pattern-image?pattern=' + encodeURIComponent(r.pattern) + '&kind=' + kind, {
+      method: 'POST',
+      headers: { 'Content-Type': file.type || 'image/jpeg' },
+      body: file
+    });
+    const upJ = await upRes.json();
+    if (!upJ.success) throw new Error(upJ.error || 'upload failed');
+    // 既存のもう片方URLを取得 (両方更新でなく差分更新)
+    const existing = _images[r.pattern] || {};
+    const newImgUrl = kind === 'hero' ? upJ.url : (existing.商品画像URL || null);
+    const newTreadUrl = kind === 'tread' ? upJ.url : (existing.トレッドURL || null);
+    // D1へupsert
+    const saveRes = await fetch(PROXY + '/d1/upsert-pattern-image', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         パターン: r.pattern, ブランド: r.brand, メーカー: r.maker, カテゴリ: r.cat,
-        商品画像URL: imgUrl || null, トレッドURL: treadUrl || null,
+        商品画像URL: newImgUrl, トレッドURL: newTreadUrl,
         登録者: session.name
       })
     });
-    const j = await res.json();
-    if (j.success) {
-      showToast('✅ 登録しました');
-      await loadData();
-    } else {
-      showToast('❌ 失敗: ' + (j.error||''), true);
-    }
-  } catch(e) { showToast('❌ ' + e.message, true); }
+    const sj = await saveRes.json();
+    if (!sj.success) throw new Error(sj.error || 'save failed');
+    showToast('✅ アップロード完了');
+    await loadData();
+  } catch(e) {
+    showToast('❌ ' + e.message, true);
+    await loadData();
+  }
 }
 
 async function del(pattern) {
@@ -371,6 +444,98 @@ document.querySelectorAll('.cat-chip').forEach(c => {
 document.getElementById('search').oninput = e => { _q = e.target.value; render(); };
 
 loadData();
+
+// ─────────────── ふりがな タブ ───────────────
+let _furi = [], _furiFilter = 'pending', _furiQ = '';
+
+async function loadFurigana() {
+  document.getElementById('furi-list').innerHTML = '<div class="loading">読み込み中...</div>';
+  const rows = await d1query(`SELECT id, 得意先名, ふりがな, last_edited_time FROM 得意先マスタ WHERE 有効=1 ORDER BY 得意先名`);
+  _furi = rows.map(r => ({
+    id: r.id,
+    name: r.得意先名 || '',
+    furi: r.ふりがな || '',
+    edited: r.last_edited_time || ''
+  }));
+  renderFuri();
+}
+
+function renderFuri() {
+  let rows = _furi.filter(r => {
+    if (_furiFilter === 'pending' && r.furi) return false;
+    if (_furiFilter === 'done' && !r.furi) return false;
+    if (_furiQ) {
+      const t = (r.name + ' ' + r.furi).toLowerCase();
+      if (!t.includes(_furiQ.toLowerCase())) return false;
+    }
+    return true;
+  });
+  // サマリ
+  const total = _furi.length;
+  const done = _furi.filter(r => r.furi).length;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  document.getElementById('furi-summary').innerHTML = `
+    <div class="summary-card"><div class="summary-num">${total}</div><div class="summary-label">有効得意先</div></div>
+    <div class="summary-card"><div class="summary-num" style="color:var(--green);">${done}</div><div class="summary-label">入力済 (${pct}%)</div></div>
+    <div class="summary-card"><div class="summary-num" style="color:var(--red);">${total - done}</div><div class="summary-label">未入力</div></div>
+  `;
+  if (rows.length === 0) {
+    document.getElementById('furi-list').innerHTML = '<div class="loading">該当なし</div>';
+    return;
+  }
+  document.getElementById('furi-list').innerHTML = rows.map(r => {
+    const fid = 'f_' + r.id.replace(/-/g,'');
+    return `
+      <div class="furi-row">
+        <div>
+          <div class="furi-name">${escHtml(r.name)}</div>
+          ${r.edited ? `<div class="furi-meta">最終更新: ${r.edited.slice(0,10)}</div>` : ''}
+        </div>
+        <input type="text" class="furi-input" id="${fid}" placeholder="ひらがなで入力" value="${escHtml(r.furi)}">
+        <button class="btn-save-mini" onclick="saveFuri('${r.id}', '${fid}')">💾</button>
+      </div>
+    `;
+  }).join('');
+}
+
+function escHtml(s) { return String(s||'').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]); }
+
+async function saveFuri(id, fid) {
+  const v = document.getElementById(fid).value.trim();
+  // ひらがな化(簡易): カタカナ→ひらがな変換
+  const hira = v.replace(/[\u30A1-\u30F6]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
+  if (hira !== v) document.getElementById(fid).value = hira;
+  try {
+    const res = await fetch(PROXY + '/d1/update-tokuisaki-furigana', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ふりがな: hira })
+    });
+    const j = await res.json();
+    if (j.success) {
+      showToast('✅ 保存しました');
+      // ローカル更新(再フェッチなしで体感速度↑)
+      const item = _furi.find(x => x.id === id);
+      if (item) { item.furi = hira; item.edited = new Date().toISOString(); }
+      renderFuri();
+    } else showToast('❌ ' + (j.error||''), true);
+  } catch(e) { showToast('❌ ' + e.message, true); }
+}
+
+// ふりがなタブのフィルタイベント
+document.querySelectorAll('.chip[data-furi-filter]').forEach(c => {
+  c.onclick = () => {
+    document.querySelectorAll('.chip[data-furi-filter]').forEach(x => x.classList.remove('active'));
+    c.classList.add('active');
+    _furiFilter = c.dataset.furiFilter; renderFuri();
+  };
+});
+document.getElementById('furi-search').oninput = e => { _furiQ = e.target.value; renderFuri(); };
+
+// タブ切替時に初回ロード
+let _furiLoaded = false;
+document.querySelector('[data-tab="furigana"]').addEventListener('click', () => {
+  if (!_furiLoaded) { _furiLoaded = true; loadFurigana(); }
+});
 </script>
 </body>
 </html>

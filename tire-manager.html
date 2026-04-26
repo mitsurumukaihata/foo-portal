@@ -2741,66 +2741,321 @@ function patternToClass(pattern, brand) {
   return null;
 }
 
-// ─────────── パターン別 おすすめポイント・客への薦め方 ───────────
-// 各メーカー公式の特徴と、現場での実用シーン(社員→客への提案台本)
+// ─────────── パターン別 おすすめ情報 (社内データベース) ───────────
+// 外部メーカーHPに飛ばずに判断できるよう、特徴・想定車種・客への薦め方・代替候補を充実
+// fields:
+//   features: パターンの特徴 (技術ポイント・性能傾向)
+//   target:   想定車種・ユーザー層
+//   pitch:    お客様への薦め方トーク
+//   compare:  競合・代替候補・上位下位モデルとの位置関係
 const PATTERN_RECOMMEND = {
-  // ▼ ラグジュアリー
-  'GRXⅢ': { point: '静粛性◎・偏摩耗抑制・ロングライフ。BSの最高峰コンフォート。', pitch: '「現行のレグノからの履き替えで、さらに静かに。30〜50代の高級セダンユーザー(クラウン/レクサスES/カムリ)に。」' },
-  'GRXⅢRV': { point: 'ミニバン・SUV専用レグノ。ふらつき軽減と静粛性両立。', pitch: '「アルファード・ヴェルファイア・ハリアーのお客様に。家族の会話が静かな車内ではっきり聞こえます。」' },
-  'VEURO VE304': { point: 'ダンロップ最上級コンフォート。静粛性とロングライフ。', pitch: '「DUNLOPブランド指定のお客様で、静かさ重視ならこちら。レグノGRXⅢと比較しやすいクラスです。」' },
-  'SP SPORT MAXX LUX': { point: 'プレミアムSUV/セダン向け。剛性とエレガンス両立。', pitch: '「輸入車・大径ホイール装着車のリプレイス用。BSのALENZAやMICHELIN PRIMACYと並ぶ位置付け。」' },
-  'ADVAN dB V553': { point: 'ヨコハマの最高峰コンフォート。耳障りな音の周波数を低減。', pitch: '「クラウン・レクサスIS/ES・スカイラインに。レグノと同等価格帯の代替提案。」' },
-  'ADVAN Sport V107': { point: '欧州プレミアムスポーツ。高速安定性◎', pitch: '「ベンツ・BMW・ポルシェ等の純正サイズに。輸入車オーナーの差別化提案。」' },
-  'PRIMACY 4+': { point: 'ミシュラン最新コンフォート。摩耗末期まで性能維持。', pitch: '「長く乗りたい派、ロングライフ重視のお客様に。BS派ではない方への提案カードに。」' },
+  // ▼ ラグジュアリー (高級コンフォート)
+  'GRXⅢ': {
+    features: 'BSフラッグシップ「レグノ」最新世代。最大の特徴は静粛性で、ロードノイズの中でも特に耳障りな500〜1000Hz帯を狙って低減。さらに偏摩耗抑制技術で、ハの字摩耗・段減りが起きにくく、5万km級のロングライフが期待できる。ウェット性能もクラストップ。',
+    target: 'クラウン・カムリ・レクサスES/IS・スカイライン・アコード等の高級セダンを大事に乗る30〜60代。「快適性に投資したい」価値観のお客様。',
+    pitch: '「現行のレグノからの履き替えなら、さらに静かさが進化したことを必ず体感頂けます。前回タイヤより1000円高くても5年使えるロングライフなので、年あたりはむしろお得という説明が刺さります。」',
+    compare: '同クラス: ADVAN dB V553 (YOKOHAMA) / VEURO VE304 (DUNLOP) / PRIMACY 4+ (MICHELIN)。BS指定なら第一候補。価格を抑えるなら ALENZA LX200 (SUV) や Playz PX-RVⅡ (RV) を検討。'
+  },
+  'GRXⅢRV': {
+    features: 'レグノのミニバン・SUV専用版。重い車重・高重心によるふらつきを抑える剛性設計に加え、レグノ譲りの静粛性。ロングライフ性能も継承。タイヤ起因の「カーブで車体が揺れる感覚」を明確に減らす。',
+    target: 'アルファード・ヴェルファイア・ノア・ヴォクシー・セレナ・ハリアー・CX-5など、家族で長距離乗るミニバン/SUVオーナー。',
+    pitch: '「家族の会話が静かな車内ではっきり聞こえます。後部座席のお子様の睡眠も妨げにくい。タイヤ交換でこんなに快適性が変わるんですよ、と実走比較を勧めるのが効果的。」',
+    compare: '同クラス: ADVAN dB V553 (RV兼用) / VEURO VE304 (RV対応サイズ)。SUV特化なら ALENZA LX200。価格抑えなら Playz PX-RVⅡ や TRANPATH mp7。'
+  },
+  'VEURO VE304': {
+    features: 'DUNLOP最上級コンフォート。新世代「ノイズシェルター」構造で静粛性を追求。ウェット性能と耐摩耗のバランスも優秀で、レグノGRXⅢの対抗馬として位置付けられる。',
+    target: 'クラウン・レクサス・スカイライン等の高級セダン。「DUNLOPで静かさ重視」のお客様。BS派ではない富裕層。',
+    pitch: '「ダンロップ最高峰の静粛モデルです。レグノGRXⅢとほぼ同価格帯ですが、DUNLOP指定の方ならVE304が第一候補。輸入車オーナーにも好まれます。」',
+    compare: '同クラス: REGNO GRXⅢ / ADVAN dB V553 / PRIMACY 4+。DUNLOPで価格抑えるなら LE MANS V+。'
+  },
+  'SP SPORT MAXX LUX': {
+    features: 'プレミアムSUV/セダン向けハイパフォーマンスタイヤ。剛性の高い構造で大径ホイール・重い車体のフラッグシップ車を支える。エレガンスと走行性能を両立。',
+    target: '輸入車(BMW・メルセデス・アウディ等)、19〜22インチの大径ホイール装着車、Eセグメント以上のセダン/SUV。',
+    pitch: '「輸入車・大径ホイール装着車のリプレイス用です。BSのALENZAやMICHELIN PRIMACY 4と並ぶ位置付け。DUNLOP指定の輸入車に最適。」',
+    compare: '同クラス: ALENZA 001 / PRIMACY 4 / Pirelli P ZERO。'
+  },
+  'ADVAN dB V553': {
+    features: 'ヨコハマ最高峰コンフォート。耳障りな周波数(2kHz付近)を狙って低減する独自パターン。ウェットグリップとロングライフのバランスも◎。レグノGRXⅢに比べてやや個性的なトレッドデザイン。',
+    target: 'クラウン・レクサスIS/ES・スカイライン・アコード等の高級セダン、ADVANブランド指定のお客様。',
+    pitch: '「YOKOHAMAの静粛フラッグシップ。レグノGRXⅢと比較検討してもらえる価格帯です。ADVAN派、白文字サイドウォール装着歴のあるお客様には特に。」',
+    compare: '同クラス: REGNO GRXⅢ / VEURO VE304 / PRIMACY 4+。'
+  },
+  'ADVAN Sport V107': {
+    features: '欧州プレミアムスポーツ。高速安定性とコーナリング性能を両立。新世代コンパウンドでウェット性能も高水準。輸入車純正採用が多い。',
+    target: 'BMW・メルセデス・ポルシェ・アウディ・レクサスRC F等の純正サイズ。20〜22インチが中心。',
+    pitch: '「輸入車オーナーの差別化提案として。純正タイヤと同等以上の走行性能を、リーズナブルに。」',
+    compare: '同クラス: PILOT SPORT 5 / P ZERO PZ4 / POTENZA S007A。'
+  },
+  'PRIMACY 4+': {
+    features: 'ミシュラン最新コンフォート。「摩耗末期まで性能を維持する」がテーマで、新品時から残溝3mmまでウェット性能が落ちにくい。ロングライフ性に定評。',
+    target: '輸入車オーナー、ミシュラン指定派、長く乗りたいロングライフ重視のお客様。',
+    pitch: '「タイヤを長く使いたい派の方に。BS派ではないお客様への提案カード。輸入車・スバル・マツダ車に好まれます。」',
+    compare: '同クラス: REGNO GRXⅢ / ADVAN dB V553 / VEURO VE304。'
+  },
   // ▼ スポーツ
-  'S007A': { point: 'BSフラッグシップスポーツ。ドライ・ウェット・耐摩耗のバランス◎', pitch: '「34GT-R・スイフトスポーツ・GR系のお客様に。サーキット走行もこなせるストリート系。」' },
-  'RE71RZ': { point: 'ストリート最強グリップ系。ジムカーナ・走行会向け。', pitch: '「走り方に拘るお客様限定。摩耗早いことを必ず説明し、納得頂いてから。」' },
-  'Adrenalin RE005': { point: 'スポーツコンフォート。日常+ワインディング両立。', pitch: '「スポーティセダン(マツダ3/レヴォーグ)に。S007Aは予算オーバーの方に。」' },
-  'DIREZZA DZ102': { point: 'コスパ◎エントリースポーツ。', pitch: '「予算抑えめでスポーティに走りたい若いお客様に。ZⅢへのアップグレードもセット提案。」' },
-  'DIREZZA ZⅢ': { point: 'サーキット直結のドライグリップ。', pitch: '「走行会・峠走行メインのお客様に。普段使いには摩耗の早さに注意して提案。」' },
-  'SPORT MAXX 060+': { point: 'プレミアムスポーツ。ウェット制動とハンドリング両立。', pitch: '「DUNLOP指定のスポーツセダン・GTカー(GR86/BRZ)に。S007Aと比較検討カードに。」' },
-  'ADVAN AD09': { point: 'NEOVAより日常性◎、Flevaよりスポーティ。中間ポジション。', pitch: '「NEOVAは攻めすぎ・Flevaは物足りない、と感じる中級スポーツ派に。」' },
-  'PILOT SPORT 5': { point: 'ミシュラン最新スポーツ。ウェットが特に強い。', pitch: '「梅雨〜夏のドライブが多いお客様。雨の高速走行で安心感を訴求。」' },
+  'S007A': {
+    features: 'BSフラッグシップスポーツ。ドライ・ウェット・耐摩耗のバランスが極めて高水準。サーキット走行もこなせるが、街乗りでも快適。発熱が早く冷えても効くため幅広い気温で安定。',
+    target: 'GT-R(R34/R35)・GR86/BRZ・スイフトスポーツ・GR系・スカイラインGT等のスポーツカー。サーキット走行会も視野に。',
+    pitch: '「サーキットも視野に入れる本格スポーツ派の第一候補。RE71RZよりも日常使いとロングライフを重視する方に。「街乗りもしたいけどサーキットも行く」というお客様に。」',
+    compare: '上位 (グリップ): RE71RZ。下位 (コスパ): Adrenalin RE005。海外勢: PILOT SPORT 5 / P ZERO。'
+  },
+  'RE71RZ': {
+    features: 'ストリート最強グリップ系。ジムカーナ・走行会用に開発された極限グリップ。ただし摩耗が早い(5,000〜10,000km級)、ウェット制動は専用パターンほど強くない。雨天高速は要注意。',
+    target: '走行会・ジムカーナ・ヒルクライムを本気でやるお客様。スポーツ走行が日常のお客様。',
+    pitch: '「走り方に拘るお客様限定です。摩耗が早いこと、雨天はウェット専用に劣ることを必ず説明し、納得頂いてから提案。RE71RSの後継として走り屋さんに人気。」',
+    compare: 'グリップ最優先: RE71RZ。バランス型: S007A。日常+スポーツ: Adrenalin RE005。'
+  },
+  'Adrenalin RE005': {
+    features: 'BSスポーツの「日常+ワインディング」両立モデル。S007Aほど攻めず、ECOPIAより走れる中間ポジション。コスパ良好で、若いオーナーに刺さる。',
+    target: 'マツダ3・レヴォーグ・スカイライン・シビック等のスポーティセダン/ハッチバック。20〜30代の走り好き。',
+    pitch: '「S007Aは予算オーバー、でもエコタイヤは物足りない、という方に。デザイン的にもアグレッシブで、若いお客様の所有満足度が上がります。」',
+    compare: '上位: S007A。同クラス: DIREZZA DZ102 / ADVAN Fleva V701。'
+  },
+  'DIREZZA DZ102': {
+    features: 'DUNLOPコスパ◎エントリースポーツ。ドライ性能はストリートで十分以上、価格は最安級。スポーツ初心者やセカンドカーに最適。',
+    target: '走り好きの若いお客様、予算抑えめでスポーティに走りたい方。86/BRZ・スイフトスポーツのカジュアル派。',
+    pitch: '「予算抑えめでスポーティに走りたい若いお客様に。「ZⅢへのアップグレードもセット提案できますよ」と話を広げると客単価が上がります。」',
+    compare: '上位 (本格): DIREZZA ZⅢ。同クラス: Adrenalin RE005 / ADVAN Fleva V701。'
+  },
+  'DIREZZA ZⅢ': {
+    features: 'サーキット直結のドライグリップ。ストリート公道走行可だが、本来はジムカーナ・サーキット走行用。摩耗速度はRE71RZと同等。雨天は性能落ちる。',
+    target: 'サーキット走行会・峠走行メインのお客様、走り屋さん。',
+    pitch: '「走行会・峠走行メインのお客様に。普段使いも可能ですが摩耗の早さに注意。普段+スポーツならDZ102をオススメ。」',
+    compare: '上位 (グリップ): なし(同クラス最強級)。バランス型: DZ102 / SPORT MAXX 060+。'
+  },
+  'SPORT MAXX 060+': {
+    features: 'DUNLOPのプレミアムスポーツ。ウェット制動とハンドリングを両立。剛性高くキビキビした応答性。S007Aクラスのライバル。',
+    target: 'GR86/BRZ・スイフトスポーツ・シビックTYPE R・スポーツセダン全般。DUNLOP指定派。',
+    pitch: '「DUNLOP指定のスポーツセダン・GTカーに。S007Aと比較検討カードに。「DUNLOPブランドが好きな方ならまず提案」と覚えてOK。」',
+    compare: '同クラス: POTENZA S007A / ADVAN Sport V107 / PILOT SPORT 4S。'
+  },
+  'ADVAN AD09': {
+    features: 'YOKOHAMAスポーツの中核。NEOVAより日常性◎、Flevaよりスポーティな中間ポジション。ジムカーナまではいかないが峠は楽しい、というバランス。',
+    target: 'スポーツカーの普段使い派。「攻めすぎず物足りなくない」を求めるお客様。シビック・マツダ3スポーツグレード等。',
+    pitch: '「NEOVAは攻めすぎ・Flevaは物足りない、と感じる中級スポーツ派に。AD09はYOKOHAMAの「ちょうど良い」モデル。」',
+    compare: '上位: NEOVA AD09 (R)。下位: Fleva V701 / BluEarth-GT AE51。'
+  },
+  'PILOT SPORT 5': {
+    features: 'ミシュラン最新スポーツ。特にウェットグリップが業界トップクラスで、雨天高速での安心感が圧倒的。ドライ性能も妥協なし。',
+    target: '梅雨〜夏のドライブが多いお客様。輸入車オーナー、雨天走行が不安な方。スポーツカーから高性能セダンまで幅広く。',
+    pitch: '「梅雨〜夏のドライブが多いお客様。雨の高速走行で安心感を訴求。「ミシュランは雨に強い」が一貫したセールスポイント。」',
+    compare: '同クラス: POTENZA S007A / ADVAN Sport V107 / P ZERO PZ4。下位 (コンフォート): PRIMACY 4+。'
+  },
   // ▼ エコ・低燃費
-  'NH200/NH200C': { point: '転がり抵抗最小クラス。プリウス・アクアの純正サイズ豊富。', pitch: '「燃費にこだわるお客様に。年間1〜2万円の燃料代節約と試算で提案。」' },
-  'NH200': { point: '転がり抵抗最小クラス。プリウス・アクアの純正サイズ豊富。', pitch: '「燃費にこだわるお客様に。年間1〜2万円の燃料代節約と試算で提案。」' },
-  'NEWNO': { point: 'BSの新スタンダード。ECOPIA EX20の後継的位置付け。', pitch: '「価格帯抑えつつBSに乗りたいお客様に。軽自動車・コンパクトカーの定番。」' },
-  'NANOENERGY 3 PLUS': { point: 'TOYOコスパエコ。NEWNOより価格優位。', pitch: '「軽・コンパクトのリピーターに。価格重視で提案。」' },
-  'EC204': { point: 'DUNLOPロングセラーエコ。タクシー・社用車に多採用。', pitch: '「社用車・タクシー・営業車のオーナーに。耐摩耗とコスパ両立。」' },
-  'EC205': { point: 'EC204の後継。低燃費とウェット性能向上。', pitch: '「EC204リピーターのアップグレード提案。」' },
-  'BluEarth-GT AE51': { point: 'YOKOHAMAのスポーティエコ。ウェット◎', pitch: '「セダン・ハッチバックに。ECOPIAやEC204より走り重視のお客様に。」' },
+  'NH200/NH200C': {
+    features: 'BS ECOPIA最新世代。転がり抵抗最小クラスで、燃費を約2〜3%改善。NH200は標準、NH200Cはコンパクト/ハイブリッド最適化版。プリウス・アクアの純正サイズが豊富。',
+    target: 'プリウス・アクア・ノート・フィット等のエコカー/コンパクトカー。燃費を気にするお客様。',
+    pitch: '「燃費にこだわるお客様に。「年間1〜2万円の燃料代節約」と試算で提案すると刺さります。BS指定で安心感も。」',
+    compare: '同クラス: NEWNO (BS下位) / NANOENERGY 3 PLUS (TOYO) / EC204 (DUNLOP) / BluEarth-AE AE-01F (YOKOHAMA)。'
+  },
+  'NH200': {
+    features: 'BS ECOPIA NH200の標準モデル。転がり抵抗最小クラス、ロングライフ。普通車・セダンのエコ用途に最適。',
+    target: 'カローラ・シビック・アクセラ・インプレッサ等の普通乗用車。燃費重視層。',
+    pitch: '「燃費にこだわるお客様の定番。BSの安心感+省燃費=長く付き合えるタイヤ。」',
+    compare: '同クラス: NH200C (HV特化) / NEWNO (下位) / EC204 / NANOENERGY 3 PLUS。'
+  },
+  'NEWNO': {
+    features: 'BSの新スタンダード(2022年〜)。ECOPIA EX20の後継的位置付け。燃費・ロングライフ・コスパのバランスが良く、BSブランドの底上げ役。',
+    target: '軽自動車・コンパクトカー(N-BOX・タント・フィット・ヴィッツ等)。「BSが良いけど予算は抑えたい」お客様。',
+    pitch: '「価格帯を抑えつつBSに乗りたいお客様に。軽自動車・コンパクトカーの定番。「FINESSAは安いけど性能不安」という方への中間提案。」',
+    compare: '上位: ECOPIA NH200。下位: FINESSA HB01 / SEIBERLING SL。同クラス: NANOENERGY 3 PLUS / EC204。'
+  },
+  'NANOENERGY 3 PLUS': {
+    features: 'TOYOコスパエコ。ECOPIA NEWNOより価格優位で、軽・コンパクトの新車装着サイズが充実。燃費・耐摩耗とも合格点。',
+    target: '軽・コンパクトのリピーター、価格重視のお客様。社用車・カーシェア用途にも。',
+    pitch: '「軽・コンパクトのリピーターに。価格重視で提案。「TOYOの安心感+お手頃価格」が決め手。」',
+    compare: '同クラス: NEWNO / EC204 / BluEarth-AE。上位: NH200。'
+  },
+  'EC204': {
+    features: 'DUNLOPのロングセラーエコ。タクシー・社用車・営業車に多く採用される耐摩耗性が売り。燃費もクラス標準以上。',
+    target: '社用車・タクシー・営業車・配送車のオーナー。年間走行距離が多く耐摩耗を重視するお客様。',
+    pitch: '「社用車・タクシー・営業車のオーナーに。耐摩耗とコスパ両立。「年間2万km以上走る方なら EC204一択」と話せます。」',
+    compare: '後継: EC205。同クラス: NEWNO / NANOENERGY 3 PLUS / BluEarth-AE。'
+  },
+  'EC205': {
+    features: 'EC204の正常進化版。低燃費とウェット性能をさらに向上。耐摩耗性は同等を維持。',
+    target: 'EC204リピーター、社用車のグレードアップ提案。',
+    pitch: '「EC204リピーターのアップグレード提案。「同じEC系で性能だけ上がりましたよ」とシンプルに。」',
+    compare: '前作: EC204。同クラス: NEWNO / NANOENERGY 3 PLUS。'
+  },
+  'BluEarth-GT AE51': {
+    features: 'YOKOHAMAのスポーティエコ。ECOPIA系より走行性能寄りで、ウェットグリップと操舵応答性が高い。「エコだけじゃ物足りない」客層向け。',
+    target: 'セダン・ハッチバック(マツダ3・カローラ・シビック等)。走行感を求めるエコ派。',
+    pitch: '「セダン・ハッチバックに。ECOPIAやEC204より走り重視のお客様に。「エコでも運転は楽しいですよ」と訴求。」',
+    compare: 'エコ寄り: BluEarth-AE AE-01F。スポーツ寄り: ADVAN Fleva V701。'
+  },
   // ▼ コンフォート/ファミリー
-  'PXRVⅡ': { point: 'BS Playzの偏摩耗抑制技術。ミニバン専用設計。', pitch: '「ノア・ヴォクシー・セレナのファミリー層に。タイヤの片減りで悩んだ方へ。」' },
-  'LE MANS V+': { point: 'DUNLOPの静粛性ロングライフ。', pitch: '「ミニバン・セダンのお客様に。BSのレグノは予算オーバーの方への代替案。」' },
-  'TRANPATH mp7': { point: 'TOYOのミニバン専用。ふらつき軽減と耐偏摩耗。', pitch: '「ステップワゴン・セレナ・アルファードのお客様に。Playzとほぼ同位置。」' },
-  'BluEarth-RV RV03': { point: 'YOKOHAMAミニバン専用エコ。', pitch: '「PXRVⅡ・mp7と並ぶYOKOHAMA陣の選択肢。」' },
-  'エナセーブ RV505': { point: 'DUNLOPミニバン専用エコ。耐摩耗◎', pitch: '「ロングライフ重視のミニバンユーザーに。」' },
-  'FINESSA HB01': { point: 'BSのコスト優先モデル。', pitch: '「価格重視のお客様や、リース車の交換に。」' },
-  'SEIBERLING SL': { point: 'BSグループの低価格ブランド。', pitch: '「軽自動車・コンパクトの予算最優先のお客様に。」' },
+  'PXRVⅡ': {
+    features: 'BS Playzのミニバン専用。最大の特徴は偏摩耗抑制で、ハの字摩耗や段減りを大幅に減らす独自パターン。ロングライフで5万km級。ふらつき軽減も◎。',
+    target: 'ノア・ヴォクシー・セレナ・ステップワゴン・アルファード等のミニバン。「タイヤの片減りで悩んだ」経験のあるファミリー層。',
+    pitch: '「ノア・ヴォクシー・セレナのファミリー層に。「タイヤの片減りで悩んだ方へ」と聞いて該当すれば即提案。前回タイヤの摩耗状態を見せてもらうと刺さります。」',
+    compare: '同クラス: TRANPATH mp7 / BluEarth-RV RV03 / エナセーブ RV505。上位 (静粛): GRXⅢRV。'
+  },
+  'LE MANS V+': {
+    features: 'DUNLOPの静粛性ロングライフ。サイレントコア技術で車内静音性を高めつつ、耐摩耗5万km級。コストパフォーマンスに優れる。',
+    target: 'ミニバン・セダン全般。「BS REGNOは予算オーバーだけど静かさは欲しい」中間層。',
+    pitch: '「BSのレグノは予算オーバーの方への代替案。静粛性能を体感頂きやすく、価格差を提示すると決まりやすい。」',
+    compare: '上位: VEURO VE304。同クラス: PXRVⅡ / TRANPATH mp7 / BluEarth-RV RV03。'
+  },
+  'TRANPATH mp7': {
+    features: 'TOYOのミニバン専用。ふらつき軽減と耐偏摩耗を両立。ミニバンの重い車重と高重心に最適化されたショルダー剛性。',
+    target: 'ステップワゴン・セレナ・アルファード・ヴォクシー等のミニバン。「TOYO指定」または「Playz以外」を求める方。',
+    pitch: '「ステップワゴン・セレナ・アルファードのお客様に。Playz PX-RVⅡとほぼ同位置。「TOYOのトランパスは長年ミニバン専門」が決め台詞。」',
+    compare: '同クラス: PXRVⅡ / BluEarth-RV RV03 / エナセーブ RV505。上位: GRXⅢRV。'
+  },
+  'BluEarth-RV RV03': {
+    features: 'YOKOHAMAミニバン専用エコ。低燃費性能とふらつき軽減を両立。ロングライフで耐摩耗◎。',
+    target: 'ミニバンユーザー全般。YOKOHAMA派、燃費重視派。',
+    pitch: '「PXRVⅡ・mp7と並ぶYOKOHAMA陣の選択肢。「燃費もミニバンも両立」を訴求。」',
+    compare: '同クラス: PXRVⅡ / TRANPATH mp7 / エナセーブ RV505。'
+  },
+  'エナセーブ RV505': {
+    features: 'DUNLOPミニバン専用エコ。耐摩耗性◎で長持ち。低燃費性能もクラス標準以上。',
+    target: 'ロングライフ重視のミニバンユーザー。年間走行距離が多いファミリー。',
+    pitch: '「ロングライフ重視のミニバンユーザーに。「履き替え周期を伸ばしたい」方への提案。」',
+    compare: '同クラス: PXRVⅡ / TRANPATH mp7 / BluEarth-RV RV03。'
+  },
+  'FINESSA HB01': {
+    features: 'BSのコスト優先モデル。性能は標準的だがBSブランドが付く安心感が売り。低価格帯のラインナップ。',
+    target: '価格重視のお客様、リース車・代車・セカンドカー。「BSにはしたい、でも予算が」というお客様。',
+    pitch: '「価格重視のお客様や、リース車の交換に。「BSは欲しいけど安く」のニーズに応える1本。」',
+    compare: '上位: NEWNO。同クラス: SEIBERLING SL。'
+  },
+  'SEIBERLING SL': {
+    features: 'BSグループのセイバーリング(Seiberling)ブランド低価格モデル。性能は最低限だがBS系の品質基準で作られる安心感。',
+    target: '軽自動車・コンパクトの予算最優先のお客様。中古車のタイヤ交換、車検直前の応急処置にも。',
+    pitch: '「軽自動車・コンパクトの予算最優先のお客様に。「BS系列の安心感をお手頃価格で」がセールスワード。」',
+    compare: '上位: FINESSA HB01 / NEWNO。'
+  },
   // ▼ SUV
-  'H/L 850': { point: 'BS DUELER の街乗りSUV定番。静粛性◎', pitch: '「ハリアー・CX-5・フォレスター等のオンロード派SUVに。」' },
-  '001': { point: 'ALENZA最新オンロードSUV。プレミアムSUV向け。', pitch: '「ランクル300・LX・X5等の高級SUVに。レグノ並みの静粛性。」' },
-  'LX100': { point: 'ALENZAのスタンダード。日本車SUVに最適化。', pitch: '「日本車SUVのリプレイス定番。コスパ重視のSUVオーナーに。」' },
-  'LX200': { point: 'LX100の後継。さらなる静粛性とロングライフ。', pitch: '「LX100リピーターへのアップグレード提案。」' },
-  'GRANDTREK PT5': { point: 'DUNLOP SUVのオンロード系。', pitch: '「ALENZA・GEOLANDARの代替案として。DUNLOP指定なら第一候補。」' },
-  'GRANDTREK AT5': { point: 'オン/オフ両用SUV。', pitch: '「アウトドア派のSUV・ピックアップオーナーに。」' },
-  'OPEN COUNTRY R/T': { point: 'TOYOのアグレッシブSUV。見た目◎', pitch: '「ジムニー・ハイラックス・ランクルカスタム派に。映える見た目重視。」' },
-  'OPEN COUNTRY A/T3': { point: 'オン重視のオールテレーン。', pitch: '「ジムニー・デリカD:5の街乗り+林道派に。」' },
-  'PROXES AT3': { point: 'TOYOプロクセスのSUV版。オンロード重視。', pitch: '「街乗りSUV(RAV4・CX-8等)に。OPEN COUNTRYは見た目派、これは性能派。」' },
-  'GEOLANDAR X-AT G016': { point: 'YOKOHAMAのアグレッシブAT。', pitch: '「OPEN COUNTRY R/Tと競合。YOKOHAMA派・地味めデザイン派に。」' },
+  'H/L 850': {
+    features: 'BS DUELERの街乗りSUV定番。静粛性と乗り心地が良く、SUVの「重さ」を感じさせないコンフォート性能。耐摩耗もしっかり。',
+    target: 'ハリアー・CX-5・フォレスター・RAV4等のオンロード派SUV。家族で長距離乗るユーザー。',
+    pitch: '「ハリアー・CX-5・フォレスター等のオンロード派SUVに。SUVなのにセダン並みの静かさを訴求。」',
+    compare: '上位 (プレミアム): ALENZA 001。同クラス: GRANDTREK PT5 / GEOLANDAR A/T G015 (オン寄り)。'
+  },
+  '001': {
+    features: 'ALENZA最新オンロードSUV (2024〜)。プレミアムSUV向けで、レグノ並みの静粛性と高剛性を両立。摩耗・燃費・コンフォートすべて高水準。',
+    target: 'ランクル300・LX・X5・GLE・カイエン等の高級SUV。「最高級SUVに最高級タイヤ」を求めるお客様。',
+    pitch: '「ランクル300・LX・X5等の高級SUVに。レグノ並みの静粛性。輸入SUV/プレミアム国産SUVオーナーへの最上位提案。」',
+    compare: '同クラス: PRIMACY SUV+ / PILOT SPORT 4 SUV。下位: ALENZA LX200 / DUELER H/L 850。'
+  },
+  'LX100': {
+    features: 'ALENZAのスタンダード。日本車SUVに最適化された設計で、静粛性・摩耗・乗り心地のバランスが良い。',
+    target: 'ハリアー・CX-5・フォレスター・RAV4等の日本車SUV。コスパ重視のSUVオーナー。',
+    pitch: '「日本車SUVのリプレイス定番。コスパ重視のSUVオーナーに。「ALENZAブランドの安心感」が決め手。」',
+    compare: '上位: LX200 / 001。同クラス: H/L 850 / GRANDTREK PT5 / GEOLANDAR。'
+  },
+  'LX200': {
+    features: 'LX100の後継 (2023〜)。さらなる静粛性とロングライフを実現。SUV特有のロードノイズを大幅低減。',
+    target: 'ハリアー・CX-5・LX100リピーター。「もう少し静かに乗りたい」お客様。',
+    pitch: '「LX100リピーターへのアップグレード提案。「同じALENZA系で静粛性が一段上がりました」とシンプルに。」',
+    compare: '上位: ALENZA 001。同クラス: H/L 850。下位: LX100。'
+  },
+  'GRANDTREK PT5': {
+    features: 'DUNLOP SUVのオンロード系。乗り心地と静粛性を重視した設計。耐摩耗もクラス標準以上。',
+    target: 'ハリアー・CX-5・フォレスター等の街乗りSUV。DUNLOP指定のお客様。',
+    pitch: '「ALENZA・GEOLANDARの代替案として。DUNLOP指定なら第一候補。」',
+    compare: '同クラス: ALENZA LX100 / DUELER H/L 850 / GEOLANDAR A/T G015。'
+  },
+  'GRANDTREK AT5': {
+    features: 'オン/オフ両用SUV。アウトドア派向けで、未舗装路や雪道での走破性とオンロード快適性を両立。',
+    target: 'ジムニー・デリカD:5・ハイラックス・ランクル等のアウトドア派SUV/ピックアップオーナー。',
+    pitch: '「アウトドア派のSUV・ピックアップオーナーに。「街乗りも林道もこれ1本」と訴求。」',
+    compare: '同クラス: OPEN COUNTRY A/T3 / PROXES AT3 / GEOLANDAR A/T G015。オフロード重視: MT2 / OPEN COUNTRY M/T-R。'
+  },
+  'OPEN COUNTRY R/T': {
+    features: 'TOYOのアグレッシブSUV。最大の売りは「映える見た目」のアグレッシブなブロックパターン。R/T=Rugged Terrain で、街乗り+悪路の中間ポジション。',
+    target: 'ジムニー・ハイラックス・ランクル・デリカD:5のカスタム派。「タイヤで車を主張したい」見た目重視層。',
+    pitch: '「ジムニー・ハイラックス・ランクルカスタム派に。映える見た目重視。インスタ投稿してくれそうなお客様には間違いなく刺さります。」',
+    compare: '同クラス: GEOLANDAR X-AT G016。上位 (悪路): M/T-R。下位 (オン寄り): A/T3 / U/T。'
+  },
+  'OPEN COUNTRY A/T3': {
+    features: 'オン重視のオールテレーン。街乗り快適性を保ちながら、林道・砂利道もこなせる。摩耗も標準的。',
+    target: 'ジムニー・デリカD:5・RAV4・CX-5の街乗り+たまにアウトドア派。',
+    pitch: '「ジムニー・デリカD:5の街乗り+林道派に。R/Tほど見た目派ではないが、走行性能を求める方に。」',
+    compare: '上位 (見た目+悪路): R/T。下位 (オン特化): U/T / PROXES AT3。'
+  },
+  'PROXES AT3': {
+    features: 'TOYOプロクセスのSUV版。オンロード重視で静粛性・耐摩耗◎。OPEN COUNTRYほどアグレッシブではないが性能で勝負。',
+    target: '街乗りSUV(RAV4・CX-8・ハリアー・フォレスター等)。「アウトドア感は要らないけど性能は欲しい」派。',
+    pitch: '「街乗りSUV(RAV4・CX-8等)に。「OPEN COUNTRYは見た目派、PROXES AT3は性能派」と棲み分けで提案。」',
+    compare: '同クラス: ALENZA LX100 / GRANDTREK PT5 / GEOLANDAR A/T G015。'
+  },
+  'GEOLANDAR X-AT G016': {
+    features: 'YOKOHAMAのアグレッシブAT。OPEN COUNTRY R/Tと真っ向勝負の見た目+性能。やや地味めなデザインで「派手すぎない」が好まれる。',
+    target: 'ジムニー・ハイラックス・ランクルのカスタム派。「OPEN COUNTRYほど派手はちょっと…」というお客様。',
+    pitch: '「OPEN COUNTRY R/Tと競合。YOKOHAMA派・地味めデザイン派に。「YOKOHAMAのジオランダーシリーズはオフ車の鉄板」と説明。」',
+    compare: '同クラス: OPEN COUNTRY R/T。下位 (街乗り寄り): A/T G015 / OPEN COUNTRY A/T3。'
+  },
   // ▼ スタッドレス
-  'VRX3': { point: 'BS最高峰スタッドレス。氷上ブレーキ業界トップクラス。', pitch: '「凍結路を走る通勤の方、雪国出身の方に。家族を守る最上位提案。」' },
-  'DM-V3': { point: 'SUV専用スタッドレス。VRX3のSUV版。', pitch: '「ハリアー・CX-5・ランクル等の冬用に。」' },
-  'WZ-1': { point: 'BS スタッドレスの新スタンダード。VRX3より価格優位。', pitch: '「VRX3は予算オーバー、でもBSが良いお客様に。」' },
-  'WINTER MAXX 03': { point: 'DUNLOPの最新スタッドレス。氷上性能向上。', pitch: '「DUNLOP派、コスパ重視のお客様に。VRX3の対抗馬。」' },
-  'OBSERVE GIZ3': { point: 'TOYOの最新冬用。氷上+耐摩耗バランス◎', pitch: '「TOYO派、ロングライフ重視のお客様に。」' },
-  'iceGUARD 7': { point: 'YOKOHAMAの最新スタッドレス。摩耗末期まで効く。', pitch: '「ヨコハマ派、長く使いたいお客様に。」' },
-  'iceGUARD SUV G075': { point: 'YOKOHAMAのSUVスタッドレス。', pitch: '「DM-V3の対抗馬。YOKOHAMA派のSUVオーナーに。」' },
+  'VRX3': {
+    features: 'BS最高峰スタッドレス (2021〜)。氷上ブレーキ業界トップクラス。発泡ゴム+独自パターンで凍結路でも安定停止。摩耗3〜4シーズン使える耐久性。',
+    target: '北海道・東北・北陸・新潟・長野・山陰の凍結路通勤者。雪国出身のお客様、家族の安全最優先派。',
+    pitch: '「凍結路を走る通勤の方、雪国出身の方に。「家族を守る最上位提案」が決め台詞。「氷上ブレーキ業界トップクラス」のフレーズは効きます。」',
+    compare: '同クラス: WINTER MAXX 03 / iceGUARD 7 / OBSERVE GIZ3。下位 (BS): WZ-1。SUV版: DM-V3。'
+  },
+  'DM-V3': {
+    features: 'BS BLIZZAKのSUV専用。VRX3技術をSUV用に最適化。重い車重・高重心でも氷上性能を維持。',
+    target: 'ハリアー・CX-5・ランクル・X5等の冬用。雪国SUVオーナー。',
+    pitch: '「ハリアー・CX-5・ランクル等の冬用に。「VRX3のSUV版」というシンプルな説明でOK。」',
+    compare: '同クラス: iceGUARD SUV G075 / X-ICE SNOW SUV。'
+  },
+  'WZ-1': {
+    features: 'BS BLIZZAKの新スタンダード (2024〜)。VRX3より価格優位で、氷上性能はVRX3にやや劣るが、新製品で耐久性は良好。',
+    target: '広島・関西・東海など雪が少ない地域でスタッドレス必須の方。「VRX3は予算オーバー、でもBSが良い」お客様。',
+    pitch: '「VRX3は予算オーバー、でもBSが良いお客様に。「広島ぐらいの雪量ならWZ-1で十分」と説明。」',
+    compare: '上位: VRX3。同クラス: WINTER MAXX 03 / iceGUARD 7 / OBSERVE GIZ3。'
+  },
+  'WINTER MAXX 03': {
+    features: 'DUNLOPの最新スタッドレス。氷上性能向上+ロングライフ。新世代ナノ凹凸ゴムで凍結路面に追従。',
+    target: 'DUNLOP派、コスパ重視のお客様。雪国通勤者。',
+    pitch: '「DUNLOP派、コスパ重視のお客様に。VRX3の対抗馬。価格はVRX3より少し優位。」',
+    compare: '同クラス: VRX3 / iceGUARD 7 / OBSERVE GIZ3。'
+  },
+  'OBSERVE GIZ3': {
+    features: 'TOYOの最新冬用 (2023〜)。氷上性能と耐摩耗のバランスが良く、3〜4シーズン使えるロングライフ。',
+    target: 'TOYO派、ロングライフ重視のお客様、年配の安全運転派。',
+    pitch: '「TOYO派、ロングライフ重視のお客様に。「3シーズン以上使えるコスパ」を訴求。」',
+    compare: '同クラス: VRX3 / WINTER MAXX 03 / iceGUARD 7。前作: GIZ2。'
+  },
+  'iceGUARD 7': {
+    features: 'YOKOHAMAの最新スタッドレス。最大の特徴は「摩耗末期まで効く」設計で、4シーズン目でも氷上性能が落ちにくい。',
+    target: 'ヨコハマ派、長く使いたいお客様、年間1回しか冬タイヤ履かない地域の方。',
+    pitch: '「ヨコハマ派、長く使いたいお客様に。「4シーズン目でも効きますよ」が刺さるセールスポイント。」',
+    compare: '同クラス: VRX3 / WINTER MAXX 03 / OBSERVE GIZ3。'
+  },
+  'iceGUARD SUV G075': {
+    features: 'YOKOHAMAのSUV専用スタッドレス。iceGUARD 7のSUV版で、重い車重を支える剛性設計。',
+    target: 'ハリアー・CX-5・ランクル等のSUV冬用。YOKOHAMA派のSUVオーナー。',
+    pitch: '「DM-V3の対抗馬。YOKOHAMA派のSUVオーナーに。」',
+    compare: '同クラス: DM-V3 / X-ICE SNOW SUV。'
+  },
   // ▼ オールシーズン
-  'CELSIUS': { point: 'TOYO初代オールシーズン。雪マーク付き。', pitch: '「年に数回の積雪、スタッドレス置き場ない都市部の方に。」' },
-  'CELSIUS AS2': { point: 'CELSIUSの後継。性能向上。', pitch: '「CELSIUSリピーターのアップグレード提案。」' },
-  'BluEarth-4S AW21': { point: 'YOKOHAMA初のオールシーズン。', pitch: '「都市部の軽い積雪ユーザーに。タイヤ交換の手間を省きたい方。」' },
-  'CROSSCLIMATE 2': { point: 'ミシュランの定番オールシーズン。', pitch: '「輸入車オーナー・性能重視で1セット運用したい方に。」' },
+  'CELSIUS': {
+    features: 'TOYO初代オールシーズン (3PMSF雪マーク付き)。夏タイヤ性能を維持しつつ、軽い積雪・凍結路面にも対応。タイヤ交換の手間が省ける。',
+    target: '都市部の年に数回しか積雪しない地域。スタッドレス置き場のないマンション住まい、軽井沢に行くたびに交換が面倒なお客様。',
+    pitch: '「年に数回の積雪、スタッドレス置き場ない都市部の方に。「タイヤ交換の手間と保管場所の悩みが消えます」が刺さります。」',
+    compare: '後継: CELSIUS AS2。同クラス: BluEarth-4S AW21 / ALL SEASON MAXX AS1 / CROSSCLIMATE 2。'
+  },
+  'CELSIUS AS2': {
+    features: 'CELSIUSの後継 (2024〜)。ウェット・ドライ性能と冬性能をさらに向上。摩耗もロングライフ化。',
+    target: 'CELSIUSリピーター、性能アップを求めるオールシーズン派。',
+    pitch: '「CELSIUSリピーターのアップグレード提案。「CELSIUSが性能向上しました」とシンプルに。」',
+    compare: '前作: CELSIUS。同クラス: BluEarth-4S AW21 / CROSSCLIMATE 2。'
+  },
+  'BluEarth-4S AW21': {
+    features: 'YOKOHAMA初のオールシーズン (3PMSF付き)。低燃費性能を維持しつつ、軽積雪・凍結対応。タイヤ交換の手間を省きたい方向け。',
+    target: '都市部の軽い積雪ユーザー、YOKOHAMA派のオールシーズン派。',
+    pitch: '「都市部の軽い積雪ユーザーに。タイヤ交換の手間を省きたい方。「YOKOHAMAの安心感+オールシーズン」を訴求。」',
+    compare: '同クラス: CELSIUS / CELSIUS AS2 / CROSSCLIMATE 2。'
+  },
+  'CROSSCLIMATE 2': {
+    features: 'ミシュランの定番オールシーズン (3PMSF付き)。サマータイヤに最も近いドライ性能と、本格スタッドレスに迫る雪性能を両立した「いいとこ取り」モデル。',
+    target: '輸入車オーナー、性能重視で1セット運用したい方。「冬も普通に走れて夏もスポーティ」を求めるお客様。',
+    pitch: '「輸入車オーナー・性能重視で1セット運用したい方に。「ミシュランの最高峰オールシーズン」が決め台詞。」',
+    compare: '同クラス: CELSIUS AS2 / BluEarth-4S AW21。SUV版: CROSSCLIMATE 2 SUV。'
+  },
 };
 
 // パターン名→ おすすめ情報の解決
@@ -2864,27 +3119,54 @@ function priceShowCatalogPreview(url, maker, pattern, brand) {
     <div id="catalog-preview-body" style="font-size:12px;color:var(--muted);padding:20px 0;text-align:center;">読み込み中...</div>
   `;
   modal.appendChild(box);
-  // 自社おすすめ情報を組み立て (常に表示)
+  // 自社おすすめ情報を組み立て (新スキーマ: features/target/pitch/compare、旧 point/pitch も後方互換)
   const rec = patternToRecommend(pattern, brand);
-  const recHtml = rec ? `
-    <div style="background:linear-gradient(135deg,#fff8e1,#fff3c4);border-left:4px solid #f0a500;border-radius:8px;padding:12px 14px;margin:14px 0;text-align:left;">
-      <div style="font-size:11px;font-weight:800;color:#b97a00;letter-spacing:0.04em;margin-bottom:6px;">💡 オススメポイント (社内メモ)</div>
-      <div style="font-size:13px;color:#1f2937;line-height:1.6;margin-bottom:10px;">${rec.point}</div>
-      <div style="font-size:11px;font-weight:800;color:#b97a00;letter-spacing:0.04em;margin-bottom:6px;">🗣 お客様への薦め方</div>
-      <div style="font-size:12px;color:#374151;line-height:1.7;font-style:italic;">${rec.pitch}</div>
-    </div>` : '';
+  const buildRecHtml = (rec) => {
+    if (!rec) return `
+      <div style="text-align:left;background:#f9fafb;border:1px dashed #d1d5db;border-radius:8px;padding:12px 14px;margin:14px 0;font-size:12px;color:#6b7280;">
+        このパターンはまだ社内情報未登録です。代表に依頼してください。
+      </div>`;
+    // 新スキーマ
+    if (rec.features || rec.target || rec.compare) {
+      return `
+        <div style="background:linear-gradient(135deg,#fff8e1,#fff3c4);border-left:4px solid #f0a500;border-radius:10px;padding:14px 16px;margin:14px 0;text-align:left;">
+          ${rec.features ? `
+            <div style="font-size:11px;font-weight:800;color:#b97a00;letter-spacing:0.04em;margin-bottom:6px;">🔧 特徴・性能</div>
+            <div style="font-size:13px;color:#111827;line-height:1.7;margin-bottom:12px;">${rec.features}</div>
+          ` : ''}
+          ${rec.target ? `
+            <div style="font-size:11px;font-weight:800;color:#b97a00;letter-spacing:0.04em;margin-bottom:6px;">🚗 想定車種・ユーザー</div>
+            <div style="font-size:12px;color:#1f2937;line-height:1.7;margin-bottom:12px;">${rec.target}</div>
+          ` : ''}
+          ${rec.pitch ? `
+            <div style="font-size:11px;font-weight:800;color:#b97a00;letter-spacing:0.04em;margin-bottom:6px;">🗣 お客様への薦め方</div>
+            <div style="font-size:12px;color:#374151;line-height:1.75;font-style:italic;background:#fff;border-radius:6px;padding:10px 12px;margin-bottom:12px;">${rec.pitch}</div>
+          ` : ''}
+          ${rec.compare ? `
+            <div style="font-size:11px;font-weight:800;color:#b97a00;letter-spacing:0.04em;margin-bottom:6px;">🔁 競合・代替候補</div>
+            <div style="font-size:12px;color:#1f2937;line-height:1.7;">${rec.compare}</div>
+          ` : ''}
+        </div>`;
+    }
+    // 旧スキーマ後方互換
+    return `
+      <div style="background:linear-gradient(135deg,#fff8e1,#fff3c4);border-left:4px solid #f0a500;border-radius:8px;padding:12px 14px;margin:14px 0;text-align:left;">
+        ${rec.point ? `<div style="font-size:11px;font-weight:800;color:#b97a00;letter-spacing:0.04em;margin-bottom:6px;">💡 オススメポイント</div><div style="font-size:13px;color:#1f2937;line-height:1.6;margin-bottom:10px;">${rec.point}</div>` : ''}
+        ${rec.pitch ? `<div style="font-size:11px;font-weight:800;color:#b97a00;letter-spacing:0.04em;margin-bottom:6px;">🗣 お客様への薦め方</div><div style="font-size:12px;color:#374151;line-height:1.7;font-style:italic;">${rec.pitch}</div>` : ''}
+      </div>`;
+  };
+  const recHtml = buildRecHtml(rec);
   const isGoogleUrl = url.includes('google.com/search');
-  const openBtnLabel = isGoogleUrl ? 'Google で検索する →' : '公式ページを開く →';
-  // Google検索URLの場合はOGP取得しない (検索結果ページのmetaは無意味)
+  // 写真取得用の小ヘルパ (Google検索URLは画像なし)
+  const renderImage = (d) => d?.image
+    ? `<img src="${d.image}" alt="${pattern} のイメージ" style="max-width:100%;max-height:240px;object-fit:contain;border-radius:8px;background:#f3f4f6;margin-bottom:12px;">`
+    : '';
   if (isGoogleUrl) {
     const body = document.getElementById('catalog-preview-body');
     if (body) {
       body.innerHTML = `
-        <div style="text-align:left;font-size:12px;color:var(--muted);margin-bottom:8px;">
-          メーカー公式直リンク未登録のため、Google検索を経由します。
-        </div>
+        <div style="text-align:left;font-size:11px;color:var(--muted);margin-bottom:8px;">📸 公式画像未取得 (直リンク未登録)</div>
         ${recHtml}
-        <button onclick="window.open('${url.replace(/'/g,"\\'")}','_blank','noopener');document.getElementById('catalog-preview-modal').remove();" style="padding:8px 18px;background:var(--accent);color:#fff;border:0;border-radius:6px;cursor:pointer;font-weight:700;">${openBtnLabel}</button>
       `;
     }
     return;
@@ -2895,25 +3177,18 @@ function priceShowCatalogPreview(url, maker, pattern, brand) {
     if (!body) return;
     if (d.error) {
       body.innerHTML = `
-        <div style="color:#dc2626;margin-bottom:12px;">⚠ ページ取得エラー: ${d.error}</div>
-        <div style="font-size:11px;word-break:break-all;margin-bottom:12px;color:#6b7280;">${url}</div>
+        <div style="text-align:left;font-size:11px;color:#dc2626;margin-bottom:8px;">⚠ 公式画像取得失敗</div>
         ${recHtml}
-        <button onclick="window.open('${url.replace(/'/g,"\\'")}','_blank','noopener');document.getElementById('catalog-preview-modal').remove();" style="padding:8px 18px;background:var(--accent);color:#fff;border:0;border-radius:6px;cursor:pointer;font-weight:700;">新しいタブで開く</button>
-        <div style="margin-top:10px;"><a href="https://www.google.com/search?q=${encodeURIComponent(maker + ' ' + (brand?brand+' ':'') + pattern + ' タイヤ')}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);">Google で検索 →</a></div>
       `;
       return;
     }
     body.innerHTML = `
-      ${d.image ? `<img src="${d.image}" alt="" style="max-width:100%;border-radius:8px;margin-bottom:12px;">` : ''}
-      ${d.title ? `<div style="font-size:16px;font-weight:700;color:#111;text-align:left;margin-bottom:6px;">${d.title}</div>` : ''}
-      ${d.siteName ? `<div style="font-size:10px;color:var(--muted);text-align:left;margin-bottom:8px;">${d.siteName}</div>` : ''}
-      ${d.description ? `<div style="font-size:12px;color:#444;text-align:left;line-height:1.6;margin-bottom:16px;">${d.description}</div>` : ''}
+      ${renderImage(d)}
       ${recHtml}
-      <button onclick="window.open('${url.replace(/'/g,"\\'")}','_blank','noopener');document.getElementById('catalog-preview-modal').remove();" style="padding:8px 18px;background:var(--accent);color:#fff;border:0;border-radius:6px;cursor:pointer;font-weight:700;">${openBtnLabel}</button>
     `;
   }).catch(e => {
     const body = document.getElementById('catalog-preview-body');
-    if (body) body.innerHTML = '<div style="color:#dc2626;">読み込み失敗: ' + e.message + '</div>';
+    if (body) body.innerHTML = recHtml;
   });
 }
 

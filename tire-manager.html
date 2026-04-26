@@ -2638,6 +2638,61 @@ const DIRECT_CATALOG_URL = {
   'X-ICE SNOW': 'https://www.michelin.co.jp/auto/tires/x-ice-snow',
   'X-ICE SNOW SUV': 'https://www.michelin.co.jp/auto/tires/x-ice-snow-suv',
   'LATITUDE TOUR HP': 'https://www.michelin.co.jp/auto/tires/latitude-tour-hp',
+  // ─────────── LTS (中型トラック・バス) ───────────
+  // BRIDGESTONE 商用 (https://tire.bridgestone.co.jp/business/)
+  'DURAVIS M807/M810': 'https://tire.bridgestone.co.jp/business/duravis/m807/',
+  'M807/M810': 'https://tire.bridgestone.co.jp/business/duravis/m807/',
+  'M807': 'https://tire.bridgestone.co.jp/business/duravis/m807/',
+  'M810': 'https://tire.bridgestone.co.jp/business/duravis/m810/',
+  'ECOPIA M812Ⅱ': 'https://tire.bridgestone.co.jp/business/ecopia/m812ii/',
+  'M812Ⅱ': 'https://tire.bridgestone.co.jp/business/ecopia/m812ii/',
+  'ECOPIA R214/R201': 'https://tire.bridgestone.co.jp/business/ecopia/r214/',
+  'R214': 'https://tire.bridgestone.co.jp/business/ecopia/r214/',
+  'R201': 'https://tire.bridgestone.co.jp/business/ecopia/r201/',
+  'R214/R201': 'https://tire.bridgestone.co.jp/business/ecopia/r214/',
+  'VLCP/G590/G557/G640': 'https://tire.bridgestone.co.jp/business/',
+  'G590': 'https://tire.bridgestone.co.jp/business/',
+  'G557': 'https://tire.bridgestone.co.jp/business/',
+  'G640': 'https://tire.bridgestone.co.jp/business/',
+  // DUNLOP 商用 (https://tyre.dunlop.co.jp/business/)
+  'LT38': 'https://tyre.dunlop.co.jp/business/lt38/',
+  'LT50': 'https://tyre.dunlop.co.jp/business/lt50/',
+  'SP355': 'https://tyre.dunlop.co.jp/business/sp355/',
+  'SP495M': 'https://tyre.dunlop.co.jp/business/sp495m/',
+  'SPLT22': 'https://tyre.dunlop.co.jp/business/splt22/',
+  'SPLT33': 'https://tyre.dunlop.co.jp/business/splt33/',
+  'SPLT5': 'https://tyre.dunlop.co.jp/business/splt5/',
+  // TOYO 商用 (https://www.toyotires.jp/cb/)
+  'M131': 'https://www.toyotires.jp/cb/m131/',
+  'M134': 'https://www.toyotires.jp/cb/m134/',
+  'M135': 'https://www.toyotires.jp/cb/m135/',
+  'M319': 'https://www.toyotires.jp/cb/m319/',
+  'M501': 'https://www.toyotires.jp/cb/m501/',
+  'M614': 'https://www.toyotires.jp/cb/m614/',
+  'M634': 'https://www.toyotires.jp/cb/m634/',
+  'M637': 'https://www.toyotires.jp/cb/m637/',
+  // YOKOHAMA 商用 (https://www.y-yokohama.com/product/tire/business/)
+  'LT151R': 'https://www.y-yokohama.com/product/tire/business/lt151r/',
+  'LT152R': 'https://www.y-yokohama.com/product/tire/business/lt152r/',
+  'LT752R': 'https://www.y-yokohama.com/product/tire/business/lt752r/',
+  // ─────────── バン ───────────
+  '610V/604V/650V/651V': 'https://tire.bridgestone.co.jp/business/',
+  '604V': 'https://tire.bridgestone.co.jp/business/',
+  '610V': 'https://tire.bridgestone.co.jp/business/',
+  '650V': 'https://tire.bridgestone.co.jp/business/',
+  '651V': 'https://tire.bridgestone.co.jp/business/',
+  'K370/V600': 'https://tire.bridgestone.co.jp/business/',
+  'K370': 'https://tire.bridgestone.co.jp/business/',
+  'V600': 'https://tire.bridgestone.co.jp/business/',
+  'DURAVIS R670/CAMPER/GL-R': 'https://tire.bridgestone.co.jp/business/duravis/r670/',
+  'R670': 'https://tire.bridgestone.co.jp/business/duravis/r670/',
+  'CAMPER': 'https://tire.bridgestone.co.jp/business/duravis/',
+  'GL-R': 'https://tire.bridgestone.co.jp/business/duravis/',
+  'ECOPIA R710': 'https://tire.bridgestone.co.jp/business/ecopia/r710/',
+  'R710': 'https://tire.bridgestone.co.jp/business/ecopia/r710/',
+  'A06': 'https://www.toyotires.jp/cb/a06/',
+  'V02E': 'https://www.toyotires.jp/cb/v02e/',
+  'V03E': 'https://www.toyotires.jp/cb/v03e/',
   // ─────────── PIRELLI (https://www.pirelli.com/tyres/ja-jp/) ───────────
   'P ZERO': 'https://www.pirelli.com/tyres/ja-jp/car/catalog/product/p-zero',
   'P ZERO PZ4': 'https://www.pirelli.com/tyres/ja-jp/car/catalog/product/p-zero',
@@ -3055,6 +3110,218 @@ const PATTERN_RECOMMEND = {
     target: '輸入車オーナー、性能重視で1セット運用したい方。「冬も普通に走れて夏もスポーティ」を求めるお客様。',
     pitch: '「輸入車オーナー・性能重視で1セット運用したい方に。「ミシュランの最高峰オールシーズン」が決め台詞。」',
     compare: '同クラス: CELSIUS AS2 / BluEarth-4S AW21。SUV版: CROSSCLIMATE 2 SUV。'
+  },
+  // ──────────────── LTS (中型トラック) ────────────────
+  'M807/M810': {
+    features: 'BS DURAVIS の中型トラック向け定番。M807はリブパターン(ステア軸用)、M810はラグパターン(ドライブ軸用)。耐摩耗・低燃費・耐偏摩耗バランス◎。広島のトラック業界で最も信頼されるBS定番。',
+    target: '4t〜10tトラック、トレーラー。広島トラック協会会員、ムロオ・サッコー・シモハナ等の運送会社の標準採用パターン。',
+    pitch: '「BS DURAVISの定番中の定番です。M807はステア(操舵軸)、M810はドライブ(駆動軸)で必ずペアで提案。「リブとラグの組み合わせがプロの常識」と説明。」',
+    compare: '同クラス (BS): ECOPIA R214/R201 (より低燃費) / VLCP系 (リトレッド)。他社: TOYO M501/M634 / DUNLOP SP495M / YOKOHAMA LT151R/LT752R。'
+  },
+  'M812Ⅱ': {
+    features: 'BS ECOPIA の中型トラック・バス向け低燃費パターン。転がり抵抗を抑え、長距離輸送の燃費を改善。摩耗ライフも長い。',
+    target: '長距離トラック、観光バス、路線バス。燃費を経営課題視している運送会社・バス事業者。',
+    pitch: '「燃費にこだわる長距離運送のお客様に。「DURAVISより燃費良好なECOPIA系」と差別化。BS指定で安心感。」',
+    compare: '同クラス: ECOPIA R214/R201。他社: YOKOHAMA LT752R / TOYO M634。'
+  },
+  'R214/R201': {
+    features: 'BS ECOPIA トラック・バス用ラジアル。R214がリブ系(ステア軸/オールポジション)、R201がドライブ軸用。低燃費・低摩耗。',
+    target: '4t〜大型トラック、バス。燃費重視の運送業者。',
+    pitch: '「BSのトラック向けエコタイヤです。M807/810より燃費良好で、長距離運行のコスト削減に貢献します。」',
+    compare: '同クラス: M807/M810 (より一般的) / M812Ⅱ。'
+  },
+  'R214': {
+    features: 'BS ECOPIA トラック用リブパターン (ステア軸/オールポジション)。低燃費・耐偏摩耗。',
+    target: '4t〜大型トラック・バスのステア軸。',
+    pitch: '「ステア軸の低燃費パターン。M807と比較して燃費重視のお客様に。」',
+    compare: '同クラス (ステア): M807。ドライブ軸: R201 / M810。'
+  },
+  'R201': {
+    features: 'BS ECOPIA トラック用ラグパターン (ドライブ軸用)。低燃費を維持しつつ駆動力を確保。',
+    target: '4t〜大型トラックのドライブ軸。',
+    pitch: '「ドライブ軸の低燃費パターン。R214とペア提案。M810より燃費良好。」',
+    compare: '同クラス (ドライブ): M810。ステア軸: R214 / M807。'
+  },
+  'VLCP/G590/G557/G640': {
+    features: 'BS のリトレッド(更生タイヤ)系・特殊用途パターン。新品より価格を抑えつつ、BSの品質基準で再生される。',
+    target: '台数の多い運送会社、コスト最優先のお客様。',
+    pitch: '「BSのリトレッド/特殊用途タイヤ。新品の半額前後で、品質はBSが担保。コスト削減の即効薬として提案。」',
+    compare: '新品代替: M807/M810 / R214/R201。'
+  },
+  'LT38': {
+    features: 'DUNLOP小型トラック向けリブパターン。小型〜中型トラックのステア軸/オールポジション用。',
+    target: '小型〜4tトラック。DUNLOP指定の運送業者。',
+    pitch: '「DUNLOPの小型トラック向け定番。BSのDURAVISより価格抑えめで、性能も合格点。」',
+    compare: '同クラス: TOYO M131/M134 / BS DURAVIS。'
+  },
+  'LT50': {
+    features: 'DUNLOP小型〜中型トラック向け次世代パターン。LT38の後継的位置付けで、低燃費・耐摩耗向上。',
+    target: '小型〜中型トラック全般。LT38リピーターのアップグレード。',
+    pitch: '「LT38の後継。低燃費とロングライフが向上したDUNLOPの新世代。」',
+    compare: '前作: LT38。同クラス: SP495M / TOYO M134/M634。'
+  },
+  'SP355': {
+    features: 'DUNLOP特殊路面用パターン。',
+    target: '建設現場・特殊用途車両。',
+    pitch: '「特殊用途のお客様限定。一般運送には推奨しません。」',
+    compare: '一般用途: SPLT22/33。'
+  },
+  'SP495M': {
+    features: 'DUNLOP中型トラック用ラジアル。耐摩耗とコスパ重視。',
+    target: '4t〜10tトラック。コスト重視の運送業者。',
+    pitch: '「DUNLOPのコスパ重視中型トラック用。M807/810が予算オーバーの方への提案。」',
+    compare: '同クラス: BS M807/M810 / TOYO M634 / YOKOHAMA LT151R。'
+  },
+  'SPLT22': {
+    features: 'DUNLOP小型トラック・バン用。耐摩耗バランス◎。',
+    target: '小型トラック・バン。DUNLOP指定。',
+    pitch: '「小型トラック・バンの定番DUNLOP。BSのDURAVIS R670と競合。」',
+    compare: '同クラス: BS DURAVIS R670 / TOYO V02E。'
+  },
+  'SPLT33': {
+    features: 'DUNLOP小型トラック向け新世代。',
+    target: '小型トラック。',
+    pitch: '「SPLT22の派生型。仕様により使い分け。」',
+    compare: '同クラス: SPLT22 / TOYO V02E。'
+  },
+  'SPLT5': {
+    features: 'DUNLOP小型トラック用。',
+    target: '小型トラック。',
+    pitch: '「DUNLOP小型トラックの選択肢の1つ。」',
+    compare: '同クラス: SPLT22 / SPLT33。'
+  },
+  'M131': {
+    features: 'TOYO小型トラック用リブパターン。耐偏摩耗◎。',
+    target: '小型〜2tトラック。TOYO指定。',
+    pitch: '「TOYO小型トラックの定番。BSより価格優位、性能合格点。」',
+    compare: '同クラス: M134/M135 / DUNLOP LT38 / BS DURAVIS。'
+  },
+  'M134': {
+    features: 'TOYO中型トラック用ラジアル。低燃費とロングライフのバランス。',
+    target: '4t〜中型トラック。TOYO指定。',
+    pitch: '「TOYO中型トラックの定番。M807/810のTOYO版として提案。」',
+    compare: '同クラス: BS M807/M810 / DUNLOP SP495M / YOKOHAMA LT151R。'
+  },
+  'M135': {
+    features: 'TOYO中型トラック用ドライブ軸パターン。',
+    target: '4t〜中型トラックのドライブ軸。',
+    pitch: '「TOYO中型のドライブ軸。M134(ステア)とペア提案。」',
+    compare: '同クラス: BS M810 / R201。'
+  },
+  'M319': {
+    features: 'TOYO中型トラック用。',
+    target: '中型トラック。',
+    pitch: '「TOYOの選択肢の1つ。仕様で選定。」',
+    compare: '同クラス: M134。'
+  },
+  'M501': {
+    features: 'TOYO中型〜大型トラック用ラジアル。耐摩耗重視。',
+    target: '4t〜大型トラック。長距離運行向け。',
+    pitch: '「TOYOの耐摩耗重視モデル。長距離運行のコスト削減に。」',
+    compare: '同クラス: BS M807。'
+  },
+  'M614': {
+    features: 'TOYO大型トラック用。',
+    target: '大型トラック。',
+    pitch: '「TOYOの大型トラック向け選択肢。」',
+    compare: '同クラス: M634/M637。'
+  },
+  'M634': {
+    features: 'TOYO中型〜大型トラック用ラジアル。バランス型。',
+    target: '中型〜大型トラック。',
+    pitch: '「TOYOの中大型用バランス型。M501の上位的位置付け。」',
+    compare: '同クラス: BS M810 / DUNLOP SP495M。'
+  },
+  'M637': {
+    features: 'TOYO大型トラック用ドライブ軸パターン。',
+    target: '大型トラックのドライブ軸。',
+    pitch: '「TOYO大型ドライブ軸。M634(オール)とペアで。」',
+    compare: '同クラス: BS R201 / M810。'
+  },
+  'LT151R': {
+    features: 'YOKOHAMA中型トラック用ラジアル。耐摩耗とコスパに定評。広島のトラック業界でも採用多数。',
+    target: '4t〜中型トラック全般。YOKOHAMA指定の運送業者。',
+    pitch: '「YOKOHAMA中型トラックの定番。BS M807/810と競合。コスト感度高いお客様に。」',
+    compare: '同クラス: BS M807/M810 / TOYO M134 / DUNLOP SP495M。'
+  },
+  'LT152R': {
+    features: 'LT151Rの改良版。耐摩耗性向上。',
+    target: '4t〜中型トラック。LT151Rリピーター向け。',
+    pitch: '「LT151Rの後継。性能アップしたYOKOHAMA中型用。」',
+    compare: '前作: LT151R。'
+  },
+  'LT752R': {
+    features: 'YOKOHAMA中型〜大型トラック用低燃費ラジアル。長距離運行の燃費改善が売り。',
+    target: '長距離大型トラック、観光バス。燃費重視の事業者。',
+    pitch: '「YOKOHAMAの低燃費トラック用。BS ECOPIA M812Ⅱの対抗馬。長距離高速の燃費削減を訴求。」',
+    compare: '同クラス: BS M812Ⅱ / R214/R201。'
+  },
+  // ──────────────── バン ────────────────
+  '610V/604V/650V/651V': {
+    features: 'BS のバン用ロングセラー(舗装路向け)。耐摩耗・耐偏摩耗のバランスが高く、配送車・営業車の定番。604Vが標準、610V/650V/651Vはサイズ別バリエーション。',
+    target: 'ハイエース・キャラバン・プロボックス・サクシード等の配送・営業車。年間走行距離が多い業務車両。',
+    pitch: '「配送車・営業車の定番BSバンタイヤ。「ハイエース乗りなら知ってる」というレベルの安心感。年間走行3万km超の業務車両に。」',
+    compare: '上位: ECOPIA R710 (低燃費)。同クラス: K370/V600 (BS) / TOYO V02E / DUNLOP SPLT22。'
+  },
+  'K370/V600': {
+    features: 'BS バン用商用パターン。K370は標準的なリブ、V600はやや異なるパターンで使い分け。',
+    target: 'バン・小型商用車。BS指定。',
+    pitch: '「BSバン用の選択肢。610V系より新しいサイズに対応。」',
+    compare: '同クラス: 610V/604V/650V/651V / R710。'
+  },
+  'DURAVIS R670/CAMPER/GL-R': {
+    features: 'BS DURAVIS のバン・キャンピングカー・GL専用シリーズ。R670はバン用、CAMPERはキャンピングカー専用(高荷重対応)、GL-Rは特殊用途。',
+    target: 'ハイエース・キャラバン・コースター。キャンピングカー所有者。',
+    pitch: '「BSのバン専用「DURAVIS」シリーズ。610V系より新しい設計で、耐久性とロードノイズ低減を両立。キャンピングカーのお客様にはCAMPER一択。」',
+    compare: '同クラス: 610V系 / TOYO V03E。'
+  },
+  'R670': {
+    features: 'BS DURAVIS のバン用標準モデル。耐摩耗・低燃費・耐偏摩耗バランス◎。',
+    target: 'ハイエース・キャラバン等の業務バン。',
+    pitch: '「BSバン用の標準モデル。610V系の後継的位置付け。」',
+    compare: '同クラス: ECOPIA R710 / TOYO V03E。'
+  },
+  'CAMPER': {
+    features: 'BS DURAVIS のキャンピングカー専用。高荷重・長期駐車に対応する強化サイドウォール。',
+    target: 'キャンピングカー (キャブコン・バンコン等)。長期駐車する車両。',
+    pitch: '「キャンピングカーのお客様限定。普通のバンタイヤだと荷重不足/長期駐車で歪みます。CAMPER一択でご提案。」',
+    compare: '代替なし。専用品。'
+  },
+  'GL-R': {
+    features: 'BS DURAVIS のGL系車両用 (ハイエースGL等の純正OEMサイズ対応)。',
+    target: 'ハイエースGL系の純正サイズ。',
+    pitch: '「GL系のサイズに対応する専用品。」',
+    compare: '同クラス: R670。'
+  },
+  'ECOPIA R710': {
+    features: 'BS バン用低燃費タイヤ。610V/R670より転がり抵抗を抑え、燃費改善。配送業の燃料コスト削減に。',
+    target: '配送車・営業車で年間走行距離が多いお客様。燃費を経営課題視する運送業者。',
+    pitch: '「バン用ECOPIA。「年間1〜2万円の燃料代節約」を試算で訴求。配送数の多い事業者に効果絶大。」',
+    compare: '同クラス: 610V系 (耐摩耗寄り) / R670。他社: TOYO V03E / DUNLOP SPLT22。'
+  },
+  'R710': {
+    features: 'BS ECOPIA バン用 (R710略称)。詳細は ECOPIA R710 と同じ。',
+    target: '同上。',
+    pitch: '同上。',
+    compare: '同上。'
+  },
+  'A06': {
+    features: 'TOYO バン用パターン。低価格帯。',
+    target: 'バン全般、コスト重視のお客様。',
+    pitch: '「TOYOのバン用エントリー。BSの610V系より価格優位。」',
+    compare: '同クラス: V02E / V03E。BS: 610V系。'
+  },
+  'V02E': {
+    features: 'TOYO バン用低燃費パターン。配送車向けに耐摩耗と燃費を両立。',
+    target: 'ハイエース・キャラバン・プロボックス等の業務バン。TOYO指定。',
+    pitch: '「TOYOバン用の主力。BS R710の対抗馬で、価格はやや優位。」',
+    compare: '同クラス: BS ECOPIA R710 / DUNLOP SPLT22 / V03E (新型)。'
+  },
+  'V03E': {
+    features: 'TOYO バン用最新世代 (V02Eの後継)。低燃費・耐摩耗・ウェット性能とも向上。',
+    target: 'バン・配送車全般。V02Eリピーター。',
+    pitch: '「V02Eの後継。性能向上したTOYOの新世代バンタイヤ。」',
+    compare: '前作: V02E。同クラス: BS R710 / DUNLOP SPLT22。'
   },
 };
 

@@ -888,6 +888,14 @@ document.querySelectorAll('.filter-tab[data-period]').forEach(t => {
 
 loadSummary();
 loadList();
+
+// URLクエリ ?tab=xxx で初期タブ切替 (sakai / missing / dup / reassign / plate / size)
+(function applyInitialTab() {
+  const m = new URLSearchParams(location.search).get('tab');
+  if (!m) return;
+  const target = document.querySelector(`#main-tabs .filter-tab[data-main="${m}"]`);
+  if (target) target.click();
+})();
 </script>
 
 </body>

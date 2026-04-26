@@ -76,6 +76,19 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
 .btn-save-mini { padding:6px 12px; background:var(--green); color:#fff; border:0; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; }
 .btn-save-mini:disabled { opacity:0.4; cursor:not-allowed; }
 
+/* リンク式タブ */
+.btn-open { display:inline-block; padding:10px 18px; background:var(--accent); color:#fff !important; border-radius:8px; text-decoration:none; font-size:13px; font-weight:700; margin-top:6px; }
+.btn-open:hover { opacity:0.9; }
+
+/* ムロオ・商品マスタ共通行 */
+.row-card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:6px; display:grid; grid-template-columns:1fr auto auto; gap:8px; align-items:center; }
+.row-main { font-size:12px; }
+.row-main .row-title { font-weight:700; font-size:13px; }
+.row-main .row-meta { font-size:10px; color:var(--muted); margin-top:2px; }
+.row-select, .row-input { padding:6px 8px; border:1px solid var(--border); border-radius:6px; font-size:12px; }
+.section-group-header { font-size:13px; font-weight:800; color:var(--accent); padding:8px 4px; margin-top:14px; border-bottom:2px solid var(--accent); }
+.warn-badge { display:inline-block; font-size:9px; font-weight:700; padding:1px 6px; border-radius:6px; background:#fbbf24; color:#fff; margin-left:4px; }
+
 .help-box { background:#eff6ff; border:1px solid #bfdbfe; border-left:4px solid var(--blue); padding:12px 14px; border-radius:8px; margin-bottom:14px; font-size:12px; color:#1e40af; line-height:1.7; }
 .help-box strong { color:var(--blue); }
 
@@ -95,7 +108,10 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
 <div class="tabs">
   <div class="tab active" data-tab="images">📸 タイヤ画像収集</div>
   <div class="tab" data-tab="furigana">📞 ふりがな入力</div>
-  <!-- 将来ここにお願いタブを追加 -->
+  <div class="tab" data-tab="sakai">🔧 サカイ支店振分</div>
+  <div class="tab" data-tab="missing">🆔 番号不明</div>
+  <div class="tab" data-tab="muroo">🚐 ムロオ拠点確認</div>
+  <div class="tab" data-tab="product">🗒 商品マスタ確認</div>
 </div>
 
 <!-- ════════ タイヤ画像収集 ════════ -->
@@ -173,6 +189,79 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
   <div id="furi-list">
     <div class="loading">読み込み中...</div>
   </div>
+</div>
+
+<!-- ════════ サカイ支店振分 ════════ -->
+<div class="section" id="section-sakai">
+  <div class="task-card">
+    <div class="task-title">🔧 サカイ系車両を支店別に振り分け</div>
+    <div class="task-desc">「サカイ広島」とだけ書かれていて、4支店(広島支社/北/南/西)のどこに属するか不明な車両を、納品書を見ながら振り分けるツールです。</div>
+    <div class="help-box">
+      <strong>📝 やり方</strong><br>
+      下のボタンから振分ツールを開いて、車両ごとに正しい支店を選択 → 一括保存
+    </div>
+    <a href="size-mismatch.html?tab=sakai" target="_blank" class="btn-open">🔗 サカイ振分ツールを開く →</a>
+  </div>
+</div>
+
+<!-- ════════ 番号不明 ════════ -->
+<div class="section" id="section-missing">
+  <div class="task-card">
+    <div class="task-title">🆔 車番不明・管理番号不明リスト</div>
+    <div class="task-desc">フル車番が抜けてる/管理番号が空欄の車両一覧。納品書と照合して埋めていく作業です。</div>
+    <div class="help-box">
+      <strong>📝 やり方</strong><br>
+      下のボタンから不明リストを開いて、納品書を見ながら正しい番号を入力
+    </div>
+    <a href="size-mismatch.html?tab=missing" target="_blank" class="btn-open">🔗 番号不明リストを開く →</a>
+  </div>
+</div>
+
+<!-- ════════ ムロオ拠点確認 ════════ -->
+<div class="section" id="section-muroo">
+  <div class="task-card">
+    <div class="task-title">🚐 ムロオ車両の拠点別グループ確認</div>
+    <div class="task-desc">
+      現在ムロオは4拠点 (ムロオイオン/ムロオ五日市/ムロオ北/ムロオ三井) にグループ分けされています。<br>
+      実際の納品書と照合して、振り分けが正しいか確認してください。<strong>違っていたら拠点を選び直してください。</strong>
+    </div>
+    <div class="help-box">
+      <strong>📝 やり方</strong><br>
+      ① 各拠点グループの中で、車番をクリックして納品書と照合<br>
+      ② 違っていたらドロップダウンから正しい拠点を選択<br>
+      ③ 「💾」ボタンで即保存
+    </div>
+  </div>
+  <div class="filter-bar" id="muroo-filter">
+    <div class="chip active" data-muroo-loc="all">すべて</div>
+    <!-- 動的に拠点チップ追加 -->
+  </div>
+  <input type="search" class="search-input" id="muroo-search" placeholder="車番で検索 (例: 広島100)">
+  <div id="muroo-list"><div class="loading">読み込み中...</div></div>
+</div>
+
+<!-- ════════ 商品マスタ確認 ════════ -->
+<div class="section" id="section-product">
+  <div class="task-card">
+    <div class="task-title">🗒 商品マスタのメーカー/銘柄チェック</div>
+    <div class="task-desc">
+      商品マスタの中で、銘柄とメーカーの組み合わせがおかしい(例: BS銘柄なのにTOYO登録)、銘柄が空のタイヤ商品 等を確認・修正するページです。
+    </div>
+    <div class="help-box">
+      <strong>📝 やり方</strong><br>
+      ① 「⚠️ 不一致候補」リストから1件ずつ確認<br>
+      ② メーカー or 銘柄 のドロップダウン/入力で修正<br>
+      ③ 「💾」ボタンで即保存<br>
+      <strong>判断付かない場合</strong>: 代表に確認のメモ欄に書き留めて空欄でOK
+    </div>
+  </div>
+  <div class="filter-bar">
+    <div class="chip active" data-product-filter="mismatch">⚠️ メーカー不一致候補</div>
+    <div class="chip" data-product-filter="empty-brand">❓ 銘柄空 (タイヤ品)</div>
+    <div class="chip" data-product-filter="all">全件</div>
+  </div>
+  <input type="search" class="search-input" id="product-search" placeholder="商品名・コードで検索">
+  <div id="product-list"><div class="loading">タブを開くと読み込み開始</div></div>
 </div>
 
 <div id="toast" class="toast" style="display:none;"></div>
@@ -532,10 +621,222 @@ document.querySelectorAll('.chip[data-furi-filter]').forEach(c => {
 document.getElementById('furi-search').oninput = e => { _furiQ = e.target.value; renderFuri(); };
 
 // タブ切替時に初回ロード
-let _furiLoaded = false;
+let _furiLoaded = false, _murooLoaded = false, _productLoaded = false;
 document.querySelector('[data-tab="furigana"]').addEventListener('click', () => {
   if (!_furiLoaded) { _furiLoaded = true; loadFurigana(); }
 });
+document.querySelector('[data-tab="muroo"]').addEventListener('click', () => {
+  if (!_murooLoaded) { _murooLoaded = true; loadMuroo(); }
+});
+document.querySelector('[data-tab="product"]').addEventListener('click', () => {
+  if (!_productLoaded) { _productLoaded = true; loadProductCheck(); }
+});
+
+// ─────────────── ムロオ拠点確認 ───────────────
+let _murooLocs = [], _murooVehicles = [], _murooFilterLoc = 'all', _murooQ = '';
+
+async function loadMuroo() {
+  document.getElementById('muroo-list').innerHTML = '<div class="loading">読み込み中...</div>';
+  // ムロオ4拠点取得
+  const locs = await d1query(`SELECT id, 顧客名 FROM 顧客情報DB WHERE 顧客名 LIKE '%ムロオ%' ORDER BY 顧客名`);
+  _murooLocs = locs.map(r => ({ id: r.id, name: r.顧客名 }));
+  // 各拠点の車両取得
+  const ids = _murooLocs.map(l => `'${l.id}'`).join(',');
+  const vehicles = await d1query(`SELECT v.id, v.車番, v.管理番号, v.顧客ID, c.顧客名 FROM 車両マスタ v LEFT JOIN 顧客情報DB c ON c.id=v.顧客ID WHERE v.顧客ID IN (${ids}) ORDER BY c.顧客名, v.管理番号, v.車番`);
+  _murooVehicles = vehicles.map(r => ({
+    id: r.id, plate: r.車番||'', mgmt: r.管理番号||'',
+    customerId: r.顧客ID, customerName: r.顧客名||'(不明)'
+  }));
+  // 拠点チップ生成
+  const filter = document.getElementById('muroo-filter');
+  filter.innerHTML = `<div class="chip active" data-muroo-loc="all">すべて (${_murooVehicles.length}台)</div>` +
+    _murooLocs.map(l => {
+      const cnt = _murooVehicles.filter(v => v.customerId === l.id).length;
+      return `<div class="chip" data-muroo-loc="${l.id}">${l.name} (${cnt})</div>`;
+    }).join('');
+  filter.querySelectorAll('.chip').forEach(c => {
+    c.onclick = () => {
+      filter.querySelectorAll('.chip').forEach(x => x.classList.remove('active'));
+      c.classList.add('active');
+      _murooFilterLoc = c.dataset.murooLoc;
+      renderMuroo();
+    };
+  });
+  renderMuroo();
+}
+
+function renderMuroo() {
+  let rows = _murooVehicles.filter(v => {
+    if (_murooFilterLoc !== 'all' && v.customerId !== _murooFilterLoc) return false;
+    if (_murooQ && !((v.plate + ' ' + v.mgmt).toLowerCase().includes(_murooQ.toLowerCase()))) return false;
+    return true;
+  });
+  if (rows.length === 0) {
+    document.getElementById('muroo-list').innerHTML = '<div class="loading">該当なし</div>';
+    return;
+  }
+  // 拠点別にグループ化
+  const grouped = {};
+  for (const v of rows) {
+    if (!grouped[v.customerId]) grouped[v.customerId] = [];
+    grouped[v.customerId].push(v);
+  }
+  let html = '';
+  for (const loc of _murooLocs) {
+    const group = grouped[loc.id];
+    if (!group || group.length === 0) continue;
+    html += `<div class="section-group-header">${loc.name} (${group.length}台)</div>`;
+    html += group.map(v => buildMurooRow(v)).join('');
+  }
+  document.getElementById('muroo-list').innerHTML = html;
+}
+
+function buildMurooRow(v) {
+  const rid = 'mr_' + v.id.replace(/-/g,'');
+  const opts = _murooLocs.map(l => `<option value="${l.id}" ${l.id===v.customerId?'selected':''}>${l.name}</option>`).join('');
+  const display = v.plate || (v.mgmt ? '管理番号: '+v.mgmt : '(番号不明)');
+  return `
+    <div class="row-card" id="${rid}">
+      <div class="row-main">
+        <div class="row-title">${escHtml(display)}</div>
+        ${v.plate && v.mgmt ? `<div class="row-meta">管理番号: ${escHtml(v.mgmt)}</div>` : ''}
+      </div>
+      <select class="row-select" id="${rid}_sel">${opts}</select>
+      <button class="btn-save-mini" onclick="saveMuroo('${v.id}','${rid}')">💾</button>
+    </div>
+  `;
+}
+
+async function saveMuroo(vid, rid) {
+  const newCustId = document.getElementById(rid + '_sel').value;
+  const v = _murooVehicles.find(x => x.id === vid);
+  if (!v || newCustId === v.customerId) { showToast('変更なし'); return; }
+  try {
+    const res = await fetch(PROXY + '/d1/update-vehicle', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: vid, 顧客ID: newCustId })
+    });
+    const j = await res.json();
+    if (j.success) {
+      showToast('✅ 拠点変更しました');
+      v.customerId = newCustId;
+      v.customerName = _murooLocs.find(l => l.id === newCustId)?.name || '';
+      renderMuroo();
+    } else showToast('❌ ' + (j.error||''), true);
+  } catch(e) { showToast('❌ ' + e.message, true); }
+}
+
+document.getElementById('muroo-search').oninput = e => { _murooQ = e.target.value; renderMuroo(); };
+
+// ─────────────── 商品マスタチェック ───────────────
+let _products = [], _productFilter = 'mismatch', _productQ = '';
+const MAKER_BRAND_HINTS = {
+  'BRIDGESTONE': ['M89','M91','W9','W3','W7','REGNO','POTENZA','ECOPIA','DUELER','BLIZZAK','ALENZA','PLAYZ','NEWNO','GRX','VRX','DM-V','WZ-','LX1','LX2','HB01','LUFT','FINESSA','M804','M810','M812','R201','R214','R670','R710','610V','604V','650V','651V','K370','V600'],
+  'TOYO': ['NANOENERGY','PROXES','TRANPATH','OBSERVE','OPEN COUNTRY','CELSIUS','M131','M134','M135','M319','M501','M614','M634','M637','M919','V02E','V03E','A06'],
+  'DUNLOP': ['VEURO','LE MANS','ENASAVE','DIREZZA','SP SPORT','GRANDTREK','WINTER MAXX','LT38','LT50','SP495','SPLT','EC204','EC205','RV505','PT5','AT5','MT2','TG4','SP355'],
+  'YOKOHAMA': ['ADVAN','BluEarth','GEOLANDAR','iceGUARD','LT151','LT152','LT752'],
+  'MICHELIN': ['PILOT','PRIMACY','CROSSCLIMATE','X-ICE','LATITUDE'],
+  'PIRELLI': ['P ZERO','CINTURATO','POWERGY','SCORPION','ICE ZERO']
+};
+
+function inferMaker(brand) {
+  if (!brand) return null;
+  const u = String(brand).toUpperCase();
+  for (const [maker, hints] of Object.entries(MAKER_BRAND_HINTS)) {
+    if (hints.some(h => u.includes(h.toUpperCase()))) return maker;
+  }
+  return null;
+}
+
+async function loadProductCheck() {
+  document.getElementById('product-list').innerHTML = '<div class="loading">読み込み中... (全商品スキャン)</div>';
+  const rows = await d1query(`SELECT id, 商品コード, 商品名, タイヤサイズ, タイヤ銘柄, メーカー, ブランド FROM 商品マスタ WHERE タイヤ銘柄 IS NOT NULL OR タイヤサイズ IS NOT NULL ORDER BY 商品コード LIMIT 5000`);
+  _products = rows.map(r => {
+    const inferredMaker = inferMaker(r.タイヤ銘柄);
+    const declaredMaker = r.メーカー ? r.メーカー.replace(' TIRES','') : null;
+    const mismatch = inferredMaker && declaredMaker && inferredMaker !== declaredMaker && declaredMaker !== 'BS' && declaredMaker !== inferredMaker;
+    const isUsedOrService = (r.商品名||'').match(/中古|清掃|取外|取付/);
+    const emptyBrand = !r.タイヤ銘柄 && r.タイヤサイズ && !isUsedOrService;
+    return {
+      id: r.id, code: r.商品コード||'', name: r.商品名||'',
+      size: r.タイヤサイズ||'', brand: r.タイヤ銘柄||'', maker: r.メーカー||'',
+      inferredMaker, mismatch, emptyBrand
+    };
+  });
+  renderProduct();
+}
+
+function renderProduct() {
+  let rows = _products;
+  if (_productFilter === 'mismatch') rows = rows.filter(p => p.mismatch);
+  else if (_productFilter === 'empty-brand') rows = rows.filter(p => p.emptyBrand);
+  if (_productQ) {
+    rows = rows.filter(p => (p.code + ' ' + p.name).toLowerCase().includes(_productQ.toLowerCase()));
+  }
+  if (rows.length === 0) {
+    document.getElementById('product-list').innerHTML = '<div class="loading">該当なし ✅ (チェック完了!)</div>';
+    return;
+  }
+  document.getElementById('product-list').innerHTML = rows.slice(0, 200).map(buildProductRow).join('') +
+    (rows.length > 200 ? `<div class="loading">(上位200件 / 全${rows.length}件)</div>` : '');
+}
+
+function buildProductRow(p) {
+  const rid = 'p_' + p.id.replace(/-/g,'');
+  const makerOpts = ['BRIDGESTONE','TOYO','DUNLOP','YOKOHAMA','MICHELIN','PIRELLI'].map(m =>
+    `<option value="${m}" ${m===(p.maker||'').replace(' TIRES','')?'selected':''}>${m}</option>`).join('');
+  const warn = p.mismatch
+    ? `<span class="warn-badge">推定: ${p.inferredMaker}</span>`
+    : (p.emptyBrand ? `<span class="warn-badge">銘柄空</span>` : '');
+  return `
+    <div class="row-card" id="${rid}" style="grid-template-columns:1fr;gap:6px;">
+      <div class="row-main">
+        <div class="row-title">${escHtml(p.name)} ${warn}</div>
+        <div class="row-meta">コード: ${escHtml(p.code)} | サイズ: ${escHtml(p.size)}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:auto 1fr auto 1fr auto;gap:6px;align-items:center;font-size:11px;">
+        <span style="color:var(--muted);">銘柄</span>
+        <input type="text" class="row-input" id="${rid}_brand" value="${escHtml(p.brand)}" placeholder="例: GRXⅢ">
+        <span style="color:var(--muted);">メーカー</span>
+        <select class="row-select" id="${rid}_maker"><option value="">(空)</option>${makerOpts}</select>
+        <button class="btn-save-mini" onclick="saveProduct('${p.id}','${rid}')">💾</button>
+      </div>
+    </div>
+  `;
+}
+
+async function saveProduct(pid, rid) {
+  const brand = document.getElementById(rid + '_brand').value.trim();
+  const maker = document.getElementById(rid + '_maker').value;
+  try {
+    const res = await fetch(PROXY + '/d1/update-product-master', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: pid, タイヤ銘柄: brand || null, メーカー: maker || null })
+    });
+    const j = await res.json();
+    if (j.success) {
+      showToast('✅ 保存しました');
+      const p = _products.find(x => x.id === pid);
+      if (p) {
+        p.brand = brand; p.maker = maker;
+        const inferred = inferMaker(brand);
+        p.inferredMaker = inferred;
+        p.mismatch = inferred && maker && inferred !== maker.replace(' TIRES','');
+        p.emptyBrand = !brand && p.size && !((p.name||'').match(/中古|清掃|取外|取付/));
+      }
+      renderProduct();
+    } else showToast('❌ ' + (j.error||''), true);
+  } catch(e) { showToast('❌ ' + e.message, true); }
+}
+
+document.querySelectorAll('.chip[data-product-filter]').forEach(c => {
+  c.onclick = () => {
+    document.querySelectorAll('.chip[data-product-filter]').forEach(x => x.classList.remove('active'));
+    c.classList.add('active');
+    _productFilter = c.dataset.productFilter; renderProduct();
+  };
+});
+document.getElementById('product-search').oninput = e => { _productQ = e.target.value; renderProduct(); };
 </script>
 </body>
 </html>

@@ -1146,6 +1146,32 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       }
     }
 
+    // 商品マスタ単項目更新 (事務員 商品マスタチェックUI用)
+    // body: { id, タイヤ銘柄?, メーカー?, ブランド?, タイヤサイズ?, メモ? }
+    if (url.pathname === '/d1/update-product-master' && request.method === 'POST' && env.DB) {
+      try {
+        const body2 = await request.json();
+        const { id } = body2;
+        if (!id) return new Response(JSON.stringify({ error: 'id required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        const ALLOWED = ['タイヤ銘柄','メーカー','ブランド','タイヤサイズ','単価','A表定価','メモ','車種カテゴリ'];
+        const sets = []; const params = [];
+        for (const f of ALLOWED) {
+          if (Object.prototype.hasOwnProperty.call(body2, f)) {
+            sets.push(`"${f}" = ?`);
+            const v = body2[f];
+            params.push(v === '' ? null : v);
+          }
+        }
+        if (!sets.length) return new Response(JSON.stringify({ error: 'no fields to update' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        params.push(id);
+        const stmt = env.DB.prepare(`UPDATE 商品マスタ SET ${sets.join(', ')}, last_edited_time=CURRENT_TIMESTAMP WHERE id = ?`).bind(...params);
+        const res = await stmt.run();
+        return new Response(JSON.stringify({ success: true, changes: res.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
     // タイヤパターン画像の登録/更新 (事務員用)
     if (url.pathname === '/d1/upsert-pattern-image' && request.method === 'POST' && env.DB) {
       try {

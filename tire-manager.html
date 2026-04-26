@@ -3414,6 +3414,73 @@ function priceShowCatalogPreview(url, maker, pattern, brand) {
   // 代わりに PATTERN_RECOMMEND.image (手動登録) があればそれを表示する。
   // 自社おすすめ情報を組み立て (新スキーマ: features/target/pitch/compare、旧 point/pitch も後方互換)
   const rec = patternToRecommend(pattern, brand);
+  // 特徴文を読みやすく: 句点で分割→箇条書き
+  const formatFeatures = (text) => {
+    if (!text) return '';
+    const sentences = text.split(/。/).map(s => s.trim()).filter(Boolean);
+    if (sentences.length <= 1) return `<div style="font-size:13px;color:#111827;line-height:1.7;">${text}</div>`;
+    return `<ul style="margin:0;padding-left:18px;font-size:13px;color:#111827;line-height:1.7;">${sentences.map(s => `<li style="margin-bottom:4px;">${s}。</li>`).join('')}</ul>`;
+  };
+  // 競合文をメーカー別に整理
+  // 入力例: '同クラス: ADVAN dB V553 (YOKOHAMA) / VEURO VE304 (DUNLOP) / PRIMACY 4+ (MICHELIN)。下位: ALENZA LX200 (BS)。BS指定なら第一候補。'
+  const MAKER_COLORS = {
+    'BRIDGESTONE': '#005bac', 'BS': '#005bac',
+    'TOYO': '#e60012', 'TOYO TIRES': '#e60012',
+    'DUNLOP': '#ffc20e', 'YOKOHAMA': '#0066b3',
+    'MICHELIN': '#fdd835', 'PIRELLI': '#000', 'SEIBERLING': '#666'
+  };
+  const formatCompare = (text) => {
+    if (!text) return '';
+    // 句点で分割
+    const sections = text.split(/。/).map(s => s.trim()).filter(Boolean);
+    const blocks = [];
+    for (const sec of sections) {
+      // 「ラベル: 内容」の形式か?
+      const m = sec.match(/^([^:：]+?)[:：](.+)$/);
+      if (m) {
+        const label = m[1].trim();
+        const body = m[2].trim();
+        // メーカー別にグループ化
+        // 各候補を / または 、 で分割
+        const items = body.split(/[\/、]/).map(x => x.trim()).filter(Boolean);
+        // 各 item から (MAKER) を抽出
+        const byMaker = {};
+        const noMaker = [];
+        for (const it of items) {
+          const mm = it.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+          if (mm) {
+            const product = mm[1].trim();
+            const maker = mm[2].trim();
+            if (!byMaker[maker]) byMaker[maker] = [];
+            byMaker[maker].push(product);
+          } else {
+            noMaker.push(it);
+          }
+        }
+        const makerKeys = Object.keys(byMaker);
+        if (makerKeys.length === 0) {
+          // ただの箇条書きとして表示
+          blocks.push(`<div style="margin-bottom:8px;"><div style="font-size:11px;font-weight:700;color:#b97a00;margin-bottom:4px;">${label}</div><div style="font-size:12px;color:#1f2937;line-height:1.6;">${body}</div></div>`);
+        } else {
+          let html = `<div style="margin-bottom:8px;"><div style="font-size:11px;font-weight:700;color:#b97a00;margin-bottom:4px;">${label}</div>`;
+          for (const mk of makerKeys) {
+            const col = MAKER_COLORS[mk.toUpperCase()] || '#6b7280';
+            html += `<div style="display:flex;gap:6px;align-items:flex-start;margin-bottom:3px;font-size:12px;"><span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:6px;background:${col};color:#fff;flex-shrink:0;margin-top:1px;min-width:60px;text-align:center;">${mk.replace('BRIDGESTONE','BS')}</span><span style="color:#1f2937;">${byMaker[mk].join(' / ')}</span></div>`;
+          }
+          if (noMaker.length > 0) {
+            html += `<div style="font-size:12px;color:#1f2937;margin-top:4px;">${noMaker.join(' / ')}</div>`;
+          }
+          html += `</div>`;
+          blocks.push(html);
+        }
+      } else {
+        // ラベルなし - そのまま注記として
+        blocks.push(`<div style="font-size:12px;color:#374151;line-height:1.6;margin-bottom:6px;">${sec}。</div>`);
+      }
+    }
+    return blocks.join('');
+  };
+
   const buildRecHtml = (rec) => {
     if (!rec) return `
       <div style="text-align:left;background:#f9fafb;border:1px dashed #d1d5db;border-radius:8px;padding:12px 14px;margin:14px 0;font-size:12px;color:#6b7280;">
@@ -3425,7 +3492,7 @@ function priceShowCatalogPreview(url, maker, pattern, brand) {
         <div style="background:linear-gradient(135deg,#fff8e1,#fff3c4);border-left:4px solid #f0a500;border-radius:10px;padding:14px 16px;margin:14px 0;text-align:left;">
           ${rec.features ? `
             <div style="font-size:11px;font-weight:800;color:#b97a00;letter-spacing:0.04em;margin-bottom:6px;">🔧 特徴・性能</div>
-            <div style="font-size:13px;color:#111827;line-height:1.7;margin-bottom:12px;">${rec.features}</div>
+            <div style="margin-bottom:12px;">${formatFeatures(rec.features)}</div>
           ` : ''}
           ${rec.target ? `
             <div style="font-size:11px;font-weight:800;color:#b97a00;letter-spacing:0.04em;margin-bottom:6px;">🚗 想定車種・ユーザー</div>
@@ -3437,7 +3504,7 @@ function priceShowCatalogPreview(url, maker, pattern, brand) {
           ` : ''}
           ${rec.compare ? `
             <div style="font-size:11px;font-weight:800;color:#b97a00;letter-spacing:0.04em;margin-bottom:6px;">🔁 競合・代替候補</div>
-            <div style="font-size:12px;color:#1f2937;line-height:1.7;">${rec.compare}</div>
+            <div>${formatCompare(rec.compare)}</div>
           ` : ''}
         </div>`;
     }

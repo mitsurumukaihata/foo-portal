@@ -222,21 +222,28 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
   <div class="task-card">
     <div class="task-title">🚐 ムロオ車両の拠点別グループ確認</div>
     <div class="task-desc">
-      現在ムロオは4拠点 (ムロオイオン/ムロオ五日市/ムロオ北/ムロオ三井) にグループ分けされています。<br>
-      実際の納品書と照合して、振り分けが正しいか確認してください。<strong>違っていたら拠点を選び直してください。</strong>
+      現在ムロオは4拠点 (ムロオイオン/五日市/北/三井) でグループ分けされています。<br>
+      <strong>納品書と照合して 拠点・フル車番・管理番号 を確認/修正してください。</strong> 11台が「車番だけあって管理番号が空」の状態です。
     </div>
     <div class="help-box">
       <strong>📝 やり方</strong><br>
-      ① 各拠点グループの中で、車番をクリックして納品書と照合<br>
-      ② 違っていたらドロップダウンから正しい拠点を選択<br>
-      ③ 「💾」ボタンで即保存
+      ① 「⚠️ 番号欠けのみ」フィルタで対象を絞り込み (推奨スタート)<br>
+      ② 黄色く強調された欄 = 入力が必要<br>
+      ③ フル車番・管理番号・拠点 を納品書見ながら入力/修正<br>
+      ④ 「💾 保存」で即D1更新<br>
+      <strong>💡 ヒント</strong>: 拠点だけ変更する場合も同じUI、車番欄を触らなければそのまま。
     </div>
+  </div>
+  <div class="filter-bar">
+    <div class="chip active" data-muroo-status="all">すべて</div>
+    <div class="chip" data-muroo-status="incomplete">⚠️ 番号欠けのみ</div>
+    <div class="chip" data-muroo-status="complete">✅ 揃ってる</div>
   </div>
   <div class="filter-bar" id="muroo-filter">
     <div class="chip active" data-muroo-loc="all">すべて</div>
     <!-- 動的に拠点チップ追加 -->
   </div>
-  <input type="search" class="search-input" id="muroo-search" placeholder="車番で検索 (例: 広島100)">
+  <input type="search" class="search-input" id="muroo-search" placeholder="車番・管理番号で検索">
   <div id="muroo-list"><div class="loading">読み込み中...</div></div>
 </div>
 
@@ -633,7 +640,7 @@ document.querySelector('[data-tab="product"]').addEventListener('click', () => {
 });
 
 // ─────────────── ムロオ拠点確認 ───────────────
-let _murooLocs = [], _murooVehicles = [], _murooFilterLoc = 'all', _murooQ = '';
+let _murooLocs = [], _murooVehicles = [], _murooFilterLoc = 'all', _murooFilterStatus = 'all', _murooQ = '';
 
 async function loadMuroo() {
   document.getElementById('muroo-list').innerHTML = '<div class="loading">読み込み中...</div>';
@@ -665,14 +672,28 @@ async function loadMuroo() {
   renderMuroo();
 }
 
+function murooIsIncomplete(v) {
+  return !v.plate || !v.mgmt;
+}
 function renderMuroo() {
   let rows = _murooVehicles.filter(v => {
     if (_murooFilterLoc !== 'all' && v.customerId !== _murooFilterLoc) return false;
+    const incomplete = murooIsIncomplete(v);
+    if (_murooFilterStatus === 'incomplete' && !incomplete) return false;
+    if (_murooFilterStatus === 'complete' && incomplete) return false;
     if (_murooQ && !((v.plate + ' ' + v.mgmt).toLowerCase().includes(_murooQ.toLowerCase()))) return false;
     return true;
   });
+  // サマリ
+  const total = _murooVehicles.length;
+  const incompleteCount = _murooVehicles.filter(murooIsIncomplete).length;
+  const summaryHtml = `<div class="summary" style="margin-bottom:10px;">
+    <div class="summary-card"><div class="summary-num">${total}</div><div class="summary-label">ムロオ全車両</div></div>
+    <div class="summary-card"><div class="summary-num" style="color:var(--red);">${incompleteCount}</div><div class="summary-label">番号欠け</div></div>
+    <div class="summary-card"><div class="summary-num" style="color:var(--green);">${total - incompleteCount}</div><div class="summary-label">完備</div></div>
+  </div>`;
   if (rows.length === 0) {
-    document.getElementById('muroo-list').innerHTML = '<div class="loading">該当なし</div>';
+    document.getElementById('muroo-list').innerHTML = summaryHtml + '<div class="loading">該当なし</div>';
     return;
   }
   // 拠点別にグループ化
@@ -681,11 +702,12 @@ function renderMuroo() {
     if (!grouped[v.customerId]) grouped[v.customerId] = [];
     grouped[v.customerId].push(v);
   }
-  let html = '';
+  let html = summaryHtml;
   for (const loc of _murooLocs) {
     const group = grouped[loc.id];
     if (!group || group.length === 0) continue;
-    html += `<div class="section-group-header">${loc.name} (${group.length}台)</div>`;
+    const inc = group.filter(murooIsIncomplete).length;
+    html += `<div class="section-group-header">${loc.name} (${group.length}台${inc > 0 ? ` / ⚠️${inc}件番号欠け` : ''})</div>`;
     html += group.map(v => buildMurooRow(v)).join('');
   }
   document.getElementById('muroo-list').innerHTML = html;
@@ -694,39 +716,73 @@ function renderMuroo() {
 function buildMurooRow(v) {
   const rid = 'mr_' + v.id.replace(/-/g,'');
   const opts = _murooLocs.map(l => `<option value="${l.id}" ${l.id===v.customerId?'selected':''}>${l.name}</option>`).join('');
-  const display = v.plate || (v.mgmt ? '管理番号: '+v.mgmt : '(番号不明)');
+  const incomplete = murooIsIncomplete(v);
+  const plateBg = !v.plate ? 'background:#fef3c7;border-color:#f59e0b;' : '';
+  const mgmtBg = !v.mgmt ? 'background:#fef3c7;border-color:#f59e0b;' : '';
+  const warn = incomplete ? '<span class="warn-badge">⚠️ 番号欠け</span>' : '';
   return `
-    <div class="row-card" id="${rid}">
+    <div class="row-card" id="${rid}" style="grid-template-columns:1fr;gap:8px;">
       <div class="row-main">
-        <div class="row-title">${escHtml(display)}</div>
-        ${v.plate && v.mgmt ? `<div class="row-meta">管理番号: ${escHtml(v.mgmt)}</div>` : ''}
+        <div class="row-title">${escHtml(v.plate || v.mgmt || '(番号不明)')} ${warn}</div>
+        <div class="row-meta">現在: ${escHtml(v.customerName)}</div>
       </div>
-      <select class="row-select" id="${rid}_sel">${opts}</select>
-      <button class="btn-save-mini" onclick="saveMuroo('${v.id}','${rid}')">💾</button>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:6px;align-items:center;font-size:11px;">
+        <span style="color:var(--muted);width:60px;">フル車番</span>
+        <input type="text" class="row-input" id="${rid}_plate" value="${escHtml(v.plate)}" placeholder="例: 広島100あ12-34" style="${plateBg}">
+        <span style="color:var(--muted);width:60px;">管理番号</span>
+        <input type="text" class="row-input" id="${rid}_mgmt" value="${escHtml(v.mgmt)}" placeholder="例: 1234" style="${mgmtBg}">
+        <span style="color:var(--muted);width:60px;">拠点</span>
+        <select class="row-select" id="${rid}_sel">${opts}</select>
+      </div>
+      <div style="text-align:right;">
+        <button class="btn-save-mini" onclick="saveMuroo('${v.id}','${rid}')">💾 保存</button>
+      </div>
     </div>
   `;
 }
 
 async function saveMuroo(vid, rid) {
   const newCustId = document.getElementById(rid + '_sel').value;
+  const newPlate = document.getElementById(rid + '_plate').value.trim();
+  const newMgmt = document.getElementById(rid + '_mgmt').value.trim();
   const v = _murooVehicles.find(x => x.id === vid);
-  if (!v || newCustId === v.customerId) { showToast('変更なし'); return; }
+  if (!v) return;
+  // 差分のみ送信
+  const payload = { id: vid };
+  let changed = false;
+  if (newCustId !== v.customerId) { payload.顧客ID = newCustId; changed = true; }
+  if (newPlate !== v.plate) { payload.車番 = newPlate || null; changed = true; }
+  if (newMgmt !== v.mgmt) { payload.管理番号 = newMgmt || null; changed = true; }
+  if (!changed) { showToast('変更なし'); return; }
   try {
     const res = await fetch(PROXY + '/d1/update-vehicle', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: vid, 顧客ID: newCustId })
+      body: JSON.stringify(payload)
     });
     const j = await res.json();
     if (j.success) {
-      showToast('✅ 拠点変更しました');
+      showToast('✅ 保存しました');
       v.customerId = newCustId;
       v.customerName = _murooLocs.find(l => l.id === newCustId)?.name || '';
+      v.plate = newPlate;
+      v.mgmt = newMgmt;
       renderMuroo();
     } else showToast('❌ ' + (j.error||''), true);
   } catch(e) { showToast('❌ ' + e.message, true); }
 }
 
 document.getElementById('muroo-search').oninput = e => { _murooQ = e.target.value; renderMuroo(); };
+// ステータスチップ (delegate to existing chip handler)
+setTimeout(() => {
+  document.querySelectorAll('.chip[data-muroo-status]').forEach(c => {
+    c.onclick = () => {
+      document.querySelectorAll('.chip[data-muroo-status]').forEach(x => x.classList.remove('active'));
+      c.classList.add('active');
+      _murooFilterStatus = c.dataset.murooStatus;
+      renderMuroo();
+    };
+  });
+}, 100);
 
 // ─────────────── 商品マスタチェック ───────────────
 let _products = [], _productFilter = 'mismatch', _productQ = '';

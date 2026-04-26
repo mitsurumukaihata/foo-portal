@@ -233,9 +233,45 @@ actionItems は、会話中に出てきた「行動可能なタスク」を**漏
         const pick = (re) => { const m = html.match(re); return m ? m[1].trim() : null; };
         const title = pick(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i) || pick(/<title[^>]*>([^<]+)<\/title>/i);
         const desc = pick(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i) || pick(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i);
-        const image = pick(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i);
+        const ogImage = pick(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i);
         const siteName = pick(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']/i);
-        return new Response(JSON.stringify({ url: target, title, description: desc, image, siteName }), {
+        // ── トレッド(溝)画像の探索 ─────────────
+        // ページ内 <img> をすべて拾い、ファイル名/alt/class に tread/pattern/groove を含むものを優先
+        // <picture><source srcset> や data-src/data-original にも対応
+        const candidates = [];
+        const imgRe = /<(?:img|source)[^>]*?(?:src|srcset|data-src|data-original)=["']([^"']+\.(?:jpg|jpeg|png|webp))["'][^>]*?(?:alt=["']([^"']*)["'])?/gi;
+        let m;
+        while ((m = imgRe.exec(html)) !== null) {
+          let imgUrl = m[1].split(' ')[0]; // srcset 1x指定の最初を採用
+          const alt = (m[2] || '').toLowerCase();
+          if (!imgUrl) continue;
+          // 相対URLを絶対URLに
+          try { imgUrl = new URL(imgUrl, target).href; } catch { continue; }
+          // 同一ホストのみ
+          let imgHost; try { imgHost = new URL(imgUrl).hostname; } catch { continue; }
+          if (!allowed.some(a => imgHost === a || imgHost.endsWith('.' + a))) continue;
+          const lowerSrc = imgUrl.toLowerCase();
+          // スコアリング: tread/pattern/groove/footprint を優先
+          let score = 0;
+          if (/(tread|pattern|groove|footprint|溝|トレッド)/i.test(lowerSrc) || /(tread|pattern|groove|溝)/i.test(alt)) score += 100;
+          if (/close[-_]?up|detail/i.test(lowerSrc) || /クローズ|拡大|詳細/i.test(alt)) score += 30;
+          if (/feature|tech/i.test(lowerSrc)) score += 10;
+          // 除外: ロゴ・アイコン・小サイズ・SVG・装飾系
+          if (/(logo|icon|sprite|nav|header|footer|banner|btn|arrow|thumb|placeholder)/i.test(lowerSrc)) score -= 50;
+          if (score > 0) candidates.push({ url: imgUrl, score, alt });
+        }
+        candidates.sort((a, b) => b.score - a.score);
+        const treadImage = candidates.length > 0 ? candidates[0].url : null;
+        // 後方互換: image は og:image。tread が最優先表示用に追加
+        return new Response(JSON.stringify({
+          url: target,
+          title,
+          description: desc,
+          image: ogImage,
+          treadImage,
+          treadCandidates: candidates.slice(0, 5).map(c => ({ url: c.url, score: c.score, alt: c.alt })),
+          siteName
+        }), {
           headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "public, max-age=86400" }
         });
       } catch (e) {

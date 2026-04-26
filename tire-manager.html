@@ -3424,10 +3424,24 @@ function priceShowCatalogPreview(url, maker, pattern, brand) {
   };
   const recHtml = buildRecHtml(rec);
   const isGoogleUrl = url.includes('google.com/search');
-  // 写真取得用の小ヘルパ (Google検索URLは画像なし)
-  const renderImage = (d) => d?.image
-    ? `<img src="${d.image}" alt="${pattern} のイメージ" style="max-width:100%;max-height:240px;object-fit:contain;border-radius:8px;background:#f3f4f6;margin-bottom:12px;">`
-    : '';
+  // 写真取得用の小ヘルパ
+  // 優先順位: 1) treadImage (溝が見える) 2) og:image (商品ヒーロー)
+  // 両方あれば 2枚並べる
+  const renderImage = (d) => {
+    if (!d) return '';
+    const tread = d.treadImage;
+    const hero = d.image;
+    if (tread && hero && tread !== hero) {
+      return `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+          <div><img src="${tread}" alt="${pattern} の溝パターン" style="width:100%;max-height:200px;object-fit:contain;border-radius:8px;background:#f3f4f6;"><div style="font-size:9px;color:var(--muted);text-align:center;margin-top:3px;">トレッドパターン</div></div>
+          <div><img src="${hero}" alt="${pattern} のイメージ" style="width:100%;max-height:200px;object-fit:contain;border-radius:8px;background:#f3f4f6;"><div style="font-size:9px;color:var(--muted);text-align:center;margin-top:3px;">商品イメージ</div></div>
+        </div>`;
+    }
+    const single = tread || hero;
+    if (!single) return '';
+    return `<img src="${single}" alt="${pattern} のイメージ" style="max-width:100%;max-height:240px;object-fit:contain;border-radius:8px;background:#f3f4f6;margin-bottom:12px;">${tread ? '<div style="font-size:9px;color:var(--muted);text-align:center;margin-top:-8px;margin-bottom:12px;">トレッドパターン</div>' : ''}`;
+  };
   if (isGoogleUrl) {
     const body = document.getElementById('catalog-preview-body');
     if (body) {

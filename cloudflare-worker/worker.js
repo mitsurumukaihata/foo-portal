@@ -1085,6 +1085,42 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       }
     }
 
+    // タイヤパターン画像の登録/更新 (事務員用)
+    if (url.pathname === '/d1/upsert-pattern-image' && request.method === 'POST' && env.DB) {
+      try {
+        const r = await request.json();
+        if (!r.パターン) return new Response(JSON.stringify({ error: 'パターン required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        const now = new Date().toISOString();
+        const stmt = env.DB.prepare(`INSERT INTO パターン画像
+          (パターン, ブランド, メーカー, カテゴリ, 商品画像URL, トレッドURL, メモ, 登録者, created_time, last_edited_time)
+          VALUES (?,?,?,?,?,?,?,?,?,?)
+          ON CONFLICT(パターン) DO UPDATE SET
+            ブランド=excluded.ブランド, メーカー=excluded.メーカー, カテゴリ=excluded.カテゴリ,
+            商品画像URL=excluded.商品画像URL, トレッドURL=excluded.トレッドURL,
+            メモ=excluded.メモ, 登録者=excluded.登録者, last_edited_time=excluded.last_edited_time`).bind(
+          r.パターン, r.ブランド || null, r.メーカー || null, r.カテゴリ || null,
+          r.商品画像URL || null, r.トレッドURL || null, r.メモ || null,
+          r.登録者 || null, now, now
+        );
+        const res = await stmt.run();
+        return new Response(JSON.stringify({ success: true, changes: res.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
+    // パターン画像の削除
+    if (url.pathname === '/d1/delete-pattern-image' && request.method === 'POST' && env.DB) {
+      try {
+        const { パターン } = await request.json();
+        if (!パターン) return new Response(JSON.stringify({ error: 'パターン required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        const res = await env.DB.prepare('DELETE FROM パターン画像 WHERE パターン = ?').bind(パターン).run();
+        return new Response(JSON.stringify({ success: true, changes: res.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
     // 指定顧客IDの車両の管理番号を一括NULLクリア
     if (url.pathname === '/d1/clear-mgmt-no' && request.method === 'POST' && env.DB) {
       try {

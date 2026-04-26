@@ -3325,14 +3325,38 @@ const PATTERN_RECOMMEND = {
   },
 };
 
-// パターン名→ おすすめ情報の解決
+// パターン名→ おすすめ情報の解決 (画像はD1パターン画像テーブルからマージ)
+const PATTERN_IMAGE_FROM_D1 = {}; // { 'GRXⅢ': { image, treadImage } }
 function patternToRecommend(pattern, brand) {
   if (!pattern) return null;
   const k1 = (brand ? brand + ' ' + pattern : pattern).trim();
-  if (PATTERN_RECOMMEND[k1]) return PATTERN_RECOMMEND[k1];
-  if (PATTERN_RECOMMEND[pattern]) return PATTERN_RECOMMEND[pattern];
-  return null;
+  let base = PATTERN_RECOMMEND[k1] || PATTERN_RECOMMEND[pattern] || null;
+  // D1から取得した画像を上書きマージ (recが無くても画像だけ表示できるように)
+  const img = PATTERN_IMAGE_FROM_D1[pattern] || PATTERN_IMAGE_FROM_D1[k1];
+  if (img && (img.image || img.treadImage)) {
+    base = { ...(base || {}), ...img };
+  }
+  return base;
 }
+// D1から画像URL一覧を取得 (起動時に1回キャッシュ)
+async function loadPatternImagesFromD1() {
+  try {
+    const res = await fetch('https://notion-proxy.33322666666mm.workers.dev/d1/sql', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ sql: 'SELECT パターン, 商品画像URL, トレッドURL FROM パターン画像' })
+    });
+    const j = await res.json();
+    for (const r of (j.results || [])) {
+      if (r.パターン) {
+        PATTERN_IMAGE_FROM_D1[r.パターン] = {
+          image: r.商品画像URL || null,
+          treadImage: r.トレッドURL || null
+        };
+      }
+    }
+  } catch(e) { /* silent: 画像なくても動作する */ }
+}
+loadPatternImagesFromD1();
 
 // メーカー別カタログ検索URLビルダー
 // 1. DIRECT_CATALOG_URL に登録されている場合は直リンク

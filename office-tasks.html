@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>事務員さんお願いリスト | f.o.o</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=DM+Mono:wght@400;500&display=swap');
+:root {
+  --bg:#f7f8fa; --card:#fff; --text:#1f2937; --muted:#6b7280;
+  --border:#e5e7eb; --border2:#d1d5db; --accent:#f0a500; --accent-bg:#fff8e1;
+  --green:#10b981; --red:#ef4444; --blue:#3b82f6;
+  --s1:#fafafc; --s2:#f3f4f6; --s3:#e5e7eb;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--text); padding-bottom:80px; }
+.header { padding:14px 20px; background:#fff; border-bottom:1px solid var(--border); position:sticky; top:0; z-index:10; }
+.title { font-size:18px; font-weight:900; }
+.subtitle { font-size:11px; color:var(--muted); margin-top:2px; }
+.greeting { font-size:13px; padding:14px 20px; background:linear-gradient(135deg,var(--accent-bg),#fff); border-bottom:1px solid var(--border); }
+.tabs { display:flex; gap:4px; padding:10px 16px; background:#fff; border-bottom:1px solid var(--border); overflow-x:auto; }
+.tab { padding:8px 14px; background:var(--s2); border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; border:1px solid var(--border); }
+.tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+.section { padding:16px 20px; display:none; }
+.section.active { display:block; }
+.task-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:14px; }
+.task-title { font-size:14px; font-weight:800; margin-bottom:6px; }
+.task-desc { font-size:12px; color:var(--muted); margin-bottom:10px; line-height:1.6; }
+
+/* 画像収集タスク */
+.summary { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
+.summary-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px; text-align:center; }
+.summary-num { font-size:22px; font-weight:900; color:var(--accent); font-family:'DM Mono',monospace; }
+.summary-label { font-size:10px; color:var(--muted); margin-top:2px; }
+
+.filter-bar { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+.chip { padding:6px 12px; background:var(--s2); border:1px solid var(--border); border-radius:14px; font-size:11px; font-weight:700; cursor:pointer; }
+.chip.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+.search-input { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:10px; font-size:13px; margin-bottom:10px; }
+
+.pattern-list { display:flex; flex-direction:column; gap:8px; }
+.pattern-item { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
+.pattern-row1 { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+.maker-badge { font-size:9px; font-weight:800; padding:2px 6px; border-radius:8px; color:#fff; }
+.maker-BS { background:#005bac; }
+.maker-TOYO { background:#e60012; }
+.maker-DUNLOP { background:#ffc20e; color:#000; }
+.maker-YOKOHAMA { background:#0066b3; }
+.maker-MICHELIN { background:#fdd835; color:#000; }
+.maker-PIRELLI { background:#000; }
+.brand-badge { font-size:10px; font-weight:700; padding:2px 7px; border-radius:8px; background:var(--s3); color:var(--text); }
+.pattern-name { font-size:14px; font-weight:800; }
+.cat-badge { font-size:9px; padding:2px 6px; border-radius:6px; background:var(--s3); color:var(--muted); }
+.status-badge { margin-left:auto; font-size:10px; font-weight:700; padding:2px 8px; border-radius:8px; }
+.status-done { background:var(--green); color:#fff; }
+.status-pending { background:var(--s3); color:var(--muted); }
+.status-partial { background:#fbbf24; color:#fff; }
+
+.url-row { display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:center; margin-bottom:6px; }
+.url-label { font-size:11px; font-weight:700; color:var(--muted); width:80px; }
+.url-input { padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:11px; font-family:'DM Mono',monospace; }
+.url-preview { width:60px; height:60px; object-fit:contain; border:1px solid var(--border); border-radius:6px; background:var(--s2); }
+.btn-save { padding:8px 16px; background:var(--accent); color:#fff; border:0; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; margin-top:6px; }
+.btn-clear { padding:6px 10px; background:var(--s2); border:1px solid var(--border); border-radius:6px; font-size:11px; cursor:pointer; }
+.btn-save:disabled { opacity:0.4; cursor:not-allowed; }
+
+.help-box { background:#eff6ff; border:1px solid #bfdbfe; border-left:4px solid var(--blue); padding:12px 14px; border-radius:8px; margin-bottom:14px; font-size:12px; color:#1e40af; line-height:1.7; }
+.help-box strong { color:var(--blue); }
+
+.loading { text-align:center; padding:40px; color:var(--muted); font-size:12px; }
+.toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--green); color:#fff; padding:10px 18px; border-radius:24px; font-size:12px; font-weight:700; z-index:1000; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="title">📋 事務員さんお願いリスト</div>
+  <div class="subtitle">代表からの依頼を都度ここに追加します</div>
+</div>
+
+<div id="greeting" class="greeting">読み込み中...</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="images">📸 タイヤ画像収集</div>
+  <!-- 将来ここにお願いタブを追加 -->
+</div>
+
+<!-- ════════ タイヤ画像収集 ════════ -->
+<div class="section active" id="section-images">
+  <div class="task-card">
+    <div class="task-title">📸 タイヤパターン画像の収集</div>
+    <div class="task-desc">
+      価格検索アプリで、タイヤパターンを選んだときに画像が出るようにする取り組みです。<br>
+      下のリストから1パターンずつメーカー公式サイトを開いて、画像URLをコピーして登録してください。
+    </div>
+    <div class="help-box">
+      <strong>📝 やり方</strong><br>
+      ①「公式サイト→」リンクをクリック<br>
+      ② メーカー公式ページの中で<strong>タイヤ全体写真</strong>を右クリック → 「画像のアドレスをコピー」<br>
+      ③ 「商品画像URL」欄にペースト<br>
+      ④ <strong>溝（トレッドパターン）の写真</strong>も同じ手順で「トレッドURL」にペースト（あれば）<br>
+      ⑤ 「💾 登録」ボタンを押す → 価格検索画面にすぐ反映されます<br>
+      <br>
+      <strong>💡 ヒント</strong>: 全部やる必要はありません。よく出るパターン（GRXⅢ, ECOPIA NH200, VRX3 等）から優先で。
+    </div>
+  </div>
+
+  <div class="summary" id="summary"></div>
+
+  <div class="filter-bar">
+    <div class="chip active" data-filter="all">すべて</div>
+    <div class="chip" data-filter="pending">未登録のみ</div>
+    <div class="chip" data-filter="partial">片方のみ</div>
+    <div class="chip" data-filter="done">登録済み</div>
+  </div>
+  <div class="filter-bar">
+    <div class="chip cat-chip active" data-cat="all">全カテゴリ</div>
+    <div class="chip cat-chip" data-cat="PC">🚗 乗用車</div>
+    <div class="chip cat-chip" data-cat="LTS">🚛 LTS(中型)</div>
+    <div class="chip cat-chip" data-cat="バン">🚐 バン</div>
+  </div>
+  <input type="search" class="search-input" id="search" placeholder="パターン名・ブランドで検索">
+
+  <div class="pattern-list" id="list">
+    <div class="loading">読み込み中...</div>
+  </div>
+</div>
+
+<div id="toast" class="toast" style="display:none;"></div>
+
+<script>
+const SESSION_KEY = 'foo_portal_session';
+const PROXY = 'https://notion-proxy.33322666666mm.workers.dev';
+
+function loadSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (!d || new Date(d.expires) < new Date()) return null;
+    return d;
+  } catch(e) { return null; }
+}
+
+const session = loadSession();
+if (!session) {
+  location.href = 'https://mitsurumukaihata.github.io/foo-portal/';
+}
+
+document.getElementById('greeting').innerHTML =
+  `${(new Date().getHours() < 12 ? 'おはようございます' : 'お疲れさまです')}、<strong>${session?.name || '事務員'}</strong>さん。今日もよろしくお願いします 🙏`;
+
+// ─── タブ切替 ───
+document.querySelectorAll('.tab').forEach(t => {
+  t.onclick = () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('section-' + t.dataset.tab).classList.add('active');
+  };
+});
+
+// ─── DIRECT_CATALOG_URL (コピー: tire-manager.htmlと同期) ───
+const DIRECT_URL = {
+  'GRXⅢ': 'https://tire.bridgestone.co.jp/regno/gr-x3/',
+  'GRXⅢRV': 'https://tire.bridgestone.co.jp/regno/gr-x3-type-rv/',
+  'S007A': 'https://tire.bridgestone.co.jp/potenza/s007a/',
+  'RE71RZ': 'https://tire.bridgestone.co.jp/potenza/re71rz/',
+  'Adrenalin RE005': 'https://tire.bridgestone.co.jp/potenza/re005/',
+  'NH200/NH200C': 'https://tire.bridgestone.co.jp/ecopia/nh200/',
+  'NEWNO': 'https://tire.bridgestone.co.jp/newno/',
+  'PXRVⅡ': 'https://tire.bridgestone.co.jp/playz/px-rv2/',
+  'H/L 850': 'https://tire.bridgestone.co.jp/dueler/',
+  'A/T002': 'https://tire.bridgestone.co.jp/dueler/at002/',
+  'M/T674': 'https://tire.bridgestone.co.jp/dueler/mt674/',
+  'VRX3': 'https://tire.bridgestone.co.jp/blizzak/vrx3/',
+  'DM-V3': 'https://tire.bridgestone.co.jp/blizzak/dm-v3/',
+  'WZ-1': 'https://tire.bridgestone.co.jp/blizzak/wz-1/',
+  '001': 'https://tire.bridgestone.co.jp/alenza/',
+  'LX100': 'https://tire.bridgestone.co.jp/alenza/',
+  'LX200': 'https://tire.bridgestone.co.jp/alenza/',
+};
+function urlFor(pattern, maker) {
+  if (DIRECT_URL[pattern]) return DIRECT_URL[pattern];
+  // フォールバック: メーカー公式トップ
+  const base = {
+    'BRIDGESTONE': 'https://tire.bridgestone.co.jp/',
+    'TOYO': 'https://www.toyotires.jp/',
+    'TOYO TIRES': 'https://www.toyotires.jp/',
+    'DUNLOP': 'https://tyre.dunlop.co.jp/',
+    'YOKOHAMA': 'https://www.y-yokohama.com/',
+    'MICHELIN': 'https://www.michelin.co.jp/',
+    'PIRELLI': 'https://www.pirelli.com/',
+  }[maker] || 'https://www.google.com/';
+  return base + '?q=' + encodeURIComponent(pattern);
+}
+
+// ─── データ取得 ───
+async function d1query(sql) {
+  const r = await fetch(PROXY + '/d1/sql', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sql })
+  });
+  const j = await r.json();
+  return j.results || [];
+}
+
+let _all = [], _images = {}, _filter = 'all', _cat = 'all', _q = '';
+
+async function loadData() {
+  document.getElementById('list').innerHTML = '<div class="loading">読み込み中...</div>';
+  // A表からユニークなパターン (旧モデル除外、空除外)
+  const patternsRows = await d1query(`
+    SELECT カテゴリ, ブランド, パターン, メーカー, COUNT(*) cnt
+    FROM A表
+    WHERE (旧モデル IS NULL OR 旧モデル=0)
+      AND パターン IS NOT NULL AND パターン != ''
+      AND カテゴリ IN ('PC','LTS','バン')
+    GROUP BY カテゴリ, ブランド, パターン, メーカー
+    ORDER BY cnt DESC
+  `);
+  // 既存登録
+  const imgRows = await d1query(`SELECT パターン, 商品画像URL, トレッドURL, 登録者, last_edited_time FROM パターン画像`);
+  _images = {};
+  for (const r of imgRows) _images[r.パターン] = r;
+  _all = patternsRows.map(r => ({
+    pattern: r.パターン || '',
+    brand: r.ブランド || '',
+    maker: r.メーカー || '',
+    cat: r.カテゴリ,
+    cnt: r.cnt,
+    img: _images[r.パターン] || null
+  }));
+  render();
+}
+
+function render() {
+  // フィルタ
+  let rows = _all.filter(r => {
+    if (_cat !== 'all' && r.cat !== _cat) return false;
+    if (_q) {
+      const t = (r.pattern + ' ' + r.brand).toLowerCase();
+      if (!t.includes(_q.toLowerCase())) return false;
+    }
+    const hasImg = r.img && (r.img.商品画像URL || r.img.トレッドURL);
+    const both = r.img && r.img.商品画像URL && r.img.トレッドURL;
+    if (_filter === 'pending' && hasImg) return false;
+    if (_filter === 'done' && !both) return false;
+    if (_filter === 'partial' && (!hasImg || both)) return false;
+    return true;
+  });
+  // サマリ
+  const totalAll = _all.length;
+  const doneAll = _all.filter(r => r.img && r.img.商品画像URL && r.img.トレッドURL).length;
+  const partialAll = _all.filter(r => r.img && (r.img.商品画像URL || r.img.トレッドURL) && !(r.img.商品画像URL && r.img.トレッドURL)).length;
+  const pct = totalAll > 0 ? Math.round((doneAll / totalAll) * 100) : 0;
+  document.getElementById('summary').innerHTML = `
+    <div class="summary-card"><div class="summary-num">${totalAll}</div><div class="summary-label">総パターン</div></div>
+    <div class="summary-card"><div class="summary-num" style="color:var(--green);">${doneAll}</div><div class="summary-label">完了 (${pct}%)</div></div>
+    <div class="summary-card"><div class="summary-num" style="color:#fbbf24;">${partialAll}</div><div class="summary-label">片方のみ</div></div>
+  `;
+  // リスト
+  if (rows.length === 0) {
+    document.getElementById('list').innerHTML = '<div class="loading">該当なし</div>';
+    return;
+  }
+  document.getElementById('list').innerHTML = rows.map(r => buildRow(r)).join('');
+}
+
+function buildRow(r) {
+  const id = 'p_' + btoa(unescape(encodeURIComponent(r.pattern))).replace(/[^a-zA-Z0-9]/g,'');
+  const both = r.img && r.img.商品画像URL && r.img.トレッドURL;
+  const hasImg = r.img && (r.img.商品画像URL || r.img.トレッドURL);
+  const status = both ? '<span class="status-badge status-done">✅ 完了</span>'
+                : hasImg ? '<span class="status-badge status-partial">⚠ 片方のみ</span>'
+                : '<span class="status-badge status-pending">未登録</span>';
+  const makerCls = 'maker-' + (r.maker.replace(' TIRES','').replace('BRIDGESTONE','BS'));
+  const url = urlFor(r.pattern, r.maker);
+  const imgUrl = r.img?.商品画像URL || '';
+  const treadUrl = r.img?.トレッドURL || '';
+  const meta = r.img ? `<div style="font-size:9px;color:var(--muted);margin-top:4px;">登録: ${r.img.登録者||'?'} / ${(r.img.last_edited_time||'').slice(0,10)}</div>` : '';
+  return `
+    <div class="pattern-item" id="${id}">
+      <div class="pattern-row1">
+        <span class="maker-badge ${makerCls}">${r.maker.replace(' TIRES','').replace('BRIDGESTONE','BS')}</span>
+        ${r.brand ? `<span class="brand-badge">${r.brand}</span>` : ''}
+        <span class="pattern-name">${r.pattern}</span>
+        <span class="cat-badge">${r.cat} · ${r.cnt}件</span>
+        ${status}
+      </div>
+      <div style="margin-bottom:8px;"><a href="${url}" target="_blank" rel="noopener" style="font-size:11px;color:var(--blue);">🔗 公式サイト→</a></div>
+      <div class="url-row">
+        <span class="url-label">商品画像URL</span>
+        <input type="url" class="url-input" id="${id}_img" placeholder="https://..." value="${imgUrl}">
+        ${imgUrl ? `<img src="${imgUrl}" class="url-preview" onerror="this.style.opacity=0.3">` : '<div class="url-preview" style="display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted);">未設定</div>'}
+      </div>
+      <div class="url-row">
+        <span class="url-label">トレッドURL</span>
+        <input type="url" class="url-input" id="${id}_tread" placeholder="https://...（溝の写真があれば）" value="${treadUrl}">
+        ${treadUrl ? `<img src="${treadUrl}" class="url-preview" onerror="this.style.opacity=0.3">` : '<div class="url-preview" style="display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted);">未設定</div>'}
+      </div>
+      ${meta}
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <button class="btn-save" onclick="save('${id}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">💾 登録</button>
+        ${hasImg ? `<button class="btn-clear" onclick="del('${r.pattern.replace(/'/g,"\\'")}')">クリア</button>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+async function save(id, r) {
+  const imgUrl = document.getElementById(id + '_img').value.trim();
+  const treadUrl = document.getElementById(id + '_tread').value.trim();
+  if (!imgUrl && !treadUrl) { showToast('URLを入力してください', true); return; }
+  try {
+    const res = await fetch(PROXY + '/d1/upsert-pattern-image', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        パターン: r.pattern, ブランド: r.brand, メーカー: r.maker, カテゴリ: r.cat,
+        商品画像URL: imgUrl || null, トレッドURL: treadUrl || null,
+        登録者: session.name
+      })
+    });
+    const j = await res.json();
+    if (j.success) {
+      showToast('✅ 登録しました');
+      await loadData();
+    } else {
+      showToast('❌ 失敗: ' + (j.error||''), true);
+    }
+  } catch(e) { showToast('❌ ' + e.message, true); }
+}
+
+async function del(pattern) {
+  if (!confirm(pattern + ' の画像登録をクリアしますか?')) return;
+  try {
+    const res = await fetch(PROXY + '/d1/delete-pattern-image', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ パターン: pattern })
+    });
+    const j = await res.json();
+    if (j.success) { showToast('🗑 削除しました'); await loadData(); }
+    else showToast('❌ ' + (j.error||''), true);
+  } catch(e) { showToast('❌ ' + e.message, true); }
+}
+
+function showToast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = isError ? 'var(--red)' : 'var(--green)';
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+
+// フィルタイベント
+document.querySelectorAll('.chip[data-filter]').forEach(c => {
+  c.onclick = () => {
+    document.querySelectorAll('.chip[data-filter]').forEach(x => x.classList.remove('active'));
+    c.classList.add('active');
+    _filter = c.dataset.filter; render();
+  };
+});
+document.querySelectorAll('.cat-chip').forEach(c => {
+  c.onclick = () => {
+    document.querySelectorAll('.cat-chip').forEach(x => x.classList.remove('active'));
+    c.classList.add('active');
+    _cat = c.dataset.cat; render();
+  };
+});
+document.getElementById('search').oninput = e => { _q = e.target.value; render(); };
+
+loadData();
+</script>
+</body>
+</html>

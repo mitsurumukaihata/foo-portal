@@ -3386,6 +3386,8 @@ function priceShowCatalogPreview(url, maker, pattern, brand) {
     <div id="catalog-preview-body" style="font-size:12px;color:var(--muted);padding:20px 0;text-align:center;">読み込み中...</div>
   `;
   modal.appendChild(box);
+  // ⚠️ 2026/4/26 メーカー公式の画像取得は136URL中ほぼ全滅(404 or og:image無し)のため一旦OFF。
+  // 代わりに PATTERN_RECOMMEND.image (手動登録) があればそれを表示する。
   // 自社おすすめ情報を組み立て (新スキーマ: features/target/pitch/compare、旧 point/pitch も後方互換)
   const rec = patternToRecommend(pattern, brand);
   const buildRecHtml = (rec) => {
@@ -3423,14 +3425,11 @@ function priceShowCatalogPreview(url, maker, pattern, brand) {
       </div>`;
   };
   const recHtml = buildRecHtml(rec);
-  const isGoogleUrl = url.includes('google.com/search');
-  // 写真取得用の小ヘルパ
-  // 優先順位: 1) treadImage (溝が見える) 2) og:image (商品ヒーロー)
-  // 両方あれば 2枚並べる
-  const renderImage = (d) => {
-    if (!d) return '';
-    const tread = d.treadImage;
-    const hero = d.image;
+  // 手動登録された画像 (rec.image / rec.treadImage) のみ表示
+  const renderManualImage = (rec) => {
+    if (!rec) return '';
+    const tread = rec.treadImage;
+    const hero  = rec.image;
     if (tread && hero && tread !== hero) {
       return `
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
@@ -3440,37 +3439,15 @@ function priceShowCatalogPreview(url, maker, pattern, brand) {
     }
     const single = tread || hero;
     if (!single) return '';
-    return `<img src="${single}" alt="${pattern} のイメージ" style="max-width:100%;max-height:240px;object-fit:contain;border-radius:8px;background:#f3f4f6;margin-bottom:12px;">${tread ? '<div style="font-size:9px;color:var(--muted);text-align:center;margin-top:-8px;margin-bottom:12px;">トレッドパターン</div>' : ''}`;
+    return `<img src="${single}" alt="${pattern} のイメージ" style="max-width:100%;max-height:240px;object-fit:contain;border-radius:8px;background:#f3f4f6;margin-bottom:12px;">`;
   };
-  if (isGoogleUrl) {
-    const body = document.getElementById('catalog-preview-body');
-    if (body) {
-      body.innerHTML = `
-        <div style="text-align:left;font-size:11px;color:var(--muted);margin-bottom:8px;">📸 公式画像未取得 (直リンク未登録)</div>
-        ${recHtml}
-      `;
-    }
-    return;
-  }
-  const proxy = 'https://notion-proxy.33322666666mm.workers.dev/catalog-meta?url=' + encodeURIComponent(url);
-  fetch(proxy).then(r => r.json()).then(d => {
-    const body = document.getElementById('catalog-preview-body');
-    if (!body) return;
-    if (d.error) {
-      body.innerHTML = `
-        <div style="text-align:left;font-size:11px;color:#dc2626;margin-bottom:8px;">⚠ 公式画像取得失敗</div>
-        ${recHtml}
-      `;
-      return;
-    }
+  const body = document.getElementById('catalog-preview-body');
+  if (body) {
     body.innerHTML = `
-      ${renderImage(d)}
+      ${renderManualImage(rec)}
       ${recHtml}
     `;
-  }).catch(e => {
-    const body = document.getElementById('catalog-preview-body');
-    if (body) body.innerHTML = recHtml;
-  });
+  }
 }
 
 function renderPricePatternStep() {

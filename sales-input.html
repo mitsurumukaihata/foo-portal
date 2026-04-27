@@ -1432,15 +1432,19 @@ function renderRecentSlips() {
   if (!state.recentSlips.length) { showEl.innerHTML = '<div class="empty">直近の入力なし</div>'; return; }
   showEl.innerHTML = `
     <table class="list-table">
-      <thead><tr><th>日付</th><th>タイトル</th><th>車番</th><th>担当</th><th class="right">税込</th></tr></thead>
+      <thead><tr><th>日付</th><th>タイトル</th><th>車番</th><th>担当</th><th class="right">税込</th><th style="width:140px;">操作</th></tr></thead>
       <tbody>
       ${state.recentSlips.map(s => `
-        <tr class="clickable" onclick="window.open('https://www.notion.so/${s.id.replace(/-/g,'')}', '_blank')">
+        <tr class="clickable" onclick="window.open('delivery-note.html?slip=${s.id}', '_blank')" title="クリックで納品書を開く">
           <td>${s.date}</td>
           <td>${escHtml(s.title)}</td>
           <td>${escHtml(s.car || '-')}</td>
           <td>${escHtml(s.staff || '-')}</td>
           <td class="right amount">${fmtYen(s.amount)}</td>
+          <td onclick="event.stopPropagation()">
+            <button class="btn-link" onclick="window.open('delivery-note.html?slip=${s.id}','_blank')" title="納品書">📄</button>
+            <button class="btn-link" onclick="window.open('https://www.notion.so/${s.id.replace(/-/g,'')}','_blank')" title="Notion">🔗</button>
+          </td>
         </tr>
       `).join('')}
       </tbody>
@@ -1511,7 +1515,7 @@ function refreshDashboard() {
       <thead><tr><th>日付</th><th>タイトル</th><th>車番</th><th class="right">税込</th></tr></thead>
       <tbody>
       ${top10.map(s => `
-        <tr class="clickable" onclick="window.open('https://www.notion.so/${s.id.replace(/-/g,'')}', '_blank')">
+        <tr class="clickable" onclick="window.open('delivery-note.html?slip=${s.id}', '_blank')" title="クリックで納品書を開く">
           <td>${s.date}</td>
           <td>${escHtml(s.title.replace(/^\d{4}\/\d{1,2}\/\d{1,2}\s*/, ''))}</td>
           <td>${escHtml(s.car || '-')}</td>

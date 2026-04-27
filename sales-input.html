@@ -4902,31 +4902,34 @@ document.addEventListener('keydown', (e) => {
 });
 
 function collectFormData() {
+  const v = (id) => { const e = document.getElementById(id); return e ? (e.value || '') : ''; };
   return {
-    date: document.getElementById('input-date').value,
-    staff: document.getElementById('input-staff').value,
-    workType: document.getElementById('input-worktype').value,
+    date: v('input-date'),
+    staff: v('input-staff'),
+    workType: v('input-worktype'),
     customer: state.selectedCustomer,
     endUser: state.selectedEndUser,
-    car: document.getElementById('input-car').value.trim(),
-    endUserText: document.getElementById('input-enduser').value.trim(),
+    car: v('input-car').trim(),
+    endUserText: v('input-enduser').trim(),
     taxType: (document.querySelector('input[name="tax-type"]:checked') || {}).value || '外税',
     details: state.details,
-    bikou: document.getElementById('input-bikou').value.trim(),
+    bikou: v('input-bikou').trim(),
   };
 }
 function applyFormData(data) {
-  document.getElementById('input-date').value = data.date || new Date().toISOString().slice(0,10);
-  document.getElementById('input-staff').value = data.staff || loginUser;
-  document.getElementById('input-worktype').value = data.workType || '来店';
+  const setVal = (id, val) => { const e = document.getElementById(id); if (e) e.value = val; };
+  setVal('input-date', data.date || new Date().toISOString().slice(0,10));
+  setVal('input-staff', data.staff || loginUser);
+  setVal('input-worktype', data.workType || '来店');
   state.selectedCustomer = data.customer || null;
   if (data.customer) {
     selectCustomer(data.customer.id, data.customer.name, data.customer.code || '');
   } else {
-    document.getElementById('input-customer').value = '';
-    { const _s = document.getElementById('selected-customer'); if (_s) _s.textContent = ''; document.getElementById('input-customer').style.background = ''; }
+    const cEl = document.getElementById('input-customer');
+    if (cEl) { cEl.value = ''; cEl.style.background = ''; }
+    const _s = document.getElementById('selected-customer'); if (_s) _s.textContent = '';
   }
-  document.getElementById('input-car').value = data.car || '';
+  setVal('input-car', data.car || '');
   // エンドユーザーの復帰（旧形式=text, 新形式=オブジェクト の両方対応）
   if (data.endUser && typeof data.endUser === 'object' && data.endUser.id) {
     state.selectedEndUser = data.endUser;

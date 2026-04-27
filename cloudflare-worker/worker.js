@@ -1075,8 +1075,8 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
         const stmt = env.DB.prepare(`INSERT INTO 社員マスタ
           (id, 氏名, 在籍, 権限, アプリグループ, メールアドレス, 給与体系, 基本給, 時給,
            通勤手当, 住民税月額, 健康保険月額, 厚生年金月額, 扶養人数, 所定労働日数, 所定労働時間,
-           表示順, PIN, メモ, 最終ログイン, created_time, last_edited_time)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+           表示順, PIN, メモ, 最終ログイン, created_time, last_edited_time, シフト手当対象, シフト手当月額)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
           ON CONFLICT(id) DO UPDATE SET
             氏名=excluded.氏名, 在籍=excluded.在籍, 権限=excluded.権限,
             アプリグループ=excluded.アプリグループ, メールアドレス=excluded.メールアドレス,
@@ -1086,11 +1086,13 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
             扶養人数=excluded.扶養人数, 所定労働日数=excluded.所定労働日数,
             所定労働時間=excluded.所定労働時間, 表示順=excluded.表示順,
             PIN=excluded.PIN, メモ=excluded.メモ, 最終ログイン=excluded.最終ログイン,
+            シフト手当対象=excluded.シフト手当対象, シフト手当月額=excluded.シフト手当月額,
             last_edited_time=excluded.last_edited_time`).bind(
           r.id, r.氏名, r.在籍, r.権限, r.アプリグループ, r.メールアドレス, r.給与体系,
           r.基本給, r.時給, r.通勤手当, r.住民税月額, r.健康保険月額, r.厚生年金月額,
           r.扶養人数, r.所定労働日数, r.所定労働時間, r.表示順, r.PIN, r.メモ,
-          r.最終ログイン, r.created_time, r.last_edited_time
+          r.最終ログイン, r.created_time, r.last_edited_time,
+          r.シフト手当対象 ? 1 : 0, r.シフト手当月額 ?? null
         );
         const res = await stmt.run();
         return new Response(JSON.stringify({ success: true, changes: res.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });

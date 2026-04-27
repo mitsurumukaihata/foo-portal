@@ -61,6 +61,7 @@
     <div class="filter-tabs" id="main-tabs">
       <div class="filter-tab active" data-main="salary">💰 給与マスタ (社員別)</div>
       <div class="filter-tab" data-main="shift">🌟 シフト手当設定</div>
+      <div class="filter-tab" data-main="employee">👥 社員マスタ</div>
       <div class="filter-tab" data-main="ticket">🧾 経理チケット</div>
       <div class="filter-tab" data-main="reference">📚 参考情報</div>
     </div>
@@ -82,6 +83,26 @@
       <button class="btn secondary" onclick="copyFromPreviousMonth()">⏪ 前月コピー</button>
     </div>
     <div id="salary-master-result"><div class="loading">読込中...</div></div>
+  </div>
+
+  <!-- 社員マスタ -->
+  <div class="card" id="employee-section" style="display:none;">
+    <h2>👥 社員マスタ</h2>
+    <div class="help-box">
+      💡 <b>ここで全部完結</b>: 入社・退職・権限変更・給与基本値・連絡先・PIN・アプリグループ をすべて管理。Notionは見なくてOK<br>
+      💡 <b>表示順</b>: ホーム画面・各種一覧での並び順。1から振る (重複可だが推奨は連番)<br>
+      💡 <b>権限</b>: 管理者=全アプリ操作OK / 一般=制限あり<br>
+      💡 <b>アプリグループ</b>: 管理者/会長/経理/部長/リーダー/一般/事務/SNS/オークション (どのコミュニティ/権限カードに表示されるか決まる)<br>
+      💡 <b>PIN</b>: ログイン用6桁数字 (社員に配布)
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button class="btn" onclick="addNewEmployee()">➕ 新規社員追加</button>
+      <button class="btn secondary" onclick="loadEmployeeMaster()">🔄 再読込</button>
+      <label style="margin-left:auto;font-size:12px;display:flex;align-items:center;gap:6px;">
+        <input type="checkbox" id="emp-show-resigned" onchange="renderEmployeeList()">退職者も表示
+      </label>
+    </div>
+    <div id="employee-list"><div class="loading">読込中...</div></div>
   </div>
 
   <!-- シフト手当設定 -->
@@ -407,10 +428,12 @@ document.querySelectorAll('#main-tabs .filter-tab').forEach(t => {
     const m = t.dataset.main;
     document.getElementById('salary-section').style.display = m === 'salary' ? '' : 'none';
     document.getElementById('shift-section').style.display = m === 'shift' ? '' : 'none';
+    document.getElementById('employee-section').style.display = m === 'employee' ? '' : 'none';
     document.getElementById('ticket-section').style.display = m === 'ticket' ? '' : 'none';
     document.getElementById('reference-section').style.display = m === 'reference' ? '' : 'none';
     if (m === 'ticket') loadTickets();
     if (m === 'shift') loadShiftSettings();
+    if (m === 'employee') loadEmployeeMaster();
   });
 });
 
@@ -503,6 +526,174 @@ async function saveShiftRow(eid, rid) {
   } catch(err) {
     alert('❌ ' + err.message);
   }
+}
+
+// ───── 社員マスタ ─────
+let _emps = [], _empOpenId = null;
+const APP_GROUPS = ['管理者','会長','経理','部長','リーダー','一般','事務','SNS/オークション'];
+const ZAISEKI_OPTS = ['在籍中','退職'];
+const KENGEN_OPTS = ['管理者','一般'];
+const TAIKEI_OPTS = ['','月給','時給'];
+
+async function loadEmployeeMaster() {
+  document.getElementById('employee-list').innerHTML = '<div class="loading">読込中...</div>';
+  const rows = await sql(`SELECT id, 氏名, 在籍, 権限, アプリグループ, メールアドレス, 給与体系, 基本給, 時給, 通勤手当, 住民税月額, 健康保険月額, 厚生年金月額, 扶養人数, 所定労働日数, 所定労働時間, 表示順, PIN, メモ, シフト手当対象, シフト手当月額, 最終ログイン FROM 社員マスタ ORDER BY 表示順, 氏名`);
+  _emps = rows;
+  renderEmployeeList();
+}
+
+function renderEmployeeList() {
+  const showResigned = document.getElementById('emp-show-resigned')?.checked;
+  const list = _emps.filter(e => showResigned || e.在籍 !== '退職');
+  const active = _emps.filter(e => e.在籍 === '在籍中').length;
+  const resigned = _emps.filter(e => e.在籍 === '退職').length;
+  let html = `<div style="margin-bottom:10px;font-size:12px;color:var(--muted);">在籍 ${active}名 / 退職 ${resigned}名 (合計 ${_emps.length})</div>`;
+  html += list.map(e => buildEmpCard(e)).join('');
+  document.getElementById('employee-list').innerHTML = html;
+}
+
+function buildEmpCard(e) {
+  const isOpen = _empOpenId === e.id;
+  const eid = 'emp_' + (e.id || 'new').replace(/-/g,'');
+  const isResigned = e.在籍 === '退職';
+  const headerBg = isResigned ? 'background:#f3f4f6;color:#9ca3af;' : '';
+  const summaryHtml = `
+    <div onclick="toggleEmpCard('${e.id}')" style="cursor:pointer;display:grid;grid-template-columns:40px 1fr auto auto auto;gap:10px;padding:10px 14px;${headerBg}border-bottom:1px solid var(--border);align-items:center;">
+      <div style="font-family:'DM Mono',monospace;font-weight:700;color:var(--muted);">#${e.表示順||'?'}</div>
+      <div>
+        <div style="font-weight:700;font-size:14px;">${esc(e.氏名||'(未設定)')}</div>
+        <div style="font-size:10px;color:var(--muted);">${esc(e.メールアドレス||'メール未設定')}</div>
+      </div>
+      <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:${e.アプリグループ==='管理者'?'#dc2626':'#3b82f6'};color:#fff;">${esc(e.アプリグループ||'?')}</span>
+      <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:${e.権限==='管理者'?'#7c3aed':'#6b7280'};color:#fff;">${esc(e.権限||'?')}</span>
+      <span style="font-size:11px;color:${isResigned?'#dc2626':'var(--muted)'};">${e.在籍==='在籍中'?'✅':'⛔'} ${esc(e.在籍||'?')} ${isOpen?'▲':'▼'}</span>
+    </div>`;
+  if (!isOpen) return `<div class="card" style="padding:0;margin-bottom:6px;">${summaryHtml}</div>`;
+  // 展開フォーム
+  const f = (id, label, val, type='text', extra='') =>
+    `<label style="display:flex;flex-direction:column;font-size:11px;color:var(--muted);">${label}<input type="${type}" id="${eid}_${id}" value="${val??''}" ${extra} style="padding:6px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px;margin-top:2px;"></label>`;
+  const sel = (id, label, val, opts) =>
+    `<label style="display:flex;flex-direction:column;font-size:11px;color:var(--muted);">${label}<select id="${eid}_${id}" style="padding:6px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px;margin-top:2px;">${opts.map(o => `<option value="${o}" ${o===val?'selected':''}>${o||'(未設定)'}</option>`).join('')}</select></label>`;
+  const num = (id, label, val) => f(id, label, val||0, 'number');
+  return `
+    <div class="card" style="padding:0;margin-bottom:6px;">
+      ${summaryHtml}
+      <div style="padding:14px;background:#fafafc;">
+        <div style="font-size:11px;font-weight:800;color:var(--accent);margin-bottom:6px;">基本情報</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">
+          ${f('氏名','氏名 *',esc(e.氏名))}
+          ${num('表示順','表示順',e.表示順)}
+          ${sel('在籍','在籍',e.在籍||'在籍中',ZAISEKI_OPTS)}
+          ${sel('権限','権限',e.権限||'一般',KENGEN_OPTS)}
+          ${sel('アプリグループ','アプリグループ',e.アプリグループ||'一般',APP_GROUPS)}
+          ${f('メールアドレス','メールアドレス',esc(e.メールアドレス))}
+          ${f('PIN','PIN (6桁)',esc(e.PIN),'text','maxlength="6"')}
+        </div>
+
+        <div style="font-size:11px;font-weight:800;color:var(--accent);margin-bottom:6px;">給与基本値</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">
+          ${sel('給与体系','給与体系',e.給与体系||'',TAIKEI_OPTS)}
+          ${num('基本給','基本給 (月給時)',e.基本給)}
+          ${num('時給','時給 (時給時)',e.時給)}
+          ${num('通勤手当','通勤手当 (月)',e.通勤手当)}
+          ${num('扶養人数','扶養人数',e.扶養人数)}
+          ${num('所定労働日数','所定労働日数',e.所定労働日数)}
+          ${num('所定労働時間','所定労働時間',e.所定労働時間)}
+        </div>
+
+        <div style="font-size:11px;font-weight:800;color:var(--accent);margin-bottom:6px;">控除</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">
+          ${num('健康保険月額','健康保険月額',e.健康保険月額)}
+          ${num('厚生年金月額','厚生年金月額',e.厚生年金月額)}
+          ${num('住民税月額','住民税月額',e.住民税月額)}
+        </div>
+
+        <div style="font-size:11px;font-weight:800;color:#b97a00;margin-bottom:6px;">🌟 シフト手当</div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:10px;margin-bottom:14px;background:#fef3c7;padding:8px 10px;border-radius:6px;">
+          <label style="display:flex;flex-direction:column;font-size:11px;color:#b97a00;">対象社員<input type="checkbox" id="${eid}_シフト手当対象" ${e.シフト手当対象?'checked':''} style="transform:scale(1.4);margin-top:6px;cursor:pointer;width:fit-content;"></label>
+          ${num('シフト手当月額','月額 (対象月支給)',e.シフト手当月額)}
+        </div>
+
+        <div style="font-size:11px;font-weight:800;color:var(--accent);margin-bottom:6px;">メモ</div>
+        <textarea id="${eid}_メモ" style="width:100%;min-height:60px;padding:6px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px;font-family:inherit;margin-bottom:14px;">${esc(e.メモ||'')}</textarea>
+
+        <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;">
+          <div style="font-size:10px;color:var(--muted);">${e.最終ログイン?'最終ログイン: '+esc(e.最終ログイン.slice(0,16)):''}</div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn secondary" onclick="toggleEmpCard('${e.id}')">キャンセル</button>
+            <button class="btn" onclick="saveEmployee('${e.id}','${eid}')">💾 保存</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function toggleEmpCard(id) {
+  _empOpenId = (_empOpenId === id) ? null : id;
+  renderEmployeeList();
+}
+
+function addNewEmployee() {
+  // 新規空エントリ追加
+  const newId = 'new-' + Date.now();
+  const next表示順 = _emps.length > 0 ? Math.max(..._emps.map(e => e.表示順||0)) + 1 : 1;
+  _emps.push({
+    id: newId, 氏名: '', 在籍: '在籍中', 権限: '一般', アプリグループ: '一般',
+    表示順: next表示順, シフト手当対象: 0
+  });
+  _empOpenId = newId;
+  renderEmployeeList();
+  setTimeout(() => {
+    document.getElementById('emp_'+newId.replace(/-/g,'')+'_氏名')?.focus();
+  }, 50);
+}
+
+async function saveEmployee(id, eid) {
+  const get = (k) => document.getElementById(eid+'_'+k);
+  const v = (k, type='str') => {
+    const el = get(k); if (!el) return null;
+    if (type === 'num') return el.value === '' ? null : Number(el.value);
+    if (type === 'bool') return el.checked ? 1 : 0;
+    return el.value || null;
+  };
+  const data = {
+    id: id.startsWith('new-') ? crypto.randomUUID() : id,
+    氏名: v('氏名'),
+    在籍: v('在籍'),
+    権限: v('権限'),
+    アプリグループ: v('アプリグループ'),
+    メールアドレス: v('メールアドレス'),
+    給与体系: v('給与体系'),
+    基本給: v('基本給', 'num'),
+    時給: v('時給', 'num'),
+    通勤手当: v('通勤手当', 'num'),
+    住民税月額: v('住民税月額', 'num'),
+    健康保険月額: v('健康保険月額', 'num'),
+    厚生年金月額: v('厚生年金月額', 'num'),
+    扶養人数: v('扶養人数', 'num'),
+    所定労働日数: v('所定労働日数', 'num'),
+    所定労働時間: v('所定労働時間', 'num'),
+    表示順: v('表示順', 'num'),
+    PIN: v('PIN'),
+    メモ: v('メモ'),
+    シフト手当対象: v('シフト手当対象', 'bool'),
+    シフト手当月額: v('シフト手当月額', 'num'),
+    last_edited_time: new Date().toISOString()
+  };
+  if (!data.氏名) { alert('氏名は必須です'); return; }
+  try {
+    const r = await fetch(D1_WORKER + '/d1/upsert-employee', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(data)
+    });
+    const j = await r.json();
+    if (j.success) {
+      showToastSimple('✅ 保存しました');
+      _empOpenId = null;
+      await loadEmployeeMaster();
+    } else alert('❌ ' + (j.error||''));
+  } catch(e) { alert('❌ ' + e.message); }
 }
 
 function showToastSimple(msg) {

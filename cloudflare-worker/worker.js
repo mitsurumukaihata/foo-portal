@@ -1162,6 +1162,28 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       }
     }
 
+    // 社員アプリ権限の一括上書き (社員マスタ編集UIから)
+    // body: { 社員ID, アプリID一覧: ['xxx','yyy',...] } → 既存削除 → 新規一括INSERT
+    if (url.pathname === '/d1/set-employee-app-permissions' && request.method === 'POST' && env.DB) {
+      try {
+        const { 社員ID, アプリID一覧 } = await request.json();
+        if (!社員ID) return new Response(JSON.stringify({ error: '社員ID required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        if (!Array.isArray(アプリID一覧)) return new Response(JSON.stringify({ error: 'アプリID一覧 must be array' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        // 既存削除
+        await env.DB.prepare('DELETE FROM 社員アプリ権限 WHERE 社員ID = ?').bind(社員ID).run();
+        // 新規挿入 (バッチ)
+        let inserted = 0;
+        for (const aid of アプリID一覧) {
+          if (!aid) continue;
+          await env.DB.prepare('INSERT OR IGNORE INTO 社員アプリ権限 (社員ID, アプリID) VALUES (?, ?)').bind(社員ID, String(aid)).run();
+          inserted++;
+        }
+        return new Response(JSON.stringify({ success: true, inserted }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
     // 商品マスタ単項目更新 (事務員 商品マスタチェックUI用)
     // body: { id, タイヤ銘柄?, メーカー?, ブランド?, タイヤサイズ?, メモ? }
     if (url.pathname === '/d1/update-product-master' && request.method === 'POST' && env.DB) {

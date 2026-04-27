@@ -1888,9 +1888,17 @@ async function verifyPin(name, pin) {
   if (!rows.length) throw new Error('社員情報が見つかりません');
   const e = rows[0];
   if ((e.PIN || '') !== pin) return null;
-  // appsは現状アプリグループ/nameWhitelist/allAccessで制御するため全true (個別アプリ表示はAPP_DEFS側で判定)
+  // 社員アプリ権限を取得 (D1 社員アプリ権限テーブル)
+  const permRows = await d1Sql(`SELECT アプリID FROM 社員アプリ権限 WHERE 社員ID = '${escSql(e.id)}'`);
   const apps = {};
-  APP_DEFS.forEach(def => { apps[def.id] = true; });
+  if (permRows.length === 0) {
+    // 権限行が0件 = 未設定 = デフォルトで全アプリON (新規社員等の互換性確保)
+    APP_DEFS.forEach(def => { apps[def.id] = true; });
+  } else {
+    // 設定行のみON、それ以外OFF
+    APP_DEFS.forEach(def => { apps[def.id] = false; });
+    permRows.forEach(p => { apps[p.アプリID] = true; });
+  }
   return {
     id: e.id,
     name: e.氏名,

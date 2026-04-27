@@ -605,6 +605,17 @@ function buildEmpCard(e) {
           🌟 <b>シフト手当</b> は <b>「🌟 シフト手当設定」</b> タブで管理してください
         </div>
 
+        <div style="font-size:11px;font-weight:800;color:var(--accent);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">
+          📱 アプリ表示権限 (チェック=ホーム画面に表示)
+          <span style="font-size:10px;font-weight:400;color:var(--muted);">
+            <button class="btn secondary" style="padding:3px 8px;font-size:10px;" onclick="toggleAllApps('${eid}', true)">全ON</button>
+            <button class="btn secondary" style="padding:3px 8px;font-size:10px;" onclick="toggleAllApps('${eid}', false)">全OFF</button>
+          </span>
+        </div>
+        <div id="${eid}_apps" class="emp-apps-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px 10px;margin-bottom:14px;padding:10px;background:#f9fafb;border-radius:6px;font-size:11px;">
+          <div style="grid-column:1/-1;color:var(--muted);font-size:10px;">読込中...</div>
+        </div>
+
         <div style="font-size:11px;font-weight:800;color:var(--accent);margin-bottom:6px;">メモ</div>
         <textarea id="${eid}_メモ" style="width:100%;min-height:60px;padding:6px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px;font-family:inherit;margin-bottom:14px;">${esc(e.メモ||'')}</textarea>
 
@@ -623,6 +634,80 @@ function buildEmpCard(e) {
 function toggleEmpCard(id) {
   _empOpenId = (_empOpenId === id) ? null : id;
   renderEmployeeList();
+  if (_empOpenId) loadEmpApps(_empOpenId);
+}
+
+// APP_DEFS のミニ版 (ID + label + section だけ抜粋。本家とずれた場合は再同期)
+const EMP_APP_LIST = [
+  { section: '現場・業務', items: [
+    { id: 'kintai', label: '🕒 勤怠' }, { id: 'tire', label: '🚛 タイヤ入出庫' },
+    { id: 'vehicle', label: '🚚 車両マスタ' }, { id: 'order', label: '📋 発注管理' },
+    { id: 'auto', label: '🤖 自動発注' }, { id: 'tanaoroshi', label: '📦 棚卸表' },
+    { id: 'bihin', label: '🛠 備品発注' }, { id: 'customer-portal', label: '👤 顧客ポータル' },
+  ]},
+  { section: '事務', items: [
+    { id: 'sales_input', label: '🧾 売上入力' }, { id: 'analytics', label: '📊 分析ダッシュボード' },
+    { id: 'briefing', label: '☀️ 朝のブリーフィング' }, { id: 'customer360', label: '👤 顧客360°' },
+    { id: 'foopack', label: '📦 f.o.oパック契約' }, { id: 'office_tasks', label: '📋 お願いリスト' },
+    { id: 'welfare', label: '💊 福利厚生' },
+  ]},
+  { section: 'EC/マーケ', items: [
+    { id: 'auction', label: '🏷 オークション' }, { id: 'ecmarket', label: '📊 EC/マーケ管理' },
+    { id: 'sns_upload', label: '📸 広報協力' },
+  ]},
+  { section: 'コミュニティ', items: [
+    { id: 'manager', label: '👔 部長コミュ' }, { id: 'leader', label: '🏅 リーダーコミュ' },
+    { id: 'marketing', label: '📢 マーケ/ECコミュ' }, { id: 'meeting', label: '📣 会議内容' },
+    { id: 'action_manager', label: '✅ アクション管理' }, { id: 'meeting_recorder', label: '🎙 会議録音' },
+    { id: 'dictionary', label: '📖 用語集' }, { id: 'news', label: '📰 業界ニュース' },
+  ]},
+  { section: '人事/マニュアル', items: [
+    { id: 'harassment', label: '🛡 ハラスメント記録' }, { id: 'injury-record', label: '🏥 負傷記録票' },
+    { id: 'rules', label: '📘 社内ルール' }, { id: 'employment', label: '📜 就業規則' },
+  ]},
+  { section: '管理 (代表専用)', items: [
+    { id: 'sizemismatch', label: '⚠️ サイズ不整合' }, { id: 'd1admin', label: '🗄 D1 Admin' },
+  ]},
+];
+
+async function loadEmpApps(empId) {
+  try {
+    const r = await sql(`SELECT アプリID FROM 社員アプリ権限 WHERE 社員ID = '${empId.replace(/'/g,"''")}'`);
+    const granted = new Set((r.results || []).map(x => x.アプリID));
+    const eid = 'emp_' + empId.replace(/-/g,'');
+    const wrap = document.getElementById(eid + '_apps');
+    if (!wrap) return;
+    // 権限行ゼロ = デフォルト全ON、それ以外 = 行があるものだけON
+    const hasAnyRow = granted.size > 0;
+    let html = '';
+    EMP_APP_LIST.forEach(g => {
+      html += `<div style="grid-column:1/-1;font-size:10px;color:var(--muted);margin-top:6px;font-weight:700;">${g.section}</div>`;
+      g.items.forEach(a => {
+        const checked = hasAnyRow ? granted.has(a.id) : true;
+        html += `<label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;"><input type="checkbox" data-emp-app="${a.id}" ${checked?'checked':''}>${a.label}</label>`;
+      });
+    });
+    if (!hasAnyRow) html += `<div style="grid-column:1/-1;font-size:10px;color:#b97a00;margin-top:6px;">⚠️ デフォルト全ON状態。1つでもOFFにして保存すると権限管理が有効化されます</div>`;
+    wrap.innerHTML = html;
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function toggleAllApps(eid, on) {
+  const wrap = document.getElementById(eid + '_apps');
+  if (!wrap) return;
+  wrap.querySelectorAll('input[data-emp-app]').forEach(cb => { cb.checked = on; });
+}
+
+async function saveEmpApps(empId, eid) {
+  const wrap = document.getElementById(eid + '_apps');
+  if (!wrap) return;
+  const list = [...wrap.querySelectorAll('input[data-emp-app]:checked')].map(cb => cb.dataset.empApp);
+  await fetch(D1_WORKER + '/d1/set-employee-app-permissions', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ 社員ID: empId, アプリID一覧: list })
+  });
 }
 
 function addNewEmployee() {
@@ -686,6 +771,8 @@ async function saveEmployee(id, eid) {
     });
     const j = await r.json();
     if (j.success) {
+      // アプリ権限も保存
+      try { await saveEmpApps(data.id, eid); } catch(e) { console.error('apps save fail:', e); }
       showToastSimple('✅ 保存しました');
       _empOpenId = null;
       await loadEmployeeMaster();

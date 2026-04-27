@@ -1332,22 +1332,6 @@ body {
     </div>
   </div>
 
-  <!-- 進捗ダッシュボード (向畑充・岡崎・藤井のみ表示) -->
-  <div id="progress-dashboard" style="display:none;margin:0 20px 14px;padding:14px 16px;background:linear-gradient(135deg,#fff8e1,#fff3c4);border:1px solid #f0a500;border-radius:12px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px;">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:18px;">📋</span>
-        <div>
-          <div style="font-size:14px;font-weight:800;color:#b97a00;">事務員お願いタスク 進捗</div>
-          <div style="font-size:10px;color:#92670a;">代表→事務員さんへの依頼の進み具合</div>
-        </div>
-      </div>
-      <a href="https://mitsurumukaihata.github.io/foo-portal/office-tasks.html" style="padding:6px 14px;background:#f0a500;color:#fff;text-decoration:none;border-radius:6px;font-size:11px;font-weight:700;">📋 開く →</a>
-    </div>
-    <div id="progress-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">
-      <div style="grid-column:1/-1;font-size:11px;color:#92670a;">読込中...</div>
-    </div>
-  </div>
 
   <div class="portal-body" id="portal-body">
     <!-- ログイン後にJSで動的レンダリング -->
@@ -1806,11 +1790,11 @@ const APP_DEFS = [
   // ── 事務 ──
   { key: '🧾 売上入力', id: 'sales_input', label: '売上入力', sub: '日々の売上伝票入力 · 車番予測検索', section: '事務', url: 'https://mitsurumukaihata.github.io/foo-portal/sales-input.html',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>` },
-  { key: '📊 分析ダッシュボード', id: 'analytics', label: '分析ダッシュボード', sub: 'SQL直接集計 · 粗利 · 休眠顧客', section: '管理', url: 'https://mitsurumukaihata.github.io/foo-portal/analytics.html', allAccess: true, nameWhitelist: ['向畑充', '岡崎'],
+  { key: '📊 分析ダッシュボード', id: 'analytics', label: '分析ダッシュボード', sub: 'SQL直接集計 · 粗利 · 休眠顧客', section: '経営', url: 'https://mitsurumukaihata.github.io/foo-portal/analytics.html', allAccess: true, nameWhitelist: ['向畑充', '岡崎'],
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>` },
-  { key: '☀️ 朝のブリーフィング', id: 'briefing', label: '朝のブリーフィング', sub: '今日の経営ダイジェスト · AIアクション', section: '管理', url: 'https://mitsurumukaihata.github.io/foo-portal/morning-briefing.html', allAccess: true, nameWhitelist: ['向畑充'],
+  { key: '☀️ 朝のブリーフィング', id: 'briefing', label: '朝のブリーフィング', sub: '今日の経営ダイジェスト · AIアクション', section: '経営', url: 'https://mitsurumukaihata.github.io/foo-portal/morning-briefing.html', allAccess: true, nameWhitelist: ['向畑充'],
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>` },
-  { key: '👤 顧客360°ビュー', id: 'customer360', label: '顧客360°ビュー', sub: '1顧客の全情報 · 取引・車両・推移', section: '管理', url: 'https://mitsurumukaihata.github.io/foo-portal/customer-360.html', allAccess: true, nameWhitelist: ['向畑充'],
+  { key: '👤 顧客360°ビュー', id: 'customer360', label: '顧客360°ビュー', sub: '1顧客の全情報 · 取引・車両・推移', section: '経営', url: 'https://mitsurumukaihata.github.io/foo-portal/customer-360.html', allAccess: true, nameWhitelist: ['向畑充'],
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><circle cx="12" cy="12" r="10" stroke-dasharray="2 2"/></svg>` },
   { key: '⚠️ サイズ不整合チェック', id: 'sizemismatch', label: 'サイズ不整合チェック', sub: '明細サイズと車種が不一致の行を検出・修正', section: '管理', url: 'https://mitsurumukaihata.github.io/foo-portal/size-mismatch.html', allAccess: true, nameWhitelist: ['向畑充', '岡崎'],
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12" y2="17"/></svg>` },
@@ -2037,7 +2021,6 @@ function launchPortal(user) {
   window._currentUser = user;
   renderPortalApps(user);
   checkBadges(user);
-  loadProgressDashboard(user);
 }
 
 // ─── ヘッダーのポータル切替タブ ───────────────────────────────────────
@@ -2110,7 +2093,7 @@ function renderPortalApps(user) {
   let html = '';
 
   // '経理' '管理' セクションはそれぞれのポータルに移動したので社内ポータルから除外
-  const sectionOrder = ['現場・業務', '事務', 'EC/マーケ', 'コミュニティ', 'ニュース', '人事', 'マニュアル', '給与'];
+  const sectionOrder = ['経営', '現場・業務', '事務', 'EC/マーケ', 'コミュニティ', 'ニュース', '人事', 'マニュアル', '給与'];
 
   sectionOrder.forEach(secName => {
     const items = sections[secName];
@@ -2245,64 +2228,6 @@ const BADGE_TARGETS = {
 
 const APP_LABELS = { manager: '部長コミュニティ', leader: 'リーダーコミュニティ', marketing: 'マーケ/ECコミュニティ', news: '業界ニュース' };
 let _firstBadgeApp = null;
-
-// 進捗ダッシュボード (事務員タスクの進み具合)
-async function loadProgressDashboard(user) {
-  const nameNoSpace = (user.name || '').replace(/\s/g, '');
-  const allowed = ['向畑充', '岡崎', '藤井', '向畑綾花'];
-  if (!allowed.some(n => nameNoSpace === n || nameNoSpace.includes(n))) return;
-  const dashEl = document.getElementById('progress-dashboard');
-  if (!dashEl) return;
-  dashEl.style.display = 'block';
-  try {
-    const sql = async (q) => {
-      const r = await fetch('https://notion-proxy.33322666666mm.workers.dev/d1/sql', {
-        method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ sql: q })
-      });
-      return (await r.json()).results || [];
-    };
-    // 各タスクの進捗をパラレル取得
-    const [imgRows, furiRows, sakaiRows, heavyRows, bunruiRows, murooRows] = await Promise.all([
-      // タイヤ画像: 全パターン中、画像登録済みの件数
-      sql(`SELECT (SELECT COUNT(DISTINCT パターン) FROM A表 WHERE 旧モデル IS NULL OR 旧モデル=0) total, COUNT(DISTINCT パターン) done FROM パターン画像 WHERE 商品画像URL IS NOT NULL AND 商品画像URL != ''`),
-      // ふりがな: 有効得意先のうち入力済
-      sql(`SELECT COUNT(*) total, SUM(CASE WHEN ふりがな IS NOT NULL AND ふりがな != '' THEN 1 ELSE 0 END) done FROM 得意先マスタ WHERE 有効=1`),
-      // サカイ: 全車両のうち確認済 (4支店所属)
-      sql(`SELECT COUNT(*) total, SUM(CASE WHEN サカイ振分確認済=1 THEN 1 ELSE 0 END) done FROM 車両マスタ WHERE 顧客ID IN ('e71c6256-391b-4306-b015-e6f03265c0b4','349a695f-8e88-8133-a643-cdb6326af9fc','857b0e19-83c5-4af1-960f-fdd18ddc8756','327a695f-8e88-81a3-9e2e-d39d2081e20c') AND 車番 NOT LIKE '%(旧%'`),
-      // 大型仕様 (TB): R22.5/R20 で確認済
-      sql(`SELECT COUNT(*) total, SUM(CASE WHEN 大型仕様確認済=1 THEN 1 ELSE 0 END) done FROM 車両マスタ WHERE 車番 NOT LIKE '%(旧%' AND (前輪サイズ LIKE '%R22.5%' OR 前輪サイズ LIKE '%R20%')`),
-      // 商品分類
-      sql(`SELECT COUNT(*) total, SUM(CASE WHEN 商品分類 IS NOT NULL THEN 1 ELSE 0 END) done FROM 商品マスタ WHERE 廃番 IS NULL OR 廃番 = 0`),
-      // ムロオ: 番号完備
-      sql(`SELECT COUNT(*) total, SUM(CASE WHEN 車番 IS NOT NULL AND 車番!='' AND 管理番号 IS NOT NULL AND 管理番号!='' THEN 1 ELSE 0 END) done FROM 車両マスタ v JOIN 顧客情報DB c ON c.id=v.顧客ID WHERE c.顧客名 LIKE '%ムロオ%'`),
-    ]);
-    const tasks = [
-      { icon: '📸', label: 'タイヤ画像', tab: 'images', ...imgRows[0] },
-      { icon: '📞', label: 'ふりがな入力', tab: 'furigana', ...furiRows[0] },
-      { icon: '🔧', label: 'サカイ振分', tab: 'sakai', ...sakaiRows[0] },
-      { icon: '🚐', label: 'ムロオ番号', tab: 'muroo', ...murooRows[0] },
-      { icon: '🚛', label: '大型仕様 (TB)', tab: 'heavy', ...heavyRows[0] },
-      { icon: '📁', label: '商品分類', tab: 'bunrui', ...bunruiRows[0] },
-    ];
-    const html = tasks.map(t => {
-      const total = t.total || 0;
-      const done = t.done || 0;
-      const pct = total > 0 ? Math.round(done / total * 100) : 0;
-      const color = pct >= 100 ? '#10b981' : pct >= 50 ? '#f0a500' : '#dc2626';
-      return `<a href="https://mitsurumukaihata.github.io/foo-portal/office-tasks.html#tab=${t.tab}" style="background:#fff;border-radius:8px;padding:8px 10px;text-decoration:none;color:var(--text);border:1px solid rgba(240,165,0,0.3);display:block;">
-        <div style="font-size:11px;color:var(--muted);">${t.icon} ${t.label}</div>
-        <div style="font-size:14px;font-weight:800;color:${color};margin-top:2px;font-family:'DM Mono',monospace;">${done}/${total}</div>
-        <div style="background:#e5e7eb;height:4px;border-radius:2px;margin-top:4px;overflow:hidden;"><div style="background:${color};height:100%;width:${pct}%;"></div></div>
-        <div style="font-size:9px;color:${color};margin-top:2px;">${pct}%</div>
-      </a>`;
-    }).join('');
-    document.getElementById('progress-grid').innerHTML = html;
-  } catch(e) {
-    console.error('progress dashboard error:', e);
-    document.getElementById('progress-grid').innerHTML = '<div style="grid-column:1/-1;font-size:11px;color:#dc2626;">読込失敗: ' + e.message + '</div>';
-  }
-}
 
 async function checkBadges(user) {
   const apps = user.apps || {};

@@ -121,6 +121,7 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
   <div class="tab" data-tab="muroo">🚐 ムロオ拠点確認</div>
   <div class="tab" data-tab="heavy">🚛 大型仕様確認</div>
   <div class="tab" data-tab="product">🗒 商品マスタ確認</div>
+  <div class="tab" data-tab="haiban">🗑 廃番候補</div>
 </div>
 
 <!-- ════════ タイヤ画像収集 ════════ -->
@@ -316,6 +317,34 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
   </div>
   <input type="search" class="search-input" id="product-search" placeholder="商品名・コードで検索">
   <div id="product-list"><div class="loading">タブを開くと読み込み開始</div></div>
+</div>
+
+<!-- ════════ 廃番候補 ════════ -->
+<div class="section" id="section-haiban">
+  <div class="task-card">
+    <div class="task-title">🗑 廃番候補リスト (A表照合でヒットしなかった商品)</div>
+    <div class="task-desc">
+      銘柄空でA表に該当パターンが無かった商品。<strong>古い銘柄</strong>(廃番)、<strong>サイズだけの汎用品</strong>、<strong>タイヤ以外</strong>(ナット/作業)、<strong>スタッドレス</strong>(冬A表未投入)が混在しています。
+    </div>
+    <div class="help-box">
+      <strong>📝 やり方</strong><br>
+      ① カテゴリ別フィルタで分類確認<br>
+      ② 「これは現行品」 → そのまま (将来 冬A表/旧A表入手時に再判定)<br>
+      ③ 「明らかに使ってない/廃番」 → 「✗ 廃番」ボタンで `旧モデル=1` フラグセット<br>
+      ④ 「メーカー/銘柄が分かる」 → 直接編集 (商品マスタ確認タブと連携)<br>
+      <strong>💡 ヒント</strong>: 売上明細でこの商品コードが直近1年使われてなければ、廃番判定の目安になります
+    </div>
+  </div>
+  <div class="filter-bar">
+    <div class="chip active" data-haiban-cat="all">すべて</div>
+    <div class="chip" data-haiban-cat="size-only">📐 サイズだけ (銘柄なし)</div>
+    <div class="chip" data-haiban-cat="old-pc">🏷 PC旧銘柄</div>
+    <div class="chip" data-haiban-cat="old-lt">🚛 LT/TB旧銘柄</div>
+    <div class="chip" data-haiban-cat="winter">❄️ スタッドレス</div>
+    <div class="chip" data-haiban-cat="non-tire">🔩 タイヤ以外 (作業/ナット)</div>
+  </div>
+  <input type="search" class="search-input" id="haiban-search" placeholder="商品名・コードで検索">
+  <div id="haiban-list"><div class="loading">タブを開くと読み込み開始</div></div>
 </div>
 
 <div id="toast" class="toast" style="display:none;"></div>
@@ -723,6 +752,111 @@ document.querySelector('[data-tab="product"]').addEventListener('click', () => {
 document.querySelector('[data-tab="heavy"]').addEventListener('click', () => {
   if (!_heavyLoaded) { _heavyLoaded = true; loadHeavyVehicles(); }
 });
+document.querySelector('[data-tab="haiban"]').addEventListener('click', () => {
+  if (!_haibanLoaded) { _haibanLoaded = true; loadHaiban(); }
+});
+
+// ─────────────── 廃番候補 ───────────────
+let _haibanLoaded = false, _haibanProducts = [], _haibanFilterCat = 'all', _haibanQ = '';
+
+function classifyHaiban(p) {
+  const name = (p.商品名 || '').trim();
+  const code = (p.商品コード || '').trim();
+  if (/(ナット|ウェイト|清掃|取付|取外|脱着|チューブ|キャップ|ﾅｯﾄ|ｳｪｲﾄ|ﾊﾞﾙﾌﾞ|工賃|出張)/.test(name)) return 'non-tire';
+  if (/(GARIT|GIZ|VRX|WINTER|アイス|スタッド|OBSERVE|SJ8|iceGUARD|アイスガード|DM-V|WZ)/i.test(name)) return 'winter';
+  if (/^M\d{3}|GR\d|G\d{3}|R\d{3}|RT|再生|RGN|デルベックス|DELVEX|TBR|11R|12R|275\/80R|245\/70R19|265\/70R19|225\/80R17|225\/90R17|10R|6\.50R|7\.00R|8\.25/i.test(name)) return 'old-lt';
+  // 銘柄っぽい英文字あり
+  if (/^[A-Za-z]+\d+|^[A-Z]{2,}|G5|TX|TEO|C1S|CF[12]|SPORT|ECO|GR-?XR|RE\d+/i.test(name)) return 'old-pc';
+  // サイズだけのパターン (例: 175/75R15, 215/70R15)
+  if (/^\d+\/\d+\s*R\d+/.test(name) || /^\d+R\d/.test(name)) return 'size-only';
+  return 'old-pc'; // それ以外もとりあえずPC旧
+}
+
+async function loadHaiban() {
+  document.getElementById('haiban-list').innerHTML = '<div class="loading">読込中...</div>';
+  try {
+    const rows = await d1query(`
+      SELECT id, 商品コード, 商品名, タイヤサイズ, タイヤ銘柄, メーカー, ブランド, 廃番
+      FROM 商品マスタ
+      WHERE (タイヤ銘柄 IS NULL OR タイヤ銘柄 = '')
+        AND 商品名 IS NOT NULL AND 商品名 != ''
+        AND (廃番 IS NULL OR 廃番 = 0)
+      ORDER BY 商品コード LIMIT 2000
+    `);
+    _haibanProducts = rows.map(r => ({
+      id: r.id, code: r.商品コード||'', name: r.商品名||'',
+      size: r.タイヤサイズ||'', maker: r.メーカー||'',
+      cat: classifyHaiban({ 商品名: r.商品名, 商品コード: r.商品コード }),
+    }));
+    renderHaiban();
+  } catch(e) {
+    document.getElementById('haiban-list').innerHTML = '<div class="loading" style="color:var(--red);">読込失敗: ' + e.message + '</div>';
+  }
+}
+
+function renderHaiban() {
+  let rows = _haibanProducts.filter(p => {
+    if (_haibanFilterCat !== 'all' && p.cat !== _haibanFilterCat) return false;
+    if (_haibanQ && !((p.code + ' ' + p.name).toLowerCase().includes(_haibanQ.toLowerCase()))) return false;
+    return true;
+  });
+  // カテゴリ別件数
+  const counts = {};
+  _haibanProducts.forEach(p => { counts[p.cat] = (counts[p.cat]||0) + 1; });
+  // チップ件数を更新
+  document.querySelectorAll('.chip[data-haiban-cat]').forEach(c => {
+    const cat = c.dataset.haibanCat;
+    const baseTxt = c.textContent.replace(/\s*\(\d+\)\s*$/, '');
+    const cnt = cat === 'all' ? _haibanProducts.length : (counts[cat] || 0);
+    c.textContent = `${baseTxt} (${cnt})`;
+  });
+  if (rows.length === 0) {
+    document.getElementById('haiban-list').innerHTML = '<div class="loading">該当なし</div>';
+    return;
+  }
+  document.getElementById('haiban-list').innerHTML = rows.slice(0, 300).map(buildHaibanRow).join('') +
+    (rows.length > 300 ? `<div class="loading">(上位300件 / 全${rows.length}件)</div>` : '');
+}
+
+function buildHaibanRow(p) {
+  const rid = 'h_' + p.id.replace(/-/g,'');
+  return `
+    <div class="row-card" id="${rid}" style="grid-template-columns:1fr auto auto;">
+      <div class="row-main">
+        <div class="row-title">${escHtml(p.name)}</div>
+        <div class="row-meta">コード: ${escHtml(p.code)} / サイズ: ${escHtml(p.size||'-')} / メーカー: ${escHtml(p.maker||'-')}</div>
+      </div>
+      <button class="btn-clear" onclick="markHaiban('${p.id}', false)">そのまま</button>
+      <button class="btn-save-mini" style="background:#dc2626;" onclick="markHaiban('${p.id}', true)">✗ 廃番</button>
+    </div>
+  `;
+}
+
+async function markHaiban(pid, val) {
+  if (val && !confirm('廃番にすると価格検索等の一覧から消えます。よろしいですか?')) return;
+  try {
+    const r = await fetch(PROXY + '/d1/update-product-master', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: pid, 廃番: val ? 1 : 0 })
+    });
+    const j = await r.json();
+    if (j.success) {
+      showToast(val ? '🗑 廃番にしました' : '✓ そのまま');
+      _haibanProducts = _haibanProducts.filter(p => p.id !== pid);
+      renderHaiban();
+    } else showToast('❌ ' + (j.error||''), true);
+  } catch(e) { showToast('❌ ' + e.message, true); }
+}
+
+document.querySelectorAll('.chip[data-haiban-cat]').forEach(c => {
+  c.onclick = () => {
+    document.querySelectorAll('.chip[data-haiban-cat]').forEach(x => x.classList.remove('active'));
+    c.classList.add('active');
+    _haibanFilterCat = c.dataset.haibanCat;
+    renderHaiban();
+  };
+});
+document.getElementById('haiban-search').oninput = e => { _haibanQ = e.target.value; renderHaiban(); };
 
 // ─────────────── 大型トラック仕様確認 ───────────────
 const AXLE_OPTS = ['', '2-2', '2-D', '2-D-D', '2-2-D-D', '2-D-D-D', 'トレーラー', 'その他'];

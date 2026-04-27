@@ -1219,7 +1219,7 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
         const body2 = await request.json();
         const { id } = body2;
         if (!id) return new Response(JSON.stringify({ error: 'id required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
-        const ALLOWED = ['タイヤ銘柄','メーカー','ブランド','タイヤサイズ','単価','A表定価','メモ','車種カテゴリ'];
+        const ALLOWED = ['タイヤ銘柄','メーカー','ブランド','タイヤサイズ','単価','A表定価','メモ','車種カテゴリ','廃番'];
         const sets = []; const params = [];
         for (const f of ALLOWED) {
           if (Object.prototype.hasOwnProperty.call(body2, f)) {

@@ -243,11 +243,27 @@ async function loadSalaryMaster() {
   if (!month) { alert('適用年月を選択してください'); return; }
   const el = document.getElementById('salary-master-result');
   el.innerHTML = '<div class="loading">読込中...</div>';
-  await loadEmployees();
-  // 既存の給与マスタを取得
-  const r = await sql(`SELECT * FROM 給与マスタ WHERE 適用年月 = ?`, [month]);
-  const masterMap = {};
-  (r.results || []).forEach(m => masterMap[m.社員ID] = m);
+  try {
+    await loadEmployees();
+    if (!_employees || _employees.length === 0) {
+      el.innerHTML = '<div class="loading" style="color:var(--red);">⚠ 在籍中の社員が見つかりません。社員マスタタブで確認してください</div>';
+      return;
+    }
+    // 既存の給与マスタを取得
+    const r = await sql(`SELECT * FROM 給与マスタ WHERE 適用年月 = ?`, [month]);
+    if (r.error) {
+      el.innerHTML = '<div class="loading" style="color:var(--red);">⚠ DB読込失敗: ' + r.error + '</div>';
+      return;
+    }
+    const masterMap = {};
+    (r.results || []).forEach(m => masterMap[m.社員ID] = m);
+    return _continueLoadSalaryMaster(month, masterMap, el);
+  } catch(err) {
+    el.innerHTML = '<div class="loading" style="color:var(--red);">⚠ 読込中エラー: ' + err.message + '</div>';
+    console.error(err);
+  }
+}
+function _continueLoadSalaryMaster(month, masterMap, el) {
   const showShift = isShiftAllowanceMonth(month);
   el.innerHTML = `
     <div style="margin-bottom:8px;font-size:12px;color:${showShift?'var(--red)':'var(--muted)'};font-weight:${showShift?'700':'400'};">

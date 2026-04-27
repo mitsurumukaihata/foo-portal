@@ -49,6 +49,14 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
 .maker-YOKOHAMA { background:#0066b3; }
 .maker-MICHELIN { background:#fdd835; color:#000; }
 .maker-PIRELLI { background:#000; }
+
+/* メーカーフィルタチップ (active時に公式色) */
+.maker-chip.active.mk-BRIDGESTONE { background:#005bac; color:#fff; border-color:#005bac; }
+.maker-chip.active.mk-TOYO { background:#e60012; color:#fff; border-color:#e60012; }
+.maker-chip.active.mk-DUNLOP { background:#ffc20e; color:#000; border-color:#ffc20e; }
+.maker-chip.active.mk-YOKOHAMA { background:#0066b3; color:#fff; border-color:#0066b3; }
+.maker-chip.active.mk-MICHELIN { background:#fdd835; color:#000; border-color:#fdd835; }
+.maker-chip.active.mk-PIRELLI { background:#000; color:#fff; border-color:#000; }
 .brand-badge { font-size:10px; font-weight:700; padding:2px 7px; border-radius:8px; background:var(--s3); color:var(--text); }
 .pattern-name { font-size:14px; font-weight:800; }
 .cat-badge { font-size:9px; padding:2px 6px; border-radius:6px; background:var(--s3); color:var(--muted); }
@@ -148,6 +156,10 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
     <div class="chip cat-chip" data-cat="PC">🚗 乗用車</div>
     <div class="chip cat-chip" data-cat="LTS">🚛 LTS(中型)</div>
     <div class="chip cat-chip" data-cat="バン">🚐 バン</div>
+  </div>
+  <div class="filter-bar" id="maker-filter-bar">
+    <div class="chip maker-chip active" data-maker="all">全メーカー</div>
+    <!-- 動的にメーカーチップ追加 -->
   </div>
   <input type="search" class="search-input" id="search" placeholder="パターン名・ブランドで検索">
 
@@ -350,7 +362,7 @@ async function d1query(sql) {
   return j.results || [];
 }
 
-let _all = [], _images = {}, _filter = 'all', _cat = 'all', _q = '';
+let _all = [], _images = {}, _filter = 'all', _cat = 'all', _maker = 'all', _q = '';
 
 async function loadData() {
   document.getElementById('list').innerHTML = '<div class="loading">読み込み中...</div>';
@@ -376,13 +388,48 @@ async function loadData() {
     cnt: r.cnt,
     img: _images[r.パターン] || null
   }));
+  // メーカーチップを動的生成 (件数も表示)
+  buildMakerChips();
   render();
+}
+
+function buildMakerChips() {
+  const makerCnt = {};
+  for (const r of _all) {
+    const m = (r.maker || '').replace(' TIRES','').toUpperCase() || '不明';
+    makerCnt[m] = (makerCnt[m] || 0) + 1;
+  }
+  // メーカー表示順 (公式色付き)
+  const ORDER = ['BRIDGESTONE', 'TOYO', 'DUNLOP', 'YOKOHAMA', 'MICHELIN', 'PIRELLI'];
+  const others = Object.keys(makerCnt).filter(m => !ORDER.includes(m)).sort();
+  const all = [...ORDER.filter(m => makerCnt[m]), ...others];
+  const totalCnt = _all.length;
+  const bar = document.getElementById('maker-filter-bar');
+  bar.innerHTML = `<div class="chip maker-chip${_maker==='all'?' active':''}" data-maker="all">全メーカー (${totalCnt})</div>` +
+    all.map(m => {
+      const isActive = _maker === m;
+      const labelShort = m === 'BRIDGESTONE' ? 'BS' : m;
+      return `<div class="chip maker-chip mk-${m}${isActive?' active':''}" data-maker="${m}">${labelShort} (${makerCnt[m]})</div>`;
+    }).join('');
+  bar.querySelectorAll('.maker-chip').forEach(c => {
+    c.onclick = () => {
+      bar.querySelectorAll('.maker-chip').forEach(x => x.classList.remove('active'));
+      c.classList.add('active');
+      _maker = c.dataset.maker;
+      render();
+    };
+  });
 }
 
 function render() {
   // フィルタ
   let rows = _all.filter(r => {
     if (_cat !== 'all' && r.cat !== _cat) return false;
+    if (_maker !== 'all') {
+      const norm = (r.maker || '').replace(' TIRES','').toUpperCase();
+      const want = _maker.toUpperCase();
+      if (norm !== want) return false;
+    }
     if (_q) {
       const t = (r.pattern + ' ' + r.brand).toLowerCase();
       if (!t.includes(_q.toLowerCase())) return false;

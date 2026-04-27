@@ -121,6 +121,7 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
   <div class="tab" data-tab="muroo">🚐 ムロオ拠点確認</div>
   <div class="tab" data-tab="heavy">🚛 大型仕様確認</div>
   <div class="tab" data-tab="product">🗒 商品マスタ確認</div>
+  <div class="tab" data-tab="bunrui">📁 商品分類</div>
   <div class="tab" data-tab="haiban">🗑 廃番候補</div>
 </div>
 
@@ -317,6 +318,31 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
   </div>
   <input type="search" class="search-input" id="product-search" placeholder="商品名・コードで検索">
   <div id="product-list"><div class="loading">タブを開くと読み込み開始</div></div>
+</div>
+
+<!-- ════════ 商品分類 ════════ -->
+<div class="section" id="section-bunrui">
+  <div class="task-card">
+    <div class="task-title">📁 商品分類 (タイヤ / 部品 / 作業)</div>
+    <div class="task-desc">
+      商品マスタを <strong>3分類</strong> で整理するツールです。これで売上分析が「タイヤ売上 vs 部品売上 vs 作業売上」に正しく分けられます。
+    </div>
+    <div class="help-box">
+      <strong>📝 やり方</strong><br>
+      ① 商品名を見て、3つのボタンから選んでクリック → 即D1保存<br>
+      🛞 <b>タイヤ</b>: 通常のタイヤ品 (普段は自動分類済み)<br>
+      🔩 <b>部品</b>: ナット・チューブ・バルブ・ウェイト・キャップ・スチール部品 等<br>
+      🛠 <b>作業</b>: 取付・組替・脱着・清掃・パンク修理・出張費・廃タイヤ処分 等<br>
+      <strong>💡 ヒント</strong>: 自動分類済み (タイヤ633/部品144/作業17) は表示されません。残り未分類のみ。
+    </div>
+  </div>
+  <div class="filter-bar">
+    <div class="chip active" data-bunrui-status="pending">⏳ 未分類のみ</div>
+    <div class="chip" data-bunrui-status="all">全件</div>
+    <div class="chip" data-bunrui-status="done">分類済み</div>
+  </div>
+  <input type="search" class="search-input" id="bunrui-search" placeholder="商品名・コードで検索">
+  <div id="bunrui-list"><div class="loading">タブを開くと読み込み開始</div></div>
 </div>
 
 <!-- ════════ 廃番候補 ════════ -->
@@ -755,6 +781,102 @@ document.querySelector('[data-tab="heavy"]').addEventListener('click', () => {
 document.querySelector('[data-tab="haiban"]').addEventListener('click', () => {
   if (!_haibanLoaded) { _haibanLoaded = true; loadHaiban(); }
 });
+document.querySelector('[data-tab="bunrui"]').addEventListener('click', () => {
+  if (!_bunruiLoaded) { _bunruiLoaded = true; loadBunrui(); }
+});
+
+// ─────────────── 商品分類 ───────────────
+let _bunruiLoaded = false, _bunruiProducts = [], _bunruiFilterStatus = 'pending', _bunruiQ = '';
+const BUNRUI_OPTS = [
+  { v: 'タイヤ', icon: '🛞', color: '#f0a500' },
+  { v: '部品',   icon: '🔩', color: '#3b82f6' },
+  { v: '作業',   icon: '🛠', color: '#10b981' },
+];
+
+async function loadBunrui() {
+  document.getElementById('bunrui-list').innerHTML = '<div class="loading">読込中...</div>';
+  try {
+    const rows = await d1query(`SELECT id, 商品コード, 商品名, タイヤサイズ, タイヤ銘柄, メーカー, 商品分類 FROM 商品マスタ WHERE 廃番 IS NULL OR 廃番 = 0 ORDER BY 商品コード LIMIT 3000`);
+    _bunruiProducts = rows.map(r => ({
+      id: r.id, code: r.商品コード||'', name: r.商品名||'',
+      size: r.タイヤサイズ||'', brand: r.タイヤ銘柄||'',
+      maker: r.メーカー||'', bunrui: r.商品分類||''
+    }));
+    renderBunrui();
+  } catch(e) {
+    document.getElementById('bunrui-list').innerHTML = '<div class="loading" style="color:var(--red);">読込失敗: ' + e.message + '</div>';
+  }
+}
+
+function renderBunrui() {
+  let rows = _bunruiProducts.filter(p => {
+    if (_bunruiFilterStatus === 'pending' && p.bunrui) return false;
+    if (_bunruiFilterStatus === 'done' && !p.bunrui) return false;
+    if (_bunruiQ && !((p.code + ' ' + p.name).toLowerCase().includes(_bunruiQ.toLowerCase()))) return false;
+    return true;
+  });
+  // サマリ
+  const total = _bunruiProducts.length;
+  const t = _bunruiProducts.filter(p => p.bunrui === 'タイヤ').length;
+  const b = _bunruiProducts.filter(p => p.bunrui === '部品').length;
+  const w = _bunruiProducts.filter(p => p.bunrui === '作業').length;
+  const u = _bunruiProducts.filter(p => !p.bunrui).length;
+  const summaryHtml = `<div class="summary" style="margin-bottom:10px;grid-template-columns:repeat(4,1fr);">
+    <div class="summary-card"><div class="summary-num" style="color:#f0a500;">${t}</div><div class="summary-label">🛞 タイヤ</div></div>
+    <div class="summary-card"><div class="summary-num" style="color:#3b82f6;">${b}</div><div class="summary-label">🔩 部品</div></div>
+    <div class="summary-card"><div class="summary-num" style="color:#10b981;">${w}</div><div class="summary-label">🛠 作業</div></div>
+    <div class="summary-card"><div class="summary-num" style="color:var(--red);">${u}</div><div class="summary-label">⏳ 未分類</div></div>
+  </div>`;
+  if (rows.length === 0) {
+    document.getElementById('bunrui-list').innerHTML = summaryHtml + '<div class="loading">該当なし ✅</div>';
+    return;
+  }
+  document.getElementById('bunrui-list').innerHTML = summaryHtml + rows.slice(0, 300).map(buildBunruiRow).join('') +
+    (rows.length > 300 ? `<div class="loading">(上位300件 / 全${rows.length}件)</div>` : '');
+}
+
+function buildBunruiRow(p) {
+  const rid = 'b_' + p.id.replace(/-/g,'');
+  const buttons = BUNRUI_OPTS.map(o => {
+    const active = p.bunrui === o.v;
+    return `<button onclick="setBunrui('${p.id}','${o.v}')" style="padding:6px 12px;border:2px solid ${active?o.color:'var(--border)'};background:${active?o.color:'var(--card)'};color:${active?'#fff':'var(--text)'};border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">${o.icon} ${o.v}</button>`;
+  }).join('');
+  return `
+    <div class="row-card" id="${rid}" style="grid-template-columns:1fr auto;">
+      <div class="row-main">
+        <div class="row-title">${escHtml(p.name)}</div>
+        <div class="row-meta">コード: ${escHtml(p.code)} / サイズ: ${escHtml(p.size||'-')} / 銘柄: ${escHtml(p.brand||'-')} / メーカー: ${escHtml(p.maker||'-')}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">${buttons}</div>
+    </div>
+  `;
+}
+
+async function setBunrui(pid, val) {
+  try {
+    const r = await fetch(PROXY + '/d1/update-product-master', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: pid, 商品分類: val })
+    });
+    const j = await r.json();
+    if (j.success) {
+      showToast('✅ ' + val + ' に分類');
+      const p = _bunruiProducts.find(x => x.id === pid);
+      if (p) p.bunrui = val;
+      renderBunrui();
+    } else showToast('❌ ' + (j.error||''), true);
+  } catch(e) { showToast('❌ ' + e.message, true); }
+}
+
+document.querySelectorAll('.chip[data-bunrui-status]').forEach(c => {
+  c.onclick = () => {
+    document.querySelectorAll('.chip[data-bunrui-status]').forEach(x => x.classList.remove('active'));
+    c.classList.add('active');
+    _bunruiFilterStatus = c.dataset.bunruiStatus;
+    renderBunrui();
+  };
+});
+document.getElementById('bunrui-search').oninput = e => { _bunruiQ = e.target.value; renderBunrui(); };
 
 // ─────────────── 廃番候補 ───────────────
 let _haibanLoaded = false, _haibanProducts = [], _haibanFilterCat = 'all', _haibanQ = '';

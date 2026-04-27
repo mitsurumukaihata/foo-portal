@@ -753,24 +753,33 @@ async function sakaiBulkExec() {
   const checked = document.querySelectorAll('.sakai-row-check:checked');
   if (!checked.length) { alert('チェックされた行がありません'); return; }
   const tasks = [];
+  const branchNameMap = {};
+  SAKAI_BRANCHES.forEach(b => { branchNameMap[b.id] = b.name; });
   checked.forEach(cb => {
     const vid = cb.dataset.vid;
     const sel = document.querySelector(`select.sakai-target[data-vid="${vid}"]`);
-    if (sel?.value) tasks.push({ vid, target: sel.value });
+    if (sel?.value) tasks.push({ vid, target: sel.value, targetName: branchNameMap[sel.value] || '?' });
   });
-  if (!tasks.length) { alert('振替先(支店)が選択されていません'); return; }
-  if (!confirm(`${tasks.length}台を振替実行します。よろしいですか？`)) return;
-  let ok = 0;
+  if (!tasks.length) { alert('チェックは入ってますが、振替先(支店)が選択されていません。各行のドロップダウンで支店を選んでください。'); return; }
+  if (!confirm(`${tasks.length}台を振替実行します。よろしいですか？\n\n${tasks.slice(0, 5).map(t => '・→ '+t.targetName).join('\n')}${tasks.length > 5 ? `\n... 他 ${tasks.length-5}件` : ''}`)) return;
+  let ok = 0, fail = 0;
+  const failures = [];
   for (const t of tasks) {
-    const r = await fetch(D1_WORKER + '/d1/update-vehicle', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: t.vid, 顧客ID: t.target })
-    });
-    const j = await r.json();
-    if (j.success) ok++;
+    try {
+      const r = await fetch(D1_WORKER + '/d1/update-vehicle', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: t.vid, 顧客ID: t.target })
+      });
+      const j = await r.json();
+      if (j.success) ok++; else { fail++; failures.push(t.vid+': '+(j.error||'')); }
+    } catch(e) { fail++; failures.push(t.vid+': '+e.message); }
   }
-  alert(`✅ ${ok}台振替完了`);
-  loadSakaiReassign();
+  // 完了メッセージ (詳細)
+  let msg = `✅ ${ok}台 振替完了 (D1反映済)`;
+  if (fail > 0) msg += `\n❌ ${fail}台 失敗:\n${failures.join('\n')}`;
+  msg += '\n\n💡 リスト再読込します。チェックは自動でクリアされます。';
+  alert(msg);
+  await loadSakaiReassign(); // 再読込でチェックは消える (新DOMが描画されるため)
 }
 
 // ── 番号不明リスト ──

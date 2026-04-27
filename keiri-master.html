@@ -701,7 +701,14 @@ function showToastSimple(msg) {
   setTimeout(() => t.remove(), 2000);
 }
 
-loadSalaryMaster();
+// URL hash で初期タブ切替 (例: keiri-master.html#tab=employee)
+(function applyInitialTab() {
+  const m = location.hash.match(/tab=([a-z]+)/);
+  if (!m) { loadSalaryMaster(); return; }
+  const tab = document.querySelector(`#main-tabs .filter-tab[data-main="${m[1]}"]`);
+  if (tab) tab.click();
+  else loadSalaryMaster();
+})();
 </script>
 
 </body>

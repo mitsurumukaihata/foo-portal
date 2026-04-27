@@ -4410,6 +4410,49 @@ function selectEndUser(id, name) {
   inp.value = name;
   inp.style.background = 'rgba(34,197,94,0.12)';
   document.getElementById('enduser-results')?.classList.remove('show');
+  // 5. EU選択時、得意先未選択なら 過去取引から請求先候補を推定
+  if (!state.selectedCustomer) suggestCustomerFromEU(id, name);
+}
+
+// 過去売上から「このEUの最頻請求先」を取得して候補表示
+async function suggestCustomerFromEU(euId, euName) {
+  const custInp = document.getElementById('input-customer');
+  const custResults = document.getElementById('customer-results');
+  if (!custInp || custInp.value || !custResults) return;
+  custResults.innerHTML = '<div class="search-result-item" style="opacity:0.6;font-size:11px;">📊 過去取引から請求先候補を取得中...</div>';
+  custResults.classList.add('show');
+  try {
+    const r = await fetch('https://notion-proxy.33322666666mm.workers.dev/d1/sql', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ sql: `
+        SELECT s.請求先ID, e.得意先名, COUNT(*) cnt, MAX(s.売上日) 最終取引日
+        FROM 売上伝票 s
+        JOIN 得意先マスタ e ON e.id = s.請求先ID
+        WHERE s.顧客名ID = '${String(euId).replace(/'/g, "''")}'
+          AND s.請求先ID IS NOT NULL AND s.請求先ID != ''
+        GROUP BY s.請求先ID
+        ORDER BY cnt DESC LIMIT 5
+      `})
+    });
+    const j = await r.json();
+    const rows = j.results || [];
+    if (rows.length === 0) {
+      custResults.innerHTML = `<div class="search-result-item" style="font-size:11px;color:var(--muted);">${escHtml(euName)}の過去取引なし → 得意先を手動入力してください</div>`;
+      setTimeout(() => custResults.classList.remove('show'), 3000);
+      return;
+    }
+    const total = rows.reduce((s, r) => s + r.cnt, 0);
+    custResults.innerHTML = `<div style="padding:6px 10px;font-size:9px;background:var(--s2);color:var(--accent);font-weight:700;">📊 ${escHtml(euName)} の過去請求先 (クリックで適用)</div>` +
+      rows.map(r => {
+        const pct = Math.round(r.cnt * 100 / total);
+        return `<div class="search-result-item" onmousedown="selectCustomer('${escHtml(r.請求先ID)}','${escHtml((r.得意先名||'').replace(/'/g, '&#39;'))}')">
+          <div class="title">${escHtml(r.得意先名||'(不明)')} ${r.cnt >= total*0.8 ? '<span style="color:#10b981;font-size:10px;">⭐ 主請求先</span>' : ''}</div>
+          <div class="sub">${r.cnt}件 (${pct}%) · 最終: ${(r.最終取引日||'').slice(0,10)}</div>
+        </div>`;
+      }).join('');
+  } catch(e) {
+    custResults.innerHTML = `<div class="search-result-item" style="font-size:11px;color:var(--red);">取得失敗: ${e.message}</div>`;
+  }
 }
 // "3415" → ["3415", "34-15"]、"341" → ["341", "3-41", "34-1"]、文字含み → そのまま
 function carSearchVariants(q) {
@@ -4585,7 +4628,7 @@ function renderDetails() {
     return `
     <tr id="y-row-${i}" class="${hasData(d) ? 'has-data' : ''}">
       <td class="row-no">${i + 1}</td>
-      <td style="position:relative;"><input type="text" data-cell="carNo" data-row="${i}" value="${escHtml(d.carNo)}" oninput="onCarNoInput(${i},this)" onkeydown="onCellKey(event,${i},'carNo')" onblur="setTimeout(()=>hideCarSuggest(${i}),200)" placeholder="車番/管理#"><div class="product-suggest" id="car-sug-${i}"></div></td>
+      <td style="position:relative;"><input type="text" data-cell="carNo" data-row="${i}" value="${escHtml(d.carNo)}" oninput="onCarNoInput(${i},this)" onfocus="onCarNoInput(${i},this)" onkeydown="onCellKey(event,${i},'carNo')" onblur="setTimeout(()=>hideCarSuggest(${i}),200)" placeholder="車番/管理#"><div class="product-suggest" id="car-sug-${i}"></div></td>
       <td>
         <select data-cell="hinmoku" data-row="${i}" onchange="updateDetail(${i},'hinmoku',this.value)">
           <option value=""></option>
@@ -4610,20 +4653,42 @@ function renderDetails() {
   calcTotals();
 }
 
-/* 明細の車番入力→車両マスタサジェスト */
+/* 明細の車番入力→車両マスタサジェスト (得意先/EU で絞り込み) */
 function onCarNoInput(i, inp) {
   updateDetail(i, 'carNo', inp.value);
   const q = (inp.value || '').trim().toLowerCase();
   const sug = document.getElementById('car-sug-' + i);
   if (!sug) return;
-  if (!q || !vehicleCache) { sug.classList.remove('show'); sug.innerHTML = ''; return; }
-  // 車番 or 管理番号で検索
-  const matches = vehicleCache.filter(v => {
-    const blob = (v.carNo + ' ' + v.mgmtNo + ' ' + v.メモ).toLowerCase();
-    return blob.includes(q) || (/^\d+$/.test(q) && v.mgmtNo && v.mgmtNo.includes(q));
-  }).slice(0, 15);
-  if (!matches.length) { sug.classList.remove('show'); sug.innerHTML = ''; return; }
-  sug.innerHTML = matches.map(v => `
+  if (!vehicleCache) { sug.classList.remove('show'); sug.innerHTML = ''; return; }
+  // 得意先・EUで絞り込み (両方未選択ならフリー検索)
+  const custId = state.selectedCustomer?.id;
+  const euId = state.selectedEndUser?.id;
+  let pool = vehicleCache;
+  let scopeLabel = '';
+  if (custId || euId) {
+    pool = vehicleCache.filter(v => v.customerId === custId || v.customerId === euId);
+    if (state.selectedEndUser) scopeLabel = state.selectedEndUser.name;
+    else if (state.selectedCustomer) scopeLabel = state.selectedCustomer.name;
+  }
+  if (!q && !pool.length) { sug.classList.remove('show'); sug.innerHTML = ''; return; }
+  // 車番なし入力時 = 絞り込み済プールを上位20件表示 (得意先/EU選択直後の車両一覧)
+  let matches;
+  if (!q) {
+    if (!custId && !euId) { sug.classList.remove('show'); sug.innerHTML = ''; return; }
+    matches = pool.slice(0, 20);
+  } else {
+    matches = pool.filter(v => {
+      const blob = (v.carNo + ' ' + v.mgmtNo + ' ' + v.メモ).toLowerCase();
+      return blob.includes(q) || (/^\d+$/.test(q) && v.mgmtNo && v.mgmtNo.includes(q));
+    }).slice(0, 15);
+  }
+  if (!matches.length) {
+    sug.innerHTML = `<div style="padding:8px;font-size:11px;color:var(--muted);">${scopeLabel?`${escHtml(scopeLabel)}内に`:''}該当車両なし</div>`;
+    sug.classList.add('show');
+    return;
+  }
+  const headerHtml = scopeLabel ? `<div style="padding:4px 10px;font-size:9px;color:var(--accent);background:var(--s2);font-weight:700;">📍 ${escHtml(scopeLabel)} の車両 (${matches.length}件)</div>` : '';
+  sug.innerHTML = headerHtml + matches.map(v => `
     <div class="ps-item" onmousedown="applyCarSuggest(${i},'${escHtml(v.id)}')">
       <div class="cd">${escHtml(v.carNo || ('#' + v.mgmtNo))}</div>
       <div class="nm">${escHtml(v.車種 || '-')} · ${escHtml(v.size前 || '-')}<div style="font-size:9px;color:var(--muted);">Rr:${escHtml(v.size後 || '-')} · ${escHtml((v.メモ || '').slice(0,40))}</div></div>
@@ -4644,7 +4709,12 @@ function applyCarSuggest(rowIdx, vehicleId) {
   d.carNo = v.carNo || ('管理#' + v.mgmtNo);
   if (v.size前 && !d.size) d.size = v.size前;
   if (v.pat前 && !d.brand) d.brand = v.pat前;
-  // 後輪のタイヤ交換だった場合は size後 を使いたい -> 次行に情報残して後から切り替えられる
+  // 本数も自動セット (空のときのみ)
+  if (v.本数 && !d.qty) d.qty = v.本数;
+  // 後輪サイズが前輪と違う場合、メモに記録
+  if (v.size後 && v.size後 !== v.size前 && !d.bikou) {
+    d.bikou = `(後輪: ${v.size後})`;
+  }
   renderDetails();
   hideCarSuggest(rowIdx);
   focusCell(rowIdx, 'hinmoku');

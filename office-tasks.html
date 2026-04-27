@@ -119,6 +119,7 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
   <div class="tab" data-tab="sakai">🔧 サカイ支店振分</div>
   <div class="tab" data-tab="missing">🆔 番号不明</div>
   <div class="tab" data-tab="muroo">🚐 ムロオ拠点確認</div>
+  <div class="tab" data-tab="heavy">🚛 大型仕様確認</div>
   <div class="tab" data-tab="product">🗒 商品マスタ確認</div>
 </div>
 
@@ -257,6 +258,39 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
   </div>
   <input type="search" class="search-input" id="muroo-search" placeholder="車番・管理番号で検索">
   <div id="muroo-list"><div class="loading">読み込み中...</div></div>
+</div>
+
+<!-- ════════ 大型トラック仕様確認 ════════ -->
+<div class="section" id="section-heavy">
+  <div class="task-card">
+    <div class="task-title">🚛 大型トラック仕様確認 (車軸配置・前後サイズ・車番重複)</div>
+    <div class="task-desc">
+      大型トラックの<strong>車軸配置 (2-D-D, 2-2-D-D 等)</strong>、<strong>前後サイズ</strong>、<strong>車番重複</strong>を一画面で確認・修正できるツールです。
+    </div>
+    <div class="help-box">
+      <strong>📝 やり方</strong><br>
+      ① 得意先フィルタで対象を絞る (例: ムロオ・サッコー・シモハナ等)<br>
+      ② 各車両の <strong>車軸配置</strong> をドロップダウンで確認・変更 (2-2/2-D/2-D-D/2-2-D-D/2-D-D-D/トレーラー)<br>
+      ③ <strong>前輪サイズ・後輪サイズ</strong> も入力欄で直接編集<br>
+      ④ ⚠️赤い警告マーク = 同じ車番が他にもある (重複の可能性)<br>
+      ⑤ 「💾 登録」ボタンで即D1保存 → 確認済化<br>
+      <strong>💡 ヒント</strong>: 確認済はリストから消えます (「確認済も表示」で再表示可能)
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <div class="chip active" data-heavy-status="pending">⏳ 未確認のみ</div>
+    <div class="chip" data-heavy-status="all">全件</div>
+    <div class="chip" data-heavy-status="duplicates">⚠ 車番重複のみ</div>
+  </div>
+  <div class="filter-bar">
+    <span style="font-size:11px;color:var(--muted);margin-right:6px;">得意先:</span>
+    <select id="heavy-customer-filter" class="search-input" style="width:auto;min-width:200px;display:inline-block;margin:0;">
+      <option value="">すべて</option>
+    </select>
+  </div>
+  <input type="search" class="search-input" id="heavy-search" placeholder="車番・管理番号で検索">
+  <div id="heavy-list"><div class="loading">タブを開くと読み込み開始</div></div>
 </div>
 
 <!-- ════════ 商品マスタ確認 ════════ -->
@@ -675,7 +709,7 @@ document.querySelectorAll('.chip[data-furi-filter]').forEach(c => {
 document.getElementById('furi-search').oninput = e => { _furiQ = e.target.value; renderFuri(); };
 
 // タブ切替時に初回ロード
-let _furiLoaded = false, _murooLoaded = false, _productLoaded = false;
+let _furiLoaded = false, _murooLoaded = false, _productLoaded = false, _heavyLoaded = false;
 document.querySelector('[data-tab="furigana"]').addEventListener('click', () => {
   if (!_furiLoaded) { _furiLoaded = true; loadFurigana(); }
 });
@@ -685,6 +719,173 @@ document.querySelector('[data-tab="muroo"]').addEventListener('click', () => {
 document.querySelector('[data-tab="product"]').addEventListener('click', () => {
   if (!_productLoaded) { _productLoaded = true; loadProductCheck(); }
 });
+document.querySelector('[data-tab="heavy"]').addEventListener('click', () => {
+  if (!_heavyLoaded) { _heavyLoaded = true; loadHeavyVehicles(); }
+});
+
+// ─────────────── 大型トラック仕様確認 ───────────────
+const AXLE_OPTS = ['', '2-2', '2-D', '2-D-D', '2-2-D-D', '2-D-D-D', 'トレーラー', 'その他'];
+let _heavyVehicles = [], _heavyDuplicates = {}, _heavyFilterStatus = 'pending', _heavyFilterCust = '', _heavyQ = '';
+
+async function loadHeavyVehicles() {
+  document.getElementById('heavy-list').innerHTML = '<div class="loading">読込中... (大型車約1000台)</div>';
+  try {
+    // 大型車両 (R22.5/R20/R19.5、もしくはカテゴリLT/TB)
+    const rows = await d1query(`
+      SELECT v.id, v.車番, v.管理番号, v.車種, v.仕様, v.前輪サイズ, v.後輪サイズ, v.本数, v.車軸配置,
+             v.大型仕様確認済, v.顧客ID,
+             COALESCE(c.顧客名, e.得意先名) 顧客名
+      FROM 車両マスタ v
+      LEFT JOIN 顧客情報DB c ON c.id = v.顧客ID
+      LEFT JOIN 得意先マスタ e ON e.id = v.顧客ID
+      WHERE v.車番 NOT LIKE '%(旧%'
+        AND (v.前輪サイズ LIKE '%R22.5%' OR v.前輪サイズ LIKE '%R20%' OR v.前輪サイズ LIKE '%R19.5%' OR v.カテゴリ LIKE '%LT%' OR v.カテゴリ LIKE '%TB%')
+      ORDER BY 顧客名, v.車番
+    `);
+    _heavyVehicles = rows.map(r => ({
+      id: r.id, plate: r.車番||'', mgmt: r.管理番号||'',
+      type: r.車種||'', spec: r.仕様||'',
+      front: r.前輪サイズ||'', rear: r.後輪サイズ||'', count: r.本数||0,
+      axle: r.車軸配置||'',
+      confirmed: !!r.大型仕様確認済,
+      customerId: r.顧客ID||'', customerName: r.顧客名||'(不明)'
+    }));
+    // 車番重複検出 (空の車番は除外)
+    _heavyDuplicates = {};
+    const plateMap = {};
+    _heavyVehicles.forEach(v => {
+      const key = (v.plate || '').replace(/\s/g, '');
+      if (!key) return;
+      if (!plateMap[key]) plateMap[key] = [];
+      plateMap[key].push(v.id);
+    });
+    Object.entries(plateMap).forEach(([plate, ids]) => {
+      if (ids.length >= 2) ids.forEach(id => { _heavyDuplicates[id] = ids.length; });
+    });
+    // 得意先フィルタチップ作成
+    const custMap = {};
+    _heavyVehicles.forEach(v => {
+      if (!custMap[v.customerId]) custMap[v.customerId] = { name: v.customerName, count: 0 };
+      custMap[v.customerId].count++;
+    });
+    const select = document.getElementById('heavy-customer-filter');
+    const sortedCusts = Object.entries(custMap).sort((a,b) => b[1].count - a[1].count);
+    select.innerHTML = `<option value="">すべて (${_heavyVehicles.length}台)</option>` +
+      sortedCusts.map(([cid, x]) => `<option value="${cid}">${escHtml(x.name)} (${x.count}台)</option>`).join('');
+    select.onchange = () => { _heavyFilterCust = select.value; renderHeavyVehicles(); };
+    renderHeavyVehicles();
+  } catch(e) {
+    document.getElementById('heavy-list').innerHTML = '<div class="loading" style="color:var(--red);">読込失敗: ' + e.message + '</div>';
+  }
+}
+
+function renderHeavyVehicles() {
+  let rows = _heavyVehicles.filter(v => {
+    if (_heavyFilterStatus === 'pending' && v.confirmed) return false;
+    if (_heavyFilterStatus === 'duplicates' && !_heavyDuplicates[v.id]) return false;
+    if (_heavyFilterCust && v.customerId !== _heavyFilterCust) return false;
+    if (_heavyQ) {
+      const t = (v.plate + ' ' + v.mgmt).toLowerCase();
+      if (!t.includes(_heavyQ.toLowerCase())) return false;
+    }
+    return true;
+  });
+  // サマリ
+  const total = _heavyVehicles.length;
+  const confirmedCount = _heavyVehicles.filter(v => v.confirmed).length;
+  const dupCount = Object.keys(_heavyDuplicates).length;
+  const summaryHtml = `<div class="summary" style="margin-bottom:10px;">
+    <div class="summary-card"><div class="summary-num">${total}</div><div class="summary-label">大型車両</div></div>
+    <div class="summary-card"><div class="summary-num" style="color:var(--green);">${confirmedCount}</div><div class="summary-label">確認済</div></div>
+    <div class="summary-card"><div class="summary-num" style="color:var(--red);">${dupCount}</div><div class="summary-label">⚠車番重複</div></div>
+  </div>`;
+  if (rows.length === 0) {
+    document.getElementById('heavy-list').innerHTML = summaryHtml + '<div class="loading">該当なし ✅</div>';
+    return;
+  }
+  // 顧客別グループ化
+  const grouped = {};
+  rows.forEach(v => {
+    if (!grouped[v.customerName]) grouped[v.customerName] = [];
+    grouped[v.customerName].push(v);
+  });
+  let html = summaryHtml;
+  for (const [custName, group] of Object.entries(grouped)) {
+    html += `<div class="section-group-header">${escHtml(custName)} (${group.length}台)</div>`;
+    html += group.map(v => buildHeavyRow(v)).join('');
+  }
+  document.getElementById('heavy-list').innerHTML = html;
+}
+
+function buildHeavyRow(v) {
+  const rid = 'hv_' + v.id.replace(/-/g,'');
+  const dup = _heavyDuplicates[v.id];
+  const dupBadge = dup ? `<span class="warn-badge" style="background:#dc2626;">⚠ 車番重複 ${dup}件</span>` : '';
+  const confirmBadge = v.confirmed ? '<span class="warn-badge" style="background:var(--green);">✅ 確認済</span>' : '';
+  const axleOpts = AXLE_OPTS.map(o => `<option value="${o}" ${o===v.axle?'selected':''}>${o||'(未設定)'}</option>`).join('');
+  return `
+    <div class="row-card" id="${rid}" style="grid-template-columns:1fr;gap:8px;${dup?'border:2px solid #dc2626;background:#fef2f2;':''}">
+      <div class="row-main">
+        <div class="row-title">${escHtml(v.plate || '(車番なし)')} ${dupBadge} ${confirmBadge}</div>
+        <div class="row-meta">管理番号: ${escHtml(v.mgmt||'-')} / ${escHtml(v.type||'')} ${escHtml(v.spec||'')} / 本数:${v.count}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;font-size:11px;">
+        <span style="color:var(--muted);width:80px;">車軸配置</span>
+        <select class="row-select" id="${rid}_axle">${axleOpts}</select>
+        <span style="color:var(--muted);width:80px;">前輪サイズ</span>
+        <input type="text" class="row-input" id="${rid}_front" value="${escHtml(v.front)}" placeholder="例: 295/80R22.5">
+        <span style="color:var(--muted);width:80px;">後輪サイズ</span>
+        <input type="text" class="row-input" id="${rid}_rear" value="${escHtml(v.rear)}" placeholder="後輪が違う場合のみ (前輪と同じなら空欄OK)">
+        <span style="color:var(--muted);width:80px;">本数</span>
+        <input type="number" class="row-input" id="${rid}_count" value="${v.count||0}" min="0" max="22">
+      </div>
+      <div style="text-align:right;display:flex;gap:6px;justify-content:flex-end;">
+        ${dup ? `<a href="vehicle-master.html?plate=${encodeURIComponent(v.plate)}" target="_blank" class="btn-clear" style="text-decoration:none;color:var(--red);">🔍 重複車両を見る</a>` : ''}
+        <button class="btn-save-mini" onclick="saveHeavyVehicle('${v.id}','${rid}')">💾 登録</button>
+      </div>
+    </div>
+  `;
+}
+
+async function saveHeavyVehicle(vid, rid) {
+  const v = _heavyVehicles.find(x => x.id === vid);
+  if (!v) return;
+  const newAxle = document.getElementById(rid + '_axle').value;
+  const newFront = document.getElementById(rid + '_front').value.trim();
+  const newRear = document.getElementById(rid + '_rear').value.trim();
+  const newCount = parseInt(document.getElementById(rid + '_count').value) || 0;
+  // 差分のみ送信 + 確認済フラグON
+  const payload = { id: vid, 大型仕様確認済: 1 };
+  if (newAxle !== v.axle) payload.車軸配置 = newAxle || null;
+  if (newFront !== v.front) payload.前輪サイズ = newFront || null;
+  if (newRear !== v.rear) payload.後輪サイズ = newRear || null;
+  if (newCount !== v.count) payload.本数 = newCount;
+  try {
+    const res = await fetch(PROXY + '/d1/update-vehicle', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const j = await res.json();
+    if (j.success) {
+      showToast('✅ 登録しました');
+      // メモリ更新
+      v.axle = newAxle; v.front = newFront; v.rear = newRear; v.count = newCount;
+      v.confirmed = true;
+      renderHeavyVehicles();
+    } else showToast('❌ ' + (j.error||''), true);
+  } catch(e) { showToast('❌ ' + e.message, true); }
+}
+
+// フィルタイベント
+document.querySelectorAll('.chip[data-heavy-status]').forEach(c => {
+  c.onclick = () => {
+    document.querySelectorAll('.chip[data-heavy-status]').forEach(x => x.classList.remove('active'));
+    c.classList.add('active');
+    _heavyFilterStatus = c.dataset.heavyStatus;
+    renderHeavyVehicles();
+  };
+});
+document.getElementById('heavy-search').oninput = e => { _heavyQ = e.target.value; renderHeavyVehicles(); };
 
 // ─────────────── ムロオ拠点確認 ───────────────
 let _murooLocs = [], _murooVehicles = [], _murooFilterLoc = 'all', _murooFilterStatus = 'all', _murooQ = '';

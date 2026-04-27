@@ -2031,10 +2031,13 @@ const PORTAL_ICONS = {
   kanri:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
 };
 
-function renderPortalTabs(showKeiri, showSales, showKanri) {
+function renderPortalTabs(showKeiri, showSales, showKanri, showShanai) {
   const tabs = document.getElementById('portal-tabs');
   if (!tabs) return;
-  let html = `<div class="portal-tab active"><span class="portal-tab-icon">${PORTAL_ICONS.shanai}</span>社内</div>`;
+  let html = '';
+  if (showShanai !== false) {
+    html += `<div class="portal-tab active"><span class="portal-tab-icon">${PORTAL_ICONS.shanai}</span>社内</div>`;
+  }
   if (showSales) {
     html += `<a class="portal-tab sales" href="morning-briefing.html" target="_blank" rel="noopener"><span class="portal-tab-icon">${PORTAL_ICONS.sales}</span>売上管理<span class="portal-tab-ext">↗</span></a>`;
   }
@@ -2069,14 +2072,22 @@ function renderPortalApps(user) {
 
   const showPayslip = apps['payslip'];
   const nameNoSpace = (user.name || '').replace(/\s/g, '');
-  const showKeiriPortal = isKeiri || nameNoSpace === '向畑充';
-  // 売上管理ポータル: 向畑充 + 岡崎のみ
-  const showSalesPortal = nameNoSpace === '向畑充' || nameNoSpace.includes('岡崎');
-  // 管理ポータル: 管理者 + 向畑充
-  const showKanriPortal = isAdmin || nameNoSpace === '向畑充';
+  // ポータル表示権限: D1の社員アプリ権限で管理 (portal_xxx)。未設定時はデフォルトロジック
+  // _hasExplicitPerms = 個別アプリ権限が登録されているか (verifyPin で判定)
+  const showKeiriPortal = (apps['portal_keiri'] !== undefined)
+    ? !!apps['portal_keiri']
+    : (isKeiri || nameNoSpace === '向畑充');
+  const showSalesPortal = (apps['portal_sales'] !== undefined)
+    ? !!apps['portal_sales']
+    : (nameNoSpace === '向畑充' || nameNoSpace.includes('岡崎'));
+  const showKanriPortal = (apps['portal_kanri'] !== undefined)
+    ? !!apps['portal_kanri']
+    : (isAdmin || nameNoSpace === '向畑充');
+  // 社内ポータルは基本全員表示 (明示OFF時のみ非表示)
+  const showShanaiPortal = (apps['portal_shanai'] !== undefined) ? !!apps['portal_shanai'] : true;
 
   // ─── ヘッダーのポータル切替タブを描画 ────────────────────────────────
-  renderPortalTabs(showKeiriPortal, showSalesPortal, showKanriPortal);
+  renderPortalTabs(showKeiriPortal, showSalesPortal, showKanriPortal, showShanaiPortal);
 
   let html = '';
 

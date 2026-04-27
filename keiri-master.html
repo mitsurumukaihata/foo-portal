@@ -639,6 +639,12 @@ function toggleEmpCard(id) {
 
 // APP_DEFS のミニ版 (ID + label + section だけ抜粋。本家とずれた場合は再同期)
 const EMP_APP_LIST = [
+  { section: '🚪 ポータル表示 (上タブ)', items: [
+    { id: 'portal_shanai', label: '🏠 社内ポータル' },
+    { id: 'portal_sales',  label: '📈 売上管理ポータル' },
+    { id: 'portal_keiri',  label: '📒 経理ポータル' },
+    { id: 'portal_kanri',  label: '⚙️ 管理ポータル' },
+  ]},
   { section: '現場・業務', items: [
     { id: 'kintai', label: '🕒 勤怠' }, { id: 'tire', label: '🚛 タイヤ入出庫' },
     { id: 'vehicle', label: '🚚 車両マスタ' }, { id: 'order', label: '📋 発注管理' },

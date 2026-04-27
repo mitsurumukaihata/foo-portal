@@ -1209,7 +1209,7 @@ function showPage(page) {
   if (page === 'profit') initProfitIfNeeded();
   if (page === 'customers') renderCustomersTable();
   if (page === 'drafts') renderDrafts();
-  if (page === 'sales') { ensureYayoiRows(); setTimeout(() => { const el = document.getElementById('input-customer'); if (el && !el.value) el.focus(); }, 100); }
+  if (page === 'sales') { ensureYayoiRows(); if (!vehicleCache) loadVehicles(false).catch(e => console.warn('[sales-input] 車両先読み失敗', e)); setTimeout(() => { const el = document.getElementById('input-customer'); if (el && !el.value) el.focus(); }, 100); }
   window.scrollTo(0, 0);
 }
 function toggleSidebar() {

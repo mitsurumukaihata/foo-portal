@@ -107,8 +107,13 @@ body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--
 <body>
 
 <div class="header">
-  <div class="title">📋 事務員さんお願いリスト</div>
-  <div class="subtitle">代表からの依頼を都度ここに追加します</div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+    <div>
+      <div class="title">📋 事務員さんお願いリスト</div>
+      <div class="subtitle">代表からの依頼を都度ここに追加します</div>
+    </div>
+    <a href="https://mitsurumukaihata.github.io/foo-portal/" style="padding:8px 14px;background:var(--accent);color:#fff;text-decoration:none;border-radius:8px;font-size:12px;font-weight:700;white-space:nowrap;">← 🏠 ポータルに戻る</a>
+  </div>
 </div>
 
 <div id="greeting" class="greeting">読み込み中...</div>
@@ -398,6 +403,16 @@ document.getElementById('greeting').innerHTML =
   `${(new Date().getHours() < 12 ? 'おはようございます' : 'お疲れさまです')}、<strong>${session?.name || '事務員'}</strong>さん。今日もよろしくお願いします 🙏`;
 
 // ─── タブ切替 ───
+function switchTab(tabName) {
+  const t = document.querySelector(`.tab[data-tab="${tabName}"]`);
+  if (!t) return;
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('section-' + tabName).classList.add('active');
+  // データロード (各タブのclickハンドラを発火)
+  t.dispatchEvent(new Event('click', { bubbles: false }));
+}
 document.querySelectorAll('.tab').forEach(t => {
   t.onclick = () => {
     document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
@@ -406,6 +421,13 @@ document.querySelectorAll('.tab').forEach(t => {
     document.getElementById('section-' + t.dataset.tab).classList.add('active');
   };
 });
+// URL hash で初期タブ (例: #tab=heavy)
+(function applyInitialTab(){
+  const m = location.hash.match(/tab=([a-z]+)/);
+  if (!m) return;
+  const t = document.querySelector(`.tab[data-tab="${m[1]}"]`);
+  if (t) t.click();
+})();
 
 // ─── DIRECT_CATALOG_URL (コピー: tire-manager.htmlと同期) ───
 const DIRECT_URL = {

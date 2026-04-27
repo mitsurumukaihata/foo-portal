@@ -344,11 +344,34 @@ async function loadHero() {
   const d = r.results?.[0] || {};
   const 粗利 = (d.売上合計 || 0) - (d.仕入合計 || 0);
   const 粗利率 = d.売上合計 ? Math.round(粗利 * 100 / d.売上合計) : 0;
+
+  // 商品分類別 売上 (売上明細→商品マスタJOIN)
+  const r2 = await sql(`
+    SELECT COALESCE(m.商品分類, '未分類') AS 分類, COALESCE(SUM(d.税込小計),0) AS 金額
+    FROM 売上明細 d
+    JOIN 売上伝票 s ON s.id = d.売上伝票ID
+    LEFT JOIN 商品マスタ m ON m.商品コード = d.商品コード
+    WHERE s.売上日 BETWEEN ? AND ?
+    GROUP BY 分類 ORDER BY 金額 DESC
+  `, [from, to]);
+  const bunrui = {};
+  (r2.results || []).forEach(x => { bunrui[x.分類] = x.金額; });
+  const tireSales = bunrui['タイヤ'] || 0;
+  const partSales = bunrui['部品'] || 0;
+  const workSales = bunrui['作業'] || 0;
+  const otherSales = bunrui['未分類'] || 0;
+  const total = tireSales + partSales + workSales + otherSales;
+  const pct = (n) => total > 0 ? Math.round(n * 100 / total) : 0;
+
   document.getElementById('hero').innerHTML = `
     <div class="hero-card accent"><div class="lbl">💰 売上合計</div><div class="val">${yenShort(d.売上合計)}</div><div class="sub">${fmtNum(d.伝票件数)}伝票</div></div>
     <div class="hero-card"><div class="lbl">🛒 仕入合計</div><div class="val">${yenShort(d.仕入合計)}</div><div class="sub">税込</div></div>
     <div class="hero-card"><div class="lbl">💎 粗利</div><div class="val">${yenShort(粗利)}</div><div class="sub">粗利率 ${粗利率}%</div></div>
     <div class="hero-card"><div class="lbl">👥 取引顧客</div><div class="val">${fmtNum(d.取引顧客数)}</div><div class="sub">アクティブ数</div></div>
+    <div class="hero-card" style="background:#fef3c7;color:#92400e;"><div class="lbl">🛞 タイヤ売上</div><div class="val">${yenShort(tireSales)}</div><div class="sub">${pct(tireSales)}%</div></div>
+    <div class="hero-card" style="background:#dbeafe;color:#1e3a8a;"><div class="lbl">🔩 部品売上</div><div class="val">${yenShort(partSales)}</div><div class="sub">${pct(partSales)}%</div></div>
+    <div class="hero-card" style="background:#d1fae5;color:#065f46;"><div class="lbl">🛠 作業売上</div><div class="val">${yenShort(workSales)}</div><div class="sub">${pct(workSales)}%</div></div>
+    ${otherSales > 0 ? `<div class="hero-card" style="background:#fef2f2;color:#991b1b;"><div class="lbl">❓ 未分類</div><div class="val">${yenShort(otherSales)}</div><div class="sub">${pct(otherSales)}% (要分類)</div></div>` : ''}
   `;
 }
 

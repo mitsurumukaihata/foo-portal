@@ -599,7 +599,7 @@ body::-webkit-scrollbar { display:none; }
           <div class="yh-cell span4">
             <div class="yh-label">得意先 <span style="color:var(--red);">*</span></div>
             <div class="search-wrap">
-              <input type="text" id="input-customer" class="yh-input" placeholder="コード or 名前 で検索（例: 0001、まるぜん、丸善）" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" name="cust_q_no_ime_history">
+              <input type="text" id="input-customer" class="yh-input" lang="ja" inputmode="text" style="ime-mode:active;" placeholder="コード or 名前 で検索（例: 0001、まるぜん、丸善）" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" name="cust_q_no_ime_history">
               <div class="search-results" id="customer-results"></div>
             </div>
           </div>
@@ -628,7 +628,7 @@ body::-webkit-scrollbar { display:none; }
           <div class="yh-cell span4">
             <div class="yh-label">エンドユーザー（顧客情報DB · 請求先と同じなら自動）</div>
             <div class="search-wrap">
-              <input type="text" id="input-enduser" class="yh-input" placeholder="名前で検索（請求先と同一なら自動入力）" autocomplete="off" autocorrect="off" spellcheck="false">
+              <input type="text" id="input-enduser" class="yh-input" lang="ja" inputmode="text" style="ime-mode:active;" placeholder="名前で検索（請求先と同一なら自動入力）" autocomplete="off" autocorrect="off" spellcheck="false">
               <div class="search-results" id="enduser-results"></div>
             </div>
           </div>
@@ -4262,19 +4262,22 @@ function deleteCurrentDraft() {
    売上入力 ロジック
    ═══════════════════════════════════════ */
 function newSale() {
-  state.draftId = null;
-  state.selectedCustomer = null;
-  state.selectedEndUser = null;
-  state.details = [];
-  document.getElementById('input-date').value = new Date().toISOString().slice(0,10);
-  document.getElementById('input-customer').value = '';
-  { const _s = document.getElementById('selected-customer'); if (_s) _s.textContent = ''; document.getElementById('input-customer').style.background = ''; }
-  document.getElementById('input-car').value = '';
-  { const eu = document.getElementById('input-enduser'); if (eu) { eu.value = ''; eu.style.background = ''; } }
-  document.getElementById('input-bikou').value = '';
-  document.querySelector('input[name="tax-type"][value="外税"]').checked = true;
-  updateTaxTypeUI();
-  ensureYayoiRows();
+  try {
+    state.draftId = null;
+    state.selectedCustomer = null;
+    state.selectedEndUser = null;
+    state.details = [];
+    const dEl = document.getElementById('input-date');     if (dEl) dEl.value = new Date().toISOString().slice(0,10);
+    const cEl = document.getElementById('input-customer'); if (cEl) { cEl.value = ''; cEl.style.background = ''; }
+    const sc  = document.getElementById('selected-customer'); if (sc) sc.textContent = '';
+    const carEl = document.getElementById('input-car');    if (carEl) carEl.value = '';
+    const eu  = document.getElementById('input-enduser');  if (eu) { eu.value = ''; eu.style.background = ''; }
+    const bk  = document.getElementById('input-bikou');    if (bk) bk.value = '';
+    const tt  = document.querySelector('input[name="tax-type"][value="外税"]'); if (tt) tt.checked = true;
+    if (typeof updateTaxTypeUI === 'function') updateTaxTypeUI();
+    ensureYayoiRows();
+    renderDetails(); // 明細DOMを確実にクリア
+  } catch(e) { console.error('[newSale] reset error', e); }
   showPage('sales');
 }
 
@@ -4320,6 +4323,29 @@ document.addEventListener('input', (e) => {
 });
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.search-wrap')) document.querySelectorAll('.search-results').forEach(el => el.classList.remove('show'));
+});
+
+// 候補リスト共通: ↑↓Enter ナビゲーション
+const _suggestMap = {
+  'input-customer': { listId: 'customer-results', apply: (el) => selectCustomer(el.dataset.cid, el.dataset.cname, el.dataset.ccode) },
+  'input-enduser':  { listId: 'enduser-results',  apply: (el) => selectEndUser(el.dataset.uid, el.dataset.uname) },
+  'input-car':      { listId: 'car-results',      apply: (el) => selectCar(el.dataset.car, el.dataset.sid) },
+};
+document.addEventListener('keydown', (e) => {
+  const cfg = _suggestMap[e.target.id];
+  if (!cfg) return;
+  const list = document.getElementById(cfg.listId);
+  if (!list || !list.classList.contains('show')) return;
+  const items = [...list.querySelectorAll('.search-result')];
+  if (!items.length) return;
+  let cur = items.findIndex(it => it.classList.contains('hl'));
+  if (e.key === 'ArrowDown') { e.preventDefault(); cur = (cur + 1) % items.length; }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); cur = (cur - 1 + items.length) % items.length; }
+  else if (e.key === 'Enter' && cur >= 0) { e.preventDefault(); cfg.apply(items[cur]); return; }
+  else return;
+  items.forEach(it => it.classList.remove('hl'));
+  items[cur].classList.add('hl');
+  items[cur].scrollIntoView({ block: 'nearest' });
 });
 document.addEventListener('change', (e) => {
   if (e.target.name === 'tax-type') { updateTaxTypeUI(); calcTotals(); }
@@ -4628,7 +4654,7 @@ function renderDetails() {
     return `
     <tr id="y-row-${i}" class="${hasData(d) ? 'has-data' : ''}">
       <td class="row-no">${i + 1}</td>
-      <td style="position:relative;"><input type="text" data-cell="carNo" data-row="${i}" value="${escHtml(d.carNo)}" oninput="onCarNoInput(${i},this)" onfocus="onCarNoInput(${i},this)" onkeydown="onCellKey(event,${i},'carNo')" onblur="setTimeout(()=>hideCarSuggest(${i}),200)" placeholder="車番/管理#"><div class="product-suggest" id="car-sug-${i}"></div></td>
+      <td style="position:relative;"><input type="text" lang="en" inputmode="text" style="ime-mode:disabled;" data-cell="carNo" data-row="${i}" value="${escHtml(d.carNo)}" oninput="onCarNoInput(${i},this)" onfocus="onCarNoInput(${i},this)" onkeydown="onCarNoKey(event,${i})" onblur="setTimeout(()=>hideCarSuggest(${i}),200)" placeholder="車番/管理#"><div class="product-suggest" id="car-sug-${i}"></div></td>
       <td>
         <select data-cell="hinmoku" data-row="${i}" onchange="updateDetail(${i},'hinmoku',this.value)">
           <option value=""></option>
@@ -4700,6 +4726,26 @@ function onCarNoInput(i, inp) {
 function hideCarSuggest(i) {
   const sug = document.getElementById('car-sug-' + i);
   if (sug) sug.classList.remove('show');
+}
+function onCarNoKey(e, i) {
+  const sug = document.getElementById('car-sug-' + i);
+  // 候補が表示されていない場合は通常のセル移動キーへ委譲
+  if (!sug || !sug.classList.contains('show')) { onCellKey(e, i, 'carNo'); return; }
+  const items = [...sug.querySelectorAll('.ps-item')];
+  if (!items.length) { onCellKey(e, i, 'carNo'); return; }
+  let cur = items.findIndex(it => it.classList.contains('hl'));
+  if (e.key === 'ArrowDown') { e.preventDefault(); cur = (cur + 1) % items.length; }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); cur = (cur - 1 + items.length) % items.length; }
+  else if (e.key === 'Enter' && cur >= 0) {
+    e.preventDefault();
+    const onmd = items[cur].getAttribute('onmousedown') || '';
+    const m = onmd.match(/applyCarSuggest\(\d+,\s*'([^']+)'\)/);
+    if (m) applyCarSuggest(i, m[1]);
+    return;
+  } else { onCellKey(e, i, 'carNo'); return; }
+  items.forEach(it => it.classList.remove('hl'));
+  items[cur].classList.add('hl');
+  items[cur].scrollIntoView({ block: 'nearest' });
 }
 function applyCarSuggest(rowIdx, vehicleId) {
   const v = vehicleCache.find(x => x.id === vehicleId);
@@ -4902,11 +4948,15 @@ function applyFormData(data) {
 }
 
 async function submitSale() {
+  console.log('[submitSale] start', { selectedCustomer: state.selectedCustomer, selectedEndUser: state.selectedEndUser, details: state.details });
   const data = collectFormData();
-  if (!data.date) { showToast('売上日を入力してください'); showPage('sales'); return; }
-  if (!data.customer) { showToast('得意先を選択してください'); showPage('sales'); return; }
+  console.log('[submitSale] collected', data);
+  if (!data.date) { alert('売上日を入力してください'); showPage('sales'); return; }
+  if (!data.customer) { alert('得意先を選択してください（候補から選んでください）'); showPage('sales'); return; }
+  const beforeFilter = data.details.length;
   data.details = data.details.filter(d => d && (parseFloat(d.qty) || 0) > 0 && (parseFloat(d.tanka) || 0) >= 0 && (d.hinmoku || d.code || d.size || d.brand));
-  if (!data.details.length) { showToast('明細を1件以上入力してください（数量・品目）'); showPage('sales'); return; }
+  console.log('[submitSale] details filtered:', beforeFilter, '→', data.details.length);
+  if (!data.details.length) { alert('明細を1件以上入力してください\n・数量 > 0\n・品目 or 商品コード or サイズ or 銘柄 のいずれか'); showPage('sales'); return; }
   const totals = calcTotals();
   if (totals.zeinuki <= 0) { if (!confirm('合計金額が0円ですが、本当に保存しますか？')) return; }
   const btn = document.getElementById('btn-submit');
@@ -4978,11 +5028,11 @@ async function submitSale() {
     state.details = [];
     state.selectedCustomer = null;
     state.selectedEndUser = null;
-    document.getElementById('input-customer').value = '';
-    { const _s = document.getElementById('selected-customer'); if (_s) _s.textContent = ''; document.getElementById('input-customer').style.background = ''; }
-    document.getElementById('input-car').value = '';
+    { const cEl = document.getElementById('input-customer'); if (cEl) { cEl.value = ''; cEl.style.background = ''; } }
+    { const _s = document.getElementById('selected-customer'); if (_s) _s.textContent = ''; }
+    { const carEl = document.getElementById('input-car'); if (carEl) carEl.value = ''; }
     { const eu = document.getElementById('input-enduser'); if (eu) { eu.value = ''; eu.style.background = ''; } }
-    document.getElementById('input-bikou').value = '';
+    { const bk = document.getElementById('input-bikou'); if (bk) bk.value = ''; }
     ensureYayoiRows();
     await loadRecentSlips();
     if (confirm('保存完了。\n[OK] ダッシュボードを見る\n[キャンセル] 続けて入力')) showPage('dashboard');

@@ -1871,39 +1871,36 @@ const APP_DEFS = [
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>` },
 ];
 
-// ─── ログイン ─────────────────────────────────────────────────────────────────
+// ─── D1 ヘルパー (社員マスタは2026/4/27からD1がSoT) ───
+async function d1Sql(sql) {
+  const r = await fetch('https://notion-proxy.33322666666mm.workers.dev/d1/sql', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sql })
+  });
+  const j = await r.json();
+  return j.results || [];
+}
+function escSql(s) { return String(s).replace(/'/g, "''"); }
+
+// ─── ログイン (D1ベース) ───
 async function verifyPin(name, pin) {
-  const res = await notionAPI('POST', `/databases/${MASTER_DB}/query`, {
-    filter: { and: [
-      { property: '氏名', title: { equals: name } },
-      { property: '在籍', select: { equals: '在籍中' } },
-    ]},
-    page_size: 1,
-  });
-  if (res.object === 'error') throw new Error(res.message);
-  if (!res.results?.length) throw new Error('社員情報が見つかりません');
-  const page  = res.results[0];
-  const props = page.properties;
-  const storedPin = props['PIN']?.rich_text?.[0]?.plain_text || '';
-  if (storedPin !== pin) return null;
-
+  const rows = await d1Sql(`SELECT id, 氏名, 在籍, 権限, アプリグループ, メールアドレス, PIN, 表示順 FROM 社員マスタ WHERE 氏名 = '${escSql(name)}' AND 在籍 = '在籍中' LIMIT 1`);
+  if (!rows.length) throw new Error('社員情報が見つかりません');
+  const e = rows[0];
+  if ((e.PIN || '') !== pin) return null;
+  // appsは現状アプリグループ/nameWhitelist/allAccessで制御するため全true (個別アプリ表示はAPP_DEFS側で判定)
   const apps = {};
-  APP_DEFS.forEach(def => {
-    apps[def.id] = props[def.key]?.checkbox === true;
-  });
-
-  const group       = props['アプリグループ']?.select?.name || '一般';
-  const payslipUrl  = props['給与明細URL']?.url || '';
-  const meisaiDbId = props['明細DB_ID']?.rich_text?.[0]?.plain_text || '';
+  APP_DEFS.forEach(def => { apps[def.id] = true; });
   return {
-    name,
-    email:      props['メールアドレス']?.email || '',
-    role:       props['権限']?.select?.name || '一般',
-    group,
+    id: e.id,
+    name: e.氏名,
+    email: e.メールアドレス || '',
+    role: e.権限 || '一般',
+    group: e.アプリグループ || '一般',
     apps,
-    payslipUrl,
-    meisaiDbId,
-    pageId:     page.id,
+    payslipUrl: '', // payslip-d1.html にリダイレクトするため不要
+    meisaiDbId: '',
+    pageId: e.id,
   };
 }
 
@@ -2353,48 +2350,22 @@ async function loadAllPayslips() {
   const listEl = document.getElementById('payslip-list-inner');
   if (!listEl) return;
   try {
-    const res = await notionAPI('POST', `/databases/${MASTER_DB}/query`, {
-      filter: { property: '在籍', select: { equals: '在籍中' } },
-      sorts:  [{ property: '表示順', direction: 'ascending' }],
-      page_size: 50,
-    });
-    if (!res.results?.length) { listEl.innerHTML = '<div style="color:var(--muted);font-size:13px;">データなし</div>'; return; }
-
-    const rows = res.results.map(page => {
-      const props    = page.properties;
-      const name     = props['氏名']?.title?.[0]?.plain_text || '';
-      const url      = props['給与明細URL']?.url || '';
-      const grp      = props['アプリグループ']?.select?.name || '一般';
-      const dbId     = props['明細DB_ID']?.rich_text?.[0]?.plain_text || '';
+    // D1から最新の社員一覧 (給与明細はpayslip-d1.htmlに統一されたためURL/DBId不要)
+    const empRows = await d1Sql(`SELECT 氏名, アプリグループ FROM 社員マスタ WHERE 在籍 = '在籍中' ORDER BY 表示順 ASC LIMIT 50`);
+    if (!empRows.length) { listEl.innerHTML = '<div style="color:var(--muted);font-size:13px;">データなし</div>'; return; }
+    const rows = empRows.map(e => {
+      const name = e.氏名 || '';
+      const grp = e.アプリグループ || '一般';
       if (!name) return '';
       const initials = name.replace(/\s/g,'').slice(-1);
-      if (dbId) {
-        return `<div class="app-row" onclick="openPayslipViewer('${name}','${dbId}')" style="margin-bottom:6px;cursor:pointer;">
-          <div class="app-icon" style="width:34px;height:34px;font-size:13px;font-weight:700;background:rgba(240,165,0,0.12);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--accent);">${initials}</div>
-          <div class="app-text">
-            <div class="app-name" style="font-size:13px;">${name}</div>
-            <div class="app-sub">${grp}</div>
-          </div>
-          <div class="app-arrow">›</div>
-        </div>`;
-      } else if (url) {
-        return `<a href="${url}" target="_blank" class="app-row" style="margin-bottom:6px;">
-          <div class="app-icon" style="width:34px;height:34px;font-size:13px;font-weight:700;background:rgba(240,165,0,0.12);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--accent);">${initials}</div>
-          <div class="app-text">
-            <div class="app-name" style="font-size:13px;">${name}</div>
-            <div class="app-sub">${grp}</div>
-          </div>
-          <div class="app-arrow">›</div>
-        </a>`;
-      } else {
-        return `<div class="app-row" style="opacity:0.4;pointer-events:none;margin-bottom:6px;">
-          <div class="app-icon" style="width:34px;height:34px;font-size:13px;font-weight:700;background:rgba(240,165,0,0.12);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);">${initials}</div>
-          <div class="app-text">
-            <div class="app-name" style="font-size:13px;">${name}</div>
-            <div class="app-sub">明細なし</div>
-          </div>
-        </div>`;
-      }
+      return `<div class="app-row" onclick="openPayslipViewer('${name.replace(/'/g,"\\'")}','')" style="margin-bottom:6px;cursor:pointer;">
+        <div class="app-icon" style="width:34px;height:34px;font-size:13px;font-weight:700;background:rgba(240,165,0,0.12);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--accent);">${initials}</div>
+        <div class="app-text">
+          <div class="app-name" style="font-size:13px;">${name}</div>
+          <div class="app-sub">${grp}</div>
+        </div>
+        <div class="app-arrow">›</div>
+      </div>`;
     }).join('');
     listEl.innerHTML = rows || '<div style="color:var(--muted);font-size:13px;">データなし</div>';
   } catch(e) {
@@ -2446,18 +2417,13 @@ const DISPLAY_ONLY_GROUPS = ['会長'];
 async function loadStaffList() {
   const grid = document.getElementById('staff-grid');
   try {
-    const res = await notionAPI('POST', `/databases/${MASTER_DB}/query`, {
-      filter: { property: '在籍', select: { equals: '在籍中' } },
-      sorts:  [{ property: '表示順', direction: 'ascending' }],
-      page_size: 50,
-    });
-    if (res.object === 'error') throw new Error(res.message);
-
+    // D1から最新の社員マスタを取得 (Source of Truth)
+    const rows = await d1Sql(`SELECT 氏名, 表示順, アプリグループ FROM 社員マスタ WHERE 在籍 = '在籍中' ORDER BY 表示順 ASC LIMIT 50`);
     const grouped = {};
-    (res.results || []).forEach(p => {
-      const name  = p.properties['氏名']?.title?.[0]?.plain_text || '';
-      const order = p.properties['表示順']?.number ?? 9999;
-      const grp   = p.properties['アプリグループ']?.select?.name || '一般';
+    rows.forEach(r => {
+      const name = r.氏名 || '';
+      const order = r.表示順 ?? 9999;
+      const grp = r.アプリグループ || '一般';
       if (!name) return;
       if (!grouped[grp]) grouped[grp] = [];
       grouped[grp].push({ name, order });

@@ -89,11 +89,12 @@
   <div class="card" id="employee-section" style="display:none;">
     <h2>👥 社員マスタ</h2>
     <div class="help-box">
-      💡 <b>ここで全部完結</b>: 入社・退職・権限変更・給与基本値・連絡先・PIN・アプリグループ をすべて管理。Notionは見なくてOK<br>
-      💡 <b>表示順</b>: ホーム画面・各種一覧での並び順。1から振る (重複可だが推奨は連番)<br>
+      💡 <b>役割</b>: ポータル全体で使う基本属性のみ管理 (入社・退職・権限・連絡先・PIN・アプリグループ)<br>
+      💡 <b>給与系の値</b>(基本給/時給/控除等) は <b>「💰 給与マスタ」</b> タブで経理が管理<br>
+      💡 <b>シフト手当</b> は <b>「🌟 シフト手当設定」</b> タブで管理<br>
+      💡 <b>表示順</b>: ホーム画面・各種一覧での並び順 (1から連番推奨)<br>
       💡 <b>権限</b>: 管理者=全アプリ操作OK / 一般=制限あり<br>
-      💡 <b>アプリグループ</b>: 管理者/会長/経理/部長/リーダー/一般/事務/SNS/オークション (どのコミュニティ/権限カードに表示されるか決まる)<br>
-      💡 <b>PIN</b>: ログイン用6桁数字 (社員に配布)
+      💡 <b>アプリグループ</b>: 管理者/会長/経理/部長/リーダー/一般/事務/SNS/オークション
     </div>
     <div style="display:flex;gap:8px;margin-bottom:10px;">
       <button class="btn" onclick="addNewEmployee()">➕ 新規社員追加</button>
@@ -441,9 +442,13 @@ document.querySelectorAll('#main-tabs .filter-tab').forEach(t => {
 let _shiftEmployees = [];
 async function loadShiftSettings() {
   document.getElementById('shift-list').innerHTML = '<div class="loading">読込中...</div>';
-  const rows = await sql(`SELECT id, 氏名, 給与体系, 表示順, シフト手当対象, シフト手当月額 FROM 社員マスタ WHERE 在籍 = '在籍中' ORDER BY 表示順, 氏名`);
-  _shiftEmployees = rows;
-  renderShiftSettings();
+  try {
+    const r = await sql(`SELECT id, 氏名, 給与体系, 表示順, シフト手当対象, シフト手当月額 FROM 社員マスタ WHERE 在籍 = '在籍中' ORDER BY 表示順, 氏名`);
+    _shiftEmployees = r.results || [];
+    renderShiftSettings();
+  } catch(e) {
+    document.getElementById('shift-list').innerHTML = '<div class="loading" style="color:var(--red);">読込失敗: ' + e.message + '</div>';
+  }
 }
 
 function renderShiftSettings() {
@@ -537,9 +542,14 @@ const TAIKEI_OPTS = ['','月給','時給'];
 
 async function loadEmployeeMaster() {
   document.getElementById('employee-list').innerHTML = '<div class="loading">読込中...</div>';
-  const rows = await sql(`SELECT id, 氏名, 在籍, 権限, アプリグループ, メールアドレス, 給与体系, 基本給, 時給, 通勤手当, 住民税月額, 健康保険月額, 厚生年金月額, 扶養人数, 所定労働日数, 所定労働時間, 表示順, PIN, メモ, シフト手当対象, シフト手当月額, 最終ログイン FROM 社員マスタ ORDER BY 表示順, 氏名`);
-  _emps = rows;
-  renderEmployeeList();
+  try {
+    // UIは基本属性のみ編集だが、保存時に給与系の現在値を維持するため全カラム取得
+    const r = await sql(`SELECT id, 氏名, 在籍, 権限, アプリグループ, メールアドレス, 表示順, PIN, メモ, 最終ログイン, 給与体系, 基本給, 時給, 通勤手当, 住民税月額, 健康保険月額, 厚生年金月額, 扶養人数, 所定労働日数, 所定労働時間, シフト手当対象, シフト手当月額, created_time FROM 社員マスタ ORDER BY 表示順, 氏名`);
+    _emps = r.results || [];
+    renderEmployeeList();
+  } catch(e) {
+    document.getElementById('employee-list').innerHTML = '<div class="loading" style="color:var(--red);">読込失敗: ' + e.message + '</div>';
+  }
 }
 
 function renderEmployeeList() {
@@ -590,28 +600,9 @@ function buildEmpCard(e) {
           ${f('PIN','PIN (6桁)',esc(e.PIN),'text','maxlength="6"')}
         </div>
 
-        <div style="font-size:11px;font-weight:800;color:var(--accent);margin-bottom:6px;">給与基本値</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">
-          ${sel('給与体系','給与体系',e.給与体系||'',TAIKEI_OPTS)}
-          ${num('基本給','基本給 (月給時)',e.基本給)}
-          ${num('時給','時給 (時給時)',e.時給)}
-          ${num('通勤手当','通勤手当 (月)',e.通勤手当)}
-          ${num('扶養人数','扶養人数',e.扶養人数)}
-          ${num('所定労働日数','所定労働日数',e.所定労働日数)}
-          ${num('所定労働時間','所定労働時間',e.所定労働時間)}
-        </div>
-
-        <div style="font-size:11px;font-weight:800;color:var(--accent);margin-bottom:6px;">控除</div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">
-          ${num('健康保険月額','健康保険月額',e.健康保険月額)}
-          ${num('厚生年金月額','厚生年金月額',e.厚生年金月額)}
-          ${num('住民税月額','住民税月額',e.住民税月額)}
-        </div>
-
-        <div style="font-size:11px;font-weight:800;color:#b97a00;margin-bottom:6px;">🌟 シフト手当</div>
-        <div style="display:grid;grid-template-columns:200px 1fr;gap:10px;margin-bottom:14px;background:#fef3c7;padding:8px 10px;border-radius:6px;">
-          <label style="display:flex;flex-direction:column;font-size:11px;color:#b97a00;">対象社員<input type="checkbox" id="${eid}_シフト手当対象" ${e.シフト手当対象?'checked':''} style="transform:scale(1.4);margin-top:6px;cursor:pointer;width:fit-content;"></label>
-          ${num('シフト手当月額','月額 (対象月支給)',e.シフト手当月額)}
+        <div style="background:#eff6ff;border-left:3px solid #3b82f6;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#1e40af;">
+          💡 <b>給与系項目</b> (基本給/時給/手当/控除) は <b>「💰 給与マスタ」</b> タブ、<br>
+          🌟 <b>シフト手当</b> は <b>「🌟 シフト手当設定」</b> タブで管理してください
         </div>
 
         <div style="font-size:11px;font-weight:800;color:var(--accent);margin-bottom:6px;">メモ</div>
@@ -657,6 +648,9 @@ async function saveEmployee(id, eid) {
     if (type === 'bool') return el.checked ? 1 : 0;
     return el.value || null;
   };
+  // 社員マスタタブ = 基本属性のみ更新 (給与系・シフト手当は別タブで管理)
+  // 既存社員: 基本属性のみ更新したいので、現在のDB値を保ったまま部分更新する
+  const cur = _emps.find(x => x.id === id) || {};
   const data = {
     id: id.startsWith('new-') ? crypto.randomUUID() : id,
     氏名: v('氏名'),
@@ -664,21 +658,24 @@ async function saveEmployee(id, eid) {
     権限: v('権限'),
     アプリグループ: v('アプリグループ'),
     メールアドレス: v('メールアドレス'),
-    給与体系: v('給与体系'),
-    基本給: v('基本給', 'num'),
-    時給: v('時給', 'num'),
-    通勤手当: v('通勤手当', 'num'),
-    住民税月額: v('住民税月額', 'num'),
-    健康保険月額: v('健康保険月額', 'num'),
-    厚生年金月額: v('厚生年金月額', 'num'),
-    扶養人数: v('扶養人数', 'num'),
-    所定労働日数: v('所定労働日数', 'num'),
-    所定労働時間: v('所定労働時間', 'num'),
     表示順: v('表示順', 'num'),
     PIN: v('PIN'),
     メモ: v('メモ'),
-    シフト手当対象: v('シフト手当対象', 'bool'),
-    シフト手当月額: v('シフト手当月額', 'num'),
+    // 給与・控除・シフト手当は変更しない (現在値を維持)
+    給与体系: cur.給与体系 ?? null,
+    基本給: cur.基本給 ?? null,
+    時給: cur.時給 ?? null,
+    通勤手当: cur.通勤手当 ?? null,
+    住民税月額: cur.住民税月額 ?? null,
+    健康保険月額: cur.健康保険月額 ?? null,
+    厚生年金月額: cur.厚生年金月額 ?? null,
+    扶養人数: cur.扶養人数 ?? null,
+    所定労働日数: cur.所定労働日数 ?? null,
+    所定労働時間: cur.所定労働時間 ?? null,
+    シフト手当対象: cur.シフト手当対象 ?? 0,
+    シフト手当月額: cur.シフト手当月額 ?? null,
+    最終ログイン: cur.最終ログイン ?? null,
+    created_time: cur.created_time ?? new Date().toISOString(),
     last_edited_time: new Date().toISOString()
   };
   if (!data.氏名) { alert('氏名は必須です'); return; }

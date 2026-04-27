@@ -1043,9 +1043,23 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
     if (url.pathname === '/d1/update-employee-flag' && request.method === 'POST' && env.DB) {
       try {
         const { id, field, value } = await request.json();
-        const ALLOWED = ['シフト手当対象'];
-        if (!id || !ALLOWED.includes(field)) return new Response(JSON.stringify({ error: 'invalid id/field' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
-        const stmt = env.DB.prepare(`UPDATE 社員マスタ SET "${field}" = ? WHERE id = ?`).bind(value ? 1 : 0, id);
+        // フラグ系 (0/1) と 数値系 (整数) の両方対応
+        const FLAG_FIELDS = ['シフト手当対象'];
+        const NUMERIC_FIELDS = ['シフト手当月額', '基本給', '時給', '通勤手当', '住民税月額', '健康保険月額', '厚生年金月額', '扶養人数', '所定労働日数', '所定労働時間'];
+        if (!id || (!FLAG_FIELDS.includes(field) && !NUMERIC_FIELDS.includes(field))) {
+          return new Response(JSON.stringify({ error: 'invalid id/field' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        }
+        let bindValue;
+        if (FLAG_FIELDS.includes(field)) {
+          bindValue = value ? 1 : 0;
+        } else {
+          // 空文字や null は NULL に
+          bindValue = (value === '' || value === null || value === undefined) ? null : Number(value);
+          if (bindValue !== null && Number.isNaN(bindValue)) {
+            return new Response(JSON.stringify({ error: 'value must be number' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+          }
+        }
+        const stmt = env.DB.prepare(`UPDATE 社員マスタ SET "${field}" = ? WHERE id = ?`).bind(bindValue, id);
         const res = await stmt.run();
         return new Response(JSON.stringify({ success: true, changes: res.meta?.changes || 0 }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
       } catch(e) {

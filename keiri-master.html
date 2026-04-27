@@ -60,6 +60,7 @@
   <div class="card">
     <div class="filter-tabs" id="main-tabs">
       <div class="filter-tab active" data-main="salary">💰 給与マスタ (社員別)</div>
+      <div class="filter-tab" data-main="shift">🌟 シフト手当設定</div>
       <div class="filter-tab" data-main="ticket">🧾 経理チケット</div>
       <div class="filter-tab" data-main="reference">📚 参考情報</div>
     </div>
@@ -72,7 +73,7 @@
       💡 <b>適用年月</b>: この月から適用する値。例: 2026/4 から時給を変えたら「2026-04」で行追加。<br>
       💡 <b>月額の社会保険料</b>: 協会けんぽ料額表を見て入力 (健康保険料・厚生年金・介護保険料は給与月額により自動決定)。<br>
       💡 <b>住民税月額</b>: 6月に市町村から特別徴収税額決定通知書が届いたら更新。<br>
-      💡 <b>シフト手当</b>: <span style="color:var(--red);font-weight:700;">1/16〜3/15・5/16〜10/15期間のみ支給対象</span> (該当月で自動表示)。社員ごとに月額を登録。
+      💡 <b>シフト手当</b>: <span style="color:var(--red);font-weight:700;">1/16〜3/15・5/16〜10/15期間のみ支給対象</span> (該当月で自動表示)。<b>対象社員と月額は「🌟 シフト手当設定」タブで管理</b>。ここでは月毎の特例調整のみ可能。
     </div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
       <label>適用年月:</label>
@@ -81,6 +82,18 @@
       <button class="btn secondary" onclick="copyFromPreviousMonth()">⏪ 前月コピー</button>
     </div>
     <div id="salary-master-result"><div class="loading">読込中...</div></div>
+  </div>
+
+  <!-- シフト手当設定 -->
+  <div class="card" id="shift-section" style="display:none;">
+    <h2>🌟 シフト手当 対象社員・月額設定</h2>
+    <div class="help-box">
+      💡 <b>対象期間</b>: 1/16〜3/15 と 5/16〜10/15 (支給月で 2,3,6,7,8,9,10月)<br>
+      💡 <b>仕組み</b>: ここで設定した <b>対象社員 × 月額</b> が、対象月の給与明細で自動付与されます<br>
+      💡 <b>変更</b>: いつでも変更可能。次月の給与計算から新しい設定が反映されます<br>
+      ⚠️ <b>対象外社員</b>: チェックを外すと、その社員は対象月でも 0円 になります
+    </div>
+    <div id="shift-list"><div class="loading">読込中...</div></div>
   </div>
 
   <!-- 経理チケット -->
@@ -165,7 +178,7 @@ document.getElementById('month-picker').value = (() => {
 
 let _employees = [];
 async function loadEmployees() {
-  const r = await sql(`SELECT id, 氏名, 給与体系, 表示順, シフト手当対象 FROM 社員マスタ WHERE 在籍 = '在籍中' ORDER BY 表示順, 氏名`);
+  const r = await sql(`SELECT id, 氏名, 給与体系, 表示順, シフト手当対象, シフト手当月額 FROM 社員マスタ WHERE 在籍 = '在籍中' ORDER BY 表示順, 氏名`);
   _employees = r.results || [];
   return _employees;
 }
@@ -249,7 +262,7 @@ async function loadSalaryMaster() {
           <td><input type="number" class="num-input sm-input" data-field="役職手当" value="${m.役職手当||0}"></td>
           <td><input type="number" class="num-input sm-input" data-field="通勤手当" value="${m.通勤手当||0}"></td>
           <td><input type="number" class="num-input sm-input" data-field="資格手当" value="${m.資格手当||0}"></td>
-          ${showShift ? `<td style="background:#fff8e7;"><input type="number" class="num-input sm-input" data-field="シフト手当" value="${isShiftElig ? (m.シフト手当||0) : 0}" ${isShiftElig?'':'disabled style="background:#eee;color:#999;"'}></td>` : ''}
+          ${showShift ? `<td style="background:#fff8e7;" title="社員マスタ月額: ¥${(e.シフト手当月額||0).toLocaleString()}"><input type="number" class="num-input sm-input" data-field="シフト手当" value="${isShiftElig ? (m.シフト手当 ?? e.シフト手当月額 ?? 0) : 0}" ${isShiftElig?'':'disabled style="background:#eee;color:#999;"'}></td>` : ''}
           <td><input type="number" class="num-input sm-input" data-field="健康保険料" value="${m.健康保険料||0}"></td>
           <td><input type="number" class="num-input sm-input" data-field="厚生年金" value="${m.厚生年金||0}"></td>
           <td><input type="number" class="num-input sm-input" data-field="介護保険料" value="${m.介護保険料||0}"></td>
@@ -393,11 +406,112 @@ document.querySelectorAll('#main-tabs .filter-tab').forEach(t => {
     t.classList.add('active');
     const m = t.dataset.main;
     document.getElementById('salary-section').style.display = m === 'salary' ? '' : 'none';
+    document.getElementById('shift-section').style.display = m === 'shift' ? '' : 'none';
     document.getElementById('ticket-section').style.display = m === 'ticket' ? '' : 'none';
     document.getElementById('reference-section').style.display = m === 'reference' ? '' : 'none';
     if (m === 'ticket') loadTickets();
+    if (m === 'shift') loadShiftSettings();
   });
 });
+
+// ───── シフト手当設定 ─────
+let _shiftEmployees = [];
+async function loadShiftSettings() {
+  document.getElementById('shift-list').innerHTML = '<div class="loading">読込中...</div>';
+  const rows = await sql(`SELECT id, 氏名, 給与体系, 表示順, シフト手当対象, シフト手当月額 FROM 社員マスタ WHERE 在籍 = '在籍中' ORDER BY 表示順, 氏名`);
+  _shiftEmployees = rows;
+  renderShiftSettings();
+}
+
+function renderShiftSettings() {
+  const total = _shiftEmployees.length;
+  const eligible = _shiftEmployees.filter(e => e.シフト手当対象).length;
+  const totalAmt = _shiftEmployees.reduce((s, e) => s + (e.シフト手当対象 ? (e.シフト手当月額||0) : 0), 0);
+  const html = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
+      <div style="background:var(--s2);border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:22px;font-weight:900;font-family:'DM Mono',monospace;">${total}</div>
+        <div style="font-size:10px;color:var(--muted);">在籍社員</div>
+      </div>
+      <div style="background:#fef3c7;border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:22px;font-weight:900;color:#b97a00;font-family:'DM Mono',monospace;">${eligible}</div>
+        <div style="font-size:10px;color:#b97a00;">対象社員</div>
+      </div>
+      <div style="background:#fef3c7;border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:22px;font-weight:900;color:#b97a00;font-family:'DM Mono',monospace;">¥${totalAmt.toLocaleString()}</div>
+        <div style="font-size:10px;color:#b97a00;">対象月の総額</div>
+      </div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead>
+        <tr style="background:var(--s3);">
+          <th style="padding:8px;text-align:left;">氏名</th>
+          <th style="padding:8px;text-align:center;width:80px;background:#fef3c7;" title="シフト手当対象">対象</th>
+          <th style="padding:8px;text-align:right;width:140px;background:#fef3c7;">月額 (円)</th>
+          <th style="padding:8px;text-align:center;width:60px;">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${_shiftEmployees.map(e => buildShiftRow(e)).join('')}
+      </tbody>
+    </table>
+    <div style="margin-top:12px;font-size:11px;color:var(--muted);">
+      ※ 各行の💾で個別保存。<b>対象</b>OFFなら月額入力しても0円扱い。<br>
+      ※ ここで設定した月額は <b>対象月 (2/3/6/7/8/9/10月支給)</b> の給与明細に自動セットされます。
+    </div>
+  `;
+  document.getElementById('shift-list').innerHTML = html;
+}
+
+function buildShiftRow(e) {
+  const rid = 'sh_' + e.id.replace(/-/g,'');
+  const elig = !!e.シフト手当対象;
+  return `
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:8px;">${e.氏名||''} <span style="font-size:10px;color:var(--muted);">(${e.給与体系||'未設定'})</span></td>
+      <td style="padding:8px;text-align:center;background:#fffaf0;">
+        <input type="checkbox" id="${rid}_chk" ${elig?'checked':''} style="transform:scale(1.4);cursor:pointer;">
+      </td>
+      <td style="padding:8px;background:#fffaf0;">
+        <input type="number" id="${rid}_amt" value="${e.シフト手当月額||0}" min="0" step="1000" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:5px;font-family:'DM Mono',monospace;text-align:right;${!elig?'background:#eee;color:#999;':''}" ${elig?'':'disabled'}>
+      </td>
+      <td style="padding:8px;text-align:center;">
+        <button class="btn" style="padding:5px 10px;font-size:11px;" onclick="saveShiftRow('${e.id}','${rid}')">💾</button>
+      </td>
+    </tr>
+  `;
+}
+
+async function saveShiftRow(eid, rid) {
+  const elig = document.getElementById(rid + '_chk').checked;
+  const amt = parseInt(document.getElementById(rid + '_amt').value) || 0;
+  try {
+    // フラグ更新
+    await fetch(D1_WORKER + '/d1/update-employee-flag', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ id: eid, field: 'シフト手当対象', value: elig ? 1 : 0 })
+    });
+    // 月額更新
+    await fetch(D1_WORKER + '/d1/update-employee-flag', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ id: eid, field: 'シフト手当月額', value: amt })
+    });
+    const e = _shiftEmployees.find(x => x.id === eid);
+    if (e) { e.シフト手当対象 = elig ? 1 : 0; e.シフト手当月額 = amt; }
+    renderShiftSettings();
+    showToastSimple('✅ 保存しました');
+  } catch(err) {
+    alert('❌ ' + err.message);
+  }
+}
+
+function showToastSimple(msg) {
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#10b981;color:#fff;padding:10px 18px;border-radius:24px;font-size:12px;font-weight:700;z-index:1000;';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2000);
+}
 
 loadSalaryMaster();
 </script>

@@ -687,19 +687,26 @@ const SAKAI_BRANCHES = [
   { id: '857b0e19-83c5-4af1-960f-fdd18ddc8756', name: 'サカイ広島南' },
   { id: '327a695f-8e88-81a3-9e2e-d39d2081e20c', name: 'サカイ広島西' },
 ];
+let _sakaiShowConfirmed = false; // 確認済も表示するか
 async function loadSakaiReassign() {
   const el = document.getElementById('sakai-result');
   el.innerHTML = '<div class="loading"><div class="spinner"></div><br>読込中...</div>';
-  // サカイ広島系の全車両 (4支店どこかに紐付いている)
   const ph = SAKAI_BRANCHES.map(() => '?').join(',');
-  const r = await sql(`SELECT v.id, v.車番, v.車種, v.前輪サイズ, IFNULL(substr(v.メモ,1,80),'') AS メモ抜粋, COALESCE(e.得意先名, c.顧客名) AS 現顧客
+  // 確認済をリストから除外 (デフォルト)
+  const confirmedFilter = _sakaiShowConfirmed ? '' : 'AND (v.サカイ振分確認済 IS NULL OR v.サカイ振分確認済 = 0)';
+  const r = await sql(`SELECT v.id, v.車番, v.車種, v.前輪サイズ, v.サカイ振分確認済,
+       IFNULL(substr(v.メモ,1,80),'') AS メモ抜粋, COALESCE(e.得意先名, c.顧客名) AS 現顧客
     FROM 車両マスタ v
     LEFT JOIN 得意先マスタ e ON v.顧客ID = e.id
     LEFT JOIN 顧客情報DB c ON v.顧客ID = c.id
-    WHERE v.顧客ID IN (${ph}) AND v.車番 NOT LIKE '%(旧%'
+    WHERE v.顧客ID IN (${ph}) AND v.車番 NOT LIKE '%(旧%' ${confirmedFilter}
     ORDER BY 現顧客, v.車番`, SAKAI_BRANCHES.map(b => b.id));
   const rows = r.results || [];
-  if (!rows.length) { el.innerHTML = '<div class="empty">サカイ系車両なし</div>'; return; }
+  // 確認済件数も取得
+  const cnt = await sql(`SELECT COUNT(*) cnt FROM 車両マスタ WHERE 顧客ID IN (${ph}) AND 車番 NOT LIKE '%(旧%' AND サカイ振分確認済 = 1`, SAKAI_BRANCHES.map(b => b.id));
+  const confirmedCount = cnt.results?.[0]?.cnt || 0;
+  if (!rows.length && !confirmedCount) { el.innerHTML = '<div class="empty">サカイ系車両なし</div>'; return; }
+  if (!rows.length) { el.innerHTML = `<div class="empty">未確認なし ✅ (確認済 ${confirmedCount}台)<br><br><button class="action-btn" onclick="_sakaiShowConfirmed=true;loadSakaiReassign()">確認済も表示</button></div>`; return; }
   // 支店別カウント
   const counts = {};
   rows.forEach(v => { counts[v.現顧客] = (counts[v.現顧客] || 0) + 1; });
@@ -708,14 +715,14 @@ async function loadSakaiReassign() {
   ).join('');
   el.innerHTML = `
     <div style="font-size:11px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-      <span>${rows.length}台 (現状: ${Object.entries(counts).map(([k,v])=>`${k} ${v}台`).join(' / ')})</span>
+      <span>未確認 ${rows.length}台 / 確認済 ${confirmedCount}台 (現状: ${Object.entries(counts).map(([k,v])=>`${k} ${v}台`).join(' / ')}) <button class="action-btn" onclick="_sakaiShowConfirmed=${!_sakaiShowConfirmed};loadSakaiReassign()">${_sakaiShowConfirmed?'未確認のみ表示':'確認済も表示'}</button></span>
       <span>
         <button class="action-btn" onclick="sakaiBulkSet('')">解除</button>
         <button class="action-btn" onclick="sakaiBulkSet('${SAKAI_BRANCHES[0].id}')">→支社</button>
         <button class="action-btn" onclick="sakaiBulkSet('${SAKAI_BRANCHES[1].id}')">→北</button>
         <button class="action-btn" onclick="sakaiBulkSet('${SAKAI_BRANCHES[2].id}')">→南</button>
         <button class="action-btn" onclick="sakaiBulkSet('${SAKAI_BRANCHES[3].id}')">→西</button>
-        <button class="action-btn primary" onclick="sakaiBulkExec()" style="margin-left:8px;">▶ チェック行を一括振替</button>
+        <button class="action-btn primary" onclick="sakaiBulkExec()" style="margin-left:8px;">▶ チェック行を一括振替 (確認済化)</button>
       </span>
     </div>
     <div style="overflow-x:auto;">
@@ -768,7 +775,7 @@ async function sakaiBulkExec() {
     try {
       const r = await fetch(D1_WORKER + '/d1/update-vehicle', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: t.vid, 顧客ID: t.target })
+        body: JSON.stringify({ id: t.vid, 顧客ID: t.target, サカイ振分確認済: 1 })
       });
       const j = await r.json();
       if (j.success) ok++; else { fail++; failures.push(t.vid+': '+(j.error||'')); }

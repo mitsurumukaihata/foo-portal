@@ -1343,7 +1343,7 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
         const { id } = body2;
         if (!id) return new Response(JSON.stringify({ error: 'id required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
         // 許可カラムのホワイトリスト (任意のカラムを上書きさせない)
-        const ALLOWED_FIELDS = ['車番','車種','仕様','前輪サイズ','後輪サイズ','前輪パターン','後輪パターン','本数','カテゴリ','メモ','管理番号','車軸配置','顧客ID'];
+        const ALLOWED_FIELDS = ['車番','車種','仕様','前輪サイズ','後輪サイズ','前輪パターン','後輪パターン','本数','カテゴリ','メモ','管理番号','車軸配置','顧客ID','サカイ振分確認済'];
         const sets = [];
         const params = [];
         for (const f of ALLOWED_FIELDS) {

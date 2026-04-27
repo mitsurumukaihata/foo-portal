@@ -726,6 +726,9 @@ document.querySelector('[data-tab="heavy"]').addEventListener('click', () => {
 
 // ─────────────── 大型トラック仕様確認 ───────────────
 const AXLE_OPTS = ['', '2-2', '2-D', '2-D-D', '2-2-D-D', '2-D-D-D', 'トレーラー', 'その他'];
+// 車軸配置から本数を自動算出 (業界標準)
+const AXLE_TO_COUNT = { '2-2': 4, '2-D': 6, '2-D-D': 10, '2-2-D-D': 12, '2-D-D-D': 14 };
+const SHASHU_OPTS = ['', '大型', '中型', '小型', 'バン', '乗用車', 'トレーラー', 'その他'];
 let _heavyVehicles = [], _heavyDuplicates = {}, _heavyFilterStatus = 'pending', _heavyFilterCust = '', _heavyQ = '';
 
 async function loadHeavyVehicles() {
@@ -734,7 +737,7 @@ async function loadHeavyVehicles() {
     // TBサイズ大型のみ (R22.5/R20)。R19.5(LTL中型)は別なので除外
     const rows = await d1query(`
       SELECT v.id, v.車番, v.管理番号, v.車種, v.仕様, v.前輪サイズ, v.後輪サイズ, v.本数, v.車軸配置,
-             v.メモ, v.大型仕様確認済, v.顧客ID,
+             v.メモ, v.エンドユーザー, v.大型仕様確認済, v.顧客ID,
              COALESCE(c.顧客名, e.得意先名) 顧客名
       FROM 車両マスタ v
       LEFT JOIN 顧客情報DB c ON c.id = v.顧客ID
@@ -744,11 +747,12 @@ async function loadHeavyVehicles() {
       ORDER BY 顧客名, v.車番
     `);
     _heavyVehicles = rows.map(r => {
-      // メモから「エンドユーザー: XXX」を抽出 (元請けTOYO等の下のEUを取り出す)
-      const memo = r.メモ || '';
-      const euMatch = memo.match(/エンドユーザー[:：]\s*([^\n\r]+)/);
-      const endUser = euMatch ? euMatch[1].trim() : null;
-      // 表示: エンドユーザー優先、なければ顧客名
+      // EUカラム優先、無ければメモから抽出 (移行済みのはず)
+      let endUser = (r.エンドユーザー || '').trim();
+      if (!endUser) {
+        const euMatch = (r.メモ || '').match(/エンドユーザー[::]\s*([^\n\r]+)/);
+        if (euMatch) endUser = euMatch[1].trim();
+      }
       const displayName = endUser || (r.顧客名 || '(不明)');
       const motoUke = endUser ? r.顧客名 : null;
       return {
@@ -756,6 +760,7 @@ async function loadHeavyVehicles() {
         type: r.車種||'', spec: r.仕様||'',
         front: r.前輪サイズ||'', rear: r.後輪サイズ||'', count: r.本数||0,
         axle: r.車軸配置||'',
+        endUser: endUser,
         confirmed: !!r.大型仕様確認済,
         customerId: r.顧客ID||'', customerName: displayName, motoUke
       };
@@ -832,22 +837,31 @@ function buildHeavyRow(v) {
   const dup = _heavyDuplicates[v.id];
   const dupBadge = dup ? `<span class="warn-badge" style="background:#dc2626;">⚠ 車番重複 ${dup}件</span>` : '';
   const confirmBadge = v.confirmed ? '<span class="warn-badge" style="background:var(--green);">✅ 確認済</span>' : '';
-  const axleOpts = AXLE_OPTS.map(o => `<option value="${o}" ${o===v.axle?'selected':''}>${o||'(未設定)'}</option>`).join('');
+  const axleOpts = AXLE_OPTS.map(o => {
+    const cnt = AXLE_TO_COUNT[o];
+    const label = o ? (o + (cnt ? ` (${cnt}本)` : '')) : '(未設定)';
+    return `<option value="${o}" ${o===v.axle?'selected':''}>${label}</option>`;
+  }).join('');
+  const shashuOpts = SHASHU_OPTS.map(o => `<option value="${o}" ${o===v.type?'selected':''}>${o||'(未設定)'}</option>`).join('');
   return `
     <div class="row-card" id="${rid}" style="grid-template-columns:1fr;gap:8px;${dup?'border:2px solid #dc2626;background:#fef2f2;':''}">
       <div class="row-main">
         <div class="row-title">${escHtml(v.plate || '(車番なし)')} ${dupBadge} ${confirmBadge}</div>
-        <div class="row-meta">管理番号: ${escHtml(v.mgmt||'-')} / ${escHtml(v.type||'')} ${escHtml(v.spec||'')} / 本数:${v.count}${v.motoUke ? ` / 元請け: ${escHtml(v.motoUke)}` : ''}</div>
+        <div class="row-meta">管理番号: ${escHtml(v.mgmt||'-')} / 仕様: ${escHtml(v.spec||'-')}${v.motoUke ? ` / 元請け: ${escHtml(v.motoUke)}` : ''}</div>
       </div>
       <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;font-size:11px;">
-        <span style="color:var(--muted);width:80px;">車軸配置</span>
-        <select class="row-select" id="${rid}_axle">${axleOpts}</select>
-        <span style="color:var(--muted);width:80px;">前輪サイズ</span>
+        <span style="color:var(--muted);width:88px;">エンドユーザー</span>
+        <input type="text" class="row-input" id="${rid}_eu" value="${escHtml(v.endUser)}" placeholder="例: リョーキ五日市・太陽建機 等" style="${!v.endUser?'background:#fef3c7;border-color:#f59e0b;':''}">
+        <span style="color:var(--muted);width:88px;">車種</span>
+        <select class="row-select" id="${rid}_shashu">${shashuOpts}</select>
+        <span style="color:var(--muted);width:88px;">車軸配置</span>
+        <select class="row-select" id="${rid}_axle" onchange="onAxleChange('${rid}')">${axleOpts}</select>
+        <span style="color:var(--muted);width:88px;">本数 (自動)</span>
+        <input type="number" class="row-input" id="${rid}_count" value="${v.count||0}" min="0" max="22" title="車軸配置を選ぶと自動セット (手動上書き可)">
+        <span style="color:var(--muted);width:88px;">前輪サイズ</span>
         <input type="text" class="row-input" id="${rid}_front" value="${escHtml(v.front)}" placeholder="例: 295/80R22.5">
-        <span style="color:var(--muted);width:80px;">後輪サイズ</span>
+        <span style="color:var(--muted);width:88px;">後輪サイズ</span>
         <input type="text" class="row-input" id="${rid}_rear" value="${escHtml(v.rear)}" placeholder="後輪が違う場合のみ (前輪と同じなら空欄OK)">
-        <span style="color:var(--muted);width:80px;">本数</span>
-        <input type="number" class="row-input" id="${rid}_count" value="${v.count||0}" min="0" max="22">
       </div>
       <div style="text-align:right;display:flex;gap:6px;justify-content:flex-end;">
         ${dup ? `<a href="vehicle-master.html?plate=${encodeURIComponent(v.plate)}" target="_blank" class="btn-clear" style="text-decoration:none;color:var(--red);">🔍 重複車両を見る</a>` : ''}
@@ -857,6 +871,22 @@ function buildHeavyRow(v) {
   `;
 }
 
+// 車軸配置変更 → 本数を自動セット (ユーザーが手で変えてた場合は確認)
+function onAxleChange(rid) {
+  const sel = document.getElementById(rid + '_axle');
+  const countInput = document.getElementById(rid + '_count');
+  if (!sel || !countInput) return;
+  const expected = AXLE_TO_COUNT[sel.value];
+  if (expected !== undefined) {
+    const cur = parseInt(countInput.value) || 0;
+    if (cur === 0 || cur !== expected) {
+      countInput.value = expected;
+      countInput.style.background = '#dcfce7'; // 一瞬グリーンで自動セット示す
+      setTimeout(() => { countInput.style.background = ''; }, 800);
+    }
+  }
+}
+
 async function saveHeavyVehicle(vid, rid) {
   const v = _heavyVehicles.find(x => x.id === vid);
   if (!v) return;
@@ -864,12 +894,16 @@ async function saveHeavyVehicle(vid, rid) {
   const newFront = document.getElementById(rid + '_front').value.trim();
   const newRear = document.getElementById(rid + '_rear').value.trim();
   const newCount = parseInt(document.getElementById(rid + '_count').value) || 0;
+  const newEU = document.getElementById(rid + '_eu').value.trim();
+  const newShashu = document.getElementById(rid + '_shashu').value;
   // 差分のみ送信 + 確認済フラグON
   const payload = { id: vid, 大型仕様確認済: 1 };
   if (newAxle !== v.axle) payload.車軸配置 = newAxle || null;
   if (newFront !== v.front) payload.前輪サイズ = newFront || null;
   if (newRear !== v.rear) payload.後輪サイズ = newRear || null;
   if (newCount !== v.count) payload.本数 = newCount;
+  if (newEU !== v.endUser) payload.エンドユーザー = newEU || null;
+  if (newShashu !== v.type) payload.車種 = newShashu || null;
   try {
     const res = await fetch(PROXY + '/d1/update-vehicle', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -878,8 +912,9 @@ async function saveHeavyVehicle(vid, rid) {
     const j = await res.json();
     if (j.success) {
       showToast('✅ 登録しました');
-      // メモリ更新
       v.axle = newAxle; v.front = newFront; v.rear = newRear; v.count = newCount;
+      v.endUser = newEU; v.type = newShashu;
+      v.customerName = newEU || (v.motoUke || v.customerName);
       v.confirmed = true;
       renderHeavyVehicles();
     } else showToast('❌ ' + (j.error||''), true);

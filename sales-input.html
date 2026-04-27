@@ -5025,8 +5025,14 @@ async function submitSale() {
     deleteCurrentDraft();
     btn.disabled = false; btn.textContent = '✅ 売上計上';
     showToast('✅ 伝票作成完了: ' + fmtYen(totals.zeikomi) + '（明細 ' + okCount + ' 件）');
-    // 納品書を新タブで開くボタンを確認ダイアログで
-    setTimeout(() => { if (confirm('納品書を開きますか？\n（新タブで表示→印刷/PDF保存可能）')) window.open('delivery-note.html?slip=' + slipId, '_blank'); }, 300);
+    // 納品書: ユーザー操作直後に開く (setTimeout 経由だとポップアップブロック対象になりやすい)
+    if (confirm('納品書を開きますか？\n（新タブで表示→ブラウザ印刷から PDF保存）')) {
+      const w = window.open('delivery-note.html?slip=' + slipId, '_blank');
+      if (!w || w.closed || typeof w.closed === 'undefined') {
+        // ポップアップブロックされた場合のフォールバック
+        alert('ポップアップがブロックされました。\nアドレスバー右の🚫マークから「許可」してください。\n\n伝票ID: ' + slipId + '\n手動で開く: delivery-note.html?slip=' + slipId);
+      }
+    }
     // 続けて入力できるようリセット & ダッシュボードへ
     state.details = [];
     state.selectedCustomer = null;

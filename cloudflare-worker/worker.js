@@ -1184,6 +1184,34 @@ function showToast(msg, icon='\u2713') { const t = document.getElementById('toas
       }
     }
 
+    // A表 一括投入 (メーカーA表データ取り込み用、source指定で同源を再投入可能)
+    if (url.pathname === '/d1/bulk-insert-a-table' && request.method === 'POST' && env.DB) {
+      try {
+        const { records, source } = await request.json();
+        if (!Array.isArray(records)) return new Response(JSON.stringify({ error: 'records must be array' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        if (!source) return new Response(JSON.stringify({ error: 'source required' }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        // 同源を削除
+        const del = await env.DB.prepare('DELETE FROM A表 WHERE source = ?').bind(source).run();
+        // バッチINSERT (D1のbatchで効率化)
+        const stmts = records.map(r => env.DB.prepare(
+          `INSERT INTO A表 (id, カテゴリ, メーカー, ブランド, パターン, サイズ, 加重指数, 注意, 価格, カテゴリ詳細, 最終更新日, source, created_time, last_edited_time)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`
+        ).bind(
+          crypto.randomUUID(),
+          r.カテゴリ || null, r.メーカー || null, r.ブランド || null, r.パターン || null,
+          r.サイズ || null, r.加重指数 || null, r.注意 || null,
+          r.価格 != null ? Number(r.価格) : null,
+          r.カテゴリ詳細 || null, r.最終更新日 || null, source
+        ));
+        // バッチ実行 (Cloudflare D1 で1リクエストで複数SQL)
+        const results = await env.DB.batch(stmts);
+        const inserted = results.reduce((s, r) => s + (r.meta?.changes || 0), 0);
+        return new Response(JSON.stringify({ success: true, deleted: del.meta?.changes || 0, inserted }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      } catch(e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    }
+
     // 商品マスタ単項目更新 (事務員 商品マスタチェックUI用)
     // body: { id, タイヤ銘柄?, メーカー?, ブランド?, タイヤサイズ?, メモ? }
     if (url.pathname === '/d1/update-product-master' && request.method === 'POST' && env.DB) {

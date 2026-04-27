@@ -62,6 +62,7 @@
       <div class="filter-tab active" data-main="salary">💰 給与マスタ (社員別)</div>
       <div class="filter-tab" data-main="shift">🌟 シフト手当設定</div>
       <div class="filter-tab" data-main="employee">👥 社員マスタ</div>
+      <div class="filter-tab" data-main="permmatrix">📱 アプリ別表示権限</div>
       <div class="filter-tab" data-main="ticket">🧾 経理チケット</div>
       <div class="filter-tab" data-main="reference">📚 参考情報</div>
     </div>
@@ -104,6 +105,17 @@
       </label>
     </div>
     <div id="employee-list"><div class="loading">読込中...</div></div>
+  </div>
+
+  <!-- アプリ別表示権限マトリクス -->
+  <div class="card" id="permmatrix-section" style="display:none;">
+    <h2>📱 アプリ別表示権限 (アプリ × 社員 マトリクス)</h2>
+    <div class="help-box">
+      💡 <b>ビュー</b>: アプリを選んで、誰に表示するかを一覧でチェック<br>
+      💡 <b>反対側のビュー</b> (社員ごとに編集) は「👥 社員マスタ」タブから<br>
+      💡 <b>連動</b>: ここで変更すると即D1更新、社員マスタタブの該当社員にも反映
+    </div>
+    <div id="permmatrix-list"><div class="loading">読込中...</div></div>
   </div>
 
   <!-- シフト手当設定 -->
@@ -435,6 +447,7 @@ document.querySelectorAll('#main-tabs .filter-tab').forEach(t => {
     if (m === 'ticket') loadTickets();
     if (m === 'shift') loadShiftSettings();
     if (m === 'employee') loadEmployeeMaster();
+    if (m === 'permmatrix') loadPermMatrix();
   });
 });
 
@@ -637,7 +650,8 @@ function toggleEmpCard(id) {
   if (_empOpenId) loadEmpApps(_empOpenId);
 }
 
-// APP_DEFS のミニ版 (ID + label + section だけ抜粋。本家とずれた場合は再同期)
+// APP_DEFS と完全同期した一覧 (index.html APP_DEFS から手動で同期。漏れ防止のため全件記載)
+// ⚠️ index.html の APP_DEFS を変更したら ここも同期すること
 const EMP_APP_LIST = [
   { section: '🚪 ポータル表示 (上タブ)', items: [
     { id: 'portal_shanai', label: '🏠 社内ポータル' },
@@ -646,33 +660,67 @@ const EMP_APP_LIST = [
     { id: 'portal_kanri',  label: '⚙️ 管理ポータル' },
   ]},
   { section: '現場・業務', items: [
-    { id: 'kintai', label: '🕒 勤怠' }, { id: 'tire', label: '🚛 タイヤ入出庫' },
-    { id: 'vehicle', label: '🚚 車両マスタ' }, { id: 'order', label: '📋 発注管理' },
-    { id: 'auto', label: '🤖 自動発注' }, { id: 'tanaoroshi', label: '📦 棚卸表' },
-    { id: 'bihin', label: '🛠 備品発注' }, { id: 'customer-portal', label: '👤 顧客ポータル' },
+    { id: 'tire', label: '🚛 タイヤ入出庫' },
+    { id: 'kintai', label: '📅 出勤簿' },
+    { id: 'customer', label: '👤 顧客情報' },
+    { id: 'vehicle', label: '🚚 車両マスタ' },
+    { id: 'task', label: '✅ タスク管理' },
+    { id: 'bihin', label: '📦 備品発注' },
   ]},
   { section: '事務', items: [
-    { id: 'sales_input', label: '🧾 売上入力' }, { id: 'analytics', label: '📊 分析ダッシュボード' },
-    { id: 'briefing', label: '☀️ 朝のブリーフィング' }, { id: 'customer360', label: '👤 顧客360°' },
-    { id: 'foopack', label: '📦 f.o.oパック契約' }, { id: 'office_tasks', label: '📋 お願いリスト' },
+    { id: 'sales_input', label: '🧾 売上入力' },
+    { id: 'analytics', label: '📊 分析ダッシュボード' },
+    { id: 'briefing', label: '☀️ 朝のブリーフィング' },
+    { id: 'customer360', label: '👤 顧客360°ビュー' },
+    { id: 'order', label: '📋 発注管理' },
+    { id: 'auto', label: '🤖 自動発注' },
+    { id: 'tanaoroshi', label: '📦 棚卸表' },
     { id: 'welfare', label: '💊 福利厚生' },
+    { id: 'foopack', label: '📦 f.o.oパック契約' },
+    { id: 'office_tasks', label: '📋 お願いリスト' },
   ]},
   { section: 'EC/マーケ', items: [
-    { id: 'auction', label: '🏷 オークション' }, { id: 'ecmarket', label: '📊 EC/マーケ管理' },
+    { id: 'auction', label: '🏷 オークション' },
+    { id: 'ecmarket', label: '📊 EC/マーケ管理' },
     { id: 'sns_upload', label: '📸 広報協力' },
   ]},
   { section: 'コミュニティ', items: [
-    { id: 'manager', label: '👔 部長コミュ' }, { id: 'leader', label: '🏅 リーダーコミュ' },
-    { id: 'marketing', label: '📢 マーケ/ECコミュ' }, { id: 'meeting', label: '📣 会議内容' },
-    { id: 'action_manager', label: '✅ アクション管理' }, { id: 'meeting_recorder', label: '🎙 会議録音' },
-    { id: 'dictionary', label: '📖 用語集' }, { id: 'news', label: '📰 業界ニュース' },
+    { id: 'manager', label: '👔 部長コミュニティ' },
+    { id: 'leader', label: '🏅 リーダーコミュニティ' },
+    { id: 'marketing', label: '📢 マーケ/ECコミュ' },
+    { id: 'meeting', label: '📣 会議内容' },
+    { id: 'action_manager', label: '✅ アクション管理' },
+    { id: 'meeting_recorder', label: '🎙 会議録音' },
+    { id: 'dictionary', label: '📖 用語集' },
   ]},
-  { section: '人事/マニュアル', items: [
-    { id: 'harassment', label: '🛡 ハラスメント記録' }, { id: 'injury-record', label: '🏥 負傷記録票' },
-    { id: 'rules', label: '📘 社内ルール' }, { id: 'employment', label: '📜 就業規則' },
+  { section: 'ニュース', items: [
+    { id: 'news', label: '📰 業界ニュース' },
+  ]},
+  { section: '人事', items: [
+    { id: 'harassment', label: '🛡 ハラスメント記録' },
+    { id: 'injury-record', label: '🏥 負傷記録票' },
+  ]},
+  { section: 'マニュアル', items: [
+    { id: 'manual', label: '📖 タイヤ交換マニュアル' },
+    { id: 'report', label: '📝 作業報告書' },
+    { id: 'rules', label: '📘 社内制度・ルール' },
+  ]},
+  { section: '経理 (経理ポータル)', items: [
+    { id: 'cashflow', label: '💸 資金繰り' },
+    { id: 'kpi', label: '📊 月次KPI' },
+    { id: 'loan', label: '🏦 借入一覧' },
+    { id: 'equipment', label: '🏗 設備購入予定表' },
+    { id: 'subscription', label: '💳 サブスク管理' },
+    { id: 'sanfre', label: '🧞 サンフレチケット' },
+    { id: 'employment', label: '📜 就業規則' },
+  ]},
+  { section: '給与', items: [
+    { id: 'payslip', label: '💴 給与明細' },
   ]},
   { section: '管理 (代表専用)', items: [
-    { id: 'sizemismatch', label: '⚠️ サイズ不整合' }, { id: 'd1admin', label: '🗄 D1 Admin' },
+    { id: 'sizemismatch', label: '⚠️ サイズ不整合' },
+    { id: 'kurikoshi', label: '🔄 DB繰越管理' },
+    { id: 'd1admin', label: '🗄 D1 Admin' },
   ]},
 ];
 
@@ -704,6 +752,102 @@ function toggleAllApps(eid, on) {
   const wrap = document.getElementById(eid + '_apps');
   if (!wrap) return;
   wrap.querySelectorAll('input[data-emp-app]').forEach(cb => { cb.checked = on; });
+}
+
+// ───── アプリ別表示権限マトリクス ─────
+let _matrixEmps = [], _matrixPerms = {}; // { 社員ID: Set<アプリID> }
+
+async function loadPermMatrix() {
+  document.getElementById('permmatrix-list').innerHTML = '<div class="loading">読込中...</div>';
+  try {
+    const empR = await sql(`SELECT id, 氏名, アプリグループ, 表示順 FROM 社員マスタ WHERE 在籍 = '在籍中' ORDER BY 表示順, 氏名`);
+    _matrixEmps = empR.results || [];
+    const permR = await sql(`SELECT 社員ID, アプリID FROM 社員アプリ権限`);
+    _matrixPerms = {};
+    (permR.results || []).forEach(p => {
+      if (!_matrixPerms[p.社員ID]) _matrixPerms[p.社員ID] = new Set();
+      _matrixPerms[p.社員ID].add(p.アプリID);
+    });
+    renderPermMatrix();
+  } catch(e) {
+    document.getElementById('permmatrix-list').innerHTML = '<div class="loading" style="color:var(--red);">読込失敗: ' + e.message + '</div>';
+  }
+}
+
+function renderPermMatrix() {
+  // 全アプリ × 全社員のマトリクス
+  const empCols = _matrixEmps.map(e => {
+    const short = (e.氏名 || '').replace(/\s/g, '').slice(-1);
+    return `<th style="font-size:9px;padding:4px 2px;writing-mode:vertical-rl;white-space:nowrap;text-align:left;height:80px;" title="${esc(e.氏名)}">${esc(e.氏名)}</th>`;
+  }).join('');
+  let html = `<div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:11px;">
+    <thead><tr><th style="padding:6px 8px;text-align:left;background:var(--s3);position:sticky;left:0;z-index:2;min-width:180px;">アプリ</th>${empCols}<th style="padding:4px 8px;background:var(--s3);">操作</th></tr></thead>
+    <tbody>`;
+  EMP_APP_LIST.forEach(g => {
+    html += `<tr><td colspan="${_matrixEmps.length+2}" style="background:#fef3c7;color:#b97a00;font-weight:700;padding:6px 8px;font-size:10px;">${esc(g.section)}</td></tr>`;
+    g.items.forEach(a => {
+      const cells = _matrixEmps.map(e => {
+        const granted = _matrixPerms[e.id]?.has(a.id);
+        // 「権限行が0件」の社員はデフォルトON扱い (互換性)
+        const hasAnyRow = (_matrixPerms[e.id]?.size || 0) > 0;
+        const checked = hasAnyRow ? !!granted : true;
+        return `<td style="text-align:center;padding:4px;">
+          <input type="checkbox" data-mp-emp="${e.id}" data-mp-app="${a.id}" ${checked?'checked':''} onchange="onMatrixToggle(this)" style="cursor:pointer;">
+        </td>`;
+      }).join('');
+      html += `<tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:6px 8px;background:var(--s1);position:sticky;left:0;z-index:1;font-weight:500;">${esc(a.label)}</td>
+        ${cells}
+        <td style="padding:4px;text-align:center;background:var(--s1);">
+          <button class="btn secondary" style="padding:3px 6px;font-size:10px;" onclick="matrixRowToggle('${a.id}', true)">全ON</button>
+          <button class="btn secondary" style="padding:3px 6px;font-size:10px;" onclick="matrixRowToggle('${a.id}', false)">全OFF</button>
+        </td>
+      </tr>`;
+    });
+  });
+  html += `</tbody></table></div>
+    <div style="margin-top:10px;font-size:11px;color:var(--muted);">
+      ※ チェック変更は<b>即D1反映</b> (1セルずつ自動保存)<br>
+      ※ 各社員の「権限行が0件」のときはデフォルト全ON扱い (チェック外すと初めて権限管理が有効化)
+    </div>`;
+  document.getElementById('permmatrix-list').innerHTML = html;
+}
+
+async function onMatrixToggle(cb) {
+  const empId = cb.dataset.mpEmp, appId = cb.dataset.mpApp;
+  // 現在のチェック済アプリ全部送る (差分でなく一括)
+  const checkedAppIds = [...document.querySelectorAll(`input[data-mp-emp="${empId}"]:checked`)].map(x => x.dataset.mpApp);
+  cb.disabled = true;
+  try {
+    const r = await fetch(D1_WORKER + '/d1/set-employee-app-permissions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 社員ID: empId, アプリID一覧: checkedAppIds })
+    });
+    const j = await r.json();
+    if (j.success) {
+      // メモリも更新
+      _matrixPerms[empId] = new Set(checkedAppIds);
+      showToastSimple('✅ 保存');
+    } else {
+      cb.checked = !cb.checked;
+      alert('❌ ' + (j.error||''));
+    }
+  } catch(e) {
+    cb.checked = !cb.checked;
+    alert('❌ ' + e.message);
+  } finally {
+    cb.disabled = false;
+  }
+}
+
+async function matrixRowToggle(appId, on) {
+  const cbs = document.querySelectorAll(`input[data-mp-app="${appId}"]`);
+  for (const cb of cbs) {
+    if (cb.checked !== on) {
+      cb.checked = on;
+      await onMatrixToggle(cb); // 1社員ごとに保存
+    }
+  }
 }
 
 async function saveEmpApps(empId, eid) {

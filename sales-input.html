@@ -4666,7 +4666,7 @@ function onCarNoInput(i, inp) {
   let pool = vehicleCache;
   let scopeLabel = '';
   if (custId || euId) {
-    pool = vehicleCache.filter(v => v.customerId === custId || v.customerId === euId);
+    pool = vehicleCache.filter(v => v.custId === custId || v.custId === euId);
     if (state.selectedEndUser) scopeLabel = state.selectedEndUser.name;
     else if (state.selectedCustomer) scopeLabel = state.selectedCustomer.name;
   }
